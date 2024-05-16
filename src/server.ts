@@ -109,14 +109,12 @@ app
             };
         }
     })
+    .use(router.routes())
+    .use(router.allowedMethods())
     .use(async (ctx, next) => {
         if (ctx.request?.body?.success) {
             await next()
-        } else {
-            ctx.status = 200
         }
     })
-    .use(router.routes())
-    .use(router.allowedMethods())
 
 export default app
