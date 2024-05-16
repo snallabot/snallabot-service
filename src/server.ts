@@ -110,7 +110,7 @@ app
         }
     })
     .use(async (ctx, next) => {
-        if (ctx.request.body.success) {
+        if (ctx.request?.body?.success) {
             await next()
         } else {
             ctx.status = 200
