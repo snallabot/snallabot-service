@@ -97,18 +97,18 @@ async function sendEvents<T>(league: string, request_type: string, events: Array
     if (hashDifferences.length > 0) {
         // console.log(newNodes)
     }
-    const finalEvents = hashDifferences.map(h => hashToEvent.has(h))
-    console.log(request_type + " sending these amount of events " + finalEvents.length)
-    // await fetch("https://snallabot-event-sender-b869b2ccfed0.herokuapp.com/batchPost", {
-    //     method: "POST",
-    //     headers: {
-    //         "Content-Type": "application/json"
-    //     },
-    //     body: JSON.stringify({
-    //         batch: finalEvents,
-    //         delivery: "EVENT_SOURCE"
-    //     })
-    // })
+    const finalEvents = hashDifferences.map(h => hashToEvent.get(h)).filter(e => e)
+    // console.log(request_type + " sending these amount of events " + finalEvents.length)
+    await fetch("https://snallabot-event-sender-b869b2ccfed0.herokuapp.com/batchPost", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            batch: finalEvents,
+            delivery: "EVENT_SOURCE"
+        })
+    })
 }
 
 
