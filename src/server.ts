@@ -94,9 +94,9 @@ async function sendEvents<T>(league: string, request_type: string, events: Array
     const hashDifferences = findDifferences(newTree, oldTree)
     writeTree(league, request_type, newTree)
     // console.log(request_type + " found these many differences " + hashDifferences.length)
-    if (hashDifferences.length > 0) {
-        // console.log(newNodes)
-    }
+    // if (hashDifferences.length > 0) {
+    // console.log(newNodes)
+    // }
     const finalEvents = hashDifferences.map(h => hashToEvent.get(h)).filter(e => e)
     // console.log(request_type + " sending these amount of events " + finalEvents.length)
     await fetch("https://snallabot-event-sender-b869b2ccfed0.herokuapp.com/batchPost", {
