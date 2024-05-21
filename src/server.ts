@@ -204,8 +204,13 @@ app
     .use(router.routes())
     .use(router.allowedMethods())
     .use(async (ctx, next) => {
-        if (ctx.request?.body?.success) {
-            await next()
+        if (ctx.request?.body?.success === undefined) {
+            ctx.status = 400
+        } else {
+            if (ctx.request.body.success) {
+                await next()
+            }
+
         }
     })
 
