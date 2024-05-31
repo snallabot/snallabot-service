@@ -4,7 +4,10 @@ import bodyParser from "@koa/bodyparser"
 import { RosterExport, TeamExport, StandingExport, SchedulesExport, PuntingExport, TeamStatsExport, PassingExport, KickingExport, RushingExport, DefensiveExport, ReceivingExport } from "./madden_league_types"
 import { initializeApp, cert } from "firebase-admin/app"
 import { getFirestore, Firestore } from "firebase-admin/firestore"
+import serve from "koa-static"
+import path from "path"
 const hash: (a: any) => string = require("object-hash")
+
 
 
 function setupFirebase() {
@@ -189,6 +192,7 @@ router.post("/:platform/:l/leagueteams", async (ctx) => {
 })
 
 app
+    .use(serve(path.join(__dirname, 'public')))
     .use(bodyParser({ enableTypes: ["json"], encoding: "utf-8" }))
     .use(async (ctx, next) => {
         try {
