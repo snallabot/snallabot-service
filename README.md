@@ -3,5 +3,5 @@
 entry point for snallabot
 
 ```
-deployment: 
+deployment: https://snallabot.me
 ```
