@@ -192,7 +192,7 @@ router.post("/:platform/:l/leagueteams", async (ctx) => {
 })
 
 app
-    .use(serve(path.join(__dirname, 'public')))
+    .use(serve(path.join(__dirname, '..', 'public')))
     .use(bodyParser({ enableTypes: ["json"], encoding: "utf-8" }))
     .use(async (ctx, next) => {
         try {
