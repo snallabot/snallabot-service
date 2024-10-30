@@ -1,3 +1,6 @@
+# secret scripts
+run_script.sh
+
 # Logs
 logs
 *.log
