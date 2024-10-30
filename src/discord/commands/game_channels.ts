@@ -83,8 +83,6 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
 - <a:snallabot_waiting:1288664321781399584> Logging`})
         let weekSchedule;
         try {
-            console.log(leagueId)
-            console.log(week)
             weekSchedule = (await MaddenClient.getLatestWeekSchedule(leagueId, week)).sort((g, g2) => g.scheduleId - g2.scheduleId)
         } catch (e) {
             await client.editOriginalInteraction(token, {
