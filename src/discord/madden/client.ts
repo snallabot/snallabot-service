@@ -32,6 +32,8 @@ export default {
 
     },
     getLatestWeekSchedule: async function(leagueId: string, week: number) {
+        console.log(leagueId)
+        console.log(week)
         const res = await fetch("https://snallabot-event-sender-b869b2ccfed0.herokuapp.com/query", {
             method: "POST",
             body: JSON.stringify({ event_types: ["MADDEN_SCHEDULE"], key: leagueId, after: 0, filter: { weekIndex: week - 1, stageIndex: 1 }, limit: 10000 }),
