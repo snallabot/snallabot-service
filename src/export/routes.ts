@@ -79,9 +79,10 @@ async function sendEvents<T>(league: string, request_type: string, events: Array
                 delivery: "EVENT_SOURCE"
             })
         })
-    } else {
-        console.debug("skipped writing!")
     }
+    // else {
+    //     console.debug("skipped writing!")
+    // }
 }
 
 async function maddenExportErrorMiddleware(ctx: ParameterizedContext, next: Next) {
