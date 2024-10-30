@@ -10,7 +10,7 @@
     "dev": "npx firebase --project dev emulators:start & FIRESTORE_EMULATOR_HOST=localhost:8080 nodemon src/index.ts && kill $!"
   },
   "engines": {
-    "node": "20.x"
+    "node": "21.x"
   },
   "repository": {
     "type": "git",
