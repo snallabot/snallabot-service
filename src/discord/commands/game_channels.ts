@@ -104,6 +104,7 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
                 weekSchedule = (await MaddenClient.getLatestWeekSchedule(leagueId, week)).sort((g, g2) => g.scheduleId - g2.scheduleId)
             } catch (e) {
                 await client.editOriginalInteraction(token, { content: "This week is not exported! Export it via dashboard or companion app" })
+                console.error(e)
                 return
             }
         }
