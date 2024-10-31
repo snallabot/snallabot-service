@@ -61,7 +61,7 @@ type ListTwitchRequest = { discord_server: string }
 
 interface TwitchNotifier {
     addTwitchChannel(discordServer: string, twitchUrl: string): Promise<void>,
-    remoevTwitchChannel(discordServer: string, twitchUrl: string): Promise<void>,
+    removeTwitchChannel(discordServer: string, twitchUrl: string): Promise<void>,
     listTwitchChannels(discordServer: string): Promise<string[]>
 }
 
@@ -100,7 +100,7 @@ export const twitchNotifierHandler: TwitchNotifier = {
             })
         }
     },
-    remoevTwitchChannel: async (discordServer: string, twitchUrl: string) => {
+    removeTwitchChannel: async (discordServer: string, twitchUrl: string) => {
         const broadcasterInformation = await twitchClient.retrieveBroadcasterInformation(twitchUrl)
         const broadcasterId = broadcasterInformation.data[0].id
         const currentSubscriptionDoc = await db.collection("twitch_notifiers").doc(broadcasterId).get()
@@ -228,7 +228,7 @@ router.post("/webhook",
         ctx.status = 200
     }).post("/removeTwitchNotifier", async (ctx, next) => {
         const request = ctx.request.body as RemoveTwitchChannelRequest
-        await twitchNotifierHandler.addTwitchChannel(request.discord_server, request.twitch_url)
+        await twitchNotifierHandler.removeTwitchChannel(request.discord_server, request.twitch_url)
         ctx.status = 200
     }).post("/listTwitchNotifiers", async (ctx, next) => {
         const request = ctx.request.body as ListTwitchRequest
