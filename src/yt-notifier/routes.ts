@@ -48,7 +48,7 @@ async function retrieveCurrentState(): Promise<Array<{ channel_id: string, disco
 }
 
 
-const router = new Router({ prefix: "youtube" })
+const router = new Router({ prefix: "/youtube" })
 type ConfigureRequest = { discord_server: string, youtube_url: string, event_type: string }
 type ListRequest = { discord_server: string }
 
