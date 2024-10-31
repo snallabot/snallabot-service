@@ -4,6 +4,8 @@ import serve from "koa-static"
 import path from "path"
 import exportRouter from "./export/routes"
 import discordRouter from "./discord/routes"
+import twitchRouter from "./twitch-notifier/routes"
+import youtubeRouter from "./yt-notifier/routes"
 
 const app = new Koa()
 
@@ -25,5 +27,9 @@ app
     .use(exportRouter.allowedMethods())
     .use(discordRouter.routes())
     .use(discordRouter.allowedMethods())
+    .use(twitchRouter.routes())
+    .use(twitchRouter.allowedMethods())
+    .use(youtubeRouter.routes())
+    .use(youtubeRouter.allowedMethods())
 
 export default app
