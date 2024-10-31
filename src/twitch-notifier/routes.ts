@@ -54,6 +54,11 @@ type Event = { id: string, broadcaster_user_id: string, broadcaster_user_login: 
 type StreamUpEvent = { subscription: Subscription, event: Event }
 
 
+type AddTwitchChannelRequest = { discord_server: string, twitch_url: string }
+type RemoveTwitchChannelRequest = { discord_server: string, twitch_url: string }
+type ListTwitchRequest = { discord_server: string }
+
+
 interface TwitchNotifier {
     addTwitchChannel(discordServer: string, twitchUrl: string): Promise<void>,
     remoevTwitchChannel(discordServer: string, twitchUrl: string): Promise<void>,
@@ -217,6 +222,20 @@ router.post("/webhook",
         }
         handleStreamEvent(twitchEvent)
         messageCache.set(messageId, { seen: true })
+    }).post("/addTwitchNotifier", async (ctx, next) => {
+        const request = ctx.request.body as AddTwitchChannelRequest
+        await twitchNotifierHandler.addTwitchChannel(request.discord_server, request.twitch_url)
+        ctx.status = 200
+    }).post("/removeTwitchNotifier", async (ctx, next) => {
+        const request = ctx.request.body as RemoveTwitchChannelRequest
+        await twitchNotifierHandler.addTwitchChannel(request.discord_server, request.twitch_url)
+        ctx.status = 200
+    }).post("/listTwitchNotifiers", async (ctx, next) => {
+        const request = ctx.request.body as ListTwitchRequest
+        const currentNotifiers = twitchNotifierHandler.listTwitchChannels(request.discord_server)
+        ctx.status = 200
+        ctx.response.body = currentNotifiers
     })
+
 
 export default router
