@@ -232,7 +232,7 @@ router.post("/webhook",
         ctx.status = 200
     }).post("/listTwitchNotifiers", async (ctx, next) => {
         const request = ctx.request.body as ListTwitchRequest
-        const currentNotifiers = twitchNotifierHandler.listTwitchChannels(request.discord_server)
+        const currentNotifiers = await twitchNotifierHandler.listTwitchChannels(request.discord_server)
         ctx.status = 200
         ctx.response.body = currentNotifiers
     })
