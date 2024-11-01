@@ -2,9 +2,13 @@ import Router from "@koa/router"
 import { ParameterizedContext, Next } from "koa"
 import { RosterExport, TeamExport, StandingExport, SchedulesExport, PuntingExport, TeamStatsExport, PassingExport, KickingExport, RushingExport, DefensiveExport, ReceivingExport } from "./madden_league_types"
 import db from "./../db/firebase"
+import NodeCache from "node-cache"
+
 const hash: (a: any) => string = require("object-hash")
 
 const router = new Router()
+const treeCache = new NodeCache()
+const CACHE_TTL = 3600 * 48 // 2 days in seconds
 
 
 type Node = {
@@ -39,7 +43,15 @@ function createTwoLayer(nodes: Array<Node>): MerkleTree {
     return { headNode: { hash: topHash, children: nodes } }
 }
 
+function createCacheKey(league: string, request_type: string): string {
+    return `${league}|${request_type}`
+}
+
 async function retrieveTree(league: string, request_type: string): Promise<MerkleTree> {
+    const cachedTree = treeCache.get(createCacheKey(league, request_type)) as MerkleTree
+    if (cachedTree) {
+        return cachedTree
+    }
     const doc = await db.collection("madden_league_trees").doc(league).collection(request_type).doc("mtree").get()
     if (doc.exists) {
         const d = doc.data()
@@ -50,6 +62,7 @@ async function retrieveTree(league: string, request_type: string): Promise<Merkl
 
 
 async function writeTree(league: string, request_type: string, tree: MerkleTree): Promise<void> {
+    treeCache.set(createCacheKey(league, request_type), tree, CACHE_TTL)
     await db.collection("madden_league_trees").doc(league).collection(request_type).doc("mtree").set(tree, { merge: true })
 }
 
