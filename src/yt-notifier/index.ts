@@ -1,21 +1,7 @@
-import Koa from "koa"
-import Router from "@koa/router"
-import bodyParser from "@koa/bodyparser"
-
-const app = new Koa()
-const router = new Router()
-
-export type SnallabotBaseEvent = { key: string, event_type: string }
-export type Trigger5Min = { key: "time", event_type: "5_MIN_TRIGGER" }
-type BroadcastConfigurationEvent = { channel_id: string, role?: string, id: string, timestamp: string, title_keyword: string }
-type BroadcastConfigurationResponse = { "BROADCAST_CONFIGURATION": Array<BroadcastConfigurationEvent> }
-type AddChannelEvent = { key: "yt_channels", id: string, timestamp: string, event_type: "ADD_CHANNEL", channel_id: string, discord_server: string }
-type RemoveChannelEvent = { key: "yt_channels", id: string, timestamp: string, event_type: "REMOVE_CHANNEL", channel_id: string, discord_server: string }
-type BroadcastEvent = { key: string, id: string, timestamp: string, event_type: "YOUTUBE_BROADCAST", video: string }
-type EventQueryResponse = { "ADD_CHANNEL": Array<AddChannelEvent>, "REMOVE_CHANNEL": Array<RemoveChannelEvent> }
-
-type ConfigureRequest = { discord_server: string, youtube_url: string, event_type: string }
-type ListRequest = { discord_server: string }
+import EventDB, { EventDelivery, StoredEvent } from "../db/events_db"
+import { BroadcastConfigurationEvent, MaddenBroadcastEvent, YoutubeBroadcastEvent, AddChannelEvent, RemoveChannelEvent } from "../db/events"
+// import this to register the notifier
+import _ from "../discord/routes"
 
 function extractTitle(html: string) {
     const titleTagIndex = html.indexOf('[{"videoPrimaryInfoRenderer":{"title":{"runs":[{"text":')
@@ -31,40 +17,29 @@ function extractVideo(html: string) {
     return "https://www.youtube.com/watch?v=" + linkTag.replace('{"status":"LIKE","target":{"videoId":', "").replace('}', "").replaceAll('"', "")
 }
 
-function extractChannelId(html: string) {
-    const linkTagIndex = html.indexOf('<link rel="canonical" href="')
-    const sliced = html.slice(linkTagIndex)
-    const linkTag = sliced.slice(0, sliced.indexOf(">"))
-    return linkTag.replace('<link rel="canonical" href="', "").replace('>', "").replace('"', "").replace("https://www.youtube.com/channel/", "")
-}
-
 function isStreaming(html: string) {
+    console.log((html.match(/"isLive":true/g) || []).length == 1 && !html.includes("Scheduled for"))
     return (html.match(/"isLive":true/g) || []).length == 1 && !html.includes("Scheduled for")
 }
 
 async function retrieveCurrentState(): Promise<Array<{ channel_id: string, discord_server: string }>> {
-    const events = await fetch("https://snallabot-event-sender-b869b2ccfed0.herokuapp.com/query", {
-        method: "POST",
-        body: JSON.stringify({ event_types: ["ADD_CHANNEL", "REMOVE_CHANNEL"], key: "yt_channels", after: 0 }),
-        headers: {
-            "Content-Type": "application/json"
-        }
-    }).then(res => res.json() as Promise<EventQueryResponse>)
+    const addEvents = await EventDB.queryEvents<AddChannelEvent>("yt_channels", "ADD_CHANNEL", new Date(0), {}, 10000)
+    const removeEvents = await EventDB.queryEvents<RemoveChannelEvent>("yt_channels", "REMOVE_CHANNEL", new Date(0), {}, 10000)
     //TODO: Replace with Object.groupBy
-    let state = {} as { [key: string]: Array<AddChannelEvent> }
-    events.ADD_CHANNEL.forEach(a => {
+    let state = {} as { [key: string]: Array<StoredEvent<AddChannelEvent>> }
+    addEvents.forEach(a => {
         const k = `${a.channel_id}|${a.discord_server}`
         if (!state[k]) {
             state[k] = [a]
         } else {
             state[k].push(a)
-            state[k] = state[k].sort((a: AddChannelEvent, b: AddChannelEvent) => (new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())) // reverse chronologically order
+            state[k] = state[k].sort((a: StoredEvent<AddChannelEvent>, b: StoredEvent<AddChannelEvent>) => (b.timestamp.getTime() - a.timestamp.getTime())) // reverse chronologically order
         }
     })
-    events.REMOVE_CHANNEL.forEach(a => {
+    removeEvents.forEach(a => {
         const k = `${a.channel_id}|${a.discord_server}`
         if (state?.[k]?.[0]) {
-            if (new Date(a.timestamp) > new Date(state[k][0].timestamp)) {
+            if (a.timestamp > state[k][0].timestamp) {
                 delete state[k]
             }
         }
@@ -80,6 +55,7 @@ async function retrieveCurrentState(): Promise<Array<{ channel_id: string, disco
 async function notifyYoutubeBroadcasts() {
     const currentChannelServers = await retrieveCurrentState()
     const currentChannels = [...new Set(currentChannelServers.map(c => c.channel_id))]
+    console.log(currentChannels)
     const currentServers = [...new Set(currentChannelServers.map(c => c.discord_server))]
     const channels = await Promise.all(currentChannels
         .map(channel_id =>
@@ -87,42 +63,29 @@ async function notifyYoutubeBroadcasts() {
                 .then(res => res.text())
                 .then(t => isStreaming(t) ? [{ channel_id, title: extractTitle(t), video: extractVideo(t) }] : [])
         ))
-    const serverTitleKeywords = await Promise.all(currentServers.map(server =>
-        fetch("https://snallabot-event-sender-b869b2ccfed0.herokuapp.com/query", {
-            method: "POST",
-            body: JSON.stringify({ event_types: ["BROADCAST_CONFIGURATION"], key: server, after: 0, limit: 1 }),
-            headers: {
-                "Content-Type": "application/json"
-            }
-        })
-            .then(res => res.json() as Promise<BroadcastConfigurationResponse>)
-            .then(r => {
-                const sortedEvents = r.BROADCAST_CONFIGURATION.sort((a: BroadcastConfigurationEvent, b: BroadcastConfigurationEvent) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-                if (sortedEvents.length === 0) {
-                    console.error(`${server} is not configured for Broadcasts`)
-                    return []
-                } else {
-                    const configuration = sortedEvents[0]
-                    return [[server, configuration.title_keyword]]
-                }
-            })))
+    const serverTitleKeywords = await Promise.all(currentServers.map(async server => {
+        const broadcastConfiurationEvents = await EventDB.queryEvents<BroadcastConfigurationEvent>(server, "BROADCAST_CONFIGURATION", new Date(0), {}, 1)
+        const sortedEvents = broadcastConfiurationEvents.sort((a: BroadcastConfigurationEvent, b: BroadcastConfigurationEvent) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        if (sortedEvents.length === 0) {
+            console.error(`${server} is not configured for Broadcasts`)
+            return []
+        } else {
+            const configuration = sortedEvents[0]
+            return [[server, configuration.title_keyword]]
+        }
+    }))
     const serverTitleMap: { [key: string]: string } = Object.fromEntries(serverTitleKeywords.flat())
     console.log(serverTitleMap)
     const currentlyLiveStreaming = channels.flat()
     console.log(`currently streaming: ${JSON.stringify(currentlyLiveStreaming)}`)
     const startTime = new Date()
     startTime.setDate(startTime.getDate() - 1)
-    const pastBroadcasts = await Promise.all(currentlyLiveStreaming.map(c =>
-        fetch("https://snallabot-event-sender-b869b2ccfed0.herokuapp.com/query", {
-            method: "POST",
-            body: JSON.stringify({ event_types: ["YOUTUBE_BROADCAST"], key: c.channel_id, after: startTime.getTime(), limit: 2 }),
-            headers: {
-                "Content-Type": "application/json"
-            }
-        })
-            .then(res => res.json() as Promise<{ "YOUTUBE_BROADCAST": Array<BroadcastEvent> }>)
-            .then(t => ({ [c.channel_id]: t.YOUTUBE_BROADCAST.map(b => b.video) }))
-    ))
+    const pastBroadcasts = await Promise.all(currentlyLiveStreaming.map(async c => {
+        const pastVideos = await EventDB.queryEvents<YoutubeBroadcastEvent>(c.channel_id, "YOUTUBE_BROADCAST", startTime, {}, 2)
+        console.log(pastVideos)
+        return { [c.channel_id]: pastVideos.map(p => p.video) }
+    }))
+    console.log(pastBroadcasts)
     const channelToPastBroadcastMap: { [key: string]: Array<string> } = pastBroadcasts.reduce((prev, curr) => {
         Object.assign(prev, curr)
         return prev
@@ -130,26 +93,15 @@ async function notifyYoutubeBroadcasts() {
 
     const newBroadcasts = currentlyLiveStreaming.filter(c => !channelToPastBroadcastMap[c.channel_id]?.includes(c.video))
     console.log(`broadcasts that are new: ${JSON.stringify(newBroadcasts)}`)
-    await Promise.all(newBroadcasts.map(b => fetch("https://snallabot-event-sender-b869b2ccfed0.herokuapp.com/post", {
-        method: "POST",
-        body: JSON.stringify({ key: b.channel_id, event_type: "YOUTUBE_BROADCAST", delivery: "EVENT_SOURCE", video: b.video }),
-        headers: {
-            "Content-Type": "application/json"
-        }
-    })
+    await Promise.all(newBroadcasts.map(async b => {
+        return await EventDB.appendEvents<YoutubeBroadcastEvent>([{ key: b.channel_id, event_type: "YOUTUBE_BROADCAST", video: b.video }], EventDelivery.EVENT_SOURCE)
+    }
     ))
     const channelTitleMap: { [key: string]: { title: string, video: string } } = Object.fromEntries(newBroadcasts.map(c => [[c.channel_id], { title: c.title, video: c.video }]))
     console.log(channelTitleMap)
     await Promise.all(currentChannelServers.filter(c => channelTitleMap[c.channel_id] && channelTitleMap[c.channel_id].title.toLowerCase().includes(serverTitleMap[c.discord_server].toLowerCase())).map(c =>
-        fetch("https://snallabot-event-sender-b869b2ccfed0.herokuapp.com/post", {
-            method: "POST",
-            body: JSON.stringify({ key: c.discord_server, event_type: "MADDEN_BROADCAST", delivery: "EVENT_SOURCE", title: channelTitleMap[c.channel_id].title, video: channelTitleMap[c.channel_id].video }),
-            headers: {
-                "Content-Type": "application/json"
-            }
-        })
+        EventDB.appendEvents<MaddenBroadcastEvent>([{ key: c.discord_server, event_type: "MADDEN_BROADCAST", title: channelTitleMap[c.channel_id].title, video: channelTitleMap[c.channel_id].video }], EventDelivery.EVENT_SOURCE)
     ))
-
 }
 
 notifyYoutubeBroadcasts()

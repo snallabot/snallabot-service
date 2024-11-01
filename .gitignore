@@ -1,6 +1,7 @@
 # secret scripts
 run_script.sh
 deploy.sh
+sa.json
 
 # Logs
 logs
