@@ -56,6 +56,7 @@ async function retrieveTree(league: string, request_type: string): Promise<Merkl
     const doc = await db.collection("madden_league_trees").doc(league).collection(request_type).doc("mtree").get()
     if (doc.exists) {
         const d = doc.data()
+        treeCache.set(createCacheKey(league, request_type), d, CACHE_TTL)
         return d as MerkleTree
     }
     return { headNode: { children: [], hash: hash("") } }
