@@ -73,7 +73,6 @@ router.post("/slashCommand", async (ctx) => {
     await commandsInstaller(testClient, req.commandNames || [], req.mode, req.guildId)
     ctx.status = 200
 })
-
 EventDB.on<MaddenBroadcastEvent>("MADDEN_BROADCAST", async (events) => {
     events.map(async broadcastEvent => {
         const discordServer = broadcastEvent.key

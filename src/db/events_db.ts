@@ -77,7 +77,7 @@ export default {
             )).orderBy("timestamp", "desc").limit(limit).get()
         return events.docs.map(doc => convertDate(doc.data()) as StoredEvent<Event>)
     },
-    async on<Event>(event_type: string, notifier: EventNotifier<Event>) {
+    on<Event>(event_type: string, notifier: EventNotifier<Event>) {
         const currentNotifiers = notifiers[event_type] || []
         notifiers[event_type] = [notifier].concat(currentNotifiers)
     }
