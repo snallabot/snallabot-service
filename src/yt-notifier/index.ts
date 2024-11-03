@@ -54,7 +54,6 @@ async function retrieveCurrentState(): Promise<Array<{ channel_id: string, disco
 async function notifyYoutubeBroadcasts() {
     const currentChannelServers = await retrieveCurrentState()
     const currentChannels = [...new Set(currentChannelServers.map(c => c.channel_id))]
-    console.log(currentChannels)
     const currentServers = [...new Set(currentChannelServers.map(c => c.discord_server))]
     const channels = await Promise.all(currentChannels
         .map(channel_id =>
@@ -96,8 +95,8 @@ async function notifyYoutubeBroadcasts() {
     ))
     const channelTitleMap: { [key: string]: { title: string, video: string } } = Object.fromEntries(newBroadcasts.map(c => [[c.channel_id], { title: c.title, video: c.video }]))
     console.log(channelTitleMap)
-    await Promise.all(currentChannelServers.filter(c => channelTitleMap[c.channel_id] && channelTitleMap[c.channel_id].title.toLowerCase().includes(serverTitleMap[c.discord_server].toLowerCase())).map(c =>
-        EventDB.appendEvents<MaddenBroadcastEvent>([{ key: c.discord_server, event_type: "MADDEN_BROADCAST", title: channelTitleMap[c.channel_id].title, video: channelTitleMap[c.channel_id].video }], EventDelivery.EVENT_SOURCE)
+    await Promise.all(currentChannelServers.filter(c => channelTitleMap[c.channel_id] && channelTitleMap[c.channel_id].title.toLowerCase().includes(serverTitleMap[c.discord_server].toLowerCase())).map(async c =>
+        await EventDB.appendEvents<MaddenBroadcastEvent>([{ key: c.discord_server, event_type: "MADDEN_BROADCAST", title: channelTitleMap[c.channel_id].title, video: channelTitleMap[c.channel_id].video }], EventDelivery.EVENT_SOURCE)
     ))
 }
 
