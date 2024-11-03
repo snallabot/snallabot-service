@@ -51,11 +51,13 @@ function createCacheKey(league: string, request_type: string): string {
 async function retrieveTree(league: string, request_type: string): Promise<MerkleTree> {
     const cachedTree = treeCache.get(createCacheKey(league, request_type)) as MerkleTree
     if (cachedTree) {
+        console.log(treeCache.stats)
         return cachedTree
     }
     const doc = await db.collection("madden_league_trees").doc(league).collection(request_type).doc("mtree").get()
     if (doc.exists) {
         const d = doc.data()
+        treeCache.set(createCacheKey(league, request_type), d, CACHE_TTL)
         return d as MerkleTree
     }
     return { headNode: { children: [], hash: hash("") } }
