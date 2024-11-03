@@ -85,7 +85,7 @@ async function sendEvents<T>(league: string, request_type: string, events: Array
         // }
         const finalEvents = hashDifferences.map(h => hashToEvent.get(h)).filter(e => e) as SnallabotEvent<T>[]
         console.log(request_type + " sending these amount of events " + finalEvents.length)
-        EventDB.appendEvents(finalEvents, EventDelivery.EVENT_SOURCE)
+        await EventDB.appendEvents(finalEvents, EventDelivery.EVENT_SOURCE)
     }
     // else {
     //     console.debug("skipped writing!")
