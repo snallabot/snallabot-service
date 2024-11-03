@@ -18,7 +18,6 @@ function extractVideo(html: string) {
 }
 
 function isStreaming(html: string) {
-    console.log((html.match(/"isLive":true/g) || []).length == 1 && !html.includes("Scheduled for"))
     return (html.match(/"isLive":true/g) || []).length == 1 && !html.includes("Scheduled for")
 }
 
@@ -82,10 +81,8 @@ async function notifyYoutubeBroadcasts() {
     startTime.setDate(startTime.getDate() - 1)
     const pastBroadcasts = await Promise.all(currentlyLiveStreaming.map(async c => {
         const pastVideos = await EventDB.queryEvents<YoutubeBroadcastEvent>(c.channel_id, "YOUTUBE_BROADCAST", startTime, {}, 2)
-        console.log(pastVideos)
         return { [c.channel_id]: pastVideos.map(p => p.video) }
     }))
-    console.log(pastBroadcasts)
     const channelToPastBroadcastMap: { [key: string]: Array<string> } = pastBroadcasts.reduce((prev, curr) => {
         Object.assign(prev, curr)
         return prev
