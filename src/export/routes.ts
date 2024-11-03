@@ -2,6 +2,7 @@ import Router from "@koa/router"
 import { ParameterizedContext, Next } from "koa"
 import { RosterExport, TeamExport, StandingExport, SchedulesExport, PuntingExport, TeamStatsExport, PassingExport, KickingExport, RushingExport, DefensiveExport, ReceivingExport } from "./madden_league_types"
 import db from "./../db/firebase"
+import EventDB, { EventDelivery, SnallabotEvent } from "./../db/events_db"
 import NodeCache from "node-cache"
 
 const hash: (a: any) => string = require("object-hash")
@@ -69,7 +70,7 @@ async function writeTree(league: string, request_type: string, tree: MerkleTree)
 }
 
 
-async function sendEvents<T>(league: string, request_type: string, events: Array<T>, identifier: (e: T) => number): Promise<void> {
+async function sendEvents<T>(league: string, request_type: string, events: Array<SnallabotEvent<T>>, identifier: (e: T) => number): Promise<void> {
     const oldTree = await retrieveTree(league, request_type)
     const hashToEvent = new Map(events.map(e => [hash(e), e]))
     const newNodes = events.sort(e => identifier(e)).map(e => ({ hash: hash(e), children: [] }))
@@ -82,18 +83,9 @@ async function sendEvents<T>(league: string, request_type: string, events: Array
         // if (hashDifferences.length > 0) {
         // console.log(newNodes)
         // }
-        const finalEvents = hashDifferences.map(h => hashToEvent.get(h)).filter(e => e)
+        const finalEvents = hashDifferences.map(h => hashToEvent.get(h)).filter(e => e) as SnallabotEvent<T>[]
         console.log(request_type + " sending these amount of events " + finalEvents.length)
-        await fetch("https://snallabot-event-sender-b869b2ccfed0.herokuapp.com/batchPost", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                batch: finalEvents,
-                delivery: "EVENT_SOURCE"
-            })
-        })
+        await EventDB.appendEvents(finalEvents, EventDelivery.EVENT_SOURCE)
     }
     // else {
     //     console.debug("skipped writing!")

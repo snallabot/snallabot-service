@@ -1,13 +1,12 @@
 import { ParameterizedContext } from "koa"
 import Router from "@koa/router"
-import { randomBytes, createHmac, timingSafeEqual } from "crypto"
-import { initializeApp, cert } from "firebase-admin/app"
+import { createHmac, timingSafeEqual } from "crypto"
 import { FieldValue } from "firebase-admin/firestore"
-import { subscribe } from "diagnostics_channel"
 import { createTwitchClient, getSecret } from "./twitch_client"
 import NodeCache from "node-cache"
 import db from "../db/firebase"
-
+import EventDB, { EventDelivery, StoredEvent } from "../db/events_db"
+import { BroadcastConfigurationEvent, MaddenBroadcastEvent } from "../db/events"
 const router = new Router({ prefix: "/twitch" })
 
 
@@ -45,9 +44,6 @@ function createTwitchUrl(broadcasterLogin: string) {
 }
 
 const twitchClient = createTwitchClient()
-
-type BroadcastConfigurationEvent = { channel_id: string, role?: string, id: string, timestamp: string, title_keyword: string }
-type BroadcastConfigurationResponse = { "BROADCAST_CONFIGURATION": Array<BroadcastConfigurationEvent> }
 
 type Subscription = { id: string, status: string, type: string, version: "1", condition: { broadcaster_user_id: string }, transport: { method: string, callback: string }, created_at: string, cost: number }
 type Event = { id: string, broadcaster_user_id: string, broadcaster_user_login: string, broadcaster_user_name: string, type: string, started_at: string }
@@ -142,15 +138,8 @@ async function handleStreamEvent(twitchEvent: StreamUpEvent) {
     const subscribedServers = Object.entries(subscription.servers).filter(entry => entry[1].subscribed).map(entry => entry[0])
     console.log(subscribedServers)
     await Promise.all(subscribedServers.map(async (server) => {
-        const res = await fetch("https://snallabot-event-sender-b869b2ccfed0.herokuapp.com/query", {
-            method: "POST",
-            body: JSON.stringify({ event_types: ["BROADCAST_CONFIGURATION"], key: server, after: 0, limit: 1 }),
-            headers: {
-                "Content-Type": "application/json"
-            }
-        })
-        const broadcastResponse = await res.json() as BroadcastConfigurationResponse
-        const sortedEvents = broadcastResponse.BROADCAST_CONFIGURATION.sort((a: BroadcastConfigurationEvent, b: BroadcastConfigurationEvent) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        const broadcastEvents = await EventDB.queryEvents<BroadcastConfigurationEvent>(server, "BROADCAST_CONFIGURATION", new Date(0), {}, 1)
+        const sortedEvents = broadcastEvents.sort((a: StoredEvent<BroadcastConfigurationEvent>, b: StoredEvent<BroadcastConfigurationEvent>) => b.timestamp.getTime() - a.timestamp.getTime())
         if (sortedEvents.length === 0) {
             console.error(`${server} is not configured for Broadcasts`)
         } else {
@@ -158,15 +147,9 @@ async function handleStreamEvent(twitchEvent: StreamUpEvent) {
             const titleKeyword = configuration.title_keyword
             console.log(`broadcast title: ${broadcastTitle} titleKeyword: ${titleKeyword}`)
             if (broadcastTitle.toLowerCase().includes(titleKeyword.toLowerCase())) {
-                await fetch("https://snallabot-event-sender-b869b2ccfed0.herokuapp.com/post", {
-                    method: "POST",
-                    body: JSON.stringify({
-                        key: server, event_type: "MADDEN_BROADCAST", delivery: "EVENT_SOURCE", title: broadcastTitle, video: createTwitchUrl(broadcasterName)
-                    }),
-                    headers: {
-                        "Content-Type": "application/json"
-                    }
-                })
+                await EventDB.appendEvents<MaddenBroadcastEvent>([{
+                    key: server, event_type: "MADDEN_BROADCAST", title: broadcastTitle, video: createTwitchUrl(broadcasterName)
+                }], EventDelivery.EVENT_SOURCE)
             }
         }
     }))
