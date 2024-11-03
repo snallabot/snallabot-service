@@ -95,9 +95,10 @@ async function notifyYoutubeBroadcasts() {
     ))
     const channelTitleMap: { [key: string]: { title: string, video: string } } = Object.fromEntries(newBroadcasts.map(c => [[c.channel_id], { title: c.title, video: c.video }]))
     console.log(channelTitleMap)
-    await Promise.all(currentChannelServers.filter(c => channelTitleMap[c.channel_id] && channelTitleMap[c.channel_id].title.toLowerCase().includes(serverTitleMap[c.discord_server].toLowerCase())).map(async c =>
-        await EventDB.appendEvents<MaddenBroadcastEvent>([{ key: c.discord_server, event_type: "MADDEN_BROADCAST", title: channelTitleMap[c.channel_id].title, video: channelTitleMap[c.channel_id].video }], EventDelivery.EVENT_SOURCE)
-    ))
+    await Promise.all(currentChannelServers.filter(c => channelTitleMap[c.channel_id] && channelTitleMap[c.channel_id].title.toLowerCase().includes(serverTitleMap[c.discord_server].toLowerCase())).map(async c => {
+        console.log("broadcast send")
+        return await EventDB.appendEvents<MaddenBroadcastEvent>([{ key: c.discord_server, event_type: "MADDEN_BROADCAST", title: channelTitleMap[c.channel_id].title, video: channelTitleMap[c.channel_id].video }], EventDelivery.EVENT_SOURCE)
+    }))
 }
 
 notifyYoutubeBroadcasts()
