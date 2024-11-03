@@ -78,6 +78,7 @@ export default {
         return events.docs.map(doc => convertDate(doc.data()) as StoredEvent<Event>)
     },
     on<Event>(event_type: string, notifier: EventNotifier<Event>) {
+        console.log("adding notifier " + event_type)
         const currentNotifiers = notifiers[event_type] || []
         notifiers[event_type] = [notifier].concat(currentNotifiers)
     }
