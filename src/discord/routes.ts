@@ -12,27 +12,17 @@ const router = new Router({ prefix: "/discord/webhook" })
 if (!process.env.PUBLIC_KEY) {
     throw new Error("No Public Key passed for interaction verification")
 }
-if (!process.env.TEST_PUBLIC_KEY) {
-    throw new Error("No Test Public Key passed for interaction verification")
-}
+
 if (!process.env.DISCORD_TOKEN) {
     throw new Error("No Discord Token passed for interaction verification")
-}
-if (!process.env.TEST_DISCORD_TOKEN) {
-    throw new Error("No Test Discord Token passed for interaction verification")
 }
 if (!process.env.APP_ID) {
     throw new Error("No App Id passed for interaction verification")
 }
-if (!process.env.TEST_APP_ID) {
-    throw new Error("No Test App Id passed for interaction verification")
-}
 
 const prodSettings = { publicKey: process.env.PUBLIC_KEY, botToken: process.env.DISCORD_TOKEN, appId: process.env.APP_ID }
-const testSettings = { publicKey: process.env.TEST_PUBLIC_KEY, botToken: process.env.TEST_DISCORD_TOKEN, appId: process.env.TEST_APP_ID }
 
 const prodClient = createClient(prodSettings)
-const testClient = createClient(testSettings)
 
 async function handleInteraction(ctx: ParameterizedContext, client: DiscordClient) {
     const verified = await client.interactionVerifier(ctx)
@@ -63,15 +53,9 @@ type CommandsHandlerRequest = { commandNames?: string[], mode: CommandMode, guil
 
 router.post("/slashCommand", async (ctx) => {
     await handleInteraction(ctx, prodClient)
-}).post("/testSlashCommand", async (ctx) => {
-    await handleInteraction(ctx, testClient)
-}).post("/productionCommandsHandler", async (ctx) => {
+}).post("/commandsHandler", async (ctx) => {
     const req = ctx.request.body as CommandsHandlerRequest
     await commandsInstaller(prodClient, req.commandNames || [], req.mode, req.guildId)
-}).post("/testCommandsHandler", async (ctx) => {
-    const req = ctx.request.body as CommandsHandlerRequest
-    await commandsInstaller(testClient, req.commandNames || [], req.mode, req.guildId)
-    ctx.status = 200
 })
 EventDB.on<MaddenBroadcastEvent>("MADDEN_BROADCAST", async (events) => {
     events.map(async broadcastEvent => {
