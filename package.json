@@ -32,6 +32,7 @@
     "koa": "^2.15.0",
     "koa-static": "^5.0.0",
     "object-hash": "^3.0.0",
+    "oceanic.js": "^1.11.2",
     "undici": "^6.6.2",
     "node-cache": "^5.1.2"
   },

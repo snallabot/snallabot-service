@@ -129,7 +129,7 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
         await client.editOriginalInteraction(token, {
             content: `Creating Game Channels:
 - <a:snallabot_done:1288666730595618868> Creating Channels
-- <a:snallabot_waiting:1288664321781399584> Creating Notification Messages
+- <a:snallabot_loading:1288662414191104111> Creating Notification Messages
 - <a:snallabot_waiting:1288664321781399584> Setting up notifier
 - <a:snallabot_waiting:1288664321781399584> Creating Scoreboard
 - <a:snallabot_waiting:1288664321781399584> Exporting
@@ -148,7 +148,7 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
             content: `Creating Game Channels:
 - <a:snallabot_done:1288666730595618868> Creating Channels
 - <a:snallabot_done:1288666730595618868> Creating Notification Messages
-- <a:snallabot_waiting:1288664321781399584> Setting up notifier
+- <a:snallabot_loading:1288662414191104111> Setting up notifier
 - <a:snallabot_waiting:1288664321781399584> Creating Scoreboard
 - <a:snallabot_waiting:1288664321781399584> Exporting
 - <a:snallabot_waiting:1288664321781399584> Logging`})
@@ -170,7 +170,7 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
 - <a:snallabot_done:1288666730595618868> Creating Channels
 - <a:snallabot_done:1288666730595618868> Creating Notification Messages
 - <a:snallabot_done:1288666730595618868> Setting up notifier
-- <a:snallabot_waiting:1288664321781399584> Creating Scoreboard
+- <a:snallabot_loading:1288662414191104111> Creating Scoreboard
 - <a:snallabot_waiting:1288664321781399584> Exporting
 - <a:snallabot_waiting:1288664321781399584> Logging`})
 
@@ -186,7 +186,7 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
 - <a:snallabot_done:1288666730595618868> Creating Notification Messages
 - <a:snallabot_done:1288666730595618868> Setting up notifier
 - <a:snallabot_done:1288666730595618868> Creating Scoreboard
-- <a:snallabot_waiting:1288664321781399584> Exporting
+- <a:snallabot_loading:1288662414191104111> Exporting
 - <a:snallabot_waiting:1288664321781399584> Logging`})
         const eres = await fetch(`https://snallabot.herokuapp.com/${guild_id}/export`, {
             method: "POST",
@@ -204,7 +204,7 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
 - <a:snallabot_done:1288666730595618868> Setting up notifier
 - <a:snallabot_done:1288666730595618868> Creating Scoreboard
 - ${exportEmoji} Exporting
-- <a:snallabot_waiting:1288664321781399584> Logging`})
+- <a:snallabot_loading:1288662414191104111> Logging`})
         if (settings?.commands?.logger) {
             const logger = createLogger(settings.commands.logger)
             await logger.logUsedCommand("game_channels create", author, client)

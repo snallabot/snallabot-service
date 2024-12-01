@@ -6,6 +6,8 @@ import db from "../db/firebase"
 import EventDB, { StoredEvent } from "../db/events_db"
 import { handleCommand, commandsInstaller } from "./commands_handler"
 import { BroadcastConfigurationEvent, MaddenBroadcastEvent } from "../db/events"
+import { Client } from "oceanic.js"
+import { LeagueSettings } from "./settings_db"
 
 const router = new Router({ prefix: "/discord/webhook" })
 
@@ -75,6 +77,62 @@ EventDB.on<MaddenBroadcastEvent>("MADDEN_BROADCAST", async (events) => {
                 }
             })
         }
+    })
+})
+
+const discordClient = new Client({
+    auth: `Bot ${process.env.DISCORD_TOKEN}`,
+    gateway: {
+        intents: ["GUILD_MESSAGE_REACTIONS", "GUILD_MEMBERS"]
+    }
+})
+
+discordClient.on("ready", () => console.log("Ready as", discordClient.user.tag));
+discordClient.on("error", (error) => {
+    console.error("Something went wrong:", error);
+});
+
+
+discordClient.on("guildMemberRemove", async (user, guild) => {
+
+});
+
+discordClient.on("guildMemberUpdate", async (member, old) => {
+
+});
+const SNALLABOT_USER = "970091866450198548"
+const SNALLABOT_TEST_USER = "1099768386352840807"
+
+const validReactions = ["🏆", "⏭️"];
+
+
+discordClient.on("messageReactionAdd", async (msg, reactor, reaction) => {
+    // don't respond when bots react!
+    if (reactor.id === SNALLABOT_USER || reactor.id === SNALLABOT_TEST_USER) {
+        return
+    }
+    const guild = msg.guildID
+    if (!guild) {
+        return
+    }
+    if (!validReactions.includes(reaction.emoji.name)) {
+        return
+    }
+    const reactionChannel = msg.channelID
+    const reactionMessage = msg.id
+    const doc = await db.collection("league_settings").doc(guild).get()
+    if (!doc.exists) {
+        return
+    }
+    const leagueSettings = doc.data() as LeagueSettings
+    const weeklyStates = leagueSettings.commands?.game_channel?.weekly_states || {}
+    Object.values(weeklyStates).map(weeklyState => {
+        Object.entries(weeklyState.channel_states).map(channelEntry => {
+            const [channelId, channelState] = channelEntry
+            if (channelId === reactionChannel && channelState.message.id === reactionMessage) {
+                //UPDATE NOTIFIER
+            }
+        })
     })
 })
 
