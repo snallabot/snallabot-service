@@ -12,7 +12,7 @@ export enum EventDelivery {
 }
 
 
-type EventNotifier<Event> = (events: SnallabotEvent<Event>[]) => Promise<void>
+export type EventNotifier<Event> = (events: SnallabotEvent<Event>[]) => Promise<void>
 interface EventDB {
     appendEvents<Event>(event: SnallabotEvent<Event>[], delivery: EventDelivery): Promise<void>
     queryEvents<Event>(event_type: string, key: string, after: Date, filters: Filters, limit: number): Promise<StoredEvent<Event>[]>,
@@ -41,8 +41,7 @@ function convertDate(firebaseObject: any) {
 }
 
 const notifiers: { [key: string]: EventNotifier<any>[] } = {}
-
-export default {
+const EventDB: EventDB = {
     async appendEvents<Event>(events: Array<SnallabotEvent<Event>>, delivery: EventDelivery) {
         if (delivery === EventDelivery.EVENT_SOURCE) {
 
@@ -82,3 +81,4 @@ export default {
         notifiers[event_type] = [notifier].concat(currentNotifiers)
     }
 }
+export default EventDB
