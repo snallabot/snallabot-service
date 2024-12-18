@@ -43,7 +43,9 @@ function createEventHistoryUpdate(newEvent: Record<string, any>, oldEvent: Recor
         if (typeof oldValue !== 'object') {
             const newValue = newEvent[key]
             if (newValue !== oldValue) {
-                change[key] = { oldValue, newValue }
+                change[key] = {} as HistoryUpdate<any>
+                oldValue && (change[key].oldValue = oldValue)
+                newValue && (change[key].newValue = newValue)
             }
         }
     })
