@@ -3,6 +3,7 @@ run_script.sh
 deploy.sh
 deploy-prod.sh
 sa.json
+migration.sh
 
 # Logs
 logs
