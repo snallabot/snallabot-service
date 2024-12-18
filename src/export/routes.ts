@@ -71,7 +71,7 @@ async function writeTree(league: string, request_type: string, event_type: strin
 }
 
 
-async function sendEvents<T>(league: string, request_type: string, events: Array<SnallabotEvent<T>>, identifier: (e: T) => number): Promise<void> {
+export async function sendEvents<T>(league: string, request_type: string, events: Array<SnallabotEvent<T>>, identifier: (e: T) => number): Promise<void> {
     if (events.length == 0) {
         return
     }
