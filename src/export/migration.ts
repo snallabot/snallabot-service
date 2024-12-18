@@ -6,14 +6,11 @@ import { sendEvents } from "./routes";
 
 
 async function migrateLeagueData<T>(requestType: string, eventType: string, idFn: (e: T) => number) {
-    const eventsRef = db.collection("events");
-    const eventsSnapshot = await eventsRef.get();
-
-    console.log(eventsSnapshot.docs)
-    for (const doc of eventsSnapshot.docs) {
+    const eventsSnapshot = await db.collection("events").get();
+    const eventsDocs = await db.collection("events").listDocuments()
+    for (const doc of eventsDocs) {
         const leagueId = doc.id;
-        console.log(leagueId)
-        const leagueDataRef = eventsRef.doc(leagueId).collection(eventType);
+        const leagueDataRef = db.collection("events").doc(leagueId).collection(eventType);
         const leagueDataSnapshot = await leagueDataRef.orderBy("timestamp", "asc").get()
         await Promise.all(leagueDataSnapshot.docs.map(async leagueDataDoc => {
             const event = leagueDataDoc.data() as SnallabotEvent<T>
@@ -22,7 +19,7 @@ async function migrateLeagueData<T>(requestType: string, eventType: string, idFn
     }
 }
 
-async function main() {
+export async function main() {
     console.log("Migrating Team");
     await migrateLeagueData<Team>("leagueteams", "MADDEN_TEAM", e => e.teamId);
     console.log("Migrating Standings Team");
@@ -47,5 +44,5 @@ async function main() {
     await migrateLeagueData<Player>("rosterfreeagents", "MADDEN_PLAYER", e => e.rosterId);
 }
 
-main().catch(e => console.error(e))
+main()
 

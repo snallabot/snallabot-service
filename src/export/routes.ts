@@ -2,7 +2,7 @@ import Router from "@koa/router"
 import { ParameterizedContext, Next } from "koa"
 import { RosterExport, TeamExport, StandingExport, SchedulesExport, PuntingExport, TeamStatsExport, PassingExport, KickingExport, RushingExport, DefensiveExport, ReceivingExport } from "./madden_league_types"
 import db from "./../db/firebase"
-import { EventDelivery, SnallabotEvent } from "./../db/events_db"
+import { SnallabotEvent } from "./../db/events_db"
 import MaddenDB from "../db/madden_db"
 import NodeCache from "node-cache"
 
