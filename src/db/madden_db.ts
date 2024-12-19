@@ -44,8 +44,8 @@ function createEventHistoryUpdate(newEvent: Record<string, any>, oldEvent: Recor
             const newValue = newEvent[key]
             if (newValue !== oldValue) {
                 change[key] = {} as HistoryUpdate<any>
-                oldValue && (change[key].oldValue = oldValue)
-                newValue && (change[key].newValue = newValue)
+                oldValue !== undefined && (change[key].oldValue = oldValue)
+                newValue !== undefined && (change[key].newValue = newValue)
             }
         }
     })
@@ -60,7 +60,7 @@ const MaddenDB: MaddenDB = {
             const doc = db.collection("league_data").doc(event.key).collection(event.event_type).doc(eventId)
             const fetchedDoc = await doc.get()
             if (fetchedDoc.exists) {
-                const { timestamp, id, ...oldEvent } = fetchedDoc.data() as StoredEvent<Event>
+                const { timestamp: oldTimestamp, id, ...oldEvent } = fetchedDoc.data() as StoredEvent<Event>
                 const change = createEventHistoryUpdate(event, oldEvent)
                 if (Object.keys(change).length > 0) {
                     const changeId = randomUUID()
