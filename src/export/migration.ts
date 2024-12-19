@@ -6,16 +6,40 @@ import { sendEvents } from "./routes";
 
 
 async function migrateLeagueData<T>(requestType: string, eventType: string, idFn: (e: T) => number) {
-    const eventsSnapshot = await db.collection("events").get();
     const eventsDocs = await db.collection("events").listDocuments()
     for (const doc of eventsDocs) {
         const leagueId = doc.id;
         const leagueDataRef = db.collection("events").doc(leagueId).collection(eventType);
-        const leagueDataSnapshot = await leagueDataRef.orderBy("timestamp", "asc").get()
-        await Promise.all(leagueDataSnapshot.docs.map(async leagueDataDoc => {
-            const { timestamp, id, ...event } = leagueDataDoc.data() as StoredEvent<T>
-            await sendEvents(leagueId, requestType, [event as SnallabotEvent<T>], idFn)
-        }));
+
+        let lastDoc = null; // Keep track of the last document for pagination
+        let batchProcessed = true;
+
+        while (batchProcessed) {
+            let query = leagueDataRef.orderBy("timestamp", "asc").limit(100);
+            if (lastDoc) {
+                query = query.startAfter(lastDoc);
+            }
+
+            const leagueDataSnapshot = await query.get();
+            if (leagueDataSnapshot.empty) {
+                batchProcessed = false;
+                break;
+            }
+            await Promise.all(
+                leagueDataSnapshot.docs.map(async (leagueDataDoc) => {
+                    const { timestamp, id, ...event } = leagueDataDoc.data() as StoredEvent<T>;
+                    await sendEvents(leagueId, requestType, [event as SnallabotEvent<T>], idFn);
+                    await db
+                        .collection("events")
+                        .doc(leagueId)
+                        .collection(eventType)
+                        .doc(leagueDataDoc.id)
+                        .delete();
+                })
+            );
+
+            lastDoc = leagueDataSnapshot.docs[leagueDataSnapshot.docs.length - 1];
+        }
     }
 }
 
