@@ -2,7 +2,8 @@ import Router from "@koa/router"
 import { ParameterizedContext, Next } from "koa"
 import { RosterExport, TeamExport, StandingExport, SchedulesExport, PuntingExport, TeamStatsExport, PassingExport, KickingExport, RushingExport, DefensiveExport, ReceivingExport } from "./madden_league_types"
 import db from "./../db/firebase"
-import EventDB, { EventDelivery, SnallabotEvent } from "./../db/events_db"
+import { SnallabotEvent } from "./../db/events_db"
+import MaddenDB from "../db/madden_db"
 import NodeCache from "node-cache"
 
 const hash: (a: any) => string = require("object-hash")
@@ -48,13 +49,13 @@ function createCacheKey(league: string, request_type: string): string {
     return `${league}|${request_type}`
 }
 
-async function retrieveTree(league: string, request_type: string): Promise<MerkleTree> {
+async function retrieveTree(league: string, request_type: string, event_type: string): Promise<MerkleTree> {
     const cachedTree = treeCache.get(createCacheKey(league, request_type)) as MerkleTree
     if (cachedTree) {
         console.log(treeCache.stats)
         return cachedTree
     }
-    const doc = await db.collection("madden_league_trees").doc(league).collection(request_type).doc("mtree").get()
+    const doc = await db.collection("league_data").doc(league).collection(event_type).doc(request_type).get()
     if (doc.exists) {
         const d = doc.data()
         treeCache.set(createCacheKey(league, request_type), d, CACHE_TTL)
@@ -64,28 +65,35 @@ async function retrieveTree(league: string, request_type: string): Promise<Merkl
 }
 
 
-async function writeTree(league: string, request_type: string, tree: MerkleTree): Promise<void> {
+async function writeTree(league: string, request_type: string, event_type: string, tree: MerkleTree): Promise<void> {
     treeCache.set(createCacheKey(league, request_type), tree, CACHE_TTL)
-    await db.collection("madden_league_trees").doc(league).collection(request_type).doc("mtree").set(tree, { merge: true })
+    await db.collection("league_data").doc(league).collection(event_type).doc(request_type).set(tree, { merge: true })
 }
 
 
-async function sendEvents<T>(league: string, request_type: string, events: Array<SnallabotEvent<T>>, identifier: (e: T) => number): Promise<void> {
-    const oldTree = await retrieveTree(league, request_type)
+export async function sendEvents<T>(league: string, request_type: string, events: Array<SnallabotEvent<T>>, identifier: (e: T) => number): Promise<void> {
+    if (events.length == 0) {
+        return
+    }
+    const eventType = events.map(e => e.event_type).pop()
+    if (!eventType) {
+        throw new Error("No Event Type found for " + request_type)
+    }
+    const oldTree = await retrieveTree(league, request_type, eventType)
     const hashToEvent = new Map(events.map(e => [hash(e), e]))
     const newNodes = events.sort(e => identifier(e)).map(e => ({ hash: hash(e), children: [] }))
 
     const newTree = createTwoLayer(newNodes)
     const hashDifferences = findDifferences(newTree, oldTree)
     if (hashDifferences.length > 0) {
-        writeTree(league, request_type, newTree)
+        writeTree(league, request_type, eventType, newTree)
         console.log(request_type + " found these many differences " + hashDifferences.length)
         // if (hashDifferences.length > 0) {
         // console.log(newNodes)
         // }
         const finalEvents = hashDifferences.map(h => hashToEvent.get(h)).filter(e => e) as SnallabotEvent<T>[]
         console.log(request_type + " sending these amount of events " + finalEvents.length)
-        await EventDB.appendEvents(finalEvents, EventDelivery.EVENT_SOURCE)
+        await MaddenDB.appendEvents(finalEvents, (e: T) => `${identifier(e)}`)
     }
     // else {
     //     console.debug("skipped writing!")
