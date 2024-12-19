@@ -25,19 +25,16 @@ async function migrateLeagueData<T>(requestType: string, eventType: string, idFn
                 batchProcessed = false;
                 break;
             }
-            await Promise.all(
-                leagueDataSnapshot.docs.map(async (leagueDataDoc) => {
-                    const { timestamp, id, ...event } = leagueDataDoc.data() as StoredEvent<T>;
-                    await sendEvents(leagueId, requestType, [event as SnallabotEvent<T>], idFn);
-                    await db
-                        .collection("events")
-                        .doc(leagueId)
-                        .collection(eventType)
-                        .doc(leagueDataDoc.id)
-                        .delete();
-                })
-            );
-
+            for (const leagueDataDoc of leagueDataSnapshot.docs) {
+                const { timestamp, id, ...event } = leagueDataDoc.data() as StoredEvent<T>;
+                await sendEvents(leagueId, requestType, [event as SnallabotEvent<T>], idFn);
+                await db
+                    .collection("events")
+                    .doc(leagueId)
+                    .collection(eventType)
+                    .doc(leagueDataDoc.id)
+                    .delete();
+            }
             lastDoc = leagueDataSnapshot.docs[leagueDataSnapshot.docs.length - 1];
         }
     }
