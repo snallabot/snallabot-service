@@ -1,5 +1,5 @@
 // this file was used to migrate league data, only ran once
-import { SnallabotEvent } from "../db/events_db";
+import { SnallabotEvent, StoredEvent } from "../db/events_db";
 import db from "../db/firebase"
 import { DefensiveStats, KickingStats, MaddenGame, PassingStats, Player, PuntingStats, ReceivingStats, RushingStats, Standing, Team, TeamStats } from "./madden_league_types";
 import { sendEvents } from "./routes";
@@ -13,8 +13,8 @@ async function migrateLeagueData<T>(requestType: string, eventType: string, idFn
         const leagueDataRef = db.collection("events").doc(leagueId).collection(eventType);
         const leagueDataSnapshot = await leagueDataRef.orderBy("timestamp", "asc").get()
         await Promise.all(leagueDataSnapshot.docs.map(async leagueDataDoc => {
-            const event = leagueDataDoc.data() as SnallabotEvent<T>
-            await sendEvents(leagueId, requestType, [event], idFn)
+            const { timestamp, id, ...event } = leagueDataDoc.data() as StoredEvent<T>
+            await sendEvents(leagueId, requestType, [event as SnallabotEvent<T>], idFn)
         }));
     }
 }
