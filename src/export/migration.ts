@@ -7,7 +7,7 @@ import { sendEvents } from "./routes";
 
 async function migrateLeagueData<T>(requestType: string, eventType: string, idFn: (e: T) => number) {
     const eventsDocs = await db.collection("events").listDocuments()
-    for (const doc of eventsDocs) {
+    await Promise.all(eventsDocs.map(async doc => {
         const leagueId = doc.id;
         const leagueDataRef = db.collection("events").doc(leagueId).collection(eventType);
 
@@ -28,16 +28,26 @@ async function migrateLeagueData<T>(requestType: string, eventType: string, idFn
             for (const leagueDataDoc of leagueDataSnapshot.docs) {
                 const { timestamp, id, ...event } = leagueDataDoc.data() as StoredEvent<T>;
                 await sendEvents(leagueId, requestType, [event as SnallabotEvent<T>], idFn);
-                await db
-                    .collection("events")
-                    .doc(leagueId)
-                    .collection(eventType)
-                    .doc(leagueDataDoc.id)
-                    .delete();
+                let retryCount = 0
+                while (retryCount < 10) {
+                    try {
+                        await db
+                            .collection("events")
+                            .doc(leagueId)
+                            .collection(eventType)
+                            .doc(leagueDataDoc.id)
+                            .delete();
+                        break
+                    } catch (e) {
+                        retryCount = retryCount + 1
+                        await new Promise((r) => setTimeout(r, 1000))
+                        console.log("errored, slept and retrying")
+                    }
+                }
             }
             lastDoc = leagueDataSnapshot.docs[leagueDataSnapshot.docs.length - 1];
         }
-    }
+    }))
 }
 
 export async function main() {

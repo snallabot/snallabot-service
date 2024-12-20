@@ -67,7 +67,17 @@ async function retrieveTree(league: string, request_type: string, event_type: st
 
 async function writeTree(league: string, request_type: string, event_type: string, tree: MerkleTree): Promise<void> {
     treeCache.set(createCacheKey(league, request_type), tree, CACHE_TTL)
-    await db.collection("league_data").doc(league).collection(event_type).doc(request_type).set(tree, { merge: true })
+    let retryCount = 0
+    while (retryCount < 10) {
+        try {
+            await db.collection("league_data").doc(league).collection(event_type).doc(request_type).set(tree, { merge: true })
+            break
+        } catch (e) {
+            retryCount = retryCount + 1
+            await new Promise((r) => setTimeout(r, 1000))
+            console.log("errored, slept and retrying")
+        }
+    }
 }
 
 

@@ -70,7 +70,17 @@ const MaddenDB: MaddenDB = {
             }
             batch.set(doc, { ...event, timestamp: timestamp, id: eventId })
         }))
-        await batch.commit()
+        let retryCount = 0
+        while (retryCount < 10) {
+            try {
+                await batch.commit()
+                break
+            } catch (e) {
+                retryCount = retryCount + 1
+                await new Promise((r) => setTimeout(r, 1000))
+                console.log("errored, slept and retrying")
+            }
+        }
         Object.entries(Object.groupBy(events, e => e.event_type)).map(entry => {
             const [eventType, specificTypeEvents] = entry
             if (specificTypeEvents) {
