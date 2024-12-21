@@ -65,7 +65,7 @@ export interface TeamList {
 function createTeamList(teams: StoredEvent<Team>[]): TeamList {
     const latestTeamMap = new Map<number, Team>()
     const latestTeams: Team[] = []
-    Object.entries(Object.groupBy(teams, t => t.divName)).map(divisionTeams => {
+    Object.entries(Object.groupBy(teams, t => t.divName)).forEach(divisionTeams => {
         const [divName, divTeams] = divisionTeams
         if (!divTeams) {
             return
