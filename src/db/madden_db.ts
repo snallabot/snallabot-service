@@ -2,6 +2,7 @@ import { randomUUID } from "crypto"
 import { Timestamp, Filter } from "firebase-admin/firestore"
 import db from "./firebase"
 import { EventNotifier, SnallabotEvent, StoredEvent } from "./events_db"
+import { MaddenGame, Team } from "../export/madden_league_types"
 
 type HistoryUpdate<ValueType> = { oldValue: ValueType, newValue: ValueType }
 type History = { [key: string]: HistoryUpdate<any> }
@@ -10,7 +11,11 @@ type StoredHistory = { timestamp: Date } & History
 
 interface MaddenDB {
     appendEvents<Event>(event: SnallabotEvent<Event>[], idFn: (event: Event) => string): Promise<void>
-    on<Event>(event_type: string, notifier: EventNotifier<Event>): void
+    on<Event>(event_type: string, notifier: EventNotifier<Event>): void,
+    getLatestTeams(leagueId: string): Promise<Team[]>,
+    getLatestWeekSchedule(leagueId: string, week: number): Promise<MaddenGame[]>,
+    getWeekScheduleForSeason(leagueId: string, week: number, season: number): Promise<MaddenGame[]>
+
 }
 
 function convertDate(firebaseObject: any) {
@@ -96,6 +101,35 @@ const MaddenDB: MaddenDB = {
     on<Event>(event_type: string, notifier: EventNotifier<Event>) {
         const currentNotifiers = notifiers[event_type] || []
         notifiers[event_type] = [notifier].concat(currentNotifiers)
+    },
+    getLatestTeams: async function(leagueId: string): Promise<Team[]> {
+        const teamDocs = await db.collection("league_data").doc(leagueId).collection("MADDEN_TEAM").get()
+        return teamDocs.docs.filter(d => d.id !== "leagueteams").map(d => d.data() as SnallabotEvent<Team>)
+    },
+    getLatestWeekSchedule: async function(leagueId: string, week: number) {
+        const weekDocs = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").where("weekIndex", "==", week - 1)
+            .where("stageIndex", "==", 1).get()
+        const maddenSchedule = weekDocs.docs.filter(d => !d.id.startsWith("schedules")).map(d => d.data() as SnallabotEvent<MaddenGame>)
+        if (maddenSchedule.length === 0) {
+            throw new Error("Missing schedule for week " + week)
+        }
+        const bySeason = Object.groupBy(maddenSchedule, s => s.seasonIndex)
+        const latestSeason = Math.max(...(Object.keys(bySeason).map(i => Number(i))))
+        const latestSeasonSchedule = bySeason[latestSeason]
+        if (latestSeasonSchedule) {
+            return latestSeasonSchedule
+        }
+        throw new Error("Missing schedule for week " + week)
+    },
+    getWeekScheduleForSeason: async function(leagueId: string, week: number, season: number) {
+        const weekDocs = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").where("weekIndex", "==", week - 1).where("seasonIndex", "==", season)
+            .where("stageIndex", "==", 1).get()
+        const maddenSchedule = weekDocs.docs.filter(d => !d.id.startsWith("schedules")).map(d => d.data() as SnallabotEvent<MaddenGame>)
+        if (maddenSchedule.length === 0) {
+            throw new Error("Missing schedule for week " + week)
+        }
+        return maddenSchedule
     }
 }
+
 export default MaddenDB

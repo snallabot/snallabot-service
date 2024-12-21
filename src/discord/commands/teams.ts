@@ -4,8 +4,8 @@ import { respond, createMessageResponse, DiscordClient } from "../discord_utils"
 import { APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIApplicationCommandInteractionDataUserOption, APIMessage, ApplicationCommandOptionType, ApplicationCommandType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { FieldValue, Firestore } from "firebase-admin/firestore"
 import { DiscordIdType, LeagueSettings, TeamAssignments } from "../settings_db"
-import MaddenClient from "../madden/client"
-import { Team } from "../madden/madden_types"
+import MaddenClient from "../../db/madden_db"
+import { Team } from "../../export/madden_league_types"
 
 async function moveTeamsMessage(client: DiscordClient, oldChannelId: string, newChannelId: string, oldMessageId: string, teamsMessage: string): Promise<string> {
     try {
