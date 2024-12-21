@@ -3,8 +3,8 @@ import { CommandHandler, Command } from "../commands_handler"
 import { respond, createMessageResponse, DiscordClient } from "../discord_utils"
 import { APIApplicationCommandInteractionDataIntegerOption, ApplicationCommandOptionType, ApplicationCommandType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
-import { MADDEN_SEASON, MaddenGame, Team, getMessageForWeek } from "../madden/madden_types"
-import MaddenClient from "../madden/client"
+import { MADDEN_SEASON, MaddenGame, Team, getMessageForWeek } from "../../export/madden_league_types"
+import MaddenClient from "../../db/madden_db"
 import { LeagueSettings } from "../settings_db"
 
 function format(schedule: MaddenGame[], teams: Team[], week: number) {
@@ -53,7 +53,7 @@ export default {
             } else {
                 return MaddenClient.getLatestWeekSchedule(league, week)
             }
-        })(), MaddenClient.getLatestTeams(league)])
+        })(), (await MaddenClient.getLatestTeams(league)).getLatestTeams()])
         respond(ctx, createMessageResponse(`${format(schedule, teams, week)}`))
     },
     commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {

@@ -4,8 +4,8 @@ import { respond, createMessageResponse, DiscordClient } from "../discord_utils"
 import { APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIApplicationCommandInteractionDataUserOption, APIMessage, ApplicationCommandOptionType, ApplicationCommandType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { FieldValue, Firestore } from "firebase-admin/firestore"
 import { DiscordIdType, LeagueSettings, TeamAssignments } from "../settings_db"
-import MaddenClient from "../madden/client"
-import { Team } from "../madden/madden_types"
+import MaddenClient from "../../db/madden_db"
+import { Team } from "../../export/madden_league_types"
 
 async function moveTeamsMessage(client: DiscordClient, oldChannelId: string, newChannelId: string, oldMessageId: string, teamsMessage: string): Promise<string> {
     try {
@@ -55,7 +55,7 @@ function formatTeamMessage(teams: Team[], teamAssignments: TeamAssignments): str
 async function fetchTeamsMessage(settings: LeagueSettings): Promise<string> {
     if (settings?.commands?.madden_league?.league_id) {
         const teams = await MaddenClient.getLatestTeams(settings.commands.madden_league.league_id)
-        return createTeamsMessage(settings, teams)
+        return createTeamsMessage(settings, teams.getLatestTeams())
     } else {
         return "# Teams\nNo Madden League connected. Connect Snallabot to your league and reconfigure"
     }
@@ -156,7 +156,7 @@ export default {
                 throw new Error("Teams not configured, run /teams configure first")
             }
             const teams = await MaddenClient.getLatestTeams(leagueSettings.commands.madden_league.league_id)
-            const foundTeam = teams.filter(t => t.abbrName.toLowerCase() === teamSearchPhrase || t.cityName.toLowerCase() === teamSearchPhrase || t.displayName.toLowerCase() === teamSearchPhrase || t.nickName.toLowerCase() === teamSearchPhrase)
+            const foundTeam = teams.getLatestTeams().filter(t => t.abbrName.toLowerCase() === teamSearchPhrase || t.cityName.toLowerCase() === teamSearchPhrase || t.displayName.toLowerCase() === teamSearchPhrase || t.nickName.toLowerCase() === teamSearchPhrase)
             if (foundTeam.length < 1) {
                 throw new Error(`Could not find team for phrase ${teamSearchPhrase}. Enter a team name, city, abbreviation, or nickname. Examples: Buccaneers, TB, Tampa Bay, Bucs`)
             } else if (foundTeam.length > 1) {
@@ -174,7 +174,7 @@ export default {
                     }
                 }
             }, { merge: true })
-            const message = createTeamsMessage(leagueSettings, teams)
+            const message = createTeamsMessage(leagueSettings, teams.getLatestTeams())
             try {
                 await client.requestDiscord(`channels/${leagueSettings.commands.teams.channel.id}/messages/${leagueSettings.commands.teams.messageId.id}`,
                     { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
@@ -194,7 +194,7 @@ export default {
                 throw new Error("Teams not configured, run /teams configure first")
             }
             const teams = await MaddenClient.getLatestTeams(leagueSettings.commands.madden_league.league_id)
-            const foundTeam = teams.filter(t => t.abbrName.toLowerCase() === teamSearchPhrase || t.cityName.toLowerCase() === teamSearchPhrase || t.displayName.toLowerCase() === teamSearchPhrase || t.nickName.toLowerCase() === teamSearchPhrase)
+            const foundTeam = teams.getLatestTeams().filter(t => t.abbrName.toLowerCase() === teamSearchPhrase || t.cityName.toLowerCase() === teamSearchPhrase || t.displayName.toLowerCase() === teamSearchPhrase || t.nickName.toLowerCase() === teamSearchPhrase)
             if (foundTeam.length < 1) {
                 throw new Error(`Could not find team for phrase ${teamSearchPhrase}. Enter a team name, city, abbreviation, or nickname. Examples: Buccaneers, TB, Tampa Bay, Bucs`)
             } else if (foundTeam.length > 1) {
@@ -207,7 +207,7 @@ export default {
             await db.collection("league_settings").doc(guild_id).update({
                 [`commands.teams.assignments.${assignedTeam.teamId}`]: FieldValue.delete()
             })
-            const message = createTeamsMessage(leagueSettings, teams)
+            const message = createTeamsMessage(leagueSettings, teams.getLatestTeams())
             try {
                 await client.requestDiscord(`channels/${leagueSettings.commands.teams.channel.id}/messages/${leagueSettings.commands.teams.messageId.id}`,
                     { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })

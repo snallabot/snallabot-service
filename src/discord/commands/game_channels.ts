@@ -4,8 +4,8 @@ import { respond, createMessageResponse, DiscordClient, deferMessage } from "../
 import { APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataSubcommandOption, APIChannel, APIMessage, ApplicationCommandOptionType, ApplicationCommandType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { FieldValue, Firestore } from "firebase-admin/firestore"
 import { DiscordIdType, GameChannel, LeagueSettings, MaddenLeagueConfiguration, TeamAssignments, UserId, WeekState } from "../settings_db"
-import MaddenClient from "../madden/client"
-import { getMessageForWeek, MaddenGame, Team } from "../madden/madden_types"
+import MaddenClient, { TeamList } from "../../db/madden_db"
+import { getMessageForWeek, MaddenGame, Team } from "../../export/madden_league_types"
 import createLogger from "../logging"
 
 const SNALLABOT_USER = "970091866450198548"
@@ -42,14 +42,14 @@ function formatTeamMessageName(discordId: string | undefined, gamerTag: string |
     return "CPU"
 }
 
-function formatScoreboard(week: number, seasonIndex: number, games: MaddenGame[], teamMap: Map<Number, Team>, assignments: TeamAssignments) {
+function formatScoreboard(week: number, seasonIndex: number, games: MaddenGame[], teams: TeamList, assignments: TeamAssignments) {
     const scoreboardGames = games.sort((g1, g2) => g1.scheduleId - g2.scheduleId).map(game => {
-        const awayTeamName = teamMap.get(game.awayTeamId)?.displayName
-        const homeTeamName = teamMap.get(game.homeTeamId)?.displayName
+        const awayTeamName = teams.getTeamForId(game.awayTeamId)?.displayName
+        const homeTeamName = teams.getTeamForId(game.homeTeamId)?.displayName
         const awayDiscordUser = assignments?.[game.awayTeamId]?.discord_user?.id
         const homeDiscordUser = assignments?.[game.homeTeamId]?.discord_user?.id
-        const awayUser = (awayDiscordUser ? `<@${awayDiscordUser}>` : "") || teamMap.get(game.awayTeamId)?.userName || "CPU"
-        const homeUser = (homeDiscordUser ? `<@${homeDiscordUser}>` : "") || teamMap.get(game.homeTeamId)?.userName || "CPU"
+        const awayUser = (awayDiscordUser ? `<@${awayDiscordUser}>` : "") || teams.getTeamForId(game.awayTeamId)?.userName || "CPU"
+        const homeUser = (homeDiscordUser ? `<@${homeDiscordUser}>` : "") || teams.getTeamForId(game.homeTeamId)?.userName || "CPU"
         const awayTeam = `${awayUser} ${awayTeamName}`
         const homeTeam = `${homeUser} ${homeTeamName}`
         if (game.awayScore == 0 && game.homeScore == 0) {
@@ -110,11 +110,9 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
         }
 
         const teams = await MaddenClient.getLatestTeams(leagueId)
-        const teamMap = new Map<Number, Team>()
-        teams.forEach(t => teamMap.set(t.teamId, t))
         const gameChannels = await Promise.all(weekSchedule.map(async game => {
-            const awayTeam = teamMap.get(game.awayTeamId)?.displayName
-            const homeTeam = teamMap.get(game.homeTeamId)?.displayName
+            const awayTeam = teams.getTeamForId(game.awayTeamId)?.displayName
+            const homeTeam = teams.getTeamForId(game.homeTeamId)?.displayName
             const res = await client.requestDiscord(`guilds/${guild_id}/channels`, {
                 method: "POST",
                 body: {
@@ -138,8 +136,8 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
         const gameChannelsWithMessage = await Promise.all(gameChannels.map(async gameChannel => {
             const channel = gameChannel.channel.id
             const game = gameChannel.game
-            const awayUser = formatTeamMessageName(assignments?.[game.awayTeamId]?.discord_user?.id, teamMap.get(game.awayTeamId)?.userName)
-            const homeUser = formatTeamMessageName(assignments?.[game.homeTeamId]?.discord_user?.id, teamMap.get(game.homeTeamId)?.userName)
+            const awayUser = formatTeamMessageName(assignments?.[game.awayTeamId]?.discord_user?.id, teams.getTeamForId(game.awayTeamId)?.userName)
+            const homeUser = formatTeamMessageName(assignments?.[game.homeTeamId]?.discord_user?.id, teams.getTeamForId(game.homeTeamId)?.userName)
             const res = await client.requestDiscord(`channels/${channel}/messages`, { method: "POST", body: { content: notifierMessage(`${awayUser} at ${homeUser}`) } })
             const message = await res.json() as APIMessage
             return { message: { id: message.id, id_type: DiscordIdType.MESSAGE }, ...gameChannel }
@@ -175,7 +173,7 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
 - <a:snallabot_waiting:1288664321781399584> Logging`})
 
         const season = weekSchedule[0].seasonIndex
-        const scoreboardMessage = formatScoreboard(week, season, weekSchedule, teamMap, assignments)
+        const scoreboardMessage = formatScoreboard(week, season, weekSchedule, teams, assignments)
         const res = await client.requestDiscord(`channels/${settings.commands.game_channel?.scoreboard_channel.id}/messages`, { method: "POST", body: { content: scoreboardMessage, allowed_mentions: { parse: [] } } })
         const message = await res.json() as APIMessage
         const weeklyState: WeekState = { week: week, seasonIndex: season, scoreboard: { id: message.id, id_type: DiscordIdType.MESSAGE }, channel_states: channelsMap }

@@ -8,6 +8,7 @@
     "build": "npx tsc && cp -r src/public dist/",
     "start": "node dist/index.js",
     "yt-notifier": "node dist/yt-notifier/index.js",
+    "migration-20241218": "node dist/export/migration.js",
     "dev": "npx firebase --project dev emulators:start & FIRESTORE_EMULATOR_HOST=localhost:8080 nodemon src/index.ts && kill $!"
   },
   "engines": {
