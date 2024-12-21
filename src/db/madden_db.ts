@@ -12,7 +12,7 @@ type StoredHistory = { timestamp: Date } & History
 interface MaddenDB {
     appendEvents<Event>(event: SnallabotEvent<Event>[], idFn: (event: Event) => string): Promise<void>
     on<Event>(event_type: string, notifier: EventNotifier<Event>): void,
-    getLatestTeams(leagueId: string): Promise<Team[]>,
+    getLatestTeams(leagueId: string): Promise<TeamList>,
     getLatestWeekSchedule(leagueId: string, week: number): Promise<MaddenGame[]>,
     getWeekScheduleForSeason(leagueId: string, week: number, season: number): Promise<MaddenGame[]>
 
@@ -56,6 +56,48 @@ function createEventHistoryUpdate(newEvent: Record<string, any>, oldEvent: Recor
     })
     return change
 }
+
+export interface TeamList {
+    getTeamForId(id: number): Team,
+    getLatestTeams(): Team[]
+}
+
+function createTeamList(teams: StoredEvent<Team>[]): TeamList {
+    const latestTeamMap = new Map<number, Team>()
+    const latestTeams: Team[] = []
+    Object.entries(Object.groupBy(teams, t => t.divName)).forEach(divisionTeams => {
+        const [divName, divTeams] = divisionTeams
+        if (!divTeams) {
+            return
+        }
+        const matchingTeams = Object.values(Object.groupBy(teams, t => t.cityName)).filter((t): t is StoredEvent<Team>[] => !!t)
+        const unMatched = matchingTeams.filter(t => t && t.length === 1).flat()
+        const matched = matchingTeams.filter(t => t && t.length !== 1)
+        matched.forEach(matchedTeams => {
+            const latestTeam = matchedTeams.reduce((latest, team) => (team.timestamp > latest.timestamp ? team : latest))
+            latestTeams.push(latestTeam)
+            matchedTeams.forEach(team => latestTeamMap.set(team.teamId, latestTeam))
+        })
+        // lets just assume the unmatched are together and see what happens
+        const latestUnmatched = unMatched.reduce((latest, team) => (team.timestamp > latest.timestamp ? team : latest));
+        latestTeams.push(latestUnmatched)
+        unMatched.forEach(unmatched => {
+            latestTeamMap.set(unmatched.teamId, latestUnmatched)
+        })
+    })
+    return {
+        getTeamForId: function(id: number): Team {
+            const team = latestTeamMap.get(id)
+            if (team) {
+                return team
+            }
+            throw new Error("Team not found for id " + id)
+        },
+        getLatestTeams: function(): Team[] { return latestTeams }
+    }
+}
+
+
 const MaddenDB: MaddenDB = {
     async appendEvents<Event>(events: SnallabotEvent<Event>[], idFn: (event: Event) => string) {
         const batch = db.batch()
@@ -102,9 +144,9 @@ const MaddenDB: MaddenDB = {
         const currentNotifiers = notifiers[event_type] || []
         notifiers[event_type] = [notifier].concat(currentNotifiers)
     },
-    getLatestTeams: async function(leagueId: string): Promise<Team[]> {
+    getLatestTeams: async function(leagueId: string): Promise<TeamList> {
         const teamDocs = await db.collection("league_data").doc(leagueId).collection("MADDEN_TEAM").get()
-        return teamDocs.docs.filter(d => d.id !== "leagueteams").map(d => d.data() as SnallabotEvent<Team>)
+        return createTeamList(teamDocs.docs.filter(d => d.id !== "leagueteams").map(d => d.data() as StoredEvent<Team>))
     },
     getLatestWeekSchedule: async function(leagueId: string, week: number) {
         const weekDocs = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").where("weekIndex", "==", week - 1)

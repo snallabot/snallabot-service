@@ -53,7 +53,7 @@ export default {
             } else {
                 return MaddenClient.getLatestWeekSchedule(league, week)
             }
-        })(), MaddenClient.getLatestTeams(league)])
+        })(), (await MaddenClient.getLatestTeams(league)).getLatestTeams()])
         respond(ctx, createMessageResponse(`${format(schedule, teams, week)}`))
     },
     commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
