@@ -78,12 +78,14 @@ function createTeamList(teams: StoredEvent<Team>[]): TeamList {
             latestTeams.push(latestTeam)
             matchedTeams.forEach(team => latestTeamMap.set(team.teamId, latestTeam))
         })
-        // lets just assume the unmatched are together and see what happens
-        const latestUnmatched = unMatched.reduce((latest, team) => (team.timestamp > latest.timestamp ? team : latest));
-        latestTeams.push(latestUnmatched)
-        unMatched.forEach(unmatched => {
-            latestTeamMap.set(unmatched.teamId, latestUnmatched)
-        })
+        if (unMatched.length > 0) {
+            // lets just assume the unmatched are together and see what happens
+            const latestUnmatched = unMatched.reduce((latest, team) => (team.timestamp > latest.timestamp ? team : latest));
+            latestTeams.push(latestUnmatched)
+            unMatched.forEach(unmatched => {
+                latestTeamMap.set(unmatched.teamId, latestUnmatched)
+            })
+        }
     })
     return {
         getTeamForId: function(id: number): Team {
