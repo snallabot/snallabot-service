@@ -73,7 +73,6 @@ function createTeamList(teams: StoredEvent<Team>[]): TeamList {
         const matchingTeams = Object.values(Object.groupBy(divTeams, t => t.cityName)).filter((t): t is StoredEvent<Team>[] => !!t)
         const unMatched = matchingTeams.filter(t => t && t.length === 1).flat()
         const matched = matchingTeams.filter(t => t && t.length !== 1)
-        console.log(matched.map(m => m.map(a => a.displayName)))
         matched.forEach(matchedTeams => {
             const latestTeam = matchedTeams.reduce((latest, team) => (team.timestamp > latest.timestamp ? team : latest))
             latestTeams.push(latestTeam)
@@ -88,7 +87,6 @@ function createTeamList(teams: StoredEvent<Team>[]): TeamList {
             })
         }
     })
-    console.log(latestTeams.map(t => t.displayName))
     return {
         getTeamForId: function(id: number): Team {
             const team = latestTeamMap.get(id)
