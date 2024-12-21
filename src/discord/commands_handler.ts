@@ -44,12 +44,10 @@ export async function handleCommand(command: Command, ctx: ParameterizedContext,
         try {
             await handler.handleCommand(command, discordClient, db, ctx)
         } catch (e) {
-            if (e instanceof Error) {
-                ctx.status = 200
-                respond(ctx, createMessageResponse(`Fatal Error in ${commandName}: ${e.message}`))
-                console.error(e)
+            ctx.status = 200
+            respond(ctx, createMessageResponse(`Fatal Error in ${commandName}: ${e.message}`))
+            console.error(e)
 
-            }
         }
     } else {
         ctx.status = 200
