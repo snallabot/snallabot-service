@@ -4,8 +4,8 @@ import { respond, createMessageResponse, DiscordClient, deferMessage } from "../
 import { APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataSubcommandOption, APIChannel, APIMessage, ApplicationCommandOptionType, ApplicationCommandType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { FieldValue, Firestore } from "firebase-admin/firestore"
 import { DiscordIdType, GameChannel, LeagueSettings, MaddenLeagueConfiguration, TeamAssignments, UserId, WeekState } from "../settings_db"
-import MaddenClient from "../madden/client"
-import { getMessageForWeek, MaddenGame, Team } from "../madden/madden_types"
+import MaddenClient from "../../db/madden_db"
+import { getMessageForWeek, MaddenGame, Team } from "../../export/madden_league_types"
 import createLogger from "../logging"
 
 const SNALLABOT_USER = "970091866450198548"
