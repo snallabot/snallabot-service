@@ -66,11 +66,11 @@ function createTeamList(teams: StoredEvent<Team>[]): TeamList {
     const latestTeamMap = new Map<number, Team>()
     const latestTeams: Team[] = []
     Object.entries(Object.groupBy(teams, t => t.divName)).forEach(divisionTeams => {
-        const [divName, divTeams] = divisionTeams
+        const [_, divTeams] = divisionTeams
         if (!divTeams) {
             return
         }
-        const matchingTeams = Object.values(Object.groupBy(teams, t => t.cityName)).filter((t): t is StoredEvent<Team>[] => !!t)
+        const matchingTeams = Object.values(Object.groupBy(divTeams, t => t.cityName)).filter((t): t is StoredEvent<Team>[] => !!t)
         const unMatched = matchingTeams.filter(t => t && t.length === 1).flat()
         const matched = matchingTeams.filter(t => t && t.length !== 1)
         console.log(matched.map(m => m.map(a => a.displayName)))
