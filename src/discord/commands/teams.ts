@@ -49,10 +49,9 @@ function formatTeamMessage(teams: Team[], teamAssignments: TeamAssignments): str
     const openTeams = teams.filter(t => !teamAssignments[`${t.teamId}`]).map(t => t.displayName).join(", ")
     const openTeamsMessage = `OPEN TEAMS: ${openTeams}`
     return `${header}\n${teamsMessage}\n\n${openTeamsMessage}`
-
 }
 
-async function fetchTeamsMessage(settings: LeagueSettings): Promise<string> {
+export async function fetchTeamsMessage(settings: LeagueSettings): Promise<string> {
     if (settings?.commands?.madden_league?.league_id) {
         const teams = await MaddenClient.getLatestTeams(settings.commands.madden_league.league_id)
         return createTeamsMessage(settings, teams.getLatestTeams())

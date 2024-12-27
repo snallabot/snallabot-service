@@ -7,7 +7,10 @@ import EventDB, { StoredEvent } from "../db/events_db"
 import { handleCommand, commandsInstaller } from "./commands_handler"
 import { BroadcastConfigurationEvent, MaddenBroadcastEvent } from "../db/events"
 import { Client } from "oceanic.js"
-import { LeagueSettings } from "./settings_db"
+import { DiscordIdType, LeagueSettings, TeamAssignments } from "./settings_db"
+import { APIGuildMember } from "discord-api-types/v9"
+import { FieldValue } from "firebase-admin/firestore"
+import { fetchTeamsMessage } from "./commands/teams"
 
 const router = new Router({ prefix: "/discord/webhook" })
 
@@ -94,11 +97,70 @@ discordClient.on("error", (error) => {
 
 
 discordClient.on("guildMemberRemove", async (user, guild) => {
-
+    const guildId = guild.id
+    const doc = await db.collection("league_settings").doc(guildId).get()
+    if (!doc.exists) {
+        return
+    }
+    const leagueSettings = doc.data() as LeagueSettings
+    if (leagueSettings.commands.teams) {
+        const assignments = leagueSettings.commands.teams?.assignments || {} as TeamAssignments
+        await Promise.all(Object.entries(assignments).map(async entry => {
+            const [teamId, assignment] = entry
+            if (assignment.discord_user?.id === user.id) {
+                await db.collection("league_settings").doc(guildId).update({
+                    [`commands.teams.assignments.${teamId}.discord_user`]: FieldValue.delete()
+                })
+                delete assignments[teamId].discord_user
+            }
+        }))
+        const message = await fetchTeamsMessage(leagueSettings)
+        await prodClient.requestDiscord(`channels/${leagueSettings.commands.teams.channel.id}/messages/${leagueSettings.commands.teams.messageId.id}`,
+            { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
+    }
 });
 
 discordClient.on("guildMemberUpdate", async (member, old) => {
+    const guildId = member.guildID
+    const doc = await db.collection("league_settings").doc(guildId).get()
+    if (!doc.exists) {
+        return
+    }
+    const leagueSettings = doc.data() as LeagueSettings
+    if (leagueSettings.commands.teams?.useRoleUpdates) {
+        const res = await prodClient.requestDiscord(
+            `guilds/${guildId}/members?limit=1000`,
+            {
+                method: "GET",
+            }
+        )
+        const users = await res.json() as APIGuildMember[]
+        const userWithRoles = users.map((u) => ({ id: u.user.id, roles: u.roles }))
+        const assignments = leagueSettings.commands.teams.assignments || {} as TeamAssignments
+        await Promise.all(Object.entries(assignments).map(async entry => {
+            const [teamId, assignment] = entry
+            if (assignment.discord_role?.id) {
+                const userInTeam = userWithRoles.filter(u => u.roles.includes(assignment.discord_role?.id || ""))
+                if (userInTeam.length === 0) {
+                    await db.collection("league_settings").doc(guildId).update({
+                        [`commands.teams.assignments.${teamId}.discord_user`]: FieldValue.delete()
+                    })
+                    delete assignments[teamId].discord_user
 
+                } else if (userInTeam.length === 1) {
+                    await db.collection("league_settings").doc(guildId).update({
+                        [`commands.teams.assignments.${teamId}.discord_user`]: { id: userInTeam[0].id, id_type: DiscordIdType.USER }
+                    })
+                    assignments[teamId].discord_user = { id: userInTeam[0].id, id_type: DiscordIdType.USER }
+                } else {
+                    console.log(`Found multiple users ${userInTeam.map(u => u.id)} with role ${assignment.discord_role.id}`)
+                }
+            }
+        }))
+        const message = await fetchTeamsMessage(leagueSettings)
+        await prodClient.requestDiscord(`channels/${leagueSettings.commands.teams.channel.id}/messages/${leagueSettings.commands.teams.messageId.id}`,
+            { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
+    }
 });
 const SNALLABOT_USER = "970091866450198548"
 const SNALLABOT_TEST_USER = "1099768386352840807"
@@ -131,6 +193,7 @@ discordClient.on("messageReactionAdd", async (msg, reactor, reaction) => {
             const [channelId, channelState] = channelEntry
             if (channelId === reactionChannel && channelState.message.id === reactionMessage) {
                 //UPDATE NOTIFIER
+
             }
         })
     })
