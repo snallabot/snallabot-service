@@ -201,4 +201,6 @@ discordClient.on("messageReactionAdd", async (msg, reactor, reaction) => {
     })
 })
 
+discordClient.connect()
+
 export default router
