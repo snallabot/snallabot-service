@@ -87,6 +87,7 @@ EventDB.on<MaddenBroadcastEvent>("MADDEN_BROADCAST", async (events) => {
 })
 
 EventDB.on<ConfirmedSim>("CONFIRMED_SIM", async (events) => {
+    console.log("here")
     await Promise.all(events.map(async sim => {
         const guild_id = sim.key
         const doc = await db.collection("league_settings").doc(guild_id).get()
