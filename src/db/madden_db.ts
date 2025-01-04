@@ -15,7 +15,7 @@ interface MaddenDB {
     getLatestTeams(leagueId: string): Promise<TeamList>,
     getLatestWeekSchedule(leagueId: string, week: number): Promise<MaddenGame[]>,
     getWeekScheduleForSeason(leagueId: string, week: number, season: number): Promise<MaddenGame[]>
-
+    getGameForSchedule(leagueId: string, scheduleId: number): Promise<MaddenGame>
 }
 
 function convertDate(firebaseObject: any) {
@@ -173,6 +173,13 @@ const MaddenDB: MaddenDB = {
             throw new Error("Missing schedule for week " + week)
         }
         return maddenSchedule
+    },
+    getGameForSchedule: async function(leagueId: string, scheduleId: number) {
+        const schedule = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").doc(`${scheduleId}`).get()
+        if (!schedule.exists) {
+            throw new Error("Schedule not found for id " + scheduleId)
+        }
+        return schedule.data() as MaddenGame
     }
 }
 

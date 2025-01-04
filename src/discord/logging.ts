@@ -33,6 +33,10 @@ interface Logger {
     logChannels(channels: ChannelId[], client: DiscordClient): Promise<void>
 }
 
+function joinUsers(users: UserId[]) {
+    return users.map((uId) => `<@${uId.id}>`).join("")
+}
+
 export default (config: LoggerConfiguration) => ({
     logUsedCommand: async (command: string, author: UserId, client: DiscordClient) => {
         const loggerChannel = config.channel.id
@@ -46,7 +50,7 @@ export default (config: LoggerConfiguration) => ({
             },
         })
     },
-    logChannels: async (channels: ChannelId[], client: DiscordClient) => {
+    logChannels: async (channels: ChannelId[], loggedAuthors: UserId[], client: DiscordClient) => {
         const loggerChannels = channels.map(async channel => {
             const messages = await getMessages(channel, client)
             const logMessages = messages.map(m => ({ content: m.content, user: m.author.id, time: m.timestamp }))
@@ -84,6 +88,17 @@ export default (config: LoggerConfiguration) => ({
                 }
                 )
             }, Promise.resolve())
+            messagePromise.then(async (_) => {
+                await client.requestDiscord(`channels/${threadId}/messages`, {
+                    method: "POST",
+                    body: {
+                        content: `cleared by ${joinUsers(loggedAuthors)}`,
+                        allowed_mentions: {
+                            parse: [],
+                        },
+                    },
+                })
+            })
             return messagePromise
         })
         await Promise.all(loggerChannels)

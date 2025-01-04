@@ -1,6 +1,6 @@
 import { ParameterizedContext } from "koa"
 import Router from "@koa/router"
-import { CommandMode, DiscordClient, createClient } from "./discord_utils"
+import { CommandMode, DiscordClient, SNALLABOT_TEST_USER, SNALLABOT_USER, createClient } from "./discord_utils"
 import { APIInteraction, InteractionType, InteractionResponseType, APIChatInputApplicationCommandGuildInteraction } from "discord-api-types/payloads"
 import db from "../db/firebase"
 import EventDB, { StoredEvent } from "../db/events_db"
@@ -11,6 +11,7 @@ import { DiscordIdType, LeagueSettings, TeamAssignments } from "./settings_db"
 import { APIGuildMember } from "discord-api-types/v9"
 import { FieldValue } from "firebase-admin/firestore"
 import { fetchTeamsMessage } from "./commands/teams"
+import createNotifier from "./notifier"
 
 const router = new Router({ prefix: "/discord/webhook" })
 
@@ -164,15 +165,14 @@ discordClient.on("guildMemberUpdate", async (member, old) => {
             { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
     }
 });
-const SNALLABOT_USER = "970091866450198548"
-const SNALLABOT_TEST_USER = "1099768386352840807"
 
 const validReactions = ["🏆", "⏭️"];
 
 
 discordClient.on("messageReactionAdd", async (msg, reactor, reaction) => {
     // don't respond when bots react!
-    if (reactor.id === SNALLABOT_USER || reactor.id === SNALLABOT_TEST_USER) {
+    if (reactor.id === SNALLABOT_USER || reactor.id === SNALLABOT_TEST_USER
+    ) {
         return
     }
     const guild = msg.guildID
@@ -190,15 +190,15 @@ discordClient.on("messageReactionAdd", async (msg, reactor, reaction) => {
     }
     const leagueSettings = doc.data() as LeagueSettings
     const weeklyStates = leagueSettings.commands?.game_channel?.weekly_states || {}
-    Object.values(weeklyStates).map(weeklyState => {
-        Object.entries(weeklyState.channel_states).map(channelEntry => {
+    await Promise.all(Object.values(weeklyStates).map(async weeklyState => {
+        await Promise.all(Object.entries(weeklyState.channel_states).map(async channelEntry => {
             const [channelId, channelState] = channelEntry
             if (channelId === reactionChannel && channelState.message.id === reactionMessage) {
-                //UPDATE NOTIFIER
-
+                const notifier = createNotifier(prodClient, guild, leagueSettings)
+                await notifier.update(channelState, weeklyState.seasonIndex, weeklyState.week)
             }
-        })
-    })
+        }))
+    }))
 })
 
 discordClient.connect()

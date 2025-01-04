@@ -16,10 +16,10 @@ export type LoggerConfiguration = { channel: ChannelId }
 export type WaitlistConfiguration = { current_waitlist: UserId[] }
 export type MaddenLeagueConfiguration = { league_id: string }
 export type BroadcastConfiguration = { role?: RoleId, channel: ChannelId, title_keyword: string }
-
-export type Created = "CREATED"
-export type ForceWinRequested = "FORCE_WIN_REQUESTED"
-export type GameChannelState = Created | ForceWinRequested
+export enum GameChannelState {
+    CREATED = "CREATED",
+    FORCE_WIN_REQUESTED = "FORCE_WIN_REQUESTED"
+}
 export type GameChannel = { channel: ChannelId, message: MessageId, scheduleId: number, state: GameChannelState, notifiedTime: number }
 export type ChannelIdKey = string
 export type WeekState = { week: number, seasonIndex: number, scoreboard: MessageId, channel_states: { [key: ChannelIdKey]: GameChannel } }
