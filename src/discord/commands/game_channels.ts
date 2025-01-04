@@ -1,40 +1,41 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command } from "../commands_handler"
-import { respond, createMessageResponse, DiscordClient, deferMessage, formatTeamMessageName, createWeekKey } from "../discord_utils"
+import { respond, createMessageResponse, DiscordClient, deferMessage, formatTeamMessageName, createWeekKey, SnallabotReactions } from "../discord_utils"
 import { APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataSubcommandOption, APIChannel, APIMessage, ApplicationCommandOptionType, ApplicationCommandType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { FieldValue, Firestore } from "firebase-admin/firestore"
 import { DiscordIdType, GameChannel, GameChannelState, LeagueSettings, MaddenLeagueConfiguration, TeamAssignments, UserId, WeekState } from "../settings_db"
 import MaddenClient, { TeamList } from "../../db/madden_db"
+import EventDB from "../../db/events_db"
 import { getMessageForWeek, MaddenGame, Team } from "../../export/madden_league_types"
 import createLogger from "../logging"
+import { ConfirmedSim, SimResult } from "../../db/events"
+import db from "../../db/firebase"
 
-const SNALLABOT_USER = "970091866450198548"
-enum SnallabotReactions {
-    SCHEDULE = "SCHEDULE",
-    GAME_FINISHED = "GAME_FINISHED",
-    FW_HOME = "FORCE_WIN_HOME",
-    FW_AWAY = "FORCE_WIN_AWAY",
-    FORCE_WIN = "FORCE_WIN"
-}
-
-const reactions = {
-    [SnallabotReactions.SCHEDULE]: "%E2%8F%B0",
-    [SnallabotReactions.GAME_FINISHED]: "%F0%9F%8F%86",
-    [SnallabotReactions.FW_HOME]: "%F0%9F%8F%A0",
-    [SnallabotReactions.FW_AWAY]: "%F0%9F%9B%AB",
-    [SnallabotReactions.FORCE_WIN]: "%E2%8F%AD%EF%B8%8F",
-}
 async function react(client: DiscordClient, channel: string, message: string, reaction: SnallabotReactions) {
-    await client.requestDiscord(`channels/${channel}/messages/${message}/reactions/${reactions[reaction]}/@me`, { method: "PUT" })
+    await client.requestDiscord(`channels/${channel}/messages/${message}/reactions/${reaction}/@me`, { method: "PUT" })
 }
 
 function notifierMessage(users: string): string {
     return `${users}\nTime to schedule your game! Once your game is scheduled, hit the ⏰. Otherwise, You will be notified again.\nWhen you're done playing, let me know with 🏆.\nNeed to sim this game? React with ⏭ AND the home/away to force win. Choose both home and away to fair sim!`
 }
 
+function createSimMessage(sim: ConfirmedSim): string {
+    if (sim.result === SimResult.FAIR_SIM) {
+        return "Fair Sim"
+    } else if (sim.result === SimResult.FORCE_WIN_AWAY) {
+        return "Force Win Away"
+    } else if (sim.result === SimResult.FORCE_WIN_HOME) {
+        return "Force Win Honme"
+    }
+    throw new Error("Should not have gotten here! from createSimMessage")
+}
 
-function formatScoreboard(week: number, seasonIndex: number, games: MaddenGame[], teams: TeamList, assignments: TeamAssignments) {
+
+export function formatScoreboard(week: number, seasonIndex: number, games: MaddenGame[], teams: TeamList, assignments: TeamAssignments, sims: ConfirmedSim[]) {
+    const gameToSim = new Map<number, ConfirmedSim>()
+    sims.forEach(sim => gameToSim.set(sim.scheduleId, sim))
     const scoreboardGames = games.sort((g1, g2) => g1.scheduleId - g2.scheduleId).map(game => {
+        const simMessage = gameToSim.has(game.scheduleId) ? ` (${createSimMessage(gameToSim.get(game.scheduleId)!)})` : ""
         const awayTeamName = teams.getTeamForId(game.awayTeamId)?.displayName
         const homeTeamName = teams.getTeamForId(game.homeTeamId)?.displayName
         const awayDiscordUser = assignments?.[game.awayTeamId]?.discord_user?.id
@@ -44,17 +45,17 @@ function formatScoreboard(week: number, seasonIndex: number, games: MaddenGame[]
         const awayTeam = `${awayUser} ${awayTeamName}`
         const homeTeam = `${homeUser} ${homeTeamName}`
         if (game.awayScore == 0 && game.homeScore == 0) {
-            return `${awayTeam} vs ${homeTeam}`
+            return `${awayTeam} vs ${homeTeam}${simMessage}`
         } else {
             if (game.awayScore > game.homeScore) {
-                return `**__${awayTeam} ${game.awayScore
-                    }__** vs ${game.homeScore} ${homeTeam} FINAL`
+                return `**${awayTeam} ${game.awayScore
+                    }** vs ${game.homeScore} ${homeTeam} FINAL${simMessage}`
             } else if (game.homeScore > game.awayScore) {
                 return `${awayTeam} ${game.awayScore
-                    } vs **__${game.homeScore} ${homeTeam}__** FINAL`
+                    } vs **${game.homeScore} ${homeTeam}** FINAL${simMessage}`
             }
             return `${awayTeam} ${game.awayScore} vs ${game.homeScore
-                } ${homeTeam} FINAL`
+                } ${homeTeam} FINAL${simMessage}`
         }
     }).join("\n")
 
@@ -144,10 +145,10 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
         const finalGameChannels: GameChannel[] = await Promise.all(gameChannelsWithMessage.map(async gameChannel => {
             const { channel: { id: channelId }, message: { id: messageId } } = gameChannel
             await react(client, channelId, messageId, SnallabotReactions.SCHEDULE)
-            await react(client, channelId, messageId, SnallabotReactions.GAME_FINISHED)
-            await react(client, channelId, messageId, SnallabotReactions.FW_HOME)
-            await react(client, channelId, messageId, SnallabotReactions.FW_AWAY)
-            await react(client, channelId, messageId, SnallabotReactions.FORCE_WIN)
+            await react(client, channelId, messageId, SnallabotReactions.GG)
+            await react(client, channelId, messageId, SnallabotReactions.HOME)
+            await react(client, channelId, messageId, SnallabotReactions.AWAY)
+            await react(client, channelId, messageId, SnallabotReactions.SIM)
             const { game, ...rest } = gameChannel
             const createdTime = new Date().getTime()
             return { ...rest, state: GameChannelState.CREATED, notifiedTime: createdTime, channel: { id: channelId, id_type: DiscordIdType.CHANNEL }, message: { id: messageId, id_type: DiscordIdType.MESSAGE } }
@@ -164,7 +165,7 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
 - <a:snallabot_waiting:1288664321781399584> Logging`})
 
         const season = weekSchedule[0].seasonIndex
-        const scoreboardMessage = formatScoreboard(week, season, weekSchedule, teams, assignments)
+        const scoreboardMessage = formatScoreboard(week, season, weekSchedule, teams, assignments, [])
         const res = await client.requestDiscord(`channels/${settings.commands.game_channel?.scoreboard_channel.id}/messages`, { method: "POST", body: { content: scoreboardMessage, allowed_mentions: { parse: [] } } })
         const message = await res.json() as APIMessage
         const weeklyState: WeekState = { week: week, seasonIndex: season, scoreboard: { id: message.id, id_type: DiscordIdType.MESSAGE }, channel_states: channelsMap }

@@ -1,29 +1,17 @@
 import EventDB, { EventDelivery } from "../db/events_db"
-import { DiscordClient, SNALLABOT_TEST_USER, SNALLABOT_USER, formatTeamMessageName, createWeekKey } from "./discord_utils"
+import { DiscordClient, SNALLABOT_TEST_USER, SNALLABOT_USER, formatTeamMessageName, createWeekKey, SnallabotReactions } from "./discord_utils"
 import { ChannelId, DiscordIdType, GameChannel, GameChannelState, LeagueSettings, MessageId, UserId } from "./settings_db"
 import createLogger from "./logging"
 import MaddenDB from "../db/madden_db"
 import { APIGuildMember, APIUser } from "discord-api-types/v10"
 import db from "../db/firebase"
 import { FieldValue } from "firebase-admin/firestore"
+import { SimResult } from "../db/events"
 
 interface SnallabotNotifier {
     update(currentState: GameChannel, week: number, season: number): Promise<void>
 }
 
-enum SimResult {
-    FORCE_WIN_AWAY = "FORCE_WIN_AWAY",
-    FORCE_WIN_HOME = "FORCE_WIN_HOME",
-    FAIR_SIM = "FAIR_SIM"
-}
-
-enum Reactions {
-    SCHEDULE = "%E2%8F%B0",
-    GG = "%F0%9F%8F%86",
-    HOME = "%F0%9F%8F%A0",
-    AWAY = "%F0%9F%9B%AB",
-    SIM = "%E2%8F%AD%EF%B8%8F",
-}
 
 
 function decideResult(homeUsers: UserId[], awayUsers: UserId[]) {
@@ -48,7 +36,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
         throw new Error("somehow channels being pinged without a league id")
     }
     const leagueId = settings.commands.madden_league.league_id
-    async function getReactedUsers(channelId: ChannelId, messageId: MessageId, reaction: Reactions): Promise<UserId[]> {
+    async function getReactedUsers(channelId: ChannelId, messageId: MessageId, reaction: SnallabotReactions): Promise<UserId[]> {
         try {
             const res = await client.requestDiscord(
                 `channels/${channelId.id}/messages/${messageId.id}/reactions/${reaction}`,
@@ -91,7 +79,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
         await client.requestDiscord(`channels/${gameChannel.channel.id}/messages`, {
             method: "POST",
             body: {
-                content: `${awayTag}${homeTag} is your game scheduled? Schedule it! or react to my first message to set it as scheduled! Hit the trophy if its done already`,
+                content: `${awayTag} ${homeTag} is your game scheduled? Schedule it! or react to my first message to set it as scheduled! Hit the trophy if its done already`,
             },
         })
     }
@@ -125,11 +113,11 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
             const channelId = currentState.channel
             const messageId = currentState.message
             const weekKey = createWeekKey(season, week)
-            const ggUsers = await getReactedUsers(channelId, messageId, Reactions.GG)
-            const scheduledUsers = await getReactedUsers(channelId, messageId, Reactions.SCHEDULE)
-            const homeUsers = await getReactedUsers(channelId, messageId, Reactions.HOME)
-            const awayUsers = await getReactedUsers(channelId, messageId, Reactions.AWAY)
-            const fwUsers = await getReactedUsers(channelId, messageId, Reactions.SIM)
+            const ggUsers = await getReactedUsers(channelId, messageId, SnallabotReactions.GG)
+            const scheduledUsers = await getReactedUsers(channelId, messageId, SnallabotReactions.SCHEDULE)
+            const homeUsers = await getReactedUsers(channelId, messageId, SnallabotReactions.HOME)
+            const awayUsers = await getReactedUsers(channelId, messageId, SnallabotReactions.AWAY)
+            const fwUsers = await getReactedUsers(channelId, messageId, SnallabotReactions.SIM)
             if (ggUsers.length > 0) {
                 await gameFinished(ggUsers, currentState)
                 await db.collection("league_settings").doc(guildId).update({
@@ -160,6 +148,9 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
                 } else if (currentState.state !== GameChannelState.FORCE_WIN_REQUESTED) {
                     const adminRole = settings.commands.game_channel?.admin.id || ""
                     const message = `Sim requested <@&${adminRole}> by ${joinUsers(fwUsers)}`
+                    await db.collection("league_settings").doc(guildId).update({
+                        [`commands.game_channel.weekly_states.${weekKey}.channel_states.${channelId.id}.state`]: GameChannelState.FORCE_WIN_REQUESTED
+                    })
                     await client.requestDiscord(`channels/${channelId.id}/messages`, {
                         method: "POST",
                         body: {
@@ -169,9 +160,6 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
                             },
                         },
                     })
-                    await db.collection("league_settings").doc(guildId).update({
-                        [`commands.game_channel.weekly_states.${weekKey}.channel_states.${channelId.id}.state`]: GameChannelState.FORCE_WIN_REQUESTED
-                    })
                 }
             } else if (scheduledUsers.length === 0 && currentState.state !== GameChannelState.FORCE_WIN_REQUESTED) {
                 const waitPing = settings.commands.game_channel?.wait_ping || 12
@@ -179,10 +167,10 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
                 const last = new Date(currentState.notifiedTime)
                 const hoursSince = (now.getTime() - last.getTime()) / 36e5
                 if (hoursSince > waitPing) {
-                    await ping(currentState)
                     await db.collection("league_settings").doc(guildId).update({
                         [`commands.game_channel.weekly_states.${weekKey}.channel_states.${channelId.id}.notifiedTime`]: new Date().getTime()
                     })
+                    await ping(currentState)
                 }
             }
         }
