@@ -201,7 +201,7 @@ discordClient.on("messageReactionAdd", async (msg, reactor, reaction) => {
                 const notifier = createNotifier(prodClient, guild, leagueSettings)
                 // wait for users to confirm/unconfirm
                 const jitter = getRandomInt(10)
-                await new Promise((r) => setTimeout(r, 15000 + jitter * 1000));
+                await new Promise((r) => setTimeout(r, 5000 + jitter * 1000));
                 await notifier.update(channelState, weeklyState.seasonIndex, weeklyState.week)
             }
         }))
