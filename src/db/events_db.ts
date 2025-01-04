@@ -56,8 +56,10 @@ const EventDB: EventDB = {
         }
         Object.entries(Object.groupBy(events, e => e.event_type)).map(entry => {
             const [eventType, specificTypeEvents] = entry
+            console.log(eventType)
             if (specificTypeEvents) {
                 const eventTypeNotifiers = notifiers[eventType]
+                console.log(eventTypeNotifiers)
                 if (eventTypeNotifiers) {
                     eventTypeNotifiers.forEach(notifier => {
                         notifier(specificTypeEvents)
