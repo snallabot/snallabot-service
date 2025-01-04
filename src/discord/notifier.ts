@@ -51,7 +51,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
     async function getReactedUsers(channelId: ChannelId, messageId: MessageId, reaction: Reactions): Promise<UserId[]> {
         try {
             const res = await client.requestDiscord(
-                `channels/${channelId}/messages/${messageId}/reactions/${reaction}`,
+                `channels/${channelId.id}/messages/${messageId.id}/reactions/${reaction}`,
                 { method: "GET" }
             )
             const reactedUsers = await res.json() as APIUser[]
