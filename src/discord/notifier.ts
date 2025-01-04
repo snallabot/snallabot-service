@@ -170,7 +170,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
                         },
                     })
                     await db.collection("league_settings").doc(guildId).update({
-                        [`commands.game_channel.weekly_states.${weekKey}.channel_states.${channelId}.state`]: GameChannelState.FORCE_WIN_REQUESTED
+                        [`commands.game_channel.weekly_states.${weekKey}.channel_states.${channelId.id}.state`]: GameChannelState.FORCE_WIN_REQUESTED
                     })
                 }
             } else if (scheduledUsers.length === 0 && currentState.state !== GameChannelState.FORCE_WIN_REQUESTED) {
