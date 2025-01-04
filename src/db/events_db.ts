@@ -15,7 +15,7 @@ export enum EventDelivery {
 export type EventNotifier<Event> = (events: SnallabotEvent<Event>[]) => Promise<void>
 interface EventDB {
     appendEvents<Event>(event: SnallabotEvent<Event>[], delivery: EventDelivery): Promise<void>
-    queryEvents<Event>(event_type: string, key: string, after: Date, filters: Filters, limit: number): Promise<StoredEvent<Event>[]>,
+    queryEvents<Event>(key: string, event_type: string, after: Date, filters: Filters, limit: number): Promise<StoredEvent<Event>[]>,
     on<Event>(event_type: string, notifier: EventNotifier<Event>): void
 }
 
@@ -56,10 +56,8 @@ const EventDB: EventDB = {
         }
         Object.entries(Object.groupBy(events, e => e.event_type)).map(entry => {
             const [eventType, specificTypeEvents] = entry
-            console.log(eventType)
             if (specificTypeEvents) {
                 const eventTypeNotifiers = notifiers[eventType]
-                console.log(eventTypeNotifiers)
                 if (eventTypeNotifiers) {
                     eventTypeNotifiers.forEach(notifier => {
                         notifier(specificTypeEvents)
