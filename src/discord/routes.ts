@@ -168,7 +168,7 @@ discordClient.on("guildMemberUpdate", async (member, old) => {
 
 const validReactions = ["🏆", "⏭️"];
 
-function getRandomInt(max) {
+function getRandomInt(max: number) {
     return Math.floor(Math.random() * max);
 }
 
