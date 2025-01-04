@@ -168,6 +168,10 @@ discordClient.on("guildMemberUpdate", async (member, old) => {
 
 const validReactions = ["🏆", "⏭️"];
 
+function getRandomInt(max) {
+    return Math.floor(Math.random() * max);
+}
+
 
 discordClient.on("messageReactionAdd", async (msg, reactor, reaction) => {
     // don't respond when bots react!
@@ -195,6 +199,9 @@ discordClient.on("messageReactionAdd", async (msg, reactor, reaction) => {
             const [channelId, channelState] = channelEntry
             if (channelId === reactionChannel && channelState.message.id === reactionMessage) {
                 const notifier = createNotifier(prodClient, guild, leagueSettings)
+                // wait for users to confirm/unconfirm
+                const jitter = getRandomInt(10)
+                await new Promise((r) => setTimeout(r, 15000 + jitter * 1000));
                 await notifier.update(channelState, weeklyState.seasonIndex, weeklyState.week)
             }
         }))
