@@ -88,7 +88,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
         const awayTag = formatTeamMessageName(settings.commands.teams?.assignments?.[`${awayTeam}`]?.discord_user?.id, teams.getTeamForId(awayTeam).userName)
         const homeTag = formatTeamMessageName(settings.commands.teams?.assignments?.[`${homeTeam}`]?.discord_user?.id, teams.getTeamForId(homeTeam).userName)
 
-        await client.requestDiscord(`channels/${gameChannel}/messages`, {
+        await client.requestDiscord(`channels/${gameChannel.channel.id}/messages`, {
             method: "POST",
             body: {
                 content: `${awayTag}${homeTag} is your game scheduled? Schedule it! or react to my first message to set it as scheduled! Hit the trophy if its done already`,
