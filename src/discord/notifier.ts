@@ -85,8 +85,8 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
         const teams = await MaddenDB.getLatestTeams(leagueId)
         const awayTeam = game.awayTeamId
         const homeTeam = game.homeTeamId
-        const awayTag = formatTeamMessageName(settings.commands.teams?.assignments?.[`${awayTeam}`].discord_user?.id, teams.getTeamForId(awayTeam).userName)
-        const homeTag = formatTeamMessageName(settings.commands.teams?.assignments?.[`${homeTeam}`].discord_user?.id, teams.getTeamForId(homeTeam).userName)
+        const awayTag = formatTeamMessageName(settings.commands.teams?.assignments?.[`${awayTeam}`]?.discord_user?.id, teams.getTeamForId(awayTeam).userName)
+        const homeTag = formatTeamMessageName(settings.commands.teams?.assignments?.[`${homeTeam}`]?.discord_user?.id, teams.getTeamForId(homeTeam).userName)
 
         await client.requestDiscord(`channels/${gameChannel}/messages`, {
             method: "POST",
