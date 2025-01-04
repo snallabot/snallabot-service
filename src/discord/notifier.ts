@@ -77,7 +77,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
         } else {
             await client.requestDiscord(`channels/${gameChannel.channel.id}`, { method: "DELETE" })
         }
-        const event = { key: guildId, event_type: "CONFIRMED_SIM", result: SimResult, scheduleId: gameChannel.scheduleId, requestedUsers: requestedUsers, confirmedUsers: confirmedUsers, week: week, seasonIndex: season }
+        const event = { key: guildId, event_type: "CONFIRMED_SIM", result: result, scheduleId: gameChannel.scheduleId, requestedUsers: requestedUsers, confirmedUsers: confirmedUsers, week: week, seasonIndex: season }
         await EventDB.appendEvents([event], EventDelivery.EVENT_SOURCE)
     }
     async function ping(gameChannel: GameChannel) {
