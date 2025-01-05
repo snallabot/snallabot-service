@@ -45,13 +45,13 @@ export function formatScoreboard(week: number, seasonIndex: number, games: Madde
         } else {
             if (game.awayScore > game.homeScore) {
                 return `**${awayTeam} ${game.awayScore
-                    }** vs ${game.homeScore} ${homeTeam} FINAL${simMessage}`
+                    }** vs ${game.homeScore} ${homeTeam}${simMessage}`
             } else if (game.homeScore > game.awayScore) {
                 return `${awayTeam} ${game.awayScore
-                    } vs **${game.homeScore} ${homeTeam}** FINAL${simMessage}`
+                    } vs **${game.homeScore} ${homeTeam}**${simMessage}`
             }
             return `${awayTeam} ${game.awayScore} vs ${game.homeScore
-                } ${homeTeam} FINAL${simMessage}`
+                } ${homeTeam}${simMessage}`
         }
     }).join("\n")
 
