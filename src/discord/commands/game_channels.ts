@@ -239,7 +239,7 @@ async function clearGameChannels(client: DiscordClient, db: Firestore, token: st
         }
         await client.editOriginalInteraction(token, { content: `Game Channels Cleared` })
     } catch (e) {
-        await client.editOriginalInteraction(token, { content: `Game Channels could not be cleared properly, Error: ${e}` })
+        await client.editOriginalInteraction(token, { content: `Game Channels could not be cleared properly, if all game channels are deleted, this is safe to ignore Error: ${e}` })
     }
 }
 
