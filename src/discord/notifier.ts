@@ -1,6 +1,6 @@
 import EventDB, { EventDelivery } from "../db/events_db"
 import { DiscordClient, SNALLABOT_TEST_USER, SNALLABOT_USER, formatTeamMessageName, createWeekKey, SnallabotReactions } from "./discord_utils"
-import { ChannelId, DiscordIdType, GameChannel, GameChannelState, LeagueSettings, MessageId, UserId } from "./settings_db"
+import { ChannelId, DiscordIdType, GameChannel, GameChannelState, LeagueSettings, MessageId, TeamAssignments, UserId } from "./settings_db"
 import createLogger from "./logging"
 import MaddenDB from "../db/madden_db"
 import { APIGuildMember, APIUser } from "discord-api-types/v10"
@@ -65,7 +65,19 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
         } else {
             await client.requestDiscord(`channels/${gameChannel.channel.id}`, { method: "DELETE" })
         }
-        const event = { key: guildId, event_type: "CONFIRMED_SIM", result: result, scheduleId: gameChannel.scheduleId, requestedUsers: requestedUsers, confirmedUsers: confirmedUsers, week: week, seasonIndex: season }
+        const assignments = settings.commands.teams?.assignments || {} as TeamAssignments
+        const leagueId = settings.commands.madden_league?.league_id
+        if (!leagueId) {
+            return
+        }
+        const teams = await MaddenDB.getLatestTeams(leagueId)
+        const latestAssignents = teams.getLatestTeamAssignments(assignments)
+        const game = await MaddenDB.getGameForSchedule(leagueId, gameChannel.scheduleId)
+        const awayTeamId = teams.getTeamForId(game.awayTeamId).teamId
+        const homeTeamId = teams.getTeamForId(game.homeTeamId).teamId
+        const awayUser = latestAssignents[awayTeamId]?.discord_user
+        const homeUser = latestAssignents[homeTeamId]?.discord_user
+        const event = { key: guildId, event_type: "CONFIRMED_SIM", result: result, scheduleId: gameChannel.scheduleId, requestedUsers: requestedUsers, confirmedUsers: confirmedUsers, week: week, seasonIndex: season, homeUser: homeUser, awayUser: awayUser }
         await EventDB.appendEvents([event], EventDelivery.EVENT_SOURCE)
     }
     async function ping(gameChannel: GameChannel) {

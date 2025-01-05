@@ -25,7 +25,7 @@ function createSimMessage(sim: ConfirmedSim): string {
     } else if (sim.result === SimResult.FORCE_WIN_AWAY) {
         return "Force Win Away"
     } else if (sim.result === SimResult.FORCE_WIN_HOME) {
-        return "Force Win Honme"
+        return "Force Win Home"
     }
     throw new Error("Should not have gotten here! from createSimMessage")
 }

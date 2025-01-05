@@ -3,6 +3,7 @@ import { Timestamp, Filter } from "firebase-admin/firestore"
 import db from "./firebase"
 import { EventNotifier, SnallabotEvent, StoredEvent } from "./events_db"
 import { MaddenGame, Team } from "../export/madden_league_types"
+import { TeamAssignment, TeamAssignments } from "../discord/settings_db"
 
 type HistoryUpdate<ValueType> = { oldValue: ValueType, newValue: ValueType }
 type History = { [key: string]: HistoryUpdate<any> }
@@ -59,7 +60,8 @@ function createEventHistoryUpdate(newEvent: Record<string, any>, oldEvent: Recor
 
 export interface TeamList {
     getTeamForId(id: number): Team,
-    getLatestTeams(): Team[]
+    getLatestTeams(): Team[],
+    getLatestTeamAssignments(assignments: TeamAssignments): TeamAssignments
 }
 
 function createTeamList(teams: StoredEvent<Team>[]): TeamList {
@@ -95,7 +97,14 @@ function createTeamList(teams: StoredEvent<Team>[]): TeamList {
             }
             throw new Error("Team not found for id " + id)
         },
-        getLatestTeams: function(): Team[] { return latestTeams }
+        getLatestTeams: function(): Team[] { return latestTeams },
+        getLatestTeamAssignments: function(assignments: TeamAssignments): TeamAssignments {
+            return Object.fromEntries(Object.entries(assignments).map(entry => {
+                const [teamId, assignment] = entry
+                const latestTeam = this.getTeamForId(Number(teamId))
+                return [latestTeam.teamId + "", assignment]
+            }))
+        }
     }
 }
 
