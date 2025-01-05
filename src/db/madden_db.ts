@@ -138,7 +138,7 @@ const MaddenDB: MaddenDB = {
                 console.log("errored, slept and retrying")
             }
         }
-        await Promise.all(Object.entries(Object.groupBy(events, e => e.event_type)).map(async entry => {
+        Object.entries(Object.groupBy(events, e => e.event_type)).map(async entry => {
             const [eventType, specificTypeEvents] = entry
             if (specificTypeEvents) {
                 const eventTypeNotifiers = notifiers[eventType]
@@ -148,7 +148,7 @@ const MaddenDB: MaddenDB = {
                     }))
                 }
             }
-        }))
+        })
     },
     on<Event>(event_type: string, notifier: EventNotifier<Event>) {
         const currentNotifiers = notifiers[event_type] || []
