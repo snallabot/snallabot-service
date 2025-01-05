@@ -83,7 +83,10 @@ function createTeamList(teams: StoredEvent<Team>[]): TeamList {
         })
         if (unMatched.length > 0) {
             // lets just assume the unmatched are normal teams
-            unMatched.forEach(unmatched => latestTeamMap.set(unmatched.teamId, unmatched))
+            unMatched.forEach(unmatched => {
+                latestTeams.push(unmatched)
+                latestTeamMap.set(unmatched.teamId, unmatched)
+            })
         }
     })
     console.log(latestTeams.map(t => t.displayName))
