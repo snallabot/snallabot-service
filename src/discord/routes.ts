@@ -14,6 +14,8 @@ import { fetchTeamsMessage } from "./commands/teams"
 import createNotifier from "./notifier"
 import MaddenClient from "../db/madden_db"
 import { formatScoreboard } from "./commands/game_channels"
+import MaddenDB from "../db/madden_db"
+import { MaddenGame } from "../export/madden_league_types"
 
 const router = new Router({ prefix: "/discord/webhook" })
 
@@ -86,29 +88,45 @@ EventDB.on<MaddenBroadcastEvent>("MADDEN_BROADCAST", async (events) => {
     })
 })
 
+async function updateScoreboard(leagueSettings: LeagueSettings, guildId: string, seasonIndex: number, week: number) {
+    const leagueId = leagueSettings.commands.madden_league?.league_id
+    if (!leagueId) {
+        return
+    }
+    const weekState = leagueSettings.commands.game_channel?.weekly_states?.[createWeekKey(seasonIndex, week)]
+    const scoreboard_channel = leagueSettings.commands.game_channel?.scoreboard_channel
+    if (!scoreboard_channel) {
+        return
+    }
+    const scoreboard = weekState?.scoreboard
+    if (!scoreboard) {
+        return
+    }
+    const teams = await MaddenClient.getLatestTeams(leagueId)
+    const games = await MaddenClient.getWeekScheduleForSeason(leagueId, week, seasonIndex)
+    const sims = await EventDB.queryEvents<ConfirmedSim>(guildId, "CONFIRMED_SIM", new Date(0), { week: week, seasonIndex: seasonIndex }, 30)
+    const message = formatScoreboard(week, seasonIndex, games, teams, sims)
+    prodClient.requestDiscord(`channels/${scoreboard_channel.id}/messages/${scoreboard.id}`, { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
+}
+
 EventDB.on<ConfirmedSim>("CONFIRMED_SIM", async (events) => {
     await Promise.all(events.map(async sim => {
         const guild_id = sim.key
         const doc = await db.collection("league_settings").doc(guild_id).get()
         const leagueSettings = doc.exists ? doc.data() as LeagueSettings : {} as LeagueSettings
-        const leagueId = leagueSettings.commands.madden_league?.league_id
-        if (!leagueId) {
-            return
-        }
-        const weekState = leagueSettings.commands.game_channel?.weekly_states?.[createWeekKey(sim.seasonIndex, sim.week)]
-        const scoreboard_channel = leagueSettings.commands.game_channel?.scoreboard_channel
-        if (!scoreboard_channel) {
-            return
-        }
-        const scoreboard = weekState?.scoreboard
-        if (!scoreboard) {
-            return
-        }
-        const teams = await MaddenClient.getLatestTeams(leagueId)
-        const games = await MaddenClient.getWeekScheduleForSeason(leagueId, sim.week, sim.seasonIndex)
-        const sims = await EventDB.queryEvents<ConfirmedSim>(guild_id, "CONFIRMED_SIM", new Date(0), { week: sim.week, seasonIndex: sim.seasonIndex }, 30)
-        const message = formatScoreboard(sim.week, sim.seasonIndex, games, teams, sims)
-        prodClient.requestDiscord(`channels/${scoreboard_channel.id}/messages/${scoreboard.id}`, { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
+        await updateScoreboard(leagueSettings, guild_id, sim.seasonIndex, sim.week)
+    }))
+})
+
+MaddenDB.on<MaddenGame>("MADDEN_SCHEDULE", async (events) => {
+    await Promise.all(events.map(async game => {
+        const leagueId = game.key
+        const querySnapshot = await db.collection("league_settings").where("commands.madden_league.league_id", "==", leagueId).get()
+        await Promise.all(querySnapshot.docs.map(async leagueSettingsDoc => {
+            const settings = leagueSettingsDoc.data() as LeagueSettings
+            const guild_id = leagueSettingsDoc.id
+            await updateScoreboard(settings, guild_id, game.seasonIndex, game.weekIndex)
+        }))
     }))
 })
 
