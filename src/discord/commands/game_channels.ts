@@ -31,19 +31,15 @@ function createSimMessage(sim: ConfirmedSim): string {
 }
 
 
-export function formatScoreboard(week: number, seasonIndex: number, games: MaddenGame[], teams: TeamList, assignments: TeamAssignments, sims: ConfirmedSim[]) {
+export function formatScoreboard(week: number, seasonIndex: number, games: MaddenGame[], teams: TeamList, sims: ConfirmedSim[]) {
     const gameToSim = new Map<number, ConfirmedSim>()
     sims.forEach(sim => gameToSim.set(sim.scheduleId, sim))
     const scoreboardGames = games.sort((g1, g2) => g1.scheduleId - g2.scheduleId).map(game => {
         const simMessage = gameToSim.has(game.scheduleId) ? ` (${createSimMessage(gameToSim.get(game.scheduleId)!)})` : ""
         const awayTeamName = teams.getTeamForId(game.awayTeamId)?.displayName
         const homeTeamName = teams.getTeamForId(game.homeTeamId)?.displayName
-        const awayDiscordUser = assignments?.[game.awayTeamId]?.discord_user?.id
-        const homeDiscordUser = assignments?.[game.homeTeamId]?.discord_user?.id
-        const awayUser = (awayDiscordUser ? `<@${awayDiscordUser}>` : "") || teams.getTeamForId(game.awayTeamId)?.userName || "CPU"
-        const homeUser = (homeDiscordUser ? `<@${homeDiscordUser}>` : "") || teams.getTeamForId(game.homeTeamId)?.userName || "CPU"
-        const awayTeam = `${awayUser} ${awayTeamName}`
-        const homeTeam = `${homeUser} ${homeTeamName}`
+        const awayTeam = `${awayTeamName}`
+        const homeTeam = `${homeTeamName}`
         if (game.awayScore == 0 && game.homeScore == 0) {
             return `${awayTeam} vs ${homeTeam}${simMessage}`
         } else {
@@ -165,7 +161,7 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
 - <a:snallabot_waiting:1288664321781399584> Logging`})
 
         const season = weekSchedule[0].seasonIndex
-        const scoreboardMessage = formatScoreboard(week, season, weekSchedule, teams, assignments, [])
+        const scoreboardMessage = formatScoreboard(week, season, weekSchedule, teams, [])
         const res = await client.requestDiscord(`channels/${settings.commands.game_channel?.scoreboard_channel.id}/messages`, { method: "POST", body: { content: scoreboardMessage, allowed_mentions: { parse: [] } } })
         const message = await res.json() as APIMessage
         const weeklyState: WeekState = { week: week, seasonIndex: season, scoreboard: { id: message.id, id_type: DiscordIdType.MESSAGE }, channel_states: channelsMap }

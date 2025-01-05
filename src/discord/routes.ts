@@ -106,9 +106,8 @@ EventDB.on<ConfirmedSim>("CONFIRMED_SIM", async (events) => {
         }
         const teams = await MaddenClient.getLatestTeams(leagueId)
         const games = await MaddenClient.getWeekScheduleForSeason(leagueId, sim.week, sim.seasonIndex)
-        const assignments = leagueSettings.commands.teams?.assignments || {}
         const sims = await EventDB.queryEvents<ConfirmedSim>(guild_id, "CONFIRMED_SIM", new Date(0), { week: sim.week, seasonIndex: sim.seasonIndex }, 30)
-        const message = formatScoreboard(sim.week, sim.seasonIndex, games, teams, assignments, sims)
+        const message = formatScoreboard(sim.week, sim.seasonIndex, games, teams, sims)
         prodClient.requestDiscord(`channels/${scoreboard_channel.id}/messages/${scoreboard.id}`, { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
     }))
 })
