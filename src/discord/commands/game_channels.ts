@@ -224,7 +224,7 @@ async function clearGameChannels(client: DiscordClient, db: Firestore, token: st
         })
         await Promise.all(Object.keys(weekStates).map(async weekKey => {
             db.collection("league_settings").doc(guild_id).update({
-                [`commands.game_channel.weekly_states.${weekKey}.channel_states`]: FieldValue.delete()
+                [`commands.game_channel.weekly_states.${weekKey}.channel_states`]: []
             })
         }))
         if (settings.commands.logger?.channel) {
@@ -418,12 +418,6 @@ export default {
                     name: "clear",
                     description: "clear all game channels",
                     options: [
-                        {
-                            type: ApplicationCommandOptionType.Integer,
-                            name: "week",
-                            description: "the week number to clear",
-                            required: false,
-                        }
                     ]
                 },
                 {
