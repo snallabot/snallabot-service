@@ -119,17 +119,18 @@ EventDB.on<ConfirmedSim>("CONFIRMED_SIM", async (events) => {
 })
 
 MaddenDB.on<MaddenGame>("MADDEN_SCHEDULE", async (events) => {
-    await Promise.all(events.map(async game => {
+    console.log(events.length)
+    const game = events[0]
+    if (game) {
         const leagueId = game.key
         const querySnapshot = await db.collection("league_settings").where("commands.madden_league.league_id", "==", leagueId).get()
         console.log(`found ${querySnapshot.docs.length} docs with leagueId ${leagueId}`)
         await Promise.all(querySnapshot.docs.map(async leagueSettingsDoc => {
             const settings = leagueSettingsDoc.data() as LeagueSettings
             const guild_id = leagueSettingsDoc.id
-            console.log(game)
             await updateScoreboard(settings, guild_id, game.seasonIndex, game.weekIndex + 1)
         }))
-    }))
+    }
 })
 
 const discordClient = new Client({
