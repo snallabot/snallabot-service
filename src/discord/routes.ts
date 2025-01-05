@@ -121,7 +121,7 @@ EventDB.on<ConfirmedSim>("CONFIRMED_SIM", async (events) => {
 MaddenDB.on<MaddenGame>("MADDEN_SCHEDULE", async (events) => {
     await Promise.all(events.map(async game => {
         const leagueId = game.key
-        const querySnapshot = await db.collection("league_settings").where("commands.madden_league.league_id", "==", Number(leagueId)).get()
+        const querySnapshot = await db.collection("league_settings").where("commands.madden_league.league_id", "==", leagueId).get()
         console.log(`found ${querySnapshot.docs.length} docs with leagueId ${leagueId}`)
         await Promise.all(querySnapshot.docs.map(async leagueSettingsDoc => {
             const settings = leagueSettingsDoc.data() as LeagueSettings
