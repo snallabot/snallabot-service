@@ -126,6 +126,7 @@ MaddenDB.on<MaddenGame>("MADDEN_SCHEDULE", async (events) => {
         await Promise.all(querySnapshot.docs.map(async leagueSettingsDoc => {
             const settings = leagueSettingsDoc.data() as LeagueSettings
             const guild_id = leagueSettingsDoc.id
+            console.log(game)
             await updateScoreboard(settings, guild_id, game.seasonIndex, game.weekIndex)
         }))
     }))
