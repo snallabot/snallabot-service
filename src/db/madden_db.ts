@@ -82,12 +82,8 @@ function createTeamList(teams: StoredEvent<Team>[]): TeamList {
             matchedTeams.forEach(team => latestTeamMap.set(team.teamId, latestTeam))
         })
         if (unMatched.length > 0) {
-            // lets just assume the unmatched are together and see what happens
-            const latestUnmatched = unMatched.reduce((latest, team) => (team.timestamp > latest.timestamp ? team : latest));
-            latestTeams.push(latestUnmatched)
-            unMatched.forEach(unmatched => {
-                latestTeamMap.set(unmatched.teamId, latestUnmatched)
-            })
+            // lets just assume the unmatched are normal teams
+            unMatched.forEach(unmatched => latestTeamMap.set(unmatched.teamId, unmatched))
         }
     })
     console.log(latestTeams.map(t => t.displayName))
