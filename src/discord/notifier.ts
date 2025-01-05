@@ -130,6 +130,18 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
         update: async function(currentState: GameChannel, season: number, week: number) {
             const channelId = currentState.channel
             const messageId = currentState.message
+            try {
+                await client.requestDiscord(`channels/${channelId.id}`, {
+                    method: "GET",
+                })
+                await client.requestDiscord(`channels/${channelId.id}/messages/${messageId.id}`, {
+                    method: "GET",
+                })
+            } catch (e) {
+                console.warn("could not update channel or message " + e)
+                return
+            }
+
             const weekKey = createWeekKey(season, week)
             const ggUsers = await getReactedUsers(channelId, messageId, SnallabotReactions.GG)
             const scheduledUsers = await getReactedUsers(channelId, messageId, SnallabotReactions.SCHEDULE)

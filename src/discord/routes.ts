@@ -169,8 +169,12 @@ discordClient.on("guildMemberRemove", async (user, guild) => {
             }
         }))
         const message = await fetchTeamsMessage(leagueSettings)
-        await prodClient.requestDiscord(`channels/${leagueSettings.commands.teams.channel.id}/messages/${leagueSettings.commands.teams.messageId.id}`,
-            { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
+        try {
+            await prodClient.requestDiscord(`channels/${leagueSettings.commands.teams.channel.id}/messages/${leagueSettings.commands.teams.messageId.id}`,
+                { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
+        } catch (e) {
+            console.log("could not update team message " + e)
+        }
     }
 });
 
@@ -214,8 +218,12 @@ discordClient.on("guildMemberUpdate", async (member, old) => {
             }
         }))
         const message = await fetchTeamsMessage(leagueSettings)
-        await prodClient.requestDiscord(`channels/${leagueSettings.commands.teams.channel.id}/messages/${leagueSettings.commands.teams.messageId.id}`,
-            { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
+        try {
+            await prodClient.requestDiscord(`channels/${leagueSettings.commands.teams.channel.id}/messages/${leagueSettings.commands.teams.messageId.id}`,
+                { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
+        } catch (e) {
+            console.log("could not update team message " + e)
+        }
     }
 });
 
@@ -255,7 +263,12 @@ discordClient.on("messageReactionAdd", async (msg, reactor, reaction) => {
                 // wait for users to confirm/unconfirm
                 const jitter = getRandomInt(10)
                 await new Promise((r) => setTimeout(r, 5000 + jitter * 1000));
-                await notifier.update(channelState, weeklyState.seasonIndex, weeklyState.week)
+                try {
+
+                    await notifier.update(channelState, weeklyState.seasonIndex, weeklyState.week)
+                } catch (e) {
+                    console.log("could not update notifier " + e)
+                }
             }
         }))
     }))

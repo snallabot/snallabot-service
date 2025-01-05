@@ -144,7 +144,11 @@ const MaddenDB: MaddenDB = {
                 const eventTypeNotifiers = notifiers[eventType]
                 if (eventTypeNotifiers) {
                     await Promise.all(eventTypeNotifiers.map(async notifier => {
-                        await notifier(specificTypeEvents)
+                        try {
+                            await notifier(specificTypeEvents)
+                        } catch (e) {
+                            console.log("could not send event to notifier " + e)
+                        }
                     }))
                 }
             }

@@ -54,14 +54,18 @@ const EventDB: EventDB = {
             })
             await batch.commit()
         }
-        Object.entries(Object.groupBy(events, e => e.event_type)).map(entry => {
+        Object.entries(Object.groupBy(events, e => e.event_type)).map(async entry => {
             const [eventType, specificTypeEvents] = entry
             if (specificTypeEvents) {
                 const eventTypeNotifiers = notifiers[eventType]
                 if (eventTypeNotifiers) {
-                    eventTypeNotifiers.forEach(notifier => {
-                        notifier(specificTypeEvents)
-                    })
+                    await Promise.all(eventTypeNotifiers.map(async notifier => {
+                        try {
+                            await notifier(specificTypeEvents)
+                        } catch (e) {
+                            console.log("could not send events to notifier " + e)
+                        }
+                    }))
                 }
             }
         })
