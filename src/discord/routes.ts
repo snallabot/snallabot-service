@@ -107,7 +107,7 @@ async function updateScoreboard(leagueSettings: LeagueSettings, guildId: string,
     const sims = await EventDB.queryEvents<ConfirmedSim>(guildId, "CONFIRMED_SIM", new Date(0), { week: week, seasonIndex: seasonIndex }, 30)
     const message = formatScoreboard(week, seasonIndex, games, teams, sims)
     try {
-        prodClient.requestDiscord(`channels/${scoreboard_channel.id}/messages/${scoreboard.id}`, { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
+        await prodClient.requestDiscord(`channels/${scoreboard_channel.id}/messages/${scoreboard.id}`, { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
     } catch (e) {
         console.warn(`could not update scoreboard ${e}`)
     }
