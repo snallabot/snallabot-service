@@ -89,6 +89,7 @@ function createTeamList(teams: StoredEvent<Team>[]): TeamList {
             })
         }
     })
+    console.log(latestTeams.map(t => t.displayName))
     return {
         getTeamForId: function(id: number): Team {
             const team = latestTeamMap.get(id)
