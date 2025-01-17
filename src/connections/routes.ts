@@ -12,11 +12,11 @@ async function setLeague(guild: string, league: string) {
 router.post("/discord/:guild/madden/:league", async (ctx) => {
   const { guild, league } = ctx.params
   await setLeague(guild, league)
+  ctx.status = 200
 }).all("/discord/:guild/:platform/:league/(.*)", async (ctx) => {
   const { guild, league } = ctx.params
   await setLeague(guild, league)
   const redirectPath = ctx.path.replace(`/connect/discord/${guild}`, '')
-  console.log(redirectPath)
   ctx.status = 308
   ctx.redirect(redirectPath)
 })
