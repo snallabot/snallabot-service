@@ -126,8 +126,7 @@ MaddenDB.on<MaddenGame>("MADDEN_SCHEDULE", async (events) => {
   Object.entries(Object.groupBy(events, e => e.key)).map(async entry => {
     const [leagueId, groupedGames] = entry
     const games = groupedGames || []
-    // TODO: check what status is when game is finished
-    const finishedGames = games.filter(g => g.status === 1)
+    const finishedGames = games.filter(g => g.status !== 1)
     const finishedGame = finishedGames[0]
     const querySnapshot = await db.collection("league_settings").where("commands.madden_league.league_id", "==", leagueId).get()
     await Promise.all(querySnapshot.docs.map(async leagueSettingsDoc => {
@@ -138,8 +137,11 @@ MaddenDB.on<MaddenGame>("MADDEN_SCHEDULE", async (events) => {
         const week = finishedGame.weekIndex + 1
         await updateScoreboard(settings, guild_id, season, week)
         const notifier = createNotifier(prodClient, guild_id, settings)
+        const gameIds = new Set(finishedGames.map(g => g.scheduleId))
         await Promise.all(Object.values(settings.commands.game_channel?.weekly_states?.[createWeekKey(season, week)]?.channel_states || {}).map(async channelState => {
-          await notifier.deleteGameChannel(channelState, week, season, [{ id: SNALLABOT_USER, id_type: DiscordIdType.USER }])
+          if (gameIds.has(channelState.scheduleId)) {
+            await notifier.deleteGameChannel(channelState, week, season, [{ id: SNALLABOT_USER, id_type: DiscordIdType.USER }])
+          }
         }))
       }
     }))
