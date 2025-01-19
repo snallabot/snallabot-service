@@ -98,10 +98,10 @@ export type Standing = {
 }
 
 export function formatRecord(standing: Standing) {
-  if (standing.totalTies > 0) {
-    return `${standing.totalWins} - ${standing.totalLosses}`
+  if (standing.totalTies === 0) {
+    return `${standing.totalWins}-${standing.totalLosses}`
   }
-  return `${standing.totalWins} - ${standing.totalLosses} - ${standing.totalTies}`
+  return `${standing.totalWins}-${standing.totalLosses}-${standing.totalTies}`
 }
 
 export type StandingExport = {
