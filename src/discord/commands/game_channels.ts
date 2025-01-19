@@ -120,14 +120,16 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
 - <a:snallabot_waiting:1288664321781399584> Creating Scoreboard
 - <a:snallabot_waiting:1288664321781399584> Exporting
 - <a:snallabot_waiting:1288664321781399584> Logging`})
-    const assignments = settings.commands.teams?.assignments || {}
+    const assignments = teams.getLatestTeamAssignments(settings.commands.teams?.assignments || {})
     const gameChannelsWithMessage = await Promise.all(gameChannels.map(async gameChannel => {
       const channel = gameChannel.channel.id
       const game = gameChannel.game
-      const awayUser = formatTeamMessageName(assignments?.[game.awayTeamId]?.discord_user?.id, teams.getTeamForId(game.awayTeamId)?.userName)
+      const awayTeamId = teams.getTeamForId(game.awayTeamId).teamId
+      const homeTeamId = teams.getTeamForId(game.homeTeamId).teamId
+      const awayUser = formatTeamMessageName(assignments?.[awayTeamId]?.discord_user?.id, teams.getTeamForId(game.awayTeamId)?.userName)
       const homeUser = formatTeamMessageName(assignments?.[game.homeTeamId]?.discord_user?.id, teams.getTeamForId(game.homeTeamId)?.userName)
-      const awayTeamStanding = await MaddenClient.getStandingForTeam(leagueId, game.awayTeamId)
-      const homeTeamStanding = await MaddenClient.getStandingForTeam(leagueId, game.homeTeamId)
+      const awayTeamStanding = await MaddenClient.getStandingForTeam(leagueId, awayTeamId)
+      const homeTeamStanding = await MaddenClient.getStandingForTeam(leagueId, homeTeamId)
       const usersMessage = `${awayUser} (${formatRecord(awayTeamStanding)}) at ${homeUser} (${formatRecord(homeTeamStanding)})`
       const res = await client.requestDiscord(`channels/${channel}/messages`, { method: "POST", body: { content: notifierMessage(usersMessage) } })
       const message = await res.json() as APIMessage
