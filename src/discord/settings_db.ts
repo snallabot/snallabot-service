@@ -1,10 +1,10 @@
 export enum DiscordIdType {
-    ROLE = "ROLE",
-    CHANNEL = "CHANNEL",
-    CATEGORY = "CATEGORY",
-    USER = "USER",
-    GUILD = "GUILD",
-    MESSAGE = "MESSAGE"
+  ROLE = "ROLE",
+  CHANNEL = "CHANNEL",
+  CATEGORY = "CATEGORY",
+  USER = "USER",
+  GUILD = "GUILD",
+  MESSAGE = "MESSAGE"
 }
 type DiscordId = { id: string, id_type: DiscordIdType }
 export type ChannelId = { id: string, id_type: DiscordIdType.CHANNEL }
@@ -17,8 +17,8 @@ export type WaitlistConfiguration = { current_waitlist: UserId[] }
 export type MaddenLeagueConfiguration = { league_id: string }
 export type BroadcastConfiguration = { role?: RoleId, channel: ChannelId, title_keyword: string }
 export enum GameChannelState {
-    CREATED = "CREATED",
-    FORCE_WIN_REQUESTED = "FORCE_WIN_REQUESTED"
+  CREATED = "CREATED",
+  FORCE_WIN_REQUESTED = "FORCE_WIN_REQUESTED"
 }
 export type GameChannel = { channel: ChannelId, message: MessageId, scheduleId: number, state: GameChannelState, notifiedTime: number }
 export type ChannelIdKey = string
@@ -27,7 +27,7 @@ type SeasonWeekIndex = string
 export type GameChannelConfiguration = { admin: RoleId, default_category: CategoryId, scoreboard_channel: ChannelId, wait_ping: number, weekly_states: { [key: SeasonWeekIndex]: WeekState } }
 
 export type UserStreamCount = { user: UserId, count: number }
-export type StreamCountConfiguration = { channel: ChannelId, message: MessageId, counts: Array<UserStreamCount> }
+export type StreamCountConfiguration = { channel: ChannelId, message: MessageId, counts: UserStreamCount[] }
 
 export type TeamAssignment = { discord_user?: UserId, discord_role?: RoleId }
 export type TeamAssignments = { [key: string]: TeamAssignment }
@@ -35,13 +35,13 @@ export type TeamConfiguration = { channel: ChannelId, messageId: MessageId, useR
 
 
 export type LeagueSettings = {
-    commands: {
-        logger?: LoggerConfiguration,
-        game_channel?: GameChannelConfiguration,
-        stream_count?: StreamCountConfiguration,
-        broadcast?: BroadcastConfiguration,
-        teams?: TeamConfiguration,
-        waitlist?: WaitlistConfiguration,
-        madden_league?: MaddenLeagueConfiguration
-    }
+  commands: {
+    logger?: LoggerConfiguration,
+    game_channel?: GameChannelConfiguration,
+    stream_count?: StreamCountConfiguration,
+    broadcast?: BroadcastConfiguration,
+    teams?: TeamConfiguration,
+    waitlist?: WaitlistConfiguration,
+    madden_league?: MaddenLeagueConfiguration
+  }
 }
