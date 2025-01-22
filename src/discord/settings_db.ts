@@ -1,10 +1,10 @@
 export enum DiscordIdType {
-    ROLE = "ROLE",
-    CHANNEL = "CHANNEL",
-    CATEGORY = "CATEGORY",
-    USER = "USER",
-    GUILD = "GUILD",
-    MESSAGE = "MESSAGE"
+  ROLE = "ROLE",
+  CHANNEL = "CHANNEL",
+  CATEGORY = "CATEGORY",
+  USER = "USER",
+  GUILD = "GUILD",
+  MESSAGE = "MESSAGE"
 }
 type DiscordId = { id: string, id_type: DiscordIdType }
 export type ChannelId = { id: string, id_type: DiscordIdType.CHANNEL }
@@ -35,13 +35,13 @@ export type TeamConfiguration = { channel: ChannelId, messageId: MessageId, useR
 
 
 export type LeagueSettings = {
-    commands: {
-        logger?: LoggerConfiguration,
-        game_channel?: GameChannelConfiguration,
-        stream_count?: StreamCountConfiguration,
-        broadcast?: BroadcastConfiguration,
-        teams?: TeamConfiguration,
-        waitlist?: WaitlistConfiguration,
-        madden_league?: MaddenLeagueConfiguration
-    }
+  commands: {
+    logger?: LoggerConfiguration,
+    game_channel?: GameChannelConfiguration,
+    stream_count?: StreamCountConfiguration,
+    broadcast?: BroadcastConfiguration,
+    teams?: TeamConfiguration,
+    waitlist?: WaitlistConfiguration,
+    madden_league?: MaddenLeagueConfiguration
+  }
 }
