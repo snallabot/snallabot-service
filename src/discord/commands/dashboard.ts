@@ -5,15 +5,15 @@ import { ApplicationCommandType, RESTPostAPIApplicationCommandsJSONBody } from "
 import { Firestore } from "firebase-admin/firestore"
 
 export default {
-    async handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext) {
-        const { guild_id } = command
-        respond(ctx, createMessageResponse(`Snallabot Dashboard: https://nallapareddy.com/snallabot/?league=${guild_id}`))
-    },
-    commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
-        return {
-            name: "dashboard",
-            description: "snallabot dashboard link",
-            type: ApplicationCommandType.ChatInput,
-        }
+  async handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext) {
+    const { guild_id } = command
+    respond(ctx, createMessageResponse(`Snallabot Dashboard: https://nallapareddy.com/snallabot/?league=${guild_id}`))
+  },
+  commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
+    return {
+      name: "dashboard",
+      description: "snallabot dashboard link",
+      type: ApplicationCommandType.ChatInput,
     }
+  }
 } as CommandHandler

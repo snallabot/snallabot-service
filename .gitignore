@@ -4,6 +4,7 @@ deploy.sh
 deploy-prod.sh
 sa.json
 migration.sh
+pinger_test.sh
 
 # Logs
 logs
