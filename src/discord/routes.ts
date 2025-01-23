@@ -66,6 +66,7 @@ router.post("/slashCommand", async (ctx) => {
 }).post("/commandsHandler", async (ctx) => {
   const req = ctx.request.body as CommandsHandlerRequest
   await commandsInstaller(prodClient, req.commandNames || [], req.mode, req.guildId)
+  ctx.status = 200
 })
 EventDB.on<MaddenBroadcastEvent>("MADDEN_BROADCAST", async (events) => {
   events.map(async broadcastEvent => {

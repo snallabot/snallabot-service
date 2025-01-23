@@ -46,18 +46,18 @@ function formatTeamMessage(teams: Team[], teamAssignments: TeamAssignments): str
     })
     .join("\n")
 
-    const openTeams = teams.filter(t => !teamAssignments[`${t.teamId}`]).map(t => t.displayName).join(", ")
-    const openTeamsMessage = `OPEN TEAMS: ${openTeams}`
-    return `${header}\n${teamsMessage}\n\n${openTeamsMessage}`
+  const openTeams = teams.filter(t => !teamAssignments[`${t.teamId}`]).map(t => t.displayName).join(", ")
+  const openTeamsMessage = `OPEN TEAMS: ${openTeams}`
+  return `${header}\n${teamsMessage}\n\n${openTeamsMessage}`
 }
 
 export async function fetchTeamsMessage(settings: LeagueSettings): Promise<string> {
-    if (settings?.commands?.madden_league?.league_id) {
-        const teams = await MaddenClient.getLatestTeams(settings.commands.madden_league.league_id)
-        return createTeamsMessage(settings, teams.getLatestTeams())
-    } else {
-        return "# Teams\nNo Madden League connected. Connect Snallabot to your league and reconfigure"
-    }
+  if (settings?.commands?.madden_league?.league_id) {
+    const teams = await MaddenClient.getLatestTeams(settings.commands.madden_league.league_id)
+    return createTeamsMessage(settings, teams.getLatestTeams())
+  } else {
+    return "# Teams\nNo Madden League connected. Connect Snallabot to your league and reconfigure"
+  }
 }
 
 function createTeamsMessage(settings: LeagueSettings, teams: Team[]): string {
