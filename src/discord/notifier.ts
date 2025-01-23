@@ -124,6 +124,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
   }
   return {
     deleteGameChannel: async function(currentState: GameChannel, season: number, week: number, originators: UserId[]) {
+      console.log("DELETING " + currentState.channel.id)
       const channelId = currentState.channel
       const weekKey = createWeekKey(season, week)
       await db.collection("league_settings").doc(guildId).update({
