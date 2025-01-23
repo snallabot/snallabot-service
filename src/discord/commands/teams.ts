@@ -45,7 +45,7 @@ function formatTeamMessage(teams: Team[], teamAssignments: TeamAssignments): str
     })
     .join("\n")
 
-  const openTeams = teams.filter(t => !teamAssignments[`${t.teamId}`]).map(t => t.displayName).join(", ")
+  const openTeams = teams.filter(t => !teamAssignments?.[`${t.teamId}`]?.discord_user?.id).map(t => t.displayName).join(", ")
   const openTeamsMessage = `OPEN TEAMS: ${openTeams}`
   return `${header}\n${teamsMessage}\n\n${openTeamsMessage}`
 }
