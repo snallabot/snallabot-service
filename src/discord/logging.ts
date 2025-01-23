@@ -29,12 +29,12 @@ async function getMessages(channelId: ChannelId, client: DiscordClient): Promise
 }
 
 interface Logger {
-  logUsedCommand(command: string, author: string, client: DiscordClient): Promise<void>,
-  logChannels(channels: ChannelId[], client: DiscordClient): Promise<void>
+  logUsedCommand(command: string, author: UserId, client: DiscordClient): Promise<void>,
+  logChannels(channels: ChannelId[], loggedAuthors: UserId[], client: DiscordClient): Promise<void>
 }
 
 function joinUsers(users: UserId[]) {
-    return users.map((uId) => `<@${uId.id}>`).join("")
+  return users.map((uId) => `<@${uId.id}>`).join("")
 }
 
 export default (config: LoggerConfiguration) => ({
@@ -50,7 +50,7 @@ export default (config: LoggerConfiguration) => ({
       },
     })
   },
-  logChannels: async (channels: ChannelId[], client: DiscordClient) => {
+  logChannels: async (channels: ChannelId[], loggedAuthors: UserId[], client: DiscordClient) => {
     const loggerChannels = channels.map(async channel => {
       const messages = await getMessages(channel, client)
       const logMessages = messages.map(m => ({ content: m.content, user: m.author.id, time: m.timestamp }))
@@ -83,59 +83,24 @@ export default (config: LoggerConfiguration) => ({
                 parse: [],
               },
             },
+          })
+          return Promise.resolve()
+        }
+        )
+      }, Promise.resolve())
+      messagePromise.then(async (_) => {
+        await client.requestDiscord(`channels/${threadId}/messages`, {
+          method: "POST",
+          body: {
+            content: `cleared by ${joinUsers(loggedAuthors)}`,
+            allowed_mentions: {
+              parse: [],
+            },
+          },
         })
-    },
-    logChannels: async (channels: ChannelId[], loggedAuthors: UserId[], client: DiscordClient) => {
-        const loggerChannels = channels.map(async channel => {
-            const messages = await getMessages(channel, client)
-            const logMessages = messages.map(m => ({ content: m.content, user: m.author.id, time: m.timestamp }))
-            const channelInfoRes = await client.requestDiscord(`channels/${channel.id}`, {
-                method: "GET",
-            })
-            const channelInfo = (await channelInfoRes.json()) as APIChannel
-            const channelName = channelInfo.name
-            await client.requestDiscord(`channels/${channel.id}`, {
-                method: "DELETE",
-            }) // delete channel and then start logging
-            const loggerChannel = config.channel.id
-            const res = await client.requestDiscord(`channels/${loggerChannel}/threads`, {
-                method: "POST",
-                body: {
-                    name: `${channelName} channel log`,
-                    auto_archive_duration: 60,
-                    type: 11,
-                },
-            })
-            const thread = (await res.json()) as APIThreadChannel
-            const threadId = thread.id
-            const messagePromise = logMessages.reduce((p, message) => {
-                return p.then(async (_) => {
-                    await client.requestDiscord(`channels/${threadId}/messages`, {
-                        method: "POST",
-                        body: {
-                            content: `(${message.time}) <@${message.user}>: ${message.content}`,
-                            allowed_mentions: {
-                                parse: [],
-                            },
-                        },
-                    })
-                    return Promise.resolve()
-                }
-                )
-            }, Promise.resolve())
-            messagePromise.then(async (_) => {
-                await client.requestDiscord(`channels/${threadId}/messages`, {
-                    method: "POST",
-                    body: {
-                        content: `cleared by ${joinUsers(loggedAuthors)}`,
-                        allowed_mentions: {
-                            parse: [],
-                        },
-                    },
-                })
-            })
-            return messagePromise
-        })
-        await Promise.all(loggerChannels)
-    }
-})
+      })
+      return messagePromise
+    })
+    await Promise.all(loggerChannels)
+  }
+} as Logger)
