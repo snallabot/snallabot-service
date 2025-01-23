@@ -62,6 +62,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
   ) {
     const assignments = settings.commands.teams?.assignments || {} as TeamAssignments
     const leagueId = settings.commands.madden_league?.league_id
+    console.log(settings.commands)
     if (!leagueId) {
       return
     }
