@@ -289,7 +289,9 @@ discordClient.on("messageReactionAdd", async (msg, reactor, reaction) => {
     }))
   }))
 })
+if (process.env.APP_ID !== SNALLABOT_TEST_USER) {
+  discordClient.connect()
+}
 
-discordClient.connect()
 
 export default router
