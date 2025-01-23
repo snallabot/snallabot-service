@@ -17,6 +17,10 @@ const prodSettings = { publicKey: process.env.PUBLIC_KEY, botToken: process.env.
 
 const prodClient = createClient(prodSettings)
 
+function getRandomInt(max: number) {
+  return Math.floor(Math.random() * max);
+}
+
 async function updateEachLeagueNotifier() {
   const querySnapshot = await db.collection("league_settings").get()
   querySnapshot.docs.map(async leagueSettingsDoc => {
@@ -24,10 +28,13 @@ async function updateEachLeagueNotifier() {
     try {
       const notifier = createNotifier(prodClient, leagueSettingsDoc.id, leagueSettings)
       const weeklyStates = leagueSettings.commands?.game_channel?.weekly_states || {}
+      const jitter = getRandomInt(10)
+      await new Promise((r) => setTimeout(r, 5000 + jitter * 1000));
       await Promise.all(Object.values(weeklyStates).map(async weeklyState => {
         await Promise.all(Object.entries(weeklyState.channel_states).map(async channelEntry => {
           const [channelId, channelState] = channelEntry
           try {
+            await new Promise((r) => setTimeout(r, 1000 + jitter * 100));
             await notifier.update(channelState, weeklyState.seasonIndex, weeklyState.week)
           } catch (e) {
             console.log("could not update notifier " + e)
