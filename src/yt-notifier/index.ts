@@ -79,12 +79,16 @@ EventDB.on<MaddenBroadcastEvent>("MADDEN_BROADCAST", async (events) => {
     } else {
       const channel = configuration.channel.id
       const role = configuration.role ? `<@&${configuration.role.id}>` : ""
-      await prodClient.requestDiscord(`channels/${channel}/messages`, {
-        method: "POST",
-        body: {
-          content: `${role} ${broadcastEvent.title}\n\n${broadcastEvent.video}`
-        }
-      })
+      try {
+        await prodClient.requestDiscord(`channels/${channel}/messages`, {
+          method: "POST",
+          body: {
+            content: `${role} ${broadcastEvent.title}\n\n${broadcastEvent.video}`
+          }
+        })
+      } catch (e) {
+        console.error("could not send broadcast " + discordServer)
+      }
     }
   })
 })
