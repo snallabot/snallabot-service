@@ -3,6 +3,7 @@ run_script.sh
 deploy.sh
 deploy-prod.sh
 sa.json
+sa-old.json
 migration.sh
 pinger_test.sh
 

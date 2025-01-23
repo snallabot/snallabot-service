@@ -15,7 +15,7 @@ export enum EventDelivery {
 export type EventNotifier<Event> = (events: SnallabotEvent<Event>[]) => Promise<void>
 interface EventDB {
   appendEvents<Event>(event: SnallabotEvent<Event>[], delivery: EventDelivery): Promise<void>
-  queryEvents<Event>(event_type: string, key: string, after: Date, filters: Filters, limit: number): Promise<StoredEvent<Event>[]>,
+  queryEvents<Event>(key: string, event_type: string, after: Date, filters: Filters, limit: number): Promise<StoredEvent<Event>[]>,
   on<Event>(event_type: string, notifier: EventNotifier<Event>): void
 }
 
@@ -54,14 +54,18 @@ const EventDB: EventDB = {
       })
       await batch.commit()
     }
-    Object.entries(Object.groupBy(events, e => e.event_type)).map(entry => {
+    Object.entries(Object.groupBy(events, e => e.event_type)).map(async entry => {
       const [eventType, specificTypeEvents] = entry
       if (specificTypeEvents) {
         const eventTypeNotifiers = notifiers[eventType]
         if (eventTypeNotifiers) {
-          eventTypeNotifiers.forEach(notifier => {
-            notifier(specificTypeEvents)
-          })
+          await Promise.all(eventTypeNotifiers.map(async notifier => {
+            try {
+              await notifier(specificTypeEvents)
+            } catch (e) {
+              console.log("could not send events to notifier " + e)
+            }
+          }))
         }
       }
     })

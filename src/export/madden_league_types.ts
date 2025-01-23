@@ -97,6 +97,13 @@ export type Standing = {
   offPassYds: number,
 }
 
+export function formatRecord(standing: Standing) {
+  if (standing.totalTies === 0) {
+    return `${standing.totalWins}-${standing.totalLosses}`
+  }
+  return `${standing.totalWins}-${standing.totalLosses}-${standing.totalTies}`
+}
+
 export type StandingExport = {
   message: string,
   success: boolean,

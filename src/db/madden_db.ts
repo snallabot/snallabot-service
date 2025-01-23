@@ -2,7 +2,8 @@ import { randomUUID } from "crypto"
 import { Timestamp, Filter } from "firebase-admin/firestore"
 import db from "./firebase"
 import { EventNotifier, SnallabotEvent, StoredEvent } from "./events_db"
-import { MaddenGame, Team } from "../export/madden_league_types"
+import { MaddenGame, Standing, Team } from "../export/madden_league_types"
+import { TeamAssignment, TeamAssignments } from "../discord/settings_db"
 
 type HistoryUpdate<ValueType> = { oldValue: ValueType, newValue: ValueType }
 type History = { [key: string]: HistoryUpdate<any> }
@@ -15,7 +16,8 @@ interface MaddenDB {
   getLatestTeams(leagueId: string): Promise<TeamList>,
   getLatestWeekSchedule(leagueId: string, week: number): Promise<MaddenGame[]>,
   getWeekScheduleForSeason(leagueId: string, week: number, season: number): Promise<MaddenGame[]>
-
+  getGameForSchedule(leagueId: string, scheduleId: number): Promise<MaddenGame>,
+  getStandingForTeam(leagueId: string, teamId: number): Promise<Standing>
 }
 
 function convertDate(firebaseObject: any) {
@@ -59,7 +61,8 @@ function createEventHistoryUpdate(newEvent: Record<string, any>, oldEvent: Recor
 
 export interface TeamList {
   getTeamForId(id: number): Team,
-  getLatestTeams(): Team[]
+  getLatestTeams(): Team[],
+  getLatestTeamAssignments(assignments: TeamAssignments): TeamAssignments
 }
 
 function createTeamList(teams: StoredEvent<Team>[]): TeamList {
@@ -79,11 +82,10 @@ function createTeamList(teams: StoredEvent<Team>[]): TeamList {
       matchedTeams.forEach(team => latestTeamMap.set(team.teamId, latestTeam))
     })
     if (unMatched.length > 0) {
-      // lets just assume the unmatched are together and see what happens
-      const latestUnmatched = unMatched.reduce((latest, team) => (team.timestamp > latest.timestamp ? team : latest));
-      latestTeams.push(latestUnmatched)
+      // lets just assume the unmatched are normal teams
       unMatched.forEach(unmatched => {
-        latestTeamMap.set(unmatched.teamId, latestUnmatched)
+        latestTeams.push(unmatched)
+        latestTeamMap.set(unmatched.teamId, unmatched)
       })
     }
   })
@@ -95,7 +97,14 @@ function createTeamList(teams: StoredEvent<Team>[]): TeamList {
       }
       throw new Error("Team not found for id " + id)
     },
-    getLatestTeams: function(): Team[] { return latestTeams }
+    getLatestTeams: function(): Team[] { return latestTeams },
+    getLatestTeamAssignments: function(assignments: TeamAssignments): TeamAssignments {
+      return Object.fromEntries(Object.entries(assignments).map(entry => {
+        const [teamId, assignment] = entry
+        const latestTeam = this.getTeamForId(Number(teamId))
+        return [latestTeam.teamId + "", assignment]
+      }))
+    }
   }
 }
 
@@ -130,14 +139,18 @@ const MaddenDB: MaddenDB = {
         console.log("errored, slept and retrying")
       }
     }
-    Object.entries(Object.groupBy(events, e => e.event_type)).map(entry => {
+    Object.entries(Object.groupBy(events, e => e.event_type)).map(async entry => {
       const [eventType, specificTypeEvents] = entry
       if (specificTypeEvents) {
         const eventTypeNotifiers = notifiers[eventType]
         if (eventTypeNotifiers) {
-          eventTypeNotifiers.forEach(notifier => {
-            notifier(specificTypeEvents)
-          })
+          await Promise.all(eventTypeNotifiers.map(async notifier => {
+            try {
+              await notifier(specificTypeEvents)
+            } catch (e) {
+              console.log("could not send event to notifier " + e)
+            }
+          }))
         }
       }
     })
@@ -173,6 +186,20 @@ const MaddenDB: MaddenDB = {
       throw new Error("Missing schedule for week " + week)
     }
     return maddenSchedule
+  },
+  getGameForSchedule: async function(leagueId: string, scheduleId: number) {
+    const schedule = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").doc(`${scheduleId}`).get()
+    if (!schedule.exists) {
+      throw new Error("Schedule not found for id " + scheduleId)
+    }
+    return schedule.data() as MaddenGame
+  },
+  getStandingForTeam: async function(leagueId: string, teamId: number) {
+    const standing = await db.collection("league_data").doc(leagueId).collection("MADDEN_STANDING").doc(`${teamId}`).get()
+    if (!standing.exists) {
+      throw new Error("standing not found for id " + teamId)
+    }
+    return standing.data() as Standing
   }
 }
 

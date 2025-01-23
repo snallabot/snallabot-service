@@ -7,7 +7,7 @@ import { Firestore } from "firebase-admin/firestore"
 export default {
   async handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext) {
     const { guild_id } = command
-    respond(ctx, createMessageResponse(`Type this URL carefully into your app (no spaces exactly as shown here): https://snallabot.herokuapp.com/${guild_id}`))
+    respond(ctx, createMessageResponse(`If you have not tried the snallabot dashboard, please use that. Run command /dashboard\nOtherwise, here are the export links to enter into the Madden Companion app:\n\n First time: https://snallabot.me/connect/discord/${guild_id}\nAfter first time: https://snallabot.me/`))
   },
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
     return {

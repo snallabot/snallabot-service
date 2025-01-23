@@ -7,6 +7,7 @@ import NodeCache from "node-cache"
 import db from "../db/firebase"
 import EventDB, { EventDelivery, StoredEvent } from "../db/events_db"
 import { BroadcastConfigurationEvent, MaddenBroadcastEvent } from "../db/events"
+import { BroadcastConfiguration, LeagueSettings } from "../discord/settings_db"
 const router = new Router({ prefix: "/twitch" })
 
 
@@ -138,12 +139,12 @@ async function handleStreamEvent(twitchEvent: StreamUpEvent) {
   const subscribedServers = Object.entries(subscription.servers).filter(entry => entry[1].subscribed).map(entry => entry[0])
   console.log(subscribedServers)
   await Promise.all(subscribedServers.map(async (server) => {
-    const broadcastEvents = await EventDB.queryEvents<BroadcastConfigurationEvent>(server, "BROADCAST_CONFIGURATION", new Date(0), {}, 1)
-    const sortedEvents = broadcastEvents.sort((a: StoredEvent<BroadcastConfigurationEvent>, b: StoredEvent<BroadcastConfigurationEvent>) => b.timestamp.getTime() - a.timestamp.getTime())
-    if (sortedEvents.length === 0) {
+    const doc = await db.collection("league_settings").doc(server).get()
+    const leagueSettings = doc.exists ? doc.data() as LeagueSettings : {} as LeagueSettings
+    const configuration = leagueSettings.commands?.broadcast
+    if (!configuration) {
       console.error(`${server} is not configured for Broadcasts`)
     } else {
-      const configuration = sortedEvents[0]
       const titleKeyword = configuration.title_keyword
       console.log(`broadcast title: ${broadcastTitle} titleKeyword: ${titleKeyword}`)
       if (broadcastTitle.toLowerCase().includes(titleKeyword.toLowerCase())) {

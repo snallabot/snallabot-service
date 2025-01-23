@@ -111,3 +111,28 @@ export function deferMessage() {
     type: InteractionResponseType.DeferredChannelMessageWithSource,
   }
 }
+
+export function formatTeamMessageName(discordId: string | undefined, gamerTag: string | undefined) {
+  if (discordId) {
+    return `<@${discordId}>`
+  }
+  if (gamerTag) {
+    return gamerTag
+  }
+  return "CPU"
+}
+
+export const SNALLABOT_USER = "970091866450198548"
+export const SNALLABOT_TEST_USER = "1099768386352840807"
+
+export function createWeekKey(season: number, week: number) {
+  return `season${String(season).padStart(2, '0')}_week${String(week).padStart(2, '0')}`
+}
+
+export enum SnallabotReactions {
+  SCHEDULE = "%E2%8F%B0",
+  GG = "%F0%9F%8F%86",
+  HOME = "%F0%9F%8F%A0",
+  AWAY = "%F0%9F%9B%AB",
+  SIM = "%E2%8F%AD%EF%B8%8F",
+}
