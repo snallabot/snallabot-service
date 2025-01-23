@@ -38,7 +38,11 @@ async function convertGameChannels(old: any): Promise<GameChannelConfiguration |
   if (old.adminRole && old.category && old.fwChannel && old.waitPing) {
     const channels = Object.keys(old.channels || {})
     await Promise.all(channels.map(async c => {
-      await prodClient.requestDiscord(`channels/${c}`, { method: "DELETE" })
+      try {
+        await prodClient.requestDiscord(`channels/${c}`, { method: "DELETE" })
+      } catch (e) {
+        console.log("could not delete channel " + c)
+      }
     }))
     return {
       admin: { id: old.adminRole, id_type: DiscordIdType.ROLE },
