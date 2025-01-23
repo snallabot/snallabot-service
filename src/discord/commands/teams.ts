@@ -37,10 +37,10 @@ function formatTeamMessage(teams: Team[], teamAssignments: TeamAssignments): str
         .map(team => {
           const user = teamAssignments?.[`${team.teamId}`]?.discord_user?.id
           const consoleUser = team.userName
-          const assignment = [user ? [`<@${user}>`] : [], [consoleUser ? `${consoleUser}` : "CPU"]].flat().join(", ")
+          const assignment = [user ? [`<@${user}>`] : [], [consoleUser ? `\`${consoleUser}\`` : "`CPU`"]].flat().join(", ")
           return `${team.displayName}: ${assignment}`
         }).join("\n")
-      const divisionHeader = `__**${divisionName}**__`
+      const divisionHeader = `__ ** ${divisionName} ** __`
       return `${divisionHeader}\n${divisionMessage}`
     })
     .join("\n")
@@ -104,7 +104,7 @@ export default {
         const oldMessageId = leagueSettings?.commands?.teams?.messageId.id
         if (oldMessageId) {
           try {
-            await client.requestDiscord(`channels/${channel}/messages/${oldMessageId}`, { method: "GET" })
+            await client.requestDiscord(`channels / ${channel} / messages / ${oldMessageId}`, { method: "GET" })
             await db.collection("league_settings").doc(guild_id).set({
               commands: {
                 teams: {
@@ -114,7 +114,7 @@ export default {
               }
             }, { merge: true })
             const message = await fetchTeamsMessage(leagueSettings)
-            await client.requestDiscord(`channels/${channel}/messages/${oldMessageId}`, { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
+            await client.requestDiscord(`channels / ${channel} / messages / ${oldMessageId}`, { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
             respond(ctx, createMessageResponse("Teams Configured"))
             return
           } catch (e) {
@@ -122,7 +122,7 @@ export default {
           }
         }
         const message = await fetchTeamsMessage(leagueSettings)
-        const res = await client.requestDiscord(`channels/${channel}/messages`, {
+        const res = await client.requestDiscord(`channels / ${channel} / messages`, {
           method: "POST", body: {
             content: message,
             allowed_mentions: { parse: [] }
@@ -156,9 +156,9 @@ export default {
       const teams = await MaddenClient.getLatestTeams(leagueSettings.commands.madden_league.league_id)
       const foundTeam = teams.getLatestTeams().filter(t => t.abbrName.toLowerCase() === teamSearchPhrase || t.cityName.toLowerCase() === teamSearchPhrase || t.displayName.toLowerCase() === teamSearchPhrase || t.nickName.toLowerCase() === teamSearchPhrase)
       if (foundTeam.length < 1) {
-        throw new Error(`Could not find team for phrase ${teamSearchPhrase}. Enter a team name, city, abbreviation, or nickname. Examples: Buccaneers, TB, Tampa Bay, Bucs`)
+        throw new Error(`Could not find team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs`)
       } else if (foundTeam.length > 1) {
-        throw new Error(`Found more than one  team for phrase ${teamSearchPhrase}. Enter a team name, city, abbreviation, or nickname. Examples: Buccaneers, TB, Tampa Bay, Bucs. Found teams: ${foundTeam.map(t => t.displayName).join(", ")}`)
+        throw new Error(`Found more than one  team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs.Found teams: ${foundTeam.map(t => t.displayName).join(", ")} `)
       }
       const assignedTeam = foundTeam[0]
       const role = (teamsCommand?.options?.[2] as APIApplicationCommandInteractionDataRoleOption)?.value
@@ -174,7 +174,7 @@ export default {
       }, { merge: true })
       const message = createTeamsMessage(leagueSettings, teams.getLatestTeams())
       try {
-        await client.requestDiscord(`channels/${leagueSettings.commands.teams.channel.id}/messages/${leagueSettings.commands.teams.messageId.id}`,
+        await client.requestDiscord(`channels / ${leagueSettings.commands.teams.channel.id} /messages/${leagueSettings.commands.teams.messageId.id} `,
           { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
         respond(ctx, createMessageResponse("Team Assigned"))
       } catch (e) {
@@ -194,20 +194,20 @@ export default {
       const teams = await MaddenClient.getLatestTeams(leagueSettings.commands.madden_league.league_id)
       const foundTeam = teams.getLatestTeams().filter(t => t.abbrName.toLowerCase() === teamSearchPhrase || t.cityName.toLowerCase() === teamSearchPhrase || t.displayName.toLowerCase() === teamSearchPhrase || t.nickName.toLowerCase() === teamSearchPhrase)
       if (foundTeam.length < 1) {
-        throw new Error(`Could not find team for phrase ${teamSearchPhrase}. Enter a team name, city, abbreviation, or nickname. Examples: Buccaneers, TB, Tampa Bay, Bucs`)
+        throw new Error(`Could not find team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs`)
       } else if (foundTeam.length > 1) {
-        throw new Error(`Found more than one  team for phrase ${teamSearchPhrase}. Enter a team name, city, abbreviation, or nickname. Examples: Buccaneers, TB, Tampa Bay, Bucs. Found teams: ${foundTeam.map(t => t.displayName).join(", ")}`)
+        throw new Error(`Found more than one  team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs.Found teams: ${foundTeam.map(t => t.displayName).join(", ")} `)
       }
       const assignedTeam = foundTeam[0]
       const currentAssignments = { ...leagueSettings.commands.teams.assignments }
-      delete currentAssignments[`${assignedTeam.teamId}`]
+      delete currentAssignments[`${assignedTeam.teamId} `]
       leagueSettings.commands.teams.assignments = currentAssignments
       await db.collection("league_settings").doc(guild_id).update({
-        [`commands.teams.assignments.${assignedTeam.teamId}`]: FieldValue.delete()
+        [`commands.teams.assignments.${assignedTeam.teamId} `]: FieldValue.delete()
       })
       const message = createTeamsMessage(leagueSettings, teams.getLatestTeams())
       try {
-        await client.requestDiscord(`channels/${leagueSettings.commands.teams.channel.id}/messages/${leagueSettings.commands.teams.messageId.id}`,
+        await client.requestDiscord(`channels / ${leagueSettings.commands.teams.channel.id} /messages/${leagueSettings.commands.teams.messageId.id} `,
           { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
         respond(ctx, createMessageResponse("Team Freed"))
       } catch (e) {
@@ -225,7 +225,7 @@ export default {
       }
       const message = await fetchTeamsMessage(leagueSettings)
       try {
-        await client.requestDiscord(`channels/${leagueSettings.commands.teams.channel.id}/messages/${leagueSettings.commands.teams.messageId.id}`,
+        await client.requestDiscord(`channels / ${leagueSettings.commands.teams.channel.id} /messages/${leagueSettings.commands.teams.messageId.id} `,
           { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
         respond(ctx, createMessageResponse("Team Assignments Reset"))
       } catch (e) {
