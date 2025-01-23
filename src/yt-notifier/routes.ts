@@ -1,4 +1,3 @@
-import Router from "@koa/router"
 import EventDB, { EventDelivery, StoredEvent } from "../db/events_db"
 
 //TODO remove duplicate code when old bot is taken off
@@ -43,11 +42,6 @@ async function retrieveCurrentState(): Promise<Array<{ channel_id: string, disco
 
 }
 
-
-const router = new Router({ prefix: "/youtube" })
-type ConfigureRequest = { discord_server: string, youtube_url: string, event_type: string }
-type ListRequest = { discord_server: string }
-
 interface YoutubeNotifierHandler {
   addYoutubeChannel(discordServer: string, youtubeUrl: string): Promise<void>,
   removeYoutubeChannel(discordServer: string, youtubeUrl: string): Promise<void>,
@@ -77,25 +71,3 @@ export const youtubeNotifierHandler: YoutubeNotifierHandler = {
       .map(channel => `https://www.youtube.com/channel/${channel}`)
   }
 }
-
-router.post("/configure", async (ctx) => {
-  const request = ctx.request.body as ConfigureRequest
-  const eventType = request.event_type
-  try {
-    if (eventType === "ADD_CHANNEL") {
-      await youtubeNotifierHandler.addYoutubeChannel(request.discord_server, request.youtube_url)
-    } else if (eventType === "REMOVE_CHANNEL") {
-      await youtubeNotifierHandler.removeYoutubeChannel(request.discord_server, request.youtube_url)
-    }
-    ctx.status = 200
-  } catch (e) {
-    ctx.status = 400
-  }
-}).post("/list", async (ctx) => {
-  const request = ctx.request.body as ListRequest
-  const channels = await youtubeNotifierHandler.listYoutubeChannels(request.discord_server)
-  ctx.status = 200
-  ctx.body = channels
-})
-
-export default router

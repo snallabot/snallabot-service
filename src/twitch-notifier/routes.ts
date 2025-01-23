@@ -5,9 +5,9 @@ import { FieldValue } from "firebase-admin/firestore"
 import { createTwitchClient, getSecret } from "./twitch_client"
 import NodeCache from "node-cache"
 import db from "../db/firebase"
-import EventDB, { EventDelivery, StoredEvent } from "../db/events_db"
-import { BroadcastConfigurationEvent, MaddenBroadcastEvent } from "../db/events"
-import { BroadcastConfiguration, LeagueSettings } from "../discord/settings_db"
+import EventDB, { EventDelivery } from "../db/events_db"
+import { MaddenBroadcastEvent } from "../db/events"
+import { LeagueSettings } from "../discord/settings_db"
 const router = new Router({ prefix: "/twitch" })
 
 
@@ -206,19 +206,6 @@ router.post("/webhook",
     }
     handleStreamEvent(twitchEvent)
     messageCache.set(messageId, { seen: true })
-  }).post("/addTwitchNotifier", async (ctx, next) => {
-    const request = ctx.request.body as AddTwitchChannelRequest
-    await twitchNotifierHandler.addTwitchChannel(request.discord_server, request.twitch_url)
-    ctx.status = 200
-  }).post("/removeTwitchNotifier", async (ctx, next) => {
-    const request = ctx.request.body as RemoveTwitchChannelRequest
-    await twitchNotifierHandler.removeTwitchChannel(request.discord_server, request.twitch_url)
-    ctx.status = 200
-  }).post("/listTwitchNotifiers", async (ctx, next) => {
-    const request = ctx.request.body as ListTwitchRequest
-    const currentNotifiers = await twitchNotifierHandler.listTwitchChannels(request.discord_server)
-    ctx.status = 200
-    ctx.response.body = currentNotifiers
   })
 
 

@@ -21,19 +21,23 @@ async function updateEachLeagueNotifier() {
   const querySnapshot = await db.collection("league_settings").get()
   querySnapshot.docs.map(async leagueSettingsDoc => {
     const leagueSettings = leagueSettingsDoc.data() as LeagueSettings
-    const notifier = createNotifier(prodClient, leagueSettingsDoc.id, leagueSettings)
-    const weeklyStates = leagueSettings.commands?.game_channel?.weekly_states || {}
-    await Promise.all(Object.values(weeklyStates).map(async weeklyState => {
-      await Promise.all(Object.entries(weeklyState.channel_states).map(async channelEntry => {
-        const [channelId, channelState] = channelEntry
-        try {
-          await notifier.update(channelState, weeklyState.seasonIndex, weeklyState.week)
-        } catch (e) {
-          console.log("could not update notifier " + e)
-        }
+    try {
+      const notifier = createNotifier(prodClient, leagueSettingsDoc.id, leagueSettings)
+      const weeklyStates = leagueSettings.commands?.game_channel?.weekly_states || {}
+      await Promise.all(Object.values(weeklyStates).map(async weeklyState => {
+        await Promise.all(Object.entries(weeklyState.channel_states).map(async channelEntry => {
+          const [channelId, channelState] = channelEntry
+          try {
+            await notifier.update(channelState, weeklyState.seasonIndex, weeklyState.week)
+          } catch (e) {
+            console.log("could not update notifier " + e)
+          }
 
+        }))
       }))
-    }))
+    } catch (e) {
+      console.log("could not update notifier for " + leagueSettingsDoc.id)
+    }
   })
 }
 

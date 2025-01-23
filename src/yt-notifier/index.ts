@@ -1,7 +1,6 @@
 import EventDB, { EventDelivery, StoredEvent } from "../db/events_db"
-import { BroadcastConfigurationEvent, MaddenBroadcastEvent, YoutubeBroadcastEvent, AddChannelEvent, RemoveChannelEvent } from "../db/events"
-// import this to register the notifier
-import { BroadcastConfiguration, LeagueSettings } from "../discord/settings_db"
+import { MaddenBroadcastEvent, YoutubeBroadcastEvent, AddChannelEvent, RemoveChannelEvent } from "../db/events"
+import { LeagueSettings } from "../discord/settings_db"
 import db from "../db/firebase"
 import { createClient } from "../discord/discord_utils"
 
