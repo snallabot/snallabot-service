@@ -152,6 +152,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
       const homeUsers = await getReactedUsers(channelId, messageId, SnallabotReactions.HOME)
       const awayUsers = await getReactedUsers(channelId, messageId, SnallabotReactions.AWAY)
       const fwUsers = await getReactedUsers(channelId, messageId, SnallabotReactions.SIM)
+      console.log(`ggUsers: ${ggUsers.length} fwUsers: ${fwUsers.length}`)
       if (ggUsers.length > 0) {
         await this.deleteGameChannel(currentState, season, week, ggUsers)
       } else if (fwUsers.length > 0) {
