@@ -23,13 +23,13 @@ function getRandomInt(max: number) {
 
 async function updateEachLeagueNotifier() {
   const querySnapshot = await db.collection("league_settings").get()
-  querySnapshot.docs.map(async leagueSettingsDoc => {
+  for (const leagueSettingsDoc of querySnapshot.docs) {
     const leagueSettings = leagueSettingsDoc.data() as LeagueSettings
     try {
       const notifier = createNotifier(prodClient, leagueSettingsDoc.id, leagueSettings)
       const weeklyStates = leagueSettings.commands?.game_channel?.weekly_states || {}
-      const jitter = getRandomInt(10)
-      await new Promise((r) => setTimeout(r, 5000 + jitter * 1000));
+      const jitter = getRandomInt(5)
+      await new Promise((r) => setTimeout(r, 1000 + jitter * 1000));
       await Promise.all(Object.values(weeklyStates).map(async weeklyState => {
         await Promise.all(Object.entries(weeklyState.channel_states).map(async channelEntry => {
           const [channelId, channelState] = channelEntry
@@ -45,7 +45,7 @@ async function updateEachLeagueNotifier() {
     } catch (e) {
       console.log("could not update notifier for " + leagueSettingsDoc.id)
     }
-  })
+  }
 }
 
 updateEachLeagueNotifier()
