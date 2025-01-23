@@ -40,7 +40,7 @@ function formatTeamMessage(teams: Team[], teamAssignments: TeamAssignments): str
           const assignment = [user ? [`<@${user}>`] : [], [consoleUser ? `\`${consoleUser}\`` : "`CPU`"]].flat().join(", ")
           return `${team.displayName}: ${assignment}`
         }).join("\n")
-      const divisionHeader = `__ ** ${divisionName} ** __`
+      const divisionHeader = `__**${divisionName}**__`
       return `${divisionHeader}\n${divisionMessage}`
     })
     .join("\n")
