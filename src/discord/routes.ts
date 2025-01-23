@@ -277,6 +277,7 @@ discordClient.on("messageReactionAdd", async (msg, reactor, reaction) => {
       if (channelId === reactionChannel && channelState.message.id === reactionMessage) {
         const notifier = createNotifier(prodClient, guild, leagueSettings)
         // wait for users to confirm/unconfirm
+        console.log("UPDATING")
         const jitter = getRandomInt(10)
         await new Promise((r) => setTimeout(r, 5000 + jitter * 1000));
         try {
