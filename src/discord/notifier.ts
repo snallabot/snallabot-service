@@ -145,7 +145,6 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
         console.warn("could not update channel or message " + e)
         return
       }
-
       const weekKey = createWeekKey(season, week)
       const ggUsers = await getReactedUsers(channelId, messageId, SnallabotReactions.GG)
       const scheduledUsers = await getReactedUsers(channelId, messageId, SnallabotReactions.SCHEDULE)
@@ -167,6 +166,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
         const confirmedUsers = fwUsers.filter(u => admins.includes(u.id))
         if (confirmedUsers.length >= 1) {
           try {
+            console.log("HERE FORCE WIN")
             const result = decideResult(homeUsers, awayUsers)
             const requestedUsers = fwUsers.filter(u => !admins.includes(u.id))
             await forceWin(result, requestedUsers, confirmedUsers, currentState, season, week)
