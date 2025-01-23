@@ -104,7 +104,7 @@ export default {
         const oldMessageId = leagueSettings?.commands?.teams?.messageId.id
         if (oldMessageId) {
           try {
-            await client.requestDiscord(`channels / ${channel} / messages / ${oldMessageId}`, { method: "GET" })
+            await client.requestDiscord(`channels/${channel}/messages/${oldMessageId}`, { method: "GET" })
             await db.collection("league_settings").doc(guild_id).set({
               commands: {
                 teams: {
@@ -114,7 +114,7 @@ export default {
               }
             }, { merge: true })
             const message = await fetchTeamsMessage(leagueSettings)
-            await client.requestDiscord(`channels / ${channel} / messages / ${oldMessageId}`, { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
+            await client.requestDiscord(`channels/${channel}/messages/${oldMessageId}`, { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
             respond(ctx, createMessageResponse("Teams Configured"))
             return
           } catch (e) {
@@ -122,7 +122,7 @@ export default {
           }
         }
         const message = await fetchTeamsMessage(leagueSettings)
-        const res = await client.requestDiscord(`channels / ${channel} / messages`, {
+        const res = await client.requestDiscord(`channels/${channel}/messages`, {
           method: "POST", body: {
             content: message,
             allowed_mentions: { parse: [] }
@@ -174,7 +174,7 @@ export default {
       }, { merge: true })
       const message = createTeamsMessage(leagueSettings, teams.getLatestTeams())
       try {
-        await client.requestDiscord(`channels / ${leagueSettings.commands.teams.channel.id} /messages/${leagueSettings.commands.teams.messageId.id} `,
+        await client.requestDiscord(`channels/${leagueSettings.commands.teams.channel.id}/messages/${leagueSettings.commands.teams.messageId.id} `,
           { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
         respond(ctx, createMessageResponse("Team Assigned"))
       } catch (e) {
@@ -207,7 +207,7 @@ export default {
       })
       const message = createTeamsMessage(leagueSettings, teams.getLatestTeams())
       try {
-        await client.requestDiscord(`channels / ${leagueSettings.commands.teams.channel.id} /messages/${leagueSettings.commands.teams.messageId.id} `,
+        await client.requestDiscord(`channels/${leagueSettings.commands.teams.channel.id}/messages/${leagueSettings.commands.teams.messageId.id} `,
           { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
         respond(ctx, createMessageResponse("Team Freed"))
       } catch (e) {
@@ -225,7 +225,7 @@ export default {
       }
       const message = await fetchTeamsMessage(leagueSettings)
       try {
-        await client.requestDiscord(`channels / ${leagueSettings.commands.teams.channel.id} /messages/${leagueSettings.commands.teams.messageId.id} `,
+        await client.requestDiscord(`channels/${leagueSettings.commands.teams.channel.id}/messages/${leagueSettings.commands.teams.messageId.id}`,
           { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
         respond(ctx, createMessageResponse("Team Assignments Reset"))
       } catch (e) {
