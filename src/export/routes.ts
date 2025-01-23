@@ -52,7 +52,6 @@ function createCacheKey(league: string, request_type: string): string {
 async function retrieveTree(league: string, request_type: string, event_type: string): Promise<MerkleTree> {
   const cachedTree = treeCache.get(createCacheKey(league, request_type)) as MerkleTree
   if (cachedTree) {
-    console.log(treeCache.stats)
     return cachedTree
   }
   const doc = await db.collection("league_data").doc(league).collection(event_type).doc(request_type).get()
@@ -97,12 +96,10 @@ export async function sendEvents<T>(league: string, request_type: string, events
   const hashDifferences = findDifferences(newTree, oldTree)
   if (hashDifferences.length > 0) {
     writeTree(league, request_type, eventType, newTree)
-    console.log(request_type + " found these many differences " + hashDifferences.length)
     // if (hashDifferences.length > 0) {
     // console.log(newNodes)
     // }
     const finalEvents = hashDifferences.map(h => hashToEvent.get(h)).filter(e => e) as SnallabotEvent<T>[]
-    console.log(request_type + " sending these amount of events " + finalEvents.length)
     await MaddenDB.appendEvents(finalEvents, (e: T) => `${identifier(e)}`)
   }
   // else {
