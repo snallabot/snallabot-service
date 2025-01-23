@@ -62,7 +62,6 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
   ) {
     const assignments = settings.commands.teams?.assignments || {} as TeamAssignments
     const leagueId = settings.commands.madden_league?.league_id
-    console.log(settings.commands)
     if (!leagueId) {
       return
     }
@@ -124,7 +123,6 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
   }
   return {
     deleteGameChannel: async function(currentState: GameChannel, season: number, week: number, originators: UserId[]) {
-      console.log("DELETING " + currentState.channel.id)
       const channelId = currentState.channel
       const weekKey = createWeekKey(season, week)
       await db.collection("league_settings").doc(guildId).update({
@@ -152,7 +150,6 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
       const homeUsers = await getReactedUsers(channelId, messageId, SnallabotReactions.HOME)
       const awayUsers = await getReactedUsers(channelId, messageId, SnallabotReactions.AWAY)
       const fwUsers = await getReactedUsers(channelId, messageId, SnallabotReactions.SIM)
-      console.log(`ggUsers: ${ggUsers.length} fwUsers: ${fwUsers.length}`)
       if (ggUsers.length > 0) {
         await this.deleteGameChannel(currentState, season, week, ggUsers)
       } else if (fwUsers.length > 0) {
@@ -168,7 +165,6 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
         const confirmedUsers = fwUsers.filter(u => admins.includes(u.id))
         if (confirmedUsers.length >= 1) {
           try {
-            console.log("HERE FORCE WIN")
             const result = decideResult(homeUsers, awayUsers)
             const requestedUsers = fwUsers.filter(u => !admins.includes(u.id))
             await forceWin(result, requestedUsers, confirmedUsers, currentState, season, week)
