@@ -1,10 +1,8 @@
 import EventDB, { EventDelivery, StoredEvent } from "../db/events_db"
 import { BroadcastConfigurationEvent, MaddenBroadcastEvent, YoutubeBroadcastEvent, AddChannelEvent, RemoveChannelEvent } from "../db/events"
 // import this to register the notifier
-import router from "../discord/routes"
 import { BroadcastConfiguration, LeagueSettings } from "../discord/settings_db"
 import db from "../db/firebase"
-router.allowedMethods()
 
 function extractTitle(html: string) {
   const titleTagIndex = html.indexOf('[{"videoPrimaryInfoRenderer":{"title":{"runs":[{"text":')
