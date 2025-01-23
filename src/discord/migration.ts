@@ -138,9 +138,6 @@ async function convertLeagues() {
   const docSnapshot = await oDb.collection('leagues').get()
   await Promise.all(docSnapshot.docs.map(async doc => {
     const guild = doc.id
-    if (guild !== "1063480413588312185") {
-      return
-    }
     const oldLeagueData = doc.data() as any
     const newSettings = { commands: {} } as LeagueSettings
     if (oldLeagueData.commands?.game_channels) {
