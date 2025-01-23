@@ -49,34 +49,17 @@ function createCacheKey(league: string, request_type: string): string {
   return `${league}|${request_type}`
 }
 
-async function retrieveTree(league: string, request_type: string, event_type: string): Promise<MerkleTree> {
+async function retrieveTree(league: string, request_type: string): Promise<MerkleTree> {
   const cachedTree = treeCache.get(createCacheKey(league, request_type)) as MerkleTree
   if (cachedTree) {
     return cachedTree
-  }
-  const doc = await db.collection("league_data").doc(league).collection(event_type).doc(request_type).get()
-  if (doc.exists) {
-    const d = doc.data()
-    treeCache.set(createCacheKey(league, request_type), d, CACHE_TTL)
-    return d as MerkleTree
   }
   return { headNode: { children: [], hash: hash("") } }
 }
 
 
-async function writeTree(league: string, request_type: string, event_type: string, tree: MerkleTree): Promise<void> {
+async function writeTree(league: string, request_type: string, tree: MerkleTree): Promise<void> {
   treeCache.set(createCacheKey(league, request_type), tree, CACHE_TTL)
-  let retryCount = 0
-  while (retryCount < 10) {
-    try {
-      await db.collection("league_data").doc(league).collection(event_type).doc(request_type).set(tree, { merge: true })
-      break
-    } catch (e) {
-      retryCount = retryCount + 1
-      await new Promise((r) => setTimeout(r, 1000))
-      console.log("errored, slept and retrying")
-    }
-  }
 }
 
 
@@ -88,14 +71,14 @@ export async function sendEvents<T>(league: string, request_type: string, events
   if (!eventType) {
     throw new Error("No Event Type found for " + request_type)
   }
-  const oldTree = await retrieveTree(league, request_type, eventType)
+  const oldTree = await retrieveTree(league, request_type)
   const hashToEvent = new Map(events.map(e => [hash(e), e]))
   const newNodes = events.sort(e => identifier(e)).map(e => ({ hash: hash(e), children: [] }))
 
   const newTree = createTwoLayer(newNodes)
   const hashDifferences = findDifferences(newTree, oldTree)
   if (hashDifferences.length > 0) {
-    writeTree(league, request_type, eventType, newTree)
+    writeTree(league, request_type, newTree)
     // if (hashDifferences.length > 0) {
     // console.log(newNodes)
     // }
