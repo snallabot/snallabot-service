@@ -5,7 +5,7 @@ const router = new Router({ prefix: "/connect" })
 
 async function setLeague(guild: string, league: string) {
   await db.collection("league_settings").doc(guild).set(
-    { commands: { madden_lague: { league_id: league } } }, { merge: true }
+    { commands: { madden_league: { league_id: league } } }, { merge: true }
   )
 }
 
