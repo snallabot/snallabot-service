@@ -34,16 +34,16 @@ async function updateEachLeagueNotifier() {
         await Promise.all(Object.entries(weeklyState.channel_states).map(async channelEntry => {
           const [channelId, channelState] = channelEntry
           try {
-            await new Promise((r) => setTimeout(r, 1000 + jitter * 100));
+            await new Promise((r) => setTimeout(r, 500 + jitter * 100));
             await notifier.update(channelState, weeklyState.seasonIndex, weeklyState.week)
           } catch (e) {
-            console.log("could not update notifier " + e)
+            console.log("could not update notifier channel " + channelId + " guild" + leagueSettingsDoc.id)
           }
 
         }))
       }))
     } catch (e) {
-      console.log("could not update notifier for " + leagueSettingsDoc.id)
+      // well do nothing
     }
   }
 }
