@@ -280,8 +280,9 @@ discordClient.on("messageReactionAdd", async (msg, reactor, reaction) => {
         console.log("UPDATING")
         const jitter = getRandomInt(10)
         await new Promise((r) => setTimeout(r, 5000 + jitter * 1000));
-        try {
 
+        try {
+          console.log("UPDATING " + channelState.channel.id)
           await notifier.update(channelState, weeklyState.seasonIndex, weeklyState.week)
         } catch (e) {
           console.log("could not update notifier " + e)
