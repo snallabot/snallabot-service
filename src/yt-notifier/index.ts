@@ -2,6 +2,8 @@ import EventDB, { EventDelivery, StoredEvent } from "../db/events_db"
 import { BroadcastConfigurationEvent, MaddenBroadcastEvent, YoutubeBroadcastEvent, AddChannelEvent, RemoveChannelEvent } from "../db/events"
 // import this to register the notifier
 import router from "../discord/routes"
+import { BroadcastConfiguration, LeagueSettings } from "../discord/settings_db"
+import db from "../db/firebase"
 router.allowedMethods()
 
 function extractTitle(html: string) {
@@ -63,13 +65,13 @@ async function notifyYoutubeBroadcasts() {
         .then(t => isStreaming(t) ? [{ channel_id, title: extractTitle(t), video: extractVideo(t) }] : [])
     ))
   const serverTitleKeywords = await Promise.all(currentServers.map(async server => {
-    const broadcastConfiurationEvents = await EventDB.queryEvents<BroadcastConfigurationEvent>(server, "BROADCAST_CONFIGURATION", new Date(0), {}, 1)
-    const sortedEvents = broadcastConfiurationEvents.sort((a: BroadcastConfigurationEvent, b: BroadcastConfigurationEvent) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-    if (sortedEvents.length === 0) {
+    const doc = await db.collection("league_settings").doc(server).get()
+    const leagueSettings = doc.exists ? doc.data() as LeagueSettings : {} as LeagueSettings
+    const configuration = leagueSettings.commands?.broadcast
+    if (!configuration) {
       console.error(`${server} is not configured for Broadcasts`)
       return []
     } else {
-      const configuration = sortedEvents[0]
       return [[server, configuration.title_keyword]]
     }
   }))

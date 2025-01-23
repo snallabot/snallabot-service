@@ -18,9 +18,12 @@ const oldDB = initializeApp({
 
 const oDb = getFirestore(oldDB)
 
-async function convertGameChannels(old: any): Promise<GameChannelConfiguration | undefined> {
 
+
+async function convertGameChannels(old: any): Promise<GameChannelConfiguration | undefined> {
   if (old.adminRole && old.category && old.fwChannel && old.waitPing) {
+    const channels = Object.keys(old.channels || {})
+    channels.forEach(c => console.log("would delete " + c))
     // TODO: delete channels
     return {
       admin: { id: old.adminRole, id_type: DiscordIdType.ROLE },
@@ -116,6 +119,9 @@ async function convertLeagues() {
   const docSnapshot = await oDb.collection('leagues').get()
   await Promise.all(docSnapshot.docs.map(async doc => {
     const guild = doc.id
+    if (guild !== "1063480413588312185") {
+      return
+    }
     const oldLeagueData = doc.data() as any
     const newSettings = { commands: {} } as LeagueSettings
     if (oldLeagueData.commands?.game_channels) {
@@ -148,8 +154,8 @@ async function convertLeagues() {
         newSettings.commands.teams = teams
       }
     }
-    if (oldLeagueData.commands?.league_id) {
-      const league = await convertMaddenLeague(oldLeagueData.commands.league_id)
+    if (oldLeagueData.league_id) {
+      const league = await convertMaddenLeague(oldLeagueData.league_id)
       if (league) {
         newSettings.commands.madden_league = league
       }
@@ -158,7 +164,8 @@ async function convertLeagues() {
     if (broadcast) {
       newSettings.commands.broadcast = broadcast
     }
-    console.log("successfully migrated league " + guild)
+    await db.collection("league_settings").doc(guild).set(newSettings, { merge: true })
+    console.log("migrated " + guild)
   }))
 }
 

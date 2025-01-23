@@ -7,7 +7,7 @@ import EventDB, { StoredEvent } from "../db/events_db"
 import { handleCommand, commandsInstaller } from "./commands_handler"
 import { BroadcastConfigurationEvent, ConfirmedSim, MaddenBroadcastEvent } from "../db/events"
 import { Client } from "oceanic.js"
-import { DiscordIdType, LeagueSettings, TeamAssignments } from "./settings_db"
+import { BroadcastConfiguration, DiscordIdType, LeagueSettings, TeamAssignments } from "./settings_db"
 import { APIGuildMember } from "discord-api-types/v9"
 import { FieldValue } from "firebase-admin/firestore"
 import { fetchTeamsMessage } from "./commands/teams"
@@ -71,14 +71,14 @@ router.post("/slashCommand", async (ctx) => {
 EventDB.on<MaddenBroadcastEvent>("MADDEN_BROADCAST", async (events) => {
   events.map(async broadcastEvent => {
     const discordServer = broadcastEvent.key
-    const broadcastEvents = await EventDB.queryEvents<BroadcastConfigurationEvent>(discordServer, "BROADCAST_CONFIGURATION", new Date(0), {}, 1)
-    const sortedEvents = broadcastEvents.sort((a: StoredEvent<BroadcastConfigurationEvent>, b: StoredEvent<BroadcastConfigurationEvent>) => b.timestamp.getTime() - a.timestamp.getTime())
-    if (sortedEvents.length === 0) {
+    const doc = await db.collection("league_settings").doc(discordServer).get()
+    const leagueSettings = doc.exists ? doc.data() as LeagueSettings : {} as LeagueSettings
+    const configuration = leagueSettings.commands?.broadcast
+    if (!configuration) {
       console.error(`${discordServer} is not configured for Broadcasts`)
     } else {
-      const configuration = sortedEvents[0]
-      const channel = configuration.channel_id
-      const role = configuration.role ? `<@&${configuration.role}>` : ""
+      const channel = configuration.channel.id
+      const role = configuration.role ? `<@&${configuration.role.id}>` : ""
       await prodClient.requestDiscord(`channels/${channel}/messages`, {
         method: "POST",
         body: {
