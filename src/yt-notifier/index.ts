@@ -3,6 +3,7 @@ import { BroadcastConfigurationEvent, MaddenBroadcastEvent, YoutubeBroadcastEven
 // import this to register the notifier
 import { BroadcastConfiguration, LeagueSettings } from "../discord/settings_db"
 import db from "../db/firebase"
+import { createClient } from "../discord/discord_utils"
 
 function extractTitle(html: string) {
   const titleTagIndex = html.indexOf('[{"videoPrimaryInfoRenderer":{"title":{"runs":[{"text":')
@@ -51,6 +52,42 @@ async function retrieveCurrentState(): Promise<Array<{ channel_id: string, disco
   })
 
 }
+
+if (!process.env.PUBLIC_KEY) {
+  throw new Error("No Public Key passed for interaction verification")
+}
+
+if (!process.env.DISCORD_TOKEN) {
+  throw new Error("No Discord Token passed for interaction verification")
+}
+if (!process.env.APP_ID) {
+  throw new Error("No App Id passed for interaction verification")
+}
+
+const prodSettings = { publicKey: process.env.PUBLIC_KEY, botToken: process.env.DISCORD_TOKEN, appId: process.env.APP_ID }
+
+const prodClient = createClient(prodSettings)
+
+EventDB.on<MaddenBroadcastEvent>("MADDEN_BROADCAST", async (events) => {
+  events.map(async broadcastEvent => {
+    const discordServer = broadcastEvent.key
+    const doc = await db.collection("league_settings").doc(discordServer).get()
+    const leagueSettings = doc.exists ? doc.data() as LeagueSettings : {} as LeagueSettings
+    const configuration = leagueSettings.commands?.broadcast
+    if (!configuration) {
+      console.error(`${discordServer} is not configured for Broadcasts`)
+    } else {
+      const channel = configuration.channel.id
+      const role = configuration.role ? `<@&${configuration.role.id}>` : ""
+      await prodClient.requestDiscord(`channels/${channel}/messages`, {
+        method: "POST",
+        body: {
+          content: `${role} ${broadcastEvent.title}\n\n${broadcastEvent.video}`
+        }
+      })
+    }
+  })
+})
 
 async function notifyYoutubeBroadcasts() {
   const currentChannelServers = await retrieveCurrentState()
