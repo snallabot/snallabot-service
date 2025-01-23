@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import { BroadcastConfiguration, DiscordIdType, GameChannelConfiguration, LeagueSettings, LoggerConfiguration, MaddenLeagueConfiguration, StreamCountConfiguration, TeamAssignment, TeamConfiguration, UserId, WaitlistConfiguration } from "./settings_db";
 import EventDB, { StoredEvent } from "../db/events_db";
 import { BroadcastConfigurationEvent } from "../db/events";
+import { createClient } from "./discord_utils";
 
 if (!process.env.SERVICE_ACCOUNT_OLD_FILE) {
   throw new Error("need SA")
@@ -18,13 +19,27 @@ const oldDB = initializeApp({
 
 const oDb = getFirestore(oldDB)
 
+if (!process.env.PUBLIC_KEY) {
+  throw new Error("No Public Key passed for interaction verification")
+}
 
+if (!process.env.DISCORD_TOKEN) {
+  throw new Error("No Discord Token passed for interaction verification")
+}
+if (!process.env.APP_ID) {
+  throw new Error("No App Id passed for interaction verification")
+}
+
+const prodSettings = { publicKey: process.env.PUBLIC_KEY, botToken: process.env.DISCORD_TOKEN, appId: process.env.APP_ID }
+
+const prodClient = createClient(prodSettings)
 
 async function convertGameChannels(old: any): Promise<GameChannelConfiguration | undefined> {
   if (old.adminRole && old.category && old.fwChannel && old.waitPing) {
     const channels = Object.keys(old.channels || {})
-    channels.forEach(c => console.log("would delete " + c))
-    // TODO: delete channels
+    await Promise.all(channels.map(async c => {
+      await prodClient.requestDiscord(`channels/${c}`, { method: "DELETE" })
+    }))
     return {
       admin: { id: old.adminRole, id_type: DiscordIdType.ROLE },
       default_category: { id: old.category, id_type: DiscordIdType.CATEGORY },
