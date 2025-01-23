@@ -142,7 +142,7 @@ MaddenDB.on<MaddenGame>("MADDEN_SCHEDULE", async (events) => {
         await Promise.all(Object.values(settings.commands.game_channel?.weekly_states?.[createWeekKey(season, week)]?.channel_states || {}).map(async channelState => {
           if (gameIds.has(channelState.scheduleId)) {
             try {
-              await notifier.deleteGameChannel(channelState, week, season, [{ id: SNALLABOT_USER, id_type: DiscordIdType.USER }])
+              await notifier.deleteGameChannel(channelState, season, week, [{ id: SNALLABOT_USER, id_type: DiscordIdType.USER }])
             } catch (e) {
               console.log("could not delete channel: " + channelState.channel.id)
             }

@@ -9,8 +9,8 @@ import { FieldValue } from "firebase-admin/firestore"
 import { ConfirmedSim, SimResult } from "../db/events"
 
 interface SnallabotNotifier {
-  update(currentState: GameChannel, week: number, season: number): Promise<void>
-  deleteGameChannel(currentState: GameChannel, week: number, season: number, origin: UserId[]): Promise<void>
+  update(currentState: GameChannel, season: number, week: number,): Promise<void>
+  deleteGameChannel(currentState: GameChannel, season: number, week: number, origin: UserId[]): Promise<void>
 }
 
 
@@ -153,7 +153,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
       const awayUsers = await getReactedUsers(channelId, messageId, SnallabotReactions.AWAY)
       const fwUsers = await getReactedUsers(channelId, messageId, SnallabotReactions.SIM)
       if (ggUsers.length > 0) {
-        await this.deleteGameChannel(currentState, week, season, ggUsers)
+        await this.deleteGameChannel(currentState, season, week, ggUsers)
       } else if (fwUsers.length > 0) {
         const res = await client.requestDiscord(
           `guilds/${guildId}/members?limit=1000`,
@@ -170,7 +170,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
             const result = decideResult(homeUsers, awayUsers)
             const requestedUsers = fwUsers.filter(u => !admins.includes(u.id))
             await forceWin(result, requestedUsers, confirmedUsers, currentState, season, week)
-            await this.deleteGameChannel(currentState, week, season, requestedUsers.concat(confirmedUsers))
+            await this.deleteGameChannel(currentState, season, week, requestedUsers.concat(confirmedUsers))
           } catch (e) {
             console.warn(`FW requested but no home or away option chosen. Doing nothing ${guildId}, ${channelId.id}: ${e}`)
           }
