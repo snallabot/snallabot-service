@@ -112,6 +112,13 @@ export function deferMessage() {
   }
 }
 
+export function deferMessageInvisible() {
+  return {
+    type: InteractionResponseType.DeferredChannelMessageWithSource,
+    data: { flags: 64 }
+  }
+}
+
 export function formatTeamMessageName(discordId: string | undefined, gamerTag: string | undefined) {
   if (discordId) {
     return `<@${discordId}>`
