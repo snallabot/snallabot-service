@@ -3,7 +3,7 @@ import { CommandHandler, Command } from "../commands_handler"
 import { respond, createMessageResponse, DiscordClient, deferMessage, formatTeamMessageName, createWeekKey, SnallabotReactions } from "../discord_utils"
 import { APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataSubcommandOption, APIChannel, APIMessage, ApplicationCommandOptionType, ApplicationCommandType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { FieldValue, Firestore } from "firebase-admin/firestore"
-import { DiscordIdType, GameChannel, GameChannelState, LeagueSettings, MaddenLeagueConfiguration, TeamAssignments, UserId, WeekState } from "../settings_db"
+import { DiscordIdType, GameChannel, GameChannelState, LeagueSettings, MaddenLeagueConfiguration, RoleId, TeamAssignments, UserId, WeekState } from "../settings_db"
 import MaddenClient, { TeamList } from "../../db/madden_db"
 import EventDB from "../../db/events_db"
 import { formatRecord, getMessageForWeek, MaddenGame, Team } from "../../export/madden_league_types"
@@ -15,8 +15,8 @@ async function react(client: DiscordClient, channel: string, message: string, re
   await client.requestDiscord(`channels/${channel}/messages/${message}/reactions/${reaction}/@me`, { method: "PUT" })
 }
 
-function notifierMessage(users: string): string {
-  return `${users}\nTime to schedule your game! Once your game is scheduled, hit the ⏰. Otherwise, You will be notified again.\nWhen you're done playing, let me know with 🏆.\nNeed to sim this game? React with ⏭ AND the home/away to force win. Choose both home and away to fair sim!`
+function notifierMessage(users: string, waitPing: number, role: RoleId): string {
+  return `${users}\nTime to schedule your game! Once your game is scheduled, hit the ⏰. Otherwise, You will be notified again in ${waitPing}.\nWhen you're done playing, let me know with 🏆 and I will clean up the channel.\nNeed to sim this game? React with ⏭ AND the home/away request a force win from <&${role.id}>. Choose both home and away to fair sim! <&${role.id}> hit the ⏭ to confirm it!`
 }
 
 function createSimMessage(sim: ConfirmedSim): string {
@@ -150,6 +150,11 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
 - ${SnallabotCommandReactions.WAITING} Logging`
     })
     const assignments = teams.getLatestTeamAssignments(settings.commands.teams?.assignments || {})
+    if (!settings.commands.game_channel) {
+      return
+    }
+    const waitPing = settings.commands.game_channel.wait_ping || 12
+    const role = settings.commands.game_channel.admin
     const gameChannelsWithMessage = await Promise.all(gameChannels.map(async gameChannel => {
       const channel = gameChannel.channel.id
       const game = gameChannel.game
@@ -160,7 +165,7 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
       const awayTeamStanding = await MaddenClient.getStandingForTeam(leagueId, awayTeamId)
       const homeTeamStanding = await MaddenClient.getStandingForTeam(leagueId, homeTeamId)
       const usersMessage = `${awayUser} (${formatRecord(awayTeamStanding)}) at ${homeUser} (${formatRecord(homeTeamStanding)})`
-      const res = await client.requestDiscord(`channels/${channel}/messages`, { method: "POST", body: { content: notifierMessage(usersMessage) } })
+      const res = await client.requestDiscord(`channels/${channel}/messages`, { method: "POST", body: { content: notifierMessage(usersMessage, waitPing, role) } })
       const message = await res.json() as APIMessage
       return { message: { id: message.id, id_type: DiscordIdType.MESSAGE }, ...gameChannel }
     }))
@@ -260,7 +265,7 @@ async function clearGameChannels(client: DiscordClient, db: Firestore, token: st
     }
     await client.editOriginalInteraction(token, { content: `Game Channels Cleared` })
   } catch (e) {
-    await client.editOriginalInteraction(token, { content: `Game Channels could not be cleared properly, if all game channels are deleted, this is safe to ignore Error: ${e}` })
+    await client.editOriginalInteraction(token, { content: `Game Channels could not be cleared properly, if all game channels are deleted, this is safe to ignore. If you still have game channels, delete them manually. Error: ${e}` })
   }
 }
 
