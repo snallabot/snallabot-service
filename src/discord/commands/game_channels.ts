@@ -14,7 +14,7 @@ async function react(client: DiscordClient, channel: string, message: string, re
 }
 
 function notifierMessage(users: string, waitPing: number, role: RoleId): string {
-  return `${users}\nTime to schedule your game! Once your game is scheduled, hit the ⏰. Otherwise, You will be notified again in ${waitPing}.\nWhen you're done playing, let me know with 🏆 and I will clean up the channel.\nNeed to sim this game? React with ⏭ AND the home/away request a force win from <@&${role.id}>. Choose both home and away to fair sim! <@&${role.id}> hit the ⏭ to confirm it!`
+  return `${users}\nTime to schedule your game! Once your game is scheduled, hit the ⏰. Otherwise, You will be notified again every ${waitPing} hours.\nWhen you're done playing, let me know with 🏆 and I will clean up the channel.\nNeed to sim this game? React with ⏭ AND the home/away request a force win from <@&${role.id}>. Choose both home and away to fair sim! <@&${role.id}> hit the ⏭ to confirm it!`
 }
 
 function createSimMessage(sim: ConfirmedSim): string {
