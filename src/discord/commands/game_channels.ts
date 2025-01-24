@@ -58,29 +58,57 @@ export function formatScoreboard(week: number, seasonIndex: number, games: Madde
   return `# ${seasonIndex + 2024} Season ${getMessageForWeek(week)} Scoreboard\n${scoreboardGames}`
 }
 
+enum SnallabotCommandReactions {
+  LOADING = "<a:snallabot_loading:1288662414191104111",
+  WAITING = "<a:snallabot_waiting:1288664321781399584>",
+  FINISHED = "<a:snallabot_done:1288666730595618868>",
+  ERROR = "<:snallabot_error:1288692698320076820>"
+}
+
 async function createGameChannels(client: DiscordClient, db: Firestore, token: string, guild_id: string, settings: LeagueSettings, week: number, category: string, author: UserId) {
   try {
     const leagueId = (settings.commands.madden_league as Required<MaddenLeagueConfiguration>).league_id
     await client.editOriginalInteraction(token, {
       content: `Creating Game Channels:
-- <a:snallabot_loading:1288662414191104111> Creating Channels
-- <a:snallabot_waiting:1288664321781399584> Creating Notification Messages
-- <a:snallabot_waiting:1288664321781399584> Setting up notifier
-- <a:snallabot_waiting:1288664321781399584> Creating Scoreboard
-- <a:snallabot_waiting:1288664321781399584> Exporting
-- <a:snallabot_waiting:1288664321781399584> Logging`})
+- ${SnallabotCommandReactions.LOADING} Exporting
+- ${SnallabotCommandReactions.WAITING} Creating Channels
+- ${SnallabotCommandReactions.WAITING} Creating Notification Messages
+- ${SnallabotCommandReactions.WAITING} Setting up notifier
+- ${SnallabotCommandReactions.WAITING} Creating Scoreboard
+- ${SnallabotCommandReactions.WAITING} Exporting
+- ${SnallabotCommandReactions.WAITING} Logging`
+    })
+    const eres = await fetch(`https://snallabot.herokuapp.com/${guild_id}/export`, {
+      method: "POST",
+      body: JSON.stringify({
+        week: 102,
+        stage: -1,
+        auto: true,
+      }),
+    })
+    const exportEmoji = eres.ok ? SnallabotCommandReactions.FINISHED : SnallabotCommandReactions.ERROR
+    await client.editOriginalInteraction(token, {
+      content: `Creating Game Channels:
+- ${exportEmoji} Exporting
+- ${SnallabotCommandReactions.LOADING} Creating Channels
+- ${SnallabotCommandReactions.WAITING} Creating Notification Messages
+- ${SnallabotCommandReactions.WAITING} Setting up notifier
+- ${SnallabotCommandReactions.WAITING} Creating Scoreboard
+- ${SnallabotCommandReactions.WAITING} Logging`
+    })
     let weekSchedule;
     try {
       weekSchedule = (await MaddenClient.getLatestWeekSchedule(leagueId, week)).sort((g, g2) => g.scheduleId - g2.scheduleId)
     } catch (e) {
       await client.editOriginalInteraction(token, {
         content: `Creating Game Channels:
-- <a:snallabot_loading:1288662414191104111> Creating Channels, automatically retrieving the week for you! Please wait..
-- <a:snallabot_waiting:1288664321781399584> Creating Notification Messages
-- <a:snallabot_waiting:1288664321781399584> Setting up notifier
-- <a:snallabot_waiting:1288664321781399584> Creating Scoreboard
-- <a:snallabot_waiting:1288664321781399584> Exporting
-- <a:snallabot_waiting:1288664321781399584> Logging`})
+- ${exportEmoji} Exporting
+- ${SnallabotCommandReactions.LOADING} Creating Channels, automatically retrieving the week for you! Please wait..
+- ${SnallabotCommandReactions.WAITING} Creating Notification Messages
+- ${SnallabotCommandReactions.WAITING} Setting up notifier
+- ${SnallabotCommandReactions.WAITING} Creating Scoreboard
+- ${SnallabotCommandReactions.WAITING} Logging`
+      })
       await fetch(`https://snallabot.herokuapp.com/${guild_id}/export`, {
         method: "POST",
         body: JSON.stringify({
@@ -114,12 +142,13 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
     }))
     await client.editOriginalInteraction(token, {
       content: `Creating Game Channels:
-- <a:snallabot_done:1288666730595618868> Creating Channels
-- <a:snallabot_loading:1288662414191104111> Creating Notification Messages
-- <a:snallabot_waiting:1288664321781399584> Setting up notifier
-- <a:snallabot_waiting:1288664321781399584> Creating Scoreboard
-- <a:snallabot_waiting:1288664321781399584> Exporting
-- <a:snallabot_waiting:1288664321781399584> Logging`})
+- ${exportEmoji} Exporting
+- ${SnallabotCommandReactions.FINISHED} Creating Channels
+- ${SnallabotCommandReactions.LOADING} Creating Notification Messages
+- ${SnallabotCommandReactions.WAITING} Setting up notifier
+- ${SnallabotCommandReactions.WAITING} Creating Scoreboard
+- ${SnallabotCommandReactions.WAITING} Logging`
+    })
     const assignments = teams.getLatestTeamAssignments(settings.commands.teams?.assignments || {})
     const gameChannelsWithMessage = await Promise.all(gameChannels.map(async gameChannel => {
       const channel = gameChannel.channel.id
@@ -137,12 +166,13 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
     }))
     await client.editOriginalInteraction(token, {
       content: `Creating Game Channels:
-- <a:snallabot_done:1288666730595618868> Creating Channels
-- <a:snallabot_done:1288666730595618868> Creating Notification Messages
-- <a:snallabot_loading:1288662414191104111> Setting up notifier
-- <a:snallabot_waiting:1288664321781399584> Creating Scoreboard
-- <a:snallabot_waiting:1288664321781399584> Exporting
-- <a:snallabot_waiting:1288664321781399584> Logging`})
+- ${exportEmoji} Exporting
+- ${SnallabotCommandReactions.FINISHED} Creating Channels
+- ${SnallabotCommandReactions.FINISHED} Creating Notification Messages
+- ${SnallabotCommandReactions.LOADING} Setting up notifier
+- ${SnallabotCommandReactions.WAITING} Creating Scoreboard
+- ${SnallabotCommandReactions.WAITING} Logging`
+    })
     const finalGameChannels: GameChannel[] = await Promise.all(gameChannelsWithMessage.map(async gameChannel => {
       const { channel: { id: channelId }, message: { id: messageId } } = gameChannel
       await react(client, channelId, messageId, SnallabotReactions.SCHEDULE)
@@ -158,12 +188,13 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
     finalGameChannels.forEach(g => channelsMap[g.channel.id] = g)
     await client.editOriginalInteraction(token, {
       content: `Creating Game Channels:
-- <a:snallabot_done:1288666730595618868> Creating Channels
-- <a:snallabot_done:1288666730595618868> Creating Notification Messages
-- <a:snallabot_done:1288666730595618868> Setting up notifier
-- <a:snallabot_loading:1288662414191104111> Creating Scoreboard
-- <a:snallabot_waiting:1288664321781399584> Exporting
-- <a:snallabot_waiting:1288664321781399584> Logging`})
+- ${exportEmoji} Exporting
+- ${SnallabotCommandReactions.FINISHED} Creating Channels
+- ${SnallabotCommandReactions.FINISHED} Creating Notification Messages
+- ${SnallabotCommandReactions.FINISHED} Setting up notifier
+- ${SnallabotCommandReactions.LOADING} Creating Scoreboard
+- ${SnallabotCommandReactions.WAITING} Logging`
+    })
 
     const season = weekSchedule[0].seasonIndex
     const scoreboardMessage = formatScoreboard(week, season, weekSchedule, teams, [])
@@ -173,41 +204,26 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
     const weekKey = createWeekKey(season, week)
     await client.editOriginalInteraction(token, {
       content: `Creating Game Channels:
-- <a:snallabot_done:1288666730595618868> Creating Channels
-- <a:snallabot_done:1288666730595618868> Creating Notification Messages
-- <a:snallabot_done:1288666730595618868> Setting up notifier
-- <a:snallabot_done:1288666730595618868> Creating Scoreboard
-- <a:snallabot_loading:1288662414191104111> Exporting
-- <a:snallabot_waiting:1288664321781399584> Logging`})
-    const eres = await fetch(`https://snallabot.herokuapp.com/${guild_id}/export`, {
-      method: "POST",
-      body: JSON.stringify({
-        week: 102,
-        stage: -1,
-        auto: true,
-      }),
-    })
-    const exportEmoji = eres.ok ? "<a:snallabot_done:1288666730595618868>" : "<:snallabot_error:1288692698320076820>"
-    await client.editOriginalInteraction(token, {
-      content: `Creating Game Channels:
-- <a:snallabot_done:1288666730595618868> Creating Channels
-- <a:snallabot_done:1288666730595618868> Creating Notification Messages
-- <a:snallabot_done:1288666730595618868> Setting up notifier
-- <a:snallabot_done:1288666730595618868> Creating Scoreboard
 - ${exportEmoji} Exporting
-- <a:snallabot_loading:1288662414191104111> Logging`})
+- ${SnallabotCommandReactions.FINISHED} Creating Channels
+- ${SnallabotCommandReactions.FINISHED} Creating Notification Messages
+- ${SnallabotCommandReactions.FINISHED} Setting up notifier
+- ${SnallabotCommandReactions.FINISHED} Creating Scoreboard
+- ${SnallabotCommandReactions.LOADING} Logging`
+    })
     if (settings?.commands?.logger) {
       const logger = createLogger(settings.commands.logger)
       await logger.logUsedCommand("game_channels create", author, client)
     }
     await client.editOriginalInteraction(token, {
       content: `Game Channels Successfully Created :
-- <a:snallabot_done:1288666730595618868> Creating Channels
-- <a:snallabot_done:1288666730595618868> Creating Notification Messages
-- <a:snallabot_done:1288666730595618868> Setting up notifier
-- <a:snallabot_done:1288666730595618868> Creating Scoreboard
 - ${exportEmoji} Exporting
-- <a:snallabot_done:1288666730595618868> Logging`})
+- ${SnallabotCommandReactions.FINISHED} Creating Channels
+- ${SnallabotCommandReactions.FINISHED} Creating Notification Messages
+- ${SnallabotCommandReactions.FINISHED} Setting up notifier
+- ${SnallabotCommandReactions.FINISHED} Creating Scoreboard
+- ${SnallabotCommandReactions.FINISHED} Logging`
+    })
     await db.collection("league_settings").doc(guild_id).update({
       [`commands.game_channel.weekly_states.${weekKey}`]: weeklyState
     })

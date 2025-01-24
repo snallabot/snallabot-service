@@ -199,7 +199,6 @@ discordClient.on("guildMemberRemove", async (user, guild) => {
 });
 
 discordClient.on("guildMemberUpdate", async (member, old) => {
-
   const guildId = member.guildID
   const doc = await db.collection("league_settings").doc(guildId).get()
   if (!doc.exists) {
