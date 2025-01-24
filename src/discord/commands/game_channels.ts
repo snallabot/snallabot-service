@@ -2,21 +2,19 @@ import { ParameterizedContext } from "koa"
 import { CommandHandler, Command } from "../commands_handler"
 import { respond, createMessageResponse, DiscordClient, deferMessage, formatTeamMessageName, createWeekKey, SnallabotReactions } from "../discord_utils"
 import { APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataSubcommandOption, APIChannel, APIMessage, ApplicationCommandOptionType, ApplicationCommandType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
-import { FieldValue, Firestore } from "firebase-admin/firestore"
-import { DiscordIdType, GameChannel, GameChannelState, LeagueSettings, MaddenLeagueConfiguration, RoleId, TeamAssignments, UserId, WeekState } from "../settings_db"
+import { Firestore } from "firebase-admin/firestore"
+import { DiscordIdType, GameChannel, GameChannelState, LeagueSettings, MaddenLeagueConfiguration, RoleId, UserId, WeekState } from "../settings_db"
 import MaddenClient, { TeamList } from "../../db/madden_db"
-import EventDB from "../../db/events_db"
-import { formatRecord, getMessageForWeek, MaddenGame, Team } from "../../export/madden_league_types"
+import { formatRecord, getMessageForWeek, MaddenGame } from "../../export/madden_league_types"
 import createLogger from "../logging"
 import { ConfirmedSim, SimResult } from "../../db/events"
-import db from "../../db/firebase"
 
 async function react(client: DiscordClient, channel: string, message: string, reaction: SnallabotReactions) {
   await client.requestDiscord(`channels/${channel}/messages/${message}/reactions/${reaction}/@me`, { method: "PUT" })
 }
 
 function notifierMessage(users: string, waitPing: number, role: RoleId): string {
-  return `${users}\nTime to schedule your game! Once your game is scheduled, hit the ⏰. Otherwise, You will be notified again in ${waitPing}.\nWhen you're done playing, let me know with 🏆 and I will clean up the channel.\nNeed to sim this game? React with ⏭ AND the home/away request a force win from <&${role.id}>. Choose both home and away to fair sim! <&${role.id}> hit the ⏭ to confirm it!`
+  return `${users}\nTime to schedule your game! Once your game is scheduled, hit the ⏰. Otherwise, You will be notified again in ${waitPing}.\nWhen you're done playing, let me know with 🏆 and I will clean up the channel.\nNeed to sim this game? React with ⏭ AND the home/away request a force win from <@&${role.id}>. Choose both home and away to fair sim! <@&${role.id}> hit the ⏭ to confirm it!`
 }
 
 function createSimMessage(sim: ConfirmedSim): string {
@@ -165,7 +163,7 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
       const awayTeamStanding = await MaddenClient.getStandingForTeam(leagueId, awayTeamId)
       const homeTeamStanding = await MaddenClient.getStandingForTeam(leagueId, homeTeamId)
       const usersMessage = `${awayUser} (${formatRecord(awayTeamStanding)}) at ${homeUser} (${formatRecord(homeTeamStanding)})`
-      const res = await client.requestDiscord(`channels/${channel}/messages`, { method: "POST", body: { content: notifierMessage(usersMessage, waitPing, role) } })
+      const res = await client.requestDiscord(`channels/${channel}/messages`, { method: "POST", body: { content: notifierMessage(usersMessage, waitPing, role), allowed_mentions: { users: [awayUser, homeUser] } } })
       const message = await res.json() as APIMessage
       return { message: { id: message.id, id_type: DiscordIdType.MESSAGE }, ...gameChannel }
     }))
