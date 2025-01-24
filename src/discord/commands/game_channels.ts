@@ -59,7 +59,7 @@ export function formatScoreboard(week: number, seasonIndex: number, games: Madde
 }
 
 enum SnallabotCommandReactions {
-  LOADING = "<a:snallabot_loading:1288662414191104111",
+  LOADING = "<a:snallabot_loading:1288662414191104111>",
   WAITING = "<a:snallabot_waiting:1288664321781399584>",
   FINISHED = "<a:snallabot_done:1288666730595618868>",
   ERROR = "<:snallabot_error:1288692698320076820>"
