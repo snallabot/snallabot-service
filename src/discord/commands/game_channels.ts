@@ -163,7 +163,7 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
       const awayTeamStanding = await MaddenClient.getStandingForTeam(leagueId, awayTeamId)
       const homeTeamStanding = await MaddenClient.getStandingForTeam(leagueId, homeTeamId)
       const usersMessage = `${awayUser} (${formatRecord(awayTeamStanding)}) at ${homeUser} (${formatRecord(homeTeamStanding)})`
-      const res = await client.requestDiscord(`channels/${channel}/messages`, { method: "POST", body: { content: notifierMessage(usersMessage, waitPing, role), allowed_mentions: { users: [awayUser, homeUser] } } })
+      const res = await client.requestDiscord(`channels/${channel}/messages`, { method: "POST", body: { content: notifierMessage(usersMessage, waitPing, role), allowed_mentions: { parse: ["users"] } } })
       const message = await res.json() as APIMessage
       return { message: { id: message.id, id_type: DiscordIdType.MESSAGE }, ...gameChannel }
     }))
