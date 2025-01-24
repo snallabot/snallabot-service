@@ -209,7 +209,7 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
 - ${SnallabotCommandReactions.FINISHED} Creating Notification Messages
 - ${SnallabotCommandReactions.FINISHED} Setting up notifier
 - ${SnallabotCommandReactions.FINISHED} Creating Scoreboard
-- ${SnallabotCommandReactions.WAITING} Logging`
+- ${SnallabotCommandReactions.LOADING} Logging`
     })
     if (settings?.commands?.logger) {
       const logger = createLogger(settings.commands.logger)
