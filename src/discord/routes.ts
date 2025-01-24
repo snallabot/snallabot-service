@@ -241,7 +241,7 @@ discordClient.on("guildMemberUpdate", async (member, old) => {
       await prodClient.requestDiscord(`channels/${leagueSettings.commands.teams.channel.id}/messages/${leagueSettings.commands.teams.messageId.id}`,
         { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
     } catch (e) {
-      console.log("could not update team message " + e)
+      console.log("could not update team message for guild " + guildId + " " + e)
     }
   }
 });
