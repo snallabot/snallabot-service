@@ -8,6 +8,7 @@ import MaddenClient, { TeamList } from "../../db/madden_db"
 import { formatRecord, getMessageForWeek, MaddenGame } from "../../export/madden_league_types"
 import createLogger from "../logging"
 import { ConfirmedSim, SimResult } from "../../db/events"
+import createNotifier from "../notifier"
 
 async function react(client: DiscordClient, channel: string, message: string, reaction: SnallabotReactions) {
   await client.requestDiscord(`channels/${channel}/messages/${message}/reactions/${reaction}/@me`, { method: "PUT" })
@@ -267,6 +268,25 @@ async function clearGameChannels(client: DiscordClient, db: Firestore, token: st
   }
 }
 
+async function notifyGameChannels(client: DiscordClient, token: string, guild_id: string, settings: LeagueSettings) {
+  try {
+    await client.editOriginalInteraction(token, { content: `Notifying Game Channels...` })
+    const weekStates = settings.commands.game_channel?.weekly_states || {}
+    const notifier = createNotifier(client, guild_id, settings)
+    await Promise.all(Object.entries(weekStates).map(async entry => {
+      const weekState = entry[1]
+      const season = weekState.seasonIndex
+      const week = weekState.week
+      return await Promise.all(Object.values(weekState.channel_states).map(async channel => {
+        await notifier.ping(channel, season, week)
+      }))
+    }))
+    await client.editOriginalInteraction(token, { content: `Game Channels Notified` })
+  } catch (e) {
+    await client.editOriginalInteraction(token, { content: `Game Channels could not be notified properly Error: ${e}` })
+  }
+}
+
 export default {
   async handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext) {
     const { guild_id, token, member } = command
@@ -351,6 +371,9 @@ export default {
     } else if (subCommand === "clear") {
       respond(ctx, deferMessage())
       clearGameChannels(client, db, token, guild_id, leagueSettings, author)
+    } else if (subCommand === "notify") {
+      respond(ctx, deferMessage())
+      notifyGameChannels(client, token, guild_id, leagueSettings)
     } else {
       throw new Error(`game_channels ${subCommand} not implemented`)
     }
@@ -476,6 +499,13 @@ export default {
               required: true,
             },
           ],
+        },
+        {
+          type: ApplicationCommandOptionType.Subcommand,
+          name: "notify",
+          description: "notifies all remaining game channels",
+          options: [
+          ]
         },
       ]
     }

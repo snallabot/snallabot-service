@@ -11,6 +11,7 @@ import { ConfirmedSim, SimResult } from "../db/events"
 interface SnallabotNotifier {
   update(currentState: GameChannel, season: number, week: number,): Promise<void>
   deleteGameChannel(currentState: GameChannel, season: number, week: number, origin: UserId[]): Promise<void>
+  ping(currentState: GameChannel, season: number, week: number): Promise<void>
 }
 
 
@@ -81,21 +82,6 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
     }
     await EventDB.appendEvents([event], EventDelivery.EVENT_SOURCE)
   }
-  async function ping(gameChannel: GameChannel) {
-    const game = await MaddenDB.getGameForSchedule(leagueId, gameChannel.scheduleId)
-    const teams = await MaddenDB.getLatestTeams(leagueId)
-    const awayTeam = game.awayTeamId
-    const homeTeam = game.homeTeamId
-    const awayTag = formatTeamMessageName(settings.commands.teams?.assignments?.[`${awayTeam}`]?.discord_user?.id, teams.getTeamForId(awayTeam).userName)
-    const homeTag = formatTeamMessageName(settings.commands.teams?.assignments?.[`${homeTeam}`]?.discord_user?.id, teams.getTeamForId(homeTeam).userName)
-
-    await client.requestDiscord(`channels/${gameChannel.channel.id}/messages`, {
-      method: "POST",
-      body: {
-        content: `${awayTag} ${homeTag} is your game scheduled? Schedule it! or react to my first message to set it as scheduled! Hit the trophy if its done already`,
-      },
-    })
-  }
 
   async function gameFinished(reactors: UserId[], gameChannel: GameChannel) {
     if (settings?.commands?.logger) {
@@ -129,6 +115,24 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
         [`commands.game_channel.weekly_states.${weekKey}.channel_states.${channelId.id}`]: FieldValue.delete()
       })
       await gameFinished(originators, currentState)
+    },
+    ping: async function ping(gameChannel: GameChannel, season: number, week: number) {
+      const game = await MaddenDB.getGameForSchedule(leagueId, gameChannel.scheduleId)
+      const teams = await MaddenDB.getLatestTeams(leagueId)
+      const awayTeam = game.awayTeamId
+      const homeTeam = game.homeTeamId
+      const awayTag = formatTeamMessageName(settings.commands.teams?.assignments?.[`${awayTeam}`]?.discord_user?.id, teams.getTeamForId(awayTeam).userName)
+      const homeTag = formatTeamMessageName(settings.commands.teams?.assignments?.[`${homeTeam}`]?.discord_user?.id, teams.getTeamForId(homeTeam).userName)
+      const weekKey = createWeekKey(season, week)
+      await db.collection("league_settings").doc(guildId).update({
+        [`commands.game_channel.weekly_states.${week}.channel_states.${gameChannel.channel.id}.notifiedTime`]: new Date().getTime()
+      })
+      await client.requestDiscord(`channels/${gameChannel.channel.id}/messages`, {
+        method: "POST",
+        body: {
+          content: `${awayTag} ${homeTag} is your game scheduled? Schedule it! or react to my first message to set it as scheduled! Hit the trophy if its done already`,
+        },
+      })
     },
     update: async function(currentState: GameChannel, season: number, week: number) {
       const channelId = currentState.channel
@@ -194,10 +198,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
         const last = new Date(currentState.notifiedTime)
         const hoursSince = (now.getTime() - last.getTime()) / 36e5
         if (hoursSince > waitPing) {
-          await db.collection("league_settings").doc(guildId).update({
-            [`commands.game_channel.weekly_states.${weekKey}.channel_states.${channelId.id}.notifiedTime`]: new Date().getTime()
-          })
-          await ping(currentState)
+          await this.ping(currentState, season, week)
         }
       }
     }
