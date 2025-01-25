@@ -125,7 +125,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
       const homeTag = formatTeamMessageName(settings.commands.teams?.assignments?.[`${homeTeam}`]?.discord_user?.id, teams.getTeamForId(homeTeam).userName)
       const weekKey = createWeekKey(season, week)
       await db.collection("league_settings").doc(guildId).update({
-        [`commands.game_channel.weekly_states.${week}.channel_states.${gameChannel.channel.id}.notifiedTime`]: new Date().getTime()
+        [`commands.game_channel.weekly_states.${weekKey}.channel_states.${gameChannel.channel.id}.notifiedTime`]: new Date().getTime()
       })
       await client.requestDiscord(`channels/${gameChannel.channel.id}/messages`, {
         method: "POST",
