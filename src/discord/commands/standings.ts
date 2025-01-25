@@ -20,24 +20,30 @@ function formatStandings(standings: Standing[]) {
 }
 
 async function handleCommand(client: DiscordClient, token: string, league: string, subCommand: string) {
-  const standings = await MaddenDB.getLatestStandings(league)
-  const standingsToFormat = (() => {
-    if (subCommand === "nfl") {
-      return standings
-    } else if (subCommand === "afc") {
-      return standings.filter(s => s.conferenceName.toLowerCase() === "afc")
-    } else if (subCommand === "nfc") {
-      return standings.filter(s => s.conferenceName.toLowerCase() === "nfc")
+  try {
+    const standings = await MaddenDB.getLatestStandings(league)
+    const standingsToFormat = (() => {
+      if (subCommand === "nfl") {
+        return standings
+      } else if (subCommand === "afc") {
+        return standings.filter(s => s.conferenceName.toLowerCase() === "afc")
+      } else if (subCommand === "nfc") {
+        return standings.filter(s => s.conferenceName.toLowerCase() === "nfc")
+      }
+      throw new Error("unknown conference " + subCommand)
+    })()
+    if (!standingsToFormat) {
+      throw new Error("no standings")
     }
-    throw new Error("unknown conference " + subCommand)
-  })()
-  if (!standingsToFormat) {
-    throw new Error("no standings")
+    const message = formatStandings(standingsToFormat)
+    await client.editOriginalInteraction(token, {
+      content: message
+    })
+  } catch (e) {
+    await client.editOriginalInteraction(token, {
+      content: "Standings failed: Error: " + e
+    })
   }
-  const message = formatStandings(standingsToFormat)
-  await client.editOriginalInteraction(token, {
-    content: message
-  })
 }
 
 export default {
