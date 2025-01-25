@@ -11,10 +11,10 @@ function formatStandings(standings: Standing[]) {
   const sortedStandings = standings.sort((s1, s2) => s1.rank - s2.rank)
   const standingsMessage = sortedStandings.map(standing => {
     const record = formatRecord(standing)
-    const teamRank = `### Team Rank\nNet Points: ${standing.netPts}\nPoints For: ${standing.ptsFor} (${standing.ptsForRank})\nPoints Against: ${standing.ptsAgainst} (${standing.ptsAgainstRank})\nTurnovers: ${standing.tODiff}`
+    const teamRank = `\nNet Points: ${standing.netPts}\nPoints For: ${standing.ptsFor} (${standing.ptsForRank})\nPoints Against: ${standing.ptsAgainst} (${standing.ptsAgainstRank})\nTurnovers: ${standing.tODiff}`
     const offenseRank = `### Offense Rank\nTotal:${standing.offTotalYds} yds (${standing.offTotalYdsRank})\nPassing: ${standing.offPassYds} yds (${standing.offPassYdsRank})\nRushing: ${standing.offRushYds} yds (${standing.offRushYdsRank})\n`
     const defensiveRank = `### Defense Rank\nTotal:${standing.defTotalYds} yds (${standing.defTotalYdsRank})\nPassing: ${standing.defPassYds} yds (${standing.defPassYdsRank})\nRushing: ${standing.defRushYds} yds (${standing.defRushYdsRank})\n`
-    return `### ${standing.rank}. ${standing.teamName} (${record})`
+    return `${standing.rank}. ${standing.teamName} (${record})\n${teamRank}`
   }).join("\n")
   return standingsMessage
 }
