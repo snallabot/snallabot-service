@@ -1,6 +1,6 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command } from "../commands_handler"
-import { respond, createMessageResponse, DiscordClient } from "../discord_utils"
+import { respond, createMessageResponse, DiscordClient, deferMessage } from "../discord_utils"
 import { APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ApplicationCommandType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
 import { LeagueSettings } from "../settings_db"
@@ -19,9 +19,30 @@ function formatStandings(standings: Standing[]) {
   return standingsMessage
 }
 
+async function handleCommand(client: DiscordClient, token: string, league: string, subCommand: string) {
+  const standings = await MaddenDB.getLatestStandings(league)
+  const standingsToFormat = (() => {
+    if (subCommand === "nfl") {
+      return standings
+    } else if (subCommand === "afc") {
+      return standings.filter(s => s.conferenceName.toLowerCase() === "afc")
+    } else if (subCommand === "nfc") {
+      return standings.filter(s => s.conferenceName.toLowerCase() === "nfc")
+    }
+    throw new Error("unknown conference " + subCommand)
+  })()
+  if (!standingsToFormat) {
+    throw new Error("no standings")
+  }
+  const message = formatStandings(standingsToFormat)
+  await client.editOriginalInteraction(token, {
+    content: message
+  })
+}
+
 export default {
   async handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext) {
-    const { guild_id } = command
+    const { guild_id, token } = command
     if (!command.data.options) {
       throw new Error("game channels command not defined properly")
     }
@@ -34,22 +55,8 @@ export default {
       throw new Error("No madden league linked. Setup snallabot with your Madden league first")
     }
     const league = leagueSettings.commands.madden_league.league_id
-    const standings = await MaddenDB.getLatestStandings(league)
-    const standingsToFormat = (() => {
-      if (subCommand === "nfl") {
-        return standings
-      } else if (subCommand === "afc") {
-        return standings.filter(s => s.conferenceName.toLowerCase() === "afc")
-      } else if (subCommand === "nfc") {
-        return standings.filter(s => s.conferenceName.toLowerCase() === "nfc")
-      }
-      throw new Error("unknown conference " + subCommand)
-    })()
-    if (!standingsToFormat) {
-      throw new Error("no standings")
-    }
-    const message = formatStandings(standingsToFormat)
-    respond(ctx, createMessageResponse(message))
+    respond(ctx, deferMessage())
+    handleCommand(client, token, league, subCommand)
   },
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
     return {

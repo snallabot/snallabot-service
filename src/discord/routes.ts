@@ -276,7 +276,7 @@ discordClient.on("messageReactionAdd", async (msg, reactor, reaction) => {
   await Promise.all(Object.values(weeklyStates).map(async weeklyState => {
     await Promise.all(Object.entries(weeklyState.channel_states).map(async channelEntry => {
       const [channelId, channelState] = channelEntry
-      if (channelId === reactionChannel && channelState.message.id === reactionMessage) {
+      if (channelId === reactionChannel && channelState?.message?.id === reactionMessage) {
         const notifier = createNotifier(prodClient, guild, leagueSettings)
         // wait for users to confirm/unconfirm
         const jitter = getRandomInt(10)
