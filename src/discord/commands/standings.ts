@@ -1,6 +1,6 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command } from "../commands_handler"
-import { respond, createMessageResponse, DiscordClient, deferMessage } from "../discord_utils"
+import { respond, DiscordClient, deferMessage } from "../discord_utils"
 import { APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ApplicationCommandType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
 import { LeagueSettings } from "../settings_db"
@@ -8,20 +8,19 @@ import MaddenDB from "../../db/madden_db"
 import { Standing, formatRecord } from "../../export/madden_league_types"
 
 function formatStandings(standings: Standing[]) {
-  const sortedStandings = standings.sort((s1, s2) => s1.rank - s2.rank)
-  const standingsMessageFull = sortedStandings.map(standing => {
+  const standingsMessageFull = standings.map(standing => {
     const record = formatRecord(standing)
     const teamRank = `Net Points: ${standing.netPts}\nPoints For: ${standing.ptsFor} (${standing.ptsForRank})\nPoints Against: ${standing.ptsAgainst} (${standing.ptsAgainstRank})\nTurnover Diff: ${standing.tODiff}`
-    const offenseRank = `### Offense Rank\nTotal:${standing.offTotalYds} yds (${standing.offTotalYdsRank})\nPassing: ${standing.offPassYds} yds (${standing.offPassYdsRank})\nRushing: ${standing.offRushYds} yds (${standing.offRushYdsRank})\n`
-    const defensiveRank = `### Defense Rank\nTotal:${standing.defTotalYds} yds (${standing.defTotalYdsRank})\nPassing: ${standing.defPassYds} yds (${standing.defPassYdsRank})\nRushing: ${standing.defRushYds} yds (${standing.defRushYdsRank})\n`
+    const offenseRank = `### Offense Rank\nTotal:${standing.offTotalYds} yds (${standing.offTotalYdsRank})\nPassing: ${standing.offPassYds} yds (${standing.offPassYdsRank})\nRushing: ${standing.offRushYds} yds (${standing.offRushYdsRank})`
+    const defensiveRank = `### Defense Rank\nTotal:${standing.defTotalYds} yds (${standing.defTotalYdsRank})\nPassing: ${standing.defPassYds} yds (${standing.defPassYdsRank})\nRushing: ${standing.defRushYds} yds (${standing.defRushYdsRank})`
     return `### ${standing.rank}. ${standing.teamName} (${record})\n${teamRank}\n${offenseRank}\n${defensiveRank}`
   }).join("\n")
-  const standingsMessageLight = sortedStandings.map(standing => {
+  const standingsMessageLight = standings.map(standing => {
     const record = formatRecord(standing)
     const teamRank = `Net Points: ${standing.netPts}\nOffense Yards: ${standing.offTotalYds} (${standing.offTotalYdsRank})\nDefense: ${standing.defTotalYds} (${standing.defTotalYdsRank})\nTurnover Diff: ${standing.tODiff}`
     return `### ${standing.rank}. ${standing.teamName} (${record})\n${teamRank}`
   }).join("\n")
-  const standingsMessageBare = sortedStandings.map(standing => {
+  const standingsMessageBare = standings.map(standing => {
     const record = formatRecord(standing)
     return `### ${standing.rank}. ${standing.teamName} (${record})`
   }).join("\n")
@@ -45,7 +44,7 @@ async function handleCommand(client: DiscordClient, token: string, league: strin
     if (!standingsToFormat) {
       throw new Error("no standings")
     }
-    const message = formatStandings(standingsToFormat.slice(0, top))
+    const message = formatStandings(standingsToFormat.sort((s1, s2) => s1.rank - s2.rank).slice(0, top))
     await client.editOriginalInteraction(token, {
       content: message
     })
