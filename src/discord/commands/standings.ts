@@ -7,14 +7,14 @@ import { LeagueSettings } from "../settings_db"
 import MaddenDB from "../../db/madden_db"
 import { Standing, formatRecord } from "../../export/madden_league_types"
 
-function formatStandings(standings: Standing[]) {
+function formatStandings(standings: Standing[], showStats = false) {
   const sortedStandings = standings.sort((s1, s2) => s1.rank - s2.rank)
   const standingsMessage = sortedStandings.map(standing => {
     const record = formatRecord(standing)
-    const teamRank = `\nNet Points: ${standing.netPts}\nPoints For: ${standing.ptsFor} (${standing.ptsForRank})\nPoints Against: ${standing.ptsAgainst} (${standing.ptsAgainstRank})\nTurnovers: ${standing.tODiff}`
+    const teamRank = `Net Points: ${standing.netPts}\nPoints For: ${standing.ptsFor} (${standing.ptsForRank})\nPoints Against: ${standing.ptsAgainst} (${standing.ptsAgainstRank})\nTurnovers: ${standing.tODiff}`
     const offenseRank = `### Offense Rank\nTotal:${standing.offTotalYds} yds (${standing.offTotalYdsRank})\nPassing: ${standing.offPassYds} yds (${standing.offPassYdsRank})\nRushing: ${standing.offRushYds} yds (${standing.offRushYdsRank})\n`
     const defensiveRank = `### Defense Rank\nTotal:${standing.defTotalYds} yds (${standing.defTotalYdsRank})\nPassing: ${standing.defPassYds} yds (${standing.defPassYdsRank})\nRushing: ${standing.defRushYds} yds (${standing.defRushYdsRank})\n`
-    return `${standing.rank}. ${standing.teamName} (${record})\n${teamRank}`
+    return `### ${standing.rank}. ${standing.teamName} (${record})${showStats ? "\n" + teamRank : ""}`
   }).join("\n")
   return standingsMessage
 }
@@ -35,7 +35,7 @@ async function handleCommand(client: DiscordClient, token: string, league: strin
     if (!standingsToFormat) {
       throw new Error("no standings")
     }
-    const message = formatStandings(standingsToFormat)
+    const message = formatStandings(standingsToFormat, subCommand !== "nfl")
     await client.editOriginalInteraction(token, {
       content: message
     })
