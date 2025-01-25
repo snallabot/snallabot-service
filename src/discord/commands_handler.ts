@@ -14,6 +14,7 @@ import teamsHandler from "./commands/teams"
 import schedulesHandler from "./commands/schedule"
 import gameChannelHandler from "./commands/game_channels"
 import exportHandler from "./commands/export"
+import standingsHandler from "./commands/standings"
 
 export type Command = { command_name: string, token: string, guild_id: string, data: APIChatInputApplicationCommandInteractionData, member: APIInteractionGuildMember }
 
@@ -35,7 +36,8 @@ const SlashCommands = {
   "schedule": schedulesHandler,
   "logger": loggerHandler,
   "export": exportHandler,
-  "test": testHandler
+  "test": testHandler,
+  "standings": standingsHandler
 } as CommandsHandler
 
 export async function handleCommand(command: Command, ctx: ParameterizedContext, discordClient: DiscordClient, db: Firestore) {

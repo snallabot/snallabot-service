@@ -17,7 +17,8 @@ interface MaddenDB {
   getLatestWeekSchedule(leagueId: string, week: number): Promise<MaddenGame[]>,
   getWeekScheduleForSeason(leagueId: string, week: number, season: number): Promise<MaddenGame[]>
   getGameForSchedule(leagueId: string, scheduleId: number): Promise<MaddenGame>,
-  getStandingForTeam(leagueId: string, teamId: number): Promise<Standing>
+  getStandingForTeam(leagueId: string, teamId: number): Promise<Standing>,
+  getLatestStandings(leagueId: string): Promise<Standing[]>
 }
 
 function convertDate(firebaseObject: any) {
@@ -200,6 +201,12 @@ const MaddenDB: MaddenDB = {
       throw new Error("standing not found for id " + teamId)
     }
     return standing.data() as Standing
+  },
+  getLatestStandings: async function(leagueId: string) {
+    const standingSnapshot = await db.collection("league_data").doc(leagueId).collection("MADDEN_STANDING").get()
+    return standingSnapshot.docs.filter(d => d.id !== "standings").map(doc => {
+      return doc.data() as SnallabotEvent<Standing>
+    })
   }
 }
 
