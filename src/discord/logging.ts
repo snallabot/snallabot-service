@@ -4,6 +4,15 @@ import { APIChannel, APIMessage, APIThreadChannel } from "discord-api-types/v10"
 
 // feels like setting a max is a good idea. 1000 messages
 const MAX_PAGES = 10
+const dateFormatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'America/New_York',
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+  hour12: true,
+})
 
 async function getMessages(channelId: ChannelId, client: DiscordClient): Promise<APIMessage[]> {
   let messages: APIMessage[] = await client.requestDiscord(
@@ -78,7 +87,7 @@ export default (config: LoggerConfiguration) => ({
           await client.requestDiscord(`channels/${threadId}/messages`, {
             method: "POST",
             body: {
-              content: `(${message.time}) <@${message.user}>: ${message.content}`,
+              content: `(${dateFormatter.format(new Date(message.time))}) <@${message.user}>: ${message.content}`,
               allowed_mentions: {
                 parse: [],
               },
