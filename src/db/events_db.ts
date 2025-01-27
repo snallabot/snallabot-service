@@ -40,7 +40,7 @@ function convertDate(firebaseObject: any) {
   return firebaseObject;
 }
 
-const notifiers: { [key: string]: EventNotifier<any>[] } = {}
+export const notifiers: { [key: string]: EventNotifier<any>[] } = {}
 const EventDB: EventDB = {
   async appendEvents<Event>(events: Array<SnallabotEvent<Event>>, delivery: EventDelivery) {
     if (delivery === EventDelivery.EVENT_SOURCE) {
