@@ -205,7 +205,7 @@ export default {
       delete currentAssignments[`${assignedTeam.teamId} `]
       leagueSettings.commands.teams.assignments = currentAssignments
       await db.collection("league_settings").doc(guild_id).update({
-        [`commands.teams.assignments.${assignedTeam.teamId} `]: FieldValue.delete()
+        [`commands.teams.assignments.${assignedTeam.teamId}`]: FieldValue.delete()
       })
       const message = createTeamsMessage(leagueSettings, teams.getLatestTeams())
       try {
