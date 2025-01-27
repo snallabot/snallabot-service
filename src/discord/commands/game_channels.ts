@@ -74,7 +74,6 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
 - ${SnallabotCommandReactions.WAITING} Creating Notification Messages
 - ${SnallabotCommandReactions.WAITING} Setting up notifier
 - ${SnallabotCommandReactions.WAITING} Creating Scoreboard
-- ${SnallabotCommandReactions.WAITING} Exporting
 - ${SnallabotCommandReactions.WAITING} Logging`
     })
     const eres = await fetch(`https://snallabot.herokuapp.com/${guild_id}/export`, {

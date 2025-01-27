@@ -87,7 +87,7 @@ export default (config: LoggerConfiguration) => ({
           await client.requestDiscord(`channels/${threadId}/messages`, {
             method: "POST",
             body: {
-              content: `(${dateFormatter.format(new Date(message.time))}) <@${message.user}>: ${message.content}`,
+              content: `(${dateFormatter.format(new Date(message.time))} EST) <@${message.user}>: ${message.content}`,
               allowed_mentions: {
                 parse: [],
               },
