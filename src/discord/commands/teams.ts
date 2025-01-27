@@ -198,7 +198,9 @@ export default {
       } else if (foundTeam.length > 1) {
         throw new Error(`Found more than one  team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs.Found teams: ${foundTeam.map(t => t.displayName).join(", ")} `)
       }
+      console.log(foundTeam)
       const assignedTeam = foundTeam[0]
+
       const currentAssignments = { ...leagueSettings.commands.teams.assignments }
       delete currentAssignments[`${assignedTeam.teamId} `]
       leagueSettings.commands.teams.assignments = currentAssignments
