@@ -6,6 +6,9 @@ import { FieldValue, Firestore } from "firebase-admin/firestore"
 import { DiscordIdType, LeagueSettings, TeamAssignments } from "../settings_db"
 import MaddenClient from "../../db/madden_db"
 import { Team } from "../../export/madden_league_types"
+import { teamSearchView } from "../../db/view"
+import fuzzysort from "fuzzysort"
+import MaddenDB from "../../db/madden_db"
 
 async function moveTeamsMessage(client: DiscordClient, oldChannelId: string, newChannelId: string, oldMessageId: string, teamsMessage: string): Promise<string> {
   try {
@@ -153,17 +156,19 @@ export default {
       if (!leagueSettings?.commands?.teams?.channel.id) {
         throw new Error("Teams not configured, run /teams configure first")
       }
-      const teams = await MaddenClient.getLatestTeams(leagueSettings.commands.madden_league.league_id)
-      const foundTeam = teams.getLatestTeams().filter(t => t.abbrName.toLowerCase() === teamSearchPhrase || t.cityName.toLowerCase() === teamSearchPhrase || t.displayName.toLowerCase() === teamSearchPhrase || t.nickName.toLowerCase() === teamSearchPhrase)
-      if (foundTeam.length < 1) {
+      const leagueId = leagueSettings.commands.madden_league.league_id
+      const teams = await MaddenDB.getLatestTeams(leagueId)
+      const teamsToSearch = await teamSearchView.createView(leagueId)
+      const results = fuzzysort.go(teamSearchPhrase, Object.values(teamsToSearch), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.9 })
+      if (results.length < 1) {
         throw new Error(`Could not find team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs`)
-      } else if (foundTeam.length > 1) {
-        throw new Error(`Found more than one  team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs.Found teams: ${foundTeam.map(t => t.displayName).join(", ")} `)
+      } else if (results.length > 1) {
+        throw new Error(`Found more than one  team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs.Found teams: ${results.map(t => t.obj.displayName).join(", ")} `)
       }
-      const assignedTeam = foundTeam[0]
+      const assignedTeam = results[0].obj
       const role = (teamsCommand?.options?.[2] as APIApplicationCommandInteractionDataRoleOption)?.value
       const roleAssignment = role ? { discord_role: { id: role, id_type: DiscordIdType.ROLE } } : {}
-      const assignments = { ...leagueSettings.commands.teams?.assignments, [assignedTeam.teamId]: { discord_user: { id: user, id_type: DiscordIdType.USER }, ...roleAssignment } }
+      const assignments = { ...leagueSettings.commands.teams?.assignments, [teams.getTeamForId(assignedTeam.id).teamId]: { discord_user: { id: user, id_type: DiscordIdType.USER }, ...roleAssignment } }
       leagueSettings.commands.teams.assignments = assignments
       await db.collection("league_settings").doc(guild_id).set({
         commands: {
@@ -191,19 +196,22 @@ export default {
       if (!leagueSettings.commands.teams?.channel.id) {
         throw new Error("Teams not configured, run /teams configure first")
       }
-      const teams = await MaddenClient.getLatestTeams(leagueSettings.commands.madden_league.league_id)
-      const foundTeam = teams.getLatestTeams().filter(t => t.abbrName.toLowerCase() === teamSearchPhrase || t.cityName.toLowerCase() === teamSearchPhrase || t.displayName.toLowerCase() === teamSearchPhrase || t.nickName.toLowerCase() === teamSearchPhrase)
-      if (foundTeam.length < 1) {
+      const leagueId = leagueSettings.commands.madden_league.league_id
+      const teams = await MaddenClient.getLatestTeams(leagueId)
+      const teamsToSearch = await teamSearchView.createView(leagueId)
+      const results = fuzzysort.go(teamSearchPhrase, Object.values(teamsToSearch), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.9 })
+      if (results.length < 1) {
         throw new Error(`Could not find team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs`)
-      } else if (foundTeam.length > 1) {
-        throw new Error(`Found more than one  team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs.Found teams: ${foundTeam.map(t => t.displayName).join(", ")} `)
+      } else if (results.length > 1) {
+        throw new Error(`Found more than one  team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs.Found teams: ${results.map(t => t.obj.displayName).join(", ")}`)
       }
-      const assignedTeam = foundTeam[0]
+      const assignedTeam = results[0].obj
+      const teamIdToDelete = teams.getTeamForId(assignedTeam.id).teamId
       const currentAssignments = { ...leagueSettings.commands.teams.assignments }
-      delete currentAssignments[`${assignedTeam.teamId} `]
+      delete currentAssignments[`${teamIdToDelete}`]
       leagueSettings.commands.teams.assignments = currentAssignments
       await db.collection("league_settings").doc(guild_id).update({
-        [`commands.teams.assignments.${assignedTeam.teamId} `]: FieldValue.delete()
+        [`commands.teams.assignments.${teamIdToDelete}`]: FieldValue.delete()
       })
       const message = createTeamsMessage(leagueSettings, teams.getLatestTeams())
       try {
