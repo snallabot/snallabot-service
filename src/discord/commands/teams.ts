@@ -260,6 +260,7 @@ export default {
               description:
                 "the team city, name, or abbreviation. Ex: Buccaneers, TB, Tampa Bay",
               required: true,
+              autocomplete: true
             },
             {
               type: ApplicationCommandOptionType.User,
@@ -286,6 +287,7 @@ export default {
               description:
                 "the team city, name, or abbreviation. Ex: Buccaneers, TB, Tampa Bay",
               required: true,
+              autocomplete: true
             },
           ],
         },
