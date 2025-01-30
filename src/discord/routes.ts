@@ -60,6 +60,7 @@ async function handleInteraction(ctx: ParameterizedContext, client: DiscordClien
       const { name } = data
       await handleAutocomplete({ command_name: name, guild_id, data, }, ctx)
     }
+    return
   }
   // anything else fail the command
   ctx.status = 404
