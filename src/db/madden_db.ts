@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto"
 import { Timestamp, Filter } from "firebase-admin/firestore"
 import db from "./firebase"
-import { EventNotifier, SnallabotEvent, StoredEvent } from "./events_db"
+import EventDB, { EventNotifier, SnallabotEvent, StoredEvent, notifiers } from "./events_db"
 import { MaddenGame, Standing, Team } from "../export/madden_league_types"
 import { TeamAssignment, TeamAssignments } from "../discord/settings_db"
 
@@ -41,8 +41,6 @@ function convertDate(firebaseObject: any) {
   }
   return firebaseObject;
 }
-
-const notifiers: { [key: string]: EventNotifier<any>[] } = {}
 
 function createEventHistoryUpdate(newEvent: Record<string, any>, oldEvent: Record<string, any>): History {
   const change: History = {}
@@ -157,8 +155,7 @@ const MaddenDB: MaddenDB = {
     })
   },
   on<Event>(event_type: string, notifier: EventNotifier<Event>) {
-    const currentNotifiers = notifiers[event_type] || []
-    notifiers[event_type] = [notifier].concat(currentNotifiers)
+    EventDB.on(event_type, notifier)
   },
   getLatestTeams: async function(leagueId: string): Promise<TeamList> {
     const teamDocs = await db.collection("league_data").doc(leagueId).collection("MADDEN_TEAM").get()

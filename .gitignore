@@ -6,6 +6,7 @@ sa.json
 sa-old.json
 migration.sh
 pinger_test.sh
+install_*_commands.sh
 
 # Logs
 logs
