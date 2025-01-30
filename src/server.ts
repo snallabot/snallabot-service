@@ -6,6 +6,7 @@ import exportRouter from "./export/routes"
 import discordRouter from "./discord/routes"
 import twitchRouter from "./twitch-notifier/routes"
 import connectionsRouter from "./connections/routes"
+import debugRouter from "./debug/routes"
 
 const app = new Koa()
 
@@ -31,5 +32,7 @@ app
   .use(twitchRouter.allowedMethods())
   .use(connectionsRouter.routes())
   .use(connectionsRouter.allowedMethods())
+  .use(debugRouter.routes())
+  .use(debugRouter.allowedMethods())
 
 export default app

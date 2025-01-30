@@ -11,7 +11,9 @@ const hash: (a: any) => string = require("object-hash")
 const router = new Router()
 const treeCache = new NodeCache()
 const CACHE_TTL = 3600 * 48 // 2 days in seconds
-
+export function getMaddenCacheStats() {
+  return treeCache.getStats()
+}
 
 type Node = {
   hash: string,

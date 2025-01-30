@@ -18,6 +18,10 @@ abstract class View<T> {
 
 const viewCache = new NodeCache()
 
+export function getViewCacheStats() {
+  return viewCache.getStats()
+}
+
 abstract class CachedUpdatingView<T> extends View<T> {
   view: View<T>
 
