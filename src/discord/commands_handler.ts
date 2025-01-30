@@ -1,6 +1,6 @@
 import { ParameterizedContext } from "koa"
 import { APIChatInputApplicationCommandInteractionData, APIInteractionGuildMember } from "discord-api-types/payloads"
-import { RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
+import { APIApplicationCommandOptionChoice, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { createMessageResponse, respond, DiscordClient, CommandMode } from "./discord_utils"
 import { Firestore } from "firebase-admin/firestore"
 import leagueExportHandler from "./commands/league_export"
@@ -17,13 +17,18 @@ import exportHandler from "./commands/export"
 import standingsHandler from "./commands/standings"
 
 export type Command = { command_name: string, token: string, guild_id: string, data: APIChatInputApplicationCommandInteractionData, member: APIInteractionGuildMember }
-
+export type Autocomplete = { command_name: string, guild_id: string, data: APIChatInputApplicationCommandInteractionData }
 export interface CommandHandler {
   handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext): Promise<void>
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody
 }
 
+export interface AutocompleteHandler {
+  choices(query: Autocomplete): Promise<APIApplicationCommandOptionChoice<string | number>>
+}
+
 export type CommandsHandler = { [key: string]: CommandHandler | undefined }
+export type AutocompleteHandlers = Record<string, AutocompleteHandler>
 
 const SlashCommands = {
   "league_export": leagueExportHandler,
@@ -40,6 +45,10 @@ const SlashCommands = {
   "standings": standingsHandler
 } as CommandsHandler
 
+const AutocompleteCommands = {
+  "teams": teamsHandler,
+} as AutocompleteHandlers
+
 export async function handleCommand(command: Command, ctx: ParameterizedContext, discordClient: DiscordClient, db: Firestore) {
   const commandName = command.command_name
   const handler = SlashCommands[commandName]
@@ -51,6 +60,40 @@ export async function handleCommand(command: Command, ctx: ParameterizedContext,
       ctx.status = 200
       respond(ctx, createMessageResponse(`Fatal Error in ${commandName}: ${error.message}`))
       console.error(e)
+
+    }
+  } else {
+    ctx.status = 200
+    respond(ctx, createMessageResponse(`command ${commandName} not implemented`))
+  }
+}
+
+export async function handleAutocomplete(command: Autocomplete, ctx: ParameterizedContext) {
+  const commandName = command.command_name
+  const handler = AutocompleteCommands[commandName]
+  if (handler) {
+    try {
+      const choices = await handler.choices(command)
+      ctx.status = 200
+      ctx.set("Content-Type", "application/json")
+      ctx.body = {
+        type: InteractionResponseType.ApplicationCommandAutocompleteResult,
+        data: {
+          choices: choices
+        }
+      }
+    } catch (e) {
+      const error = e as Error
+      ctx.status = 200
+      ctx.status = 200
+      ctx.set("Content-Type", "application/json")
+      ctx.body = {
+        type: InteractionResponseType.ApplicationCommandAutocompleteResult,
+        data: {
+          choices: []
+        }
+      }
+      console.error(`could not autocomplete ${command.guild_id}: ${e}`)
 
     }
   } else {

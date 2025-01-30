@@ -1,10 +1,10 @@
 import { ParameterizedContext } from "koa"
 import Router from "@koa/router"
 import { CommandMode, DiscordClient, SNALLABOT_TEST_USER, SNALLABOT_USER, createClient, createWeekKey } from "./discord_utils"
-import { APIInteraction, InteractionType, InteractionResponseType, APIChatInputApplicationCommandGuildInteraction } from "discord-api-types/payloads"
+import { APIInteraction, InteractionType, InteractionResponseType, APIChatInputApplicationCommandGuildInteraction, APIApplicationCommandAutocompleteInteraction } from "discord-api-types/payloads"
 import db from "../db/firebase"
 import EventDB, { StoredEvent } from "../db/events_db"
-import { handleCommand, commandsInstaller } from "./commands_handler"
+import { handleCommand, commandsInstaller, handleAutocomplete } from "./commands_handler"
 import { ConfirmedSim, MaddenBroadcastEvent } from "../db/events"
 import { Client } from "oceanic.js"
 import { DiscordIdType, LeagueSettings, TeamAssignments } from "./settings_db"
@@ -48,12 +48,18 @@ async function handleInteraction(ctx: ParameterizedContext, client: DiscordClien
     return
   }
   if (interactionType === InteractionType.ApplicationCommand) {
-
     const slashCommandInteraction = interaction as APIChatInputApplicationCommandGuildInteraction
     const { token, guild_id, data, member } = slashCommandInteraction
     const { name } = data
     await handleCommand({ command_name: name, token, guild_id, data, member }, ctx, client, db)
     return
+  } else if (interactionType === InteractionType.ApplicationCommandAutocomplete) {
+    const slashCommandInteraction = interaction as APIApplicationCommandAutocompleteInteraction
+    const { token, guild_id, data, member } = slashCommandInteraction
+    if (guild_id) {
+      const { name } = data
+      await handleAutocomplete({ command_name: name, guild_id, data, }, ctx)
+    }
   }
   // anything else fail the command
   ctx.status = 404

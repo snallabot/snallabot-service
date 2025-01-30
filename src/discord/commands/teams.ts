@@ -1,5 +1,5 @@
 import { ParameterizedContext } from "koa"
-import { CommandHandler, Command } from "../commands_handler"
+import { CommandHandler, Command, AutocompleteHandler, Autocomplete } from "../commands_handler"
 import { respond, createMessageResponse, DiscordClient } from "../discord_utils"
 import { APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIApplicationCommandInteractionDataUserOption, APIMessage, ApplicationCommandOptionType, ApplicationCommandType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { FieldValue, Firestore } from "firebase-admin/firestore"
@@ -9,6 +9,7 @@ import { Team } from "../../export/madden_league_types"
 import { teamSearchView } from "../../db/view"
 import fuzzysort from "fuzzysort"
 import MaddenDB from "../../db/madden_db"
+import firebaseDB from "../../db/firebase"
 
 async function moveTeamsMessage(client: DiscordClient, oldChannelId: string, newChannelId: string, oldMessageId: string, teamsMessage: string): Promise<string> {
   try {
@@ -317,5 +318,26 @@ export default {
       ],
       type: 1,
     }
+  },
+  async choices(command: Autocomplete) {
+    const { guild_id } = command
+    if (!command.data.options) {
+      throw new Error("logger command not defined properly")
+    }
+    const options = command.data.options
+    const teamsCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
+    const subCommand = teamsCommand.name
+    const doc = await firebaseDB.collection("league_settings").doc(guild_id).get()
+    const leagueSettings = doc.exists ? doc.data() as LeagueSettings : {} as LeagueSettings
+    const leagueId = leagueSettings?.commands?.madden_league?.league_id
+    if (leagueId && (teamsCommand?.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.focused && teamsCommand?.options?.[0]?.value) {
+      const teamSearchPhrase = teamsCommand.options[0].value as string
+      const teams = await MaddenClient.getLatestTeams(leagueId)
+      const teamsToSearch = await teamSearchView.createView(leagueId)
+      const results = fuzzysort.go(teamSearchPhrase, Object.values(teamsToSearch), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.4, limit: 25 })
+      return results.map(r => ({ name: r.obj.abbrName, value: r.obj.displayName }))
+    } else {
+      return []
+    }
   }
-} as CommandHandler
+} as CommandHandler | AutocompleteHandler
