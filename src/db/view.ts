@@ -27,7 +27,7 @@ abstract class CachedUpdatingView<T> extends View<T> {
   }
 
   createCacheKey(key: string) {
-    return "key|" + this.id
+    return key + "|" + this.id
   }
 
   async createView(key: string) {
@@ -49,10 +49,8 @@ abstract class CachedUpdatingView<T> extends View<T> {
         const key = events.map(e => e.key)[0]
         const currentView = await this.createView(key)
         if (currentView) {
-          const newView = this.update({ event_type: events }, currentView)
+          const newView = this.update({ [event_type]: events }, currentView)
           viewCache.set(this.createCacheKey(key), newView, TTL)
-          console.log(newView)
-          console.log(viewCache.getStats())
         }
       })
     })
@@ -116,6 +114,7 @@ class CacheableDiscordLeagueConnection extends CachedUpdatingView<DiscordLeagueC
     super(new DiscordLeagueConnection())
   }
   update(event: { [key: string]: any[] }, currentView: DiscordLeagueConnectionEvent) {
+    console.log(event)
     if (event["DISCORD_LEAGUE_CONNECTION"]) {
       const leagueEvents = event["DISCORD_LEAGUE_CONNECTION"] as SnallabotEvent<DiscordLeagueConnectionEvent>[]
       return leagueEvents[0]
