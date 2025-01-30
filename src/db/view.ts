@@ -2,6 +2,9 @@ import NodeCache from "node-cache"
 import EventDB, { SnallabotEvent } from "./events_db"
 import MaddenDB from "./madden_db"
 import { Team } from "../export/madden_league_types"
+import db from "./firebase"
+import { LeagueSettings } from "../discord/settings_db"
+import { DiscordLeagueConnectionEvent } from "./events"
 
 const TTL = 0
 
@@ -10,7 +13,7 @@ abstract class View<T> {
   constructor(id: string) {
     this.id = id
   }
-  abstract createView(key: string): Promise<T>
+  abstract createView(key: string): Promise<T | undefined>
 }
 
 const viewCache = new NodeCache()
@@ -30,6 +33,7 @@ abstract class CachedUpdatingView<T> extends View<T> {
   async createView(key: string) {
     const cachedView = viewCache.get(this.createCacheKey(key)) as T | undefined
     if (cachedView) {
+      console.log("returning cached view")
       return cachedView
     }
     const view = await this.view.createView(key)
@@ -44,10 +48,12 @@ abstract class CachedUpdatingView<T> extends View<T> {
       EventDB.on(event_type, async events => {
         const key = events.map(e => e.key)[0]
         const currentView = await this.createView(key)
-        const newView = this.update({ event_type: events }, currentView)
-        viewCache.set(this.createCacheKey(key), newView, TTL)
-        console.log(newView)
-        console.log(viewCache.getStats())
+        if (currentView) {
+          const newView = this.update({ event_type: events }, currentView)
+          viewCache.set(this.createCacheKey(key), newView, TTL)
+          console.log(newView)
+          console.log(viewCache.getStats())
+        }
       })
     })
   }
@@ -91,5 +97,31 @@ export const teamSearchView = new CacheableTeamSearchIndex()
 teamSearchView.listen("MADDEN_TEAM")
 
 
+class DiscordLeagueConnection extends View<DiscordLeagueConnectionEvent> {
+  constructor() {
+    super("discord_league_connection")
+  }
+  async createView(key: string) {
+    const doc = await db.collection("league_settings").doc(key).get()
+    const leagueSettings = doc.exists ? doc.data() as LeagueSettings : {} as LeagueSettings
+    const leagueId = leagueSettings?.commands?.madden_league?.league_id
+    if (leagueId) {
+      return { guildId: key, leagueId: leagueId }
+    }
+  }
+}
 
-
+class CacheableDiscordLeagueConnection extends CachedUpdatingView<DiscordLeagueConnectionEvent> {
+  constructor() {
+    super(new DiscordLeagueConnection())
+  }
+  update(event: { [key: string]: any[] }, currentView: DiscordLeagueConnectionEvent) {
+    if (event["DISCORD_LEAGUE_CONNECTION"]) {
+      const leagueEvents = event["DISCORD_LEAGUE_CONNECTION"] as SnallabotEvent<DiscordLeagueConnectionEvent>[]
+      return leagueEvents[0]
+    }
+    return currentView
+  }
+}
+export const discordLeagueView = new CacheableDiscordLeagueConnection()
+discordLeagueView.listen("DISCORD_LEAGUE_CONNECTION")

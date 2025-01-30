@@ -10,3 +10,4 @@ export type YoutubeBroadcastEvent = { video: string }
 export type AddChannelEvent = { channel_id: string, discord_server: string }
 export type RemoveChannelEvent = { channel_id: string, discord_server: string }
 export type ConfirmedSim = { confirmedUsers: UserId[], requestedUsers: UserId[], result: SimResult, scheduleId: number, seasonIndex: number, week: number, homeUser?: UserId, awayUser?: UserId }
+export type DiscordLeagueConnectionEvent = { guildId: string, leagueId: string }

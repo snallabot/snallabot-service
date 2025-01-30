@@ -6,7 +6,7 @@ import { FieldValue, Firestore } from "firebase-admin/firestore"
 import { DiscordIdType, LeagueSettings, TeamAssignments } from "../settings_db"
 import MaddenClient from "../../db/madden_db"
 import { Team } from "../../export/madden_league_types"
-import { teamSearchView } from "../../db/view"
+import { teamSearchView, discordLeagueView } from "../../db/view"
 import fuzzysort from "fuzzysort"
 import MaddenDB from "../../db/madden_db"
 import firebaseDB from "../../db/firebase"
@@ -160,6 +160,9 @@ export default {
       const leagueId = leagueSettings.commands.madden_league.league_id
       const teams = await MaddenDB.getLatestTeams(leagueId)
       const teamsToSearch = await teamSearchView.createView(leagueId)
+      if (!teamsToSearch) {
+        throw new Error("no teams found")
+      }
       const results = fuzzysort.go(teamSearchPhrase, Object.values(teamsToSearch), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.9 })
       if (results.length < 1) {
         throw new Error(`Could not find team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs`)
@@ -200,6 +203,9 @@ export default {
       const leagueId = leagueSettings.commands.madden_league.league_id
       const teams = await MaddenClient.getLatestTeams(leagueId)
       const teamsToSearch = await teamSearchView.createView(leagueId)
+      if (!teamsToSearch) {
+        throw new Error("no teams found")
+      }
       const results = fuzzysort.go(teamSearchPhrase, Object.values(teamsToSearch), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.9 })
       if (results.length < 1) {
         throw new Error(`Could not find team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs`)
@@ -329,17 +335,16 @@ export default {
     const options = command.data.options
     const teamsCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
     const subCommand = teamsCommand.name
-    const doc = await firebaseDB.collection("league_settings").doc(guild_id).get()
-    const leagueSettings = doc.exists ? doc.data() as LeagueSettings : {} as LeagueSettings
-    const leagueId = leagueSettings?.commands?.madden_league?.league_id
+    const view = await discordLeagueView.createView(guild_id)
+    const leagueId = view?.leagueId
     if (leagueId && (teamsCommand?.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.focused && teamsCommand?.options?.[0]?.value) {
       const teamSearchPhrase = teamsCommand.options[0].value as string
-      const teams = await MaddenClient.getLatestTeams(leagueId)
       const teamsToSearch = await teamSearchView.createView(leagueId)
-      const results = fuzzysort.go(teamSearchPhrase, Object.values(teamsToSearch), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.4, limit: 25 })
-      return results.map(r => ({ name: r.obj.displayName, value: r.obj.displayName }))
-    } else {
-      return []
+      if (teamsToSearch) {
+        const results = fuzzysort.go(teamSearchPhrase, Object.values(teamsToSearch), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.4, limit: 25 })
+        return results.map(r => ({ name: r.obj.displayName, value: r.obj.displayName }))
+      }
     }
+    return []
   }
 } as CommandHandler | AutocompleteHandler
