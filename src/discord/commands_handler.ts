@@ -73,19 +73,18 @@ export async function handleAutocomplete(command: Autocomplete, ctx: Parameteriz
   const handler = AutocompleteCommands[commandName]
   if (handler) {
     try {
-      const choices = await handler.choices(command)
-      console.log(choices)
+      // const choices = await handler.choices(command)
+      // console.log(choices)
       ctx.status = 200
       ctx.set("Content-Type", "application/json")
       ctx.body = {
         type: InteractionResponseType.ApplicationCommandAutocompleteResult,
         data: {
-          choices: choices
+          choices: [{ name: "blah", value: "blah" }]
         }
       }
     } catch (e) {
       const error = e as Error
-      ctx.status = 200
       ctx.status = 200
       ctx.set("Content-Type", "application/json")
       ctx.body = {
@@ -94,12 +93,18 @@ export async function handleAutocomplete(command: Autocomplete, ctx: Parameteriz
           choices: []
         }
       }
-      console.error(`could not autocomplete ${command.guild_id}: ${e}`)
+      console.error(`could not autocomplete ${command.guild_id}: ${error}`)
 
     }
   } else {
     ctx.status = 200
-    respond(ctx, createMessageResponse(`command ${commandName} not implemented`))
+    ctx.set("Content-Type", "application/json")
+    ctx.body = {
+      type: InteractionResponseType.ApplicationCommandAutocompleteResult,
+      data: {
+        choices: []
+      }
+    }
   }
 }
 
