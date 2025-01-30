@@ -33,7 +33,6 @@ abstract class CachedUpdatingView<T> extends View<T> {
   async createView(key: string) {
     const cachedView = viewCache.get(this.createCacheKey(key)) as T | undefined
     if (cachedView) {
-      console.log("returning cached view")
       return cachedView
     }
     const view = await this.view.createView(key)
