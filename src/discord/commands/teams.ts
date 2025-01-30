@@ -337,7 +337,7 @@ export default {
       const teams = await MaddenClient.getLatestTeams(leagueId)
       const teamsToSearch = await teamSearchView.createView(leagueId)
       const results = fuzzysort.go(teamSearchPhrase, Object.values(teamsToSearch), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.4, limit: 25 })
-      return results.map(r => ({ name: r.obj.abbrName, value: r.obj.displayName }))
+      return results.map(r => ({ name: r.obj.displayName, value: r.obj.displayName }))
     } else {
       return []
     }
