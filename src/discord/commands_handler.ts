@@ -73,14 +73,14 @@ export async function handleAutocomplete(command: Autocomplete, ctx: Parameteriz
   const handler = AutocompleteCommands[commandName]
   if (handler) {
     try {
-      // const choices = await handler.choices(command)
-      // console.log(choices)
+      const choices = await handler.choices(command)
+      console.log(choices)
       ctx.status = 200
       ctx.set("Content-Type", "application/json")
       ctx.body = {
         type: InteractionResponseType.ApplicationCommandAutocompleteResult,
         data: {
-          choices: [{ name: "blah", value: "blah" }]
+          choices: choices
         }
       }
     } catch (e) {
@@ -93,7 +93,7 @@ export async function handleAutocomplete(command: Autocomplete, ctx: Parameteriz
           choices: []
         }
       }
-      console.error(`could not autocomplete ${command.guild_id}: ${error}`)
+      console.error(`could not autocomplete ${command.guild_id}: ${e}`)
 
     }
   } else {
