@@ -78,7 +78,6 @@ async function retrieveTree(league: string, request_type: string, event_type: st
   } else {
     try {
       const data = await bucket.file(filePath(league, event_type, request_type)).download()
-      console.log(data.toString())
       return JSON.parse(data.toString()) as MerkleTree
     } catch (e) {
       return { headNode: { children: [], hash: hash("") } }
