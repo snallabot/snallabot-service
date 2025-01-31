@@ -29,7 +29,7 @@ function filePath(leagueId: string, event_type: string, request_type: string) {
 const hash: (a: any) => string = require("object-hash")
 
 const router = new Router()
-const treeCache = new NodeCache()
+const treeCache = new NodeCache({ maxKeys: 100000 })
 const CACHE_TTL = 3600 * 48 // 2 days in seconds
 export function getMaddenCacheStats() {
   return treeCache.getStats()
@@ -78,7 +78,12 @@ async function retrieveTree(league: string, request_type: string, event_type: st
   } else {
     try {
       const data = await bucket.file(filePath(league, event_type, request_type)).download()
-      return JSON.parse(data.toString()) as MerkleTree
+      const tree = JSON.parse(data.toString()) as MerkleTree
+      try {
+        treeCache.set(createCacheKey(league, request_type), tree, CACHE_TTL)
+      } catch (e) {
+      }
+      return tree
     } catch (e) {
       return { headNode: { children: [], hash: hash("") } }
     }
@@ -87,7 +92,10 @@ async function retrieveTree(league: string, request_type: string, event_type: st
 
 
 async function writeTree(league: string, request_type: string, event_type: string, tree: MerkleTree): Promise<void> {
-  treeCache.set(createCacheKey(league, request_type), tree, CACHE_TTL)
+  try {
+    treeCache.set(createCacheKey(league, request_type), tree, CACHE_TTL)
+  } catch (e) {
+  }
   try {
     await bucket.file(filePath(league, event_type, request_type)).save(JSON.stringify(tree), { contentType: "application/json" })
   } catch (e) {
@@ -111,7 +119,7 @@ export async function sendEvents<T>(league: string, request_type: string, events
   const newTree = createTwoLayer(newNodes)
   const hashDifferences = findDifferences(newTree, oldTree)
   if (hashDifferences.length > 0) {
-    writeTree(league, request_type, eventType, newTree)
+    await writeTree(league, request_type, eventType, newTree)
     // if (hashDifferences.length > 0) {
     // console.log(newNodes)
     // }
