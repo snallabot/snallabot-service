@@ -141,6 +141,7 @@ class PlayerSearchIndex extends View<PlayerSearch> {
     super("player_search_index")
   }
   async createView(key: string) {
+    console.log(key)
     const players = await MaddenDB.getLatestPlayers(key)
     return Object.fromEntries(players.map(p => [p.rosterId + "", { rosterId: p.rosterId, firstName: p.firstName, lastName: p.lastName, teamId: p.teamId, position: p.position }]))
   }
