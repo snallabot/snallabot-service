@@ -1,10 +1,30 @@
 import Router from "@koa/router"
 import { ParameterizedContext, Next } from "koa"
 import { RosterExport, TeamExport, StandingExport, SchedulesExport, PuntingExport, TeamStatsExport, PassingExport, KickingExport, RushingExport, DefensiveExport, ReceivingExport } from "./madden_league_types"
-import db from "./../db/firebase"
 import { SnallabotEvent } from "./../db/events_db"
 import MaddenDB from "../db/madden_db"
 import NodeCache from "node-cache"
+import { Storage } from "@google-cloud/storage";
+import { readFileSync } from "fs"
+
+let serviceAccount;
+if (process.env.SERVICE_ACCOUNT_FILE) {
+  serviceAccount = JSON.parse(readFileSync(process.env.SERVICE_ACCOUNT_FILE, 'utf8'))
+} else if (process.env.SERVICE_ACCOUNT) {
+  serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT)
+} else {
+  throw new Error("no SA")
+}
+
+const storage = new Storage({
+  projectId: "snallabot",
+  credentials: serviceAccount
+})
+
+const bucket = storage.bucket("league_hashes")
+function filePath(leagueId: string, event_type: string, request_type: string) {
+  return `${leagueId}/${event_type}/${request_type}.json`
+}
 
 const hash: (a: any) => string = require("object-hash")
 
@@ -51,17 +71,29 @@ function createCacheKey(league: string, request_type: string): string {
   return `${league}|${request_type}`
 }
 
-async function retrieveTree(league: string, request_type: string): Promise<MerkleTree> {
+async function retrieveTree(league: string, request_type: string, event_type: string): Promise<MerkleTree> {
   const cachedTree = treeCache.get(createCacheKey(league, request_type)) as MerkleTree
   if (cachedTree) {
     return cachedTree
+  } else {
+    try {
+      const data = await bucket.file(filePath(league, event_type, request_type)).download()
+      console.log(data.toString())
+      return JSON.parse(data.toString()) as MerkleTree
+    } catch (e) {
+      return { headNode: { children: [], hash: hash("") } }
+    }
   }
-  return { headNode: { children: [], hash: hash("") } }
 }
 
 
-async function writeTree(league: string, request_type: string, tree: MerkleTree): Promise<void> {
+async function writeTree(league: string, request_type: string, event_type: string, tree: MerkleTree): Promise<void> {
   treeCache.set(createCacheKey(league, request_type), tree, CACHE_TTL)
+  try {
+    await bucket.file(filePath(league, event_type, request_type)).save(JSON.stringify(tree), { contentType: "application/json" })
+  } catch (e) {
+    console.error(e)
+  }
 }
 
 
@@ -73,14 +105,14 @@ export async function sendEvents<T>(league: string, request_type: string, events
   if (!eventType) {
     throw new Error("No Event Type found for " + request_type)
   }
-  const oldTree = await retrieveTree(league, request_type)
+  const oldTree = await retrieveTree(league, request_type, eventType)
   const hashToEvent = new Map(events.map(e => [hash(e), e]))
   const newNodes = events.sort(e => identifier(e)).map(e => ({ hash: hash(e), children: [] }))
 
   const newTree = createTwoLayer(newNodes)
   const hashDifferences = findDifferences(newTree, oldTree)
   if (hashDifferences.length > 0) {
-    writeTree(league, request_type, newTree)
+    writeTree(league, request_type, eventType, newTree)
     // if (hashDifferences.length > 0) {
     // console.log(newNodes)
     // }
