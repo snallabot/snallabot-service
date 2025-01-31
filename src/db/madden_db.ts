@@ -2,7 +2,7 @@ import { randomUUID } from "crypto"
 import { Timestamp, Filter } from "firebase-admin/firestore"
 import db from "./firebase"
 import EventDB, { EventNotifier, SnallabotEvent, StoredEvent, notifiers } from "./events_db"
-import { MaddenGame, Standing, Team } from "../export/madden_league_types"
+import { MaddenGame, Player, Standing, Team } from "../export/madden_league_types"
 import { TeamAssignment, TeamAssignments } from "../discord/settings_db"
 
 type HistoryUpdate<ValueType> = { oldValue: ValueType, newValue: ValueType }
@@ -18,7 +18,8 @@ interface MaddenDB {
   getWeekScheduleForSeason(leagueId: string, week: number, season: number): Promise<MaddenGame[]>
   getGameForSchedule(leagueId: string, scheduleId: number): Promise<MaddenGame>,
   getStandingForTeam(leagueId: string, teamId: number): Promise<Standing>,
-  getLatestStandings(leagueId: string): Promise<Standing[]>
+  getLatestStandings(leagueId: string): Promise<Standing[]>,
+  getLatestPlayers(leagueId: string): Promise<Player[]>
 }
 
 function convertDate(firebaseObject: any) {
@@ -203,6 +204,12 @@ const MaddenDB: MaddenDB = {
     const standingSnapshot = await db.collection("league_data").doc(leagueId).collection("MADDEN_STANDING").get()
     return standingSnapshot.docs.filter(d => d.id !== "standings").map(doc => {
       return doc.data() as SnallabotEvent<Standing>
+    })
+  },
+  getLatestPlayers: async function(leagueId: string) {
+    const standingSnapshot = await db.collection("league_data").doc(leagueId).collection("MADDEN_PLAER").get()
+    return standingSnapshot.docs.filter(d => !d.id.startsWith("roster")).map(doc => {
+      return doc.data() as SnallabotEvent<Player>
     })
   }
 }

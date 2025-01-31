@@ -1,7 +1,7 @@
 import NodeCache from "node-cache"
 import EventDB, { SnallabotEvent } from "./events_db"
 import MaddenDB from "./madden_db"
-import { Team } from "../export/madden_league_types"
+import { Player, Team } from "../export/madden_league_types"
 import db from "./firebase"
 import { LeagueSettings } from "../discord/settings_db"
 import { DiscordLeagueConnectionEvent } from "./events"
@@ -117,7 +117,6 @@ class CacheableDiscordLeagueConnection extends CachedUpdatingView<DiscordLeagueC
     super(new DiscordLeagueConnection())
   }
   update(event: { [key: string]: any[] }, currentView: DiscordLeagueConnectionEvent) {
-    console.log(event)
     if (event["DISCORD_LEAGUE_CONNECTION"]) {
       const leagueEvents = event["DISCORD_LEAGUE_CONNECTION"] as SnallabotEvent<DiscordLeagueConnectionEvent>[]
       return leagueEvents[0]
@@ -127,3 +126,39 @@ class CacheableDiscordLeagueConnection extends CachedUpdatingView<DiscordLeagueC
 }
 export const discordLeagueView = new CacheableDiscordLeagueConnection()
 discordLeagueView.listen("DISCORD_LEAGUE_CONNECTION")
+
+type PlayerSearch = {
+  [key: string]: {
+    rosterId: number,
+    firstName: string,
+    lastName: string,
+    teamId: number,
+    position: string,
+  }
+}
+class PlayerSearchIndex extends View<PlayerSearch> {
+  constructor() {
+    super("player_search_index")
+  }
+  async createView(key: string) {
+    const players = await MaddenDB.getLatestPlayers(key)
+    return Object.fromEntries(players.map(p => [p.rosterId + "", { rosterId: p.rosterId, firstName: p.firstName, lastName: p.lastName, teamId: p.teamId, position: p.position }]))
+  }
+}
+
+class CacheablePlayerSearchIndex extends CachedUpdatingView<PlayerSearch> {
+  constructor() {
+    super(new PlayerSearchIndex())
+  }
+  update(event: { [key: string]: any[] }, currentView: PlayerSearch) {
+    if (event["MADDEN_PLAYER"]) {
+      const playerUpdates = event["MADDEN_PLAER"] as SnallabotEvent<Player>[]
+      playerUpdates.forEach(p => {
+        currentView[p.rosterId] = { rosterId: p.rosterId, firstName: p.firstName, lastName: p.lastName, teamId: p.teamId, position: p.position }
+      })
+    }
+    return currentView
+  }
+}
+export const playerSearchIndex = new CacheablePlayerSearchIndex()
+playerSearchIndex.listen("MADDEN_PLAYER")

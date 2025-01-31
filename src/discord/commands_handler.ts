@@ -15,6 +15,7 @@ import schedulesHandler from "./commands/schedule"
 import gameChannelHandler from "./commands/game_channels"
 import exportHandler from "./commands/export"
 import standingsHandler from "./commands/standings"
+import playerHandler from "./commands/player"
 
 export type Command = { command_name: string, token: string, guild_id: string, data: APIChatInputApplicationCommandInteractionData, member: APIInteractionGuildMember }
 export type Autocomplete = { command_name: string, guild_id: string, data: APIChatInputApplicationCommandInteractionData }
@@ -42,11 +43,13 @@ const SlashCommands = {
   "logger": loggerHandler,
   "export": exportHandler,
   "test": testHandler,
-  "standings": standingsHandler
+  "standings": standingsHandler,
+  "player": playerHandler
 } as CommandsHandler
 
 const AutocompleteCommands = {
   "teams": teamsHandler,
+  "player": playerHandler
 } as AutocompleteHandlers
 
 export async function handleCommand(command: Command, ctx: ParameterizedContext, discordClient: DiscordClient, db: Firestore) {
