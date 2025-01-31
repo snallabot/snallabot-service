@@ -79,6 +79,7 @@ export default {
           const displayName = teamsIndex?.[roster.teamId]?.displayName
           return [rosterId, { teamDisplayName: displayName, ...roster }]
         }))
+        console.log(players)
         const results = fuzzysort.go(playerSearchPhrase, Object.values(players), {
           keys: ["firstName", "lastName", "position", "teamDisplayName"], threshold: 0.4, limit: 25
         })
