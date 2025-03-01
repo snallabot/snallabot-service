@@ -16,7 +16,7 @@ export enum LeagueData {
   DEFENSIVE_STATS = "CareerMode_GetWeeklyDefensiveStatsExport",
   KICKING_STATS = "CareerMode_GetWeeklyKickingStatsExport",
   PASSING_STATS = "CareerMode_GetWeeklyPassingStatsExport",
-
+  TEAM_ROSTER = "CareerMode_GetTeamRostersExport"
 }
 
 export enum Stage {
@@ -37,7 +37,7 @@ interface EAClient {
   getDefensiveStats(leagueId: number, stage: Stage, weekIndex: number): Promise<DefensiveExport>,
   getKickingStats(leagueId: number, stage: Stage, weekIndex: number): Promise<KickingExport>,
   getPassingStats(leagueId: number, stage: Stage, weekIndex: number): Promise<PassingExport>,
-  getTeamRoster(leagueId: number, teamId: number): Promise<RosterExport>,
+  getTeamRoster(leagueId: number, teamId: number, teamIndex: number): Promise<RosterExport>,
   getFreeAgents(leagueId: number): Promise<RosterExport>
 }
 
@@ -270,48 +270,54 @@ export async function ephemeralClientFromToken(token: TokenInformation, session?
       return res.responseInfo.value
     },
     async getTeams(leagueId: number) {
-      return {} as TeamExport
+      return await getExportData<TeamExport>(token, validSession, LeagueData.TEAMS, { leagueId: leagueId })
     },
     async getStandings(leagueId: number): Promise<StandingExport> {
-      return {} as StandingExport
+      return await getExportData<StandingExport>(token, validSession, LeagueData.STANDINGS, { leagueId: leagueId })
     },
     async getSchedules(leagueId: number, stage: Stage, weekIndex: number): Promise<SchedulesExport> {
-      return {} as SchedulesExport
+      return await getExportData<SchedulesExport>(token, validSession, LeagueData.WEEKLY_SCHEDULE, { leagueId: leagueId, stageIndex: Stage, weekIndex: weekIndex })
     },
     async getRushingStats(leagueId: number, stage: Stage, weekIndex: number): Promise<RushingExport> {
-      return {} as RushingExport;
+      return await getExportData<RushingExport>(token, validSession, LeagueData.RUSHING_STATS, { leagueId: leagueId, stageIndex: Stage, weekIndex: weekIndex })
     },
-
     async getTeamStats(leagueId: number, stage: Stage, weekIndex: number): Promise<TeamStatsExport> {
-      return {} as TeamStatsExport;
+      return await getExportData<TeamStatsExport>(token, validSession, LeagueData.TEAM_STATS, { leagueId: leagueId, stageIndex: Stage, weekIndex: weekIndex })
     },
 
     async getPuntingStats(leagueId: number, stage: Stage, weekIndex: number): Promise<PuntingExport> {
-      return {} as PuntingExport;
+      return await getExportData<PuntingExport>(token, validSession, LeagueData.PUNTING_STATS, { leagueId: leagueId, stageIndex: Stage, weekIndex: weekIndex })
     },
 
     async getReceivingStats(leagueId: number, stage: Stage, weekIndex: number): Promise<ReceivingExport> {
-      return {} as ReceivingExport;
+      return await getExportData<ReceivingExport>(token, validSession, LeagueData.RECEIVING_STATS, { leagueId: leagueId, stageIndex: Stage, weekIndex: weekIndex })
     },
 
     async getDefensiveStats(leagueId: number, stage: Stage, weekIndex: number): Promise<DefensiveExport> {
-      return {} as DefensiveExport;
+      return await getExportData<DefensiveExport>(token, validSession, LeagueData.DEFENSIVE_STATS, { leagueId: leagueId, stageIndex: Stage, weekIndex: weekIndex })
     },
 
     async getKickingStats(leagueId: number, stage: Stage, weekIndex: number): Promise<KickingExport> {
-      return {} as KickingExport;
+      return await getExportData<KickingExport>(token, validSession, LeagueData.KICKING_STATS, { leagueId: leagueId, stageIndex: Stage, weekIndex: weekIndex })
     },
 
     async getPassingStats(leagueId: number, stage: Stage, weekIndex: number): Promise<PassingExport> {
-      return {} as PassingExport;
+      return await getExportData<PassingExport>(token, validSession, LeagueData.PASSING_STATS, { leagueId: leagueId, stageIndex: Stage, weekIndex: weekIndex })
     },
 
-    async getTeamRoster(leagueId: number, teamId: number): Promise<RosterExport> {
-      return {} as RosterExport;
+    async getTeamRoster(leagueId: number, teamId: number, teamIndex: number): Promise<RosterExport> {
+      return await getExportData<RosterExport>(token, validSession, LeagueData.TEAM_ROSTER, {
+        leagueId: leagueId, listIndex: teamIndex,
+        returnFreeAgents: false,
+        teamId: teamId,
+      })
     },
-
     async getFreeAgents(leagueId: number): Promise<RosterExport> {
-      return {} as RosterExport;
+      return await getExportData<RosterExport>(token, validSession, LeagueData.TEAM_ROSTER, {
+        leagueId: leagueId, listIndex: -1,
+        returnFreeAgents: true,
+        teamId: 0,
+      })
     }
   }
 }
