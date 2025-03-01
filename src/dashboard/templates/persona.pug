@@ -6,11 +6,11 @@ html
   body
     div(style={padding: "16px 8px"})
       h2 Which EA account should we use?
-      form(action="/dashboard/selectedPersona" method="POST")
+      form(action="/dashboard/selectLeague" method="POST")
+        .input-group.mb-3
+          span.input-group-text EA Access Token
+          input#access(type="text" name="access_token" class="form-control" value=access_token readonly=true aria-label="EA access token (Debug)")
         select#selectedPersona(class="form-select" name="selected_persona")
           each persona in personas
             option(value=`${JSON.stringify(persona)}`) #{persona.displayName} - #{namespaces[persona.namespaceName]} - #{persona.maddenEntitlement}
-        .input-group.mb-3
-          span.input-group-text EA Access Token
-          input#access(type="text" name="access_token" class="form-control" value=access_token readonly=true aria-label="EA access token")
         button#submit(type="submit" class="btn btn-primary") Submit EA Account
