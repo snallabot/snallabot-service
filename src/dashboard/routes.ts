@@ -34,6 +34,7 @@ async function renderErrorsMiddleware(ctx: ParameterizedContext, next: Next) {
   try {
     await next()
   } catch (e) {
+    console.error(e)
     if (e instanceof EAAccountError) {
       const error = `Error receieved from EA <br> Message: ${e.message} <br> Snallabot Guidance: ${e.troubleshoot}`
       ctx.body = errorRender({ error: error })
@@ -42,6 +43,7 @@ async function renderErrorsMiddleware(ctx: ParameterizedContext, next: Next) {
     }
     else {
       const error = `Error receieved from Dashboard <br> Message: ${e}`
+
       ctx.body = errorRender({ error: error })
     }
   }

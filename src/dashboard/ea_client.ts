@@ -189,8 +189,8 @@ async function sendBlazeRequest<T>(token: TokenInformation, session: SessionInfo
   )
   const txtResponse = await res1.text()
   try {
-    const val = JSON.parse(txtResponse)
-    if (val.errorname) {
+    conts val = JSON.parse(txtResponse)
+    if (val.error) {
       throw new BlazeError(val as BlazeErrorResponse)
     }
     return val as T
