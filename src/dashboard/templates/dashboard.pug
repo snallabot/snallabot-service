@@ -9,17 +9,17 @@ html
       .row
         .col
           div
-            div #{seasonType}, Year #{seasonInfo.calendarYear}
+            div #{seasonWeekType}, Year #{seasonInfo.calendarYear}
             div Current Week: #{seasonInfo.weekTitle} #{seasonInfo.displayWeek > 0 ? seasonInfo.displayWeek : ''}
         .col-lg-6
           div
             .input-group
-              select.form-select(value=state.exportOption, onChange=(e) => setState(s => ({ ...s, exportOption: e.target.value })))
-                each key in Object.keys(exportWeeks)
-                  option(key=key, value=key) #{key}
-              button.btn.btn-primary(type="button", onClick=onExport) Export
+              select.form-select()
+                each key in Object.keys(exportOptions)
+                  option(value=key) #{key}
+              button.btn.btn-primary(type="button") Export
         .col.mt-lg-3
-          button.btn.btn-danger.float-end(type="button", onClick=unlinkLeague) Unlink League
+          button.btn.btn-danger.float-end(type="button") Unlink League
       .table-responsive
         table.table.table-hover.table-sm.caption-top
           caption List of Export Url's
@@ -31,10 +31,10 @@ html
               th Rosters
               th Auto Update
               th
-                button.btn.btn-success(type="button", onClick=addExport) Add Export Url
+                button.btn.btn-success(type="button") Add Export Url
           tbody
-            each exportDestination, i in exports
-                tr(key=i)
+            each exportDestination in exports
+                tr
                   td #{exportDestination.url}
                   td
                     input(type="checkbox", disabled=true, checked=exportDestination.leagueInfo)
@@ -47,7 +47,7 @@ html
                   td
                     div
                       div
-                        ❌
+                        R
       .table-responsive
         table(class="table table-hover table-condensed caption-top")
           caption Schedule for #{seasonInfo.weekTitle} #{seasonInfo.displayWeek > 0 ? seasonInfo.displayWeek : ''}
@@ -59,7 +59,7 @@ html
           tbody
             each seasonGame in gameScheduleHubInfo.leagueSchedule
               - const game = seasonGame.seasonGameInfo
-              tr(key=seasonGame.seasonGameKey)
+              tr
                 td #{game.isAwayHuman ? game.awayUserName : 'CPU'} #{game.awayCityName} #{game.awayName} (#{game.awayWin} - #{game.awayLoss}#{game.awayTie > 0 ? ' - ' + game.awayTie : ''}) at #{game.isHomeHuman ? game.homeUserName : 'CPU'} #{game.homeCityName} #{game.homeName} (#{game.homeWin} - #{game.homeLoss}#{game.homeTie > 0 ? ' - ' + game.homeTie : ''})
                 td #{game.result || 'Not Played'}
                 td #{game.numberTimesPlayed || 0}

@@ -2,15 +2,15 @@ import Router from "@koa/router"
 import Pug from "pug"
 import path from "path"
 import { Next, ParameterizedContext } from "koa"
-import { EA_LOGIN_URL, AUTH_SOURCE, CLIENT_SECRET, REDIRECT_URL, CLIENT_ID, AccountToken, TokenInfo, Entitlements, VALID_ENTITLEMENTS, Persona, MACHINE_KEY, Personas, ENTITLEMENT_TO_VALID_NAMESPACE, NAMESPACES, ENTITLEMENT_TO_SYSTEM, SystemConsole } from "./ea_constants"
-import { BlazeError, ephemeralClientFromToken } from "./ea_client"
+import { EA_LOGIN_URL, AUTH_SOURCE, CLIENT_SECRET, REDIRECT_URL, CLIENT_ID, AccountToken, TokenInfo, Entitlements, VALID_ENTITLEMENTS, Persona, MACHINE_KEY, Personas, ENTITLEMENT_TO_VALID_NAMESPACE, NAMESPACES, ENTITLEMENT_TO_SYSTEM, SystemConsole, exportOptions, seasonType } from "./ea_constants"
+import { BlazeError, ephemeralClientFromToken, storeToken, storedTokenClient } from "./ea_client"
 import { refreshToken } from "firebase-admin/app"
 
 const startRender = Pug.compileFile(path.join(__dirname, "/templates/start.pug"))
 const errorRender = Pug.compileFile(path.join(__dirname, "/templates/error.pug"))
 const personaRender = Pug.compileFile(path.join(__dirname, "/templates/persona.pug"))
 const selectLeagueRender = Pug.compileFile(path.join(__dirname, "/templates/choose_league.pug"))
-// const dashboardRender = Pug.compileFile(path.join(__dirname, "/templates/dashboard.pug"))
+const dashboardRender = Pug.compileFile(path.join(__dirname, "/templates/dashboard.pug"))
 
 const router = new Router({ prefix: "/dashboard" })
 
@@ -194,9 +194,31 @@ router.get("/", (ctx) => {
 }).post("/connect", renderErrorsMiddleware, async (ctx, next) => {
   const connectRequest = ctx.request.body as ConnectLeague
   const token = { accessToken: connectRequest.access_token, refreshToken: connectRequest.refresh_token, console: connectRequest.console, expiry: new Date(Number(connectRequest.expiry)) }
-  const eaClient = await ephemeralClientFromToken(token)
-  const league = await eaClient.getLeagueInfo(Number(connectRequest.selected_league))
-  ctx.body = league
+  const leagueId = Number(connectRequest.selected_league)
+  if (isNaN(leagueId)) {
+    throw new EAAccountError(`Invalid league id ${leagueId}. Select a valid madden league`, `You may not have any madden leagues, which may mean you are signed into the wrong EA account. One potential fix is to try connecting this EA account to your Madden one, or checking if it is the right one. You can do this at this at this link <a href="https://myaccount.ea.com/cp-ui/connectaccounts/index" target="_blank">https://myaccount.ea.com/cp-ui/connectaccounts/index</a>`)
+  }
+
+  await storeToken(token, Number(connectRequest.selected_league))
+  ctx.redirect(`/dashboard/league/${leagueId}`)
+}).get("/league/:leagueId", renderErrorsMiddleware, async (ctx) => {
+  const { leagueId: rawLeagueId } = ctx.params
+  const leagueId = Number(rawLeagueId)
+  if (isNaN(leagueId)) {
+    throw Error(`Invalid League ${leagueId}`)
+  }
+  const eaClient = await storedTokenClient(leagueId)
+  const [leagueInfo, allLeagues] = await Promise.all([eaClient.getLeagueInfo(leagueId), eaClient.getLeagues()])
+  const leagueName = allLeagues.filter(l => l.leagueId === leagueId)
+    .map(l => l.leagueName)[0]
+  const exports = eaClient.getExports()
+  const {
+    gameScheduleHubInfo,
+    teamIdInfoList,
+    careerHubInfo: { seasonInfo },
+  } = leagueInfo;
+  ctx.body = dashboardRender({ gameScheduleHubInfo: gameScheduleHubInfo, teamIdInfoList: teamIdInfoList, seasonInfo: seasonInfo, leagueName: leagueName, exports: exports, exportOptions: exportOptions, seasonWeekType: seasonType(seasonInfo) })
+
 })
 
 export default router

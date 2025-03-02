@@ -542,3 +542,20 @@ export type BlazeLeagueResponse = {
     value: LeagueResponse
   }
 }
+export function seasonType(seasonInfo: SeasonInfo) {
+  switch (seasonInfo.seasonWeekType) {
+    case 0:
+      return "Preseason"
+    case 1:
+      return "Regular Season"
+    case 2:
+    case 3:
+    case 5:
+    case 6:
+      return "Post Season"
+    case 8:
+      return "Off Season"
+    default:
+      return "something else"
+  }
+}

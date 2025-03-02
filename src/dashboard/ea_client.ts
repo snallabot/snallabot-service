@@ -4,6 +4,7 @@ import { EAAccountError } from "./routes";
 import { constants, randomBytes, createHash } from "crypto"
 import { Buffer } from "buffer"
 import { TeamExport, StandingExport, SchedulesExport, RushingExport, TeamStatsExport, PuntingExport, ReceivingExport, DefensiveExport, KickingExport, PassingExport, RosterExport } from "../export/madden_league_types"
+import db from "../db/firebase"
 
 export enum LeagueData {
   TEAMS = "CareerMode_GetLeagueTeamsExport",
@@ -47,13 +48,7 @@ export type SessionInformation = { blazeId: number, sessionKey: string, requestI
 type MessageAuth = { authData: string, authCode: string, authType: number }
 export type BlazeRequest = { commandName: string, componentId: number, commandId: number, requestPayload: Record<string, any>, componentName: string }
 type BlazeErrorResponse = { error: { errorname: string, component: number, errorcode: number, errordf: { commandSeverity: string, errorString: string } } }
-type ExportDestination = { autoUpdate: boolean, leagueInfo: boolean, rosters: boolean, weeklyStats: boolean, url: string, lastExportAttempt?: Date, lastSuccessfulExport?: Date }
-type StoredMaddenConnection = {
-  token: TokenInformation,
-  session?: SessionInformation,
-  leagueId: number,
-  destinations: { [key: string]: ExportDestination }
-}
+
 
 export class BlazeError extends Error {
   error: BlazeErrorResponse
@@ -101,7 +96,7 @@ async function refreshToken(token: TokenInformation): Promise<TokenInformation> 
     });
     const newToken = await res.json() as AccountToken
     if (!res.ok || !newToken.access_token) {
-      throw new EAAccountError(`Error refreshing tokens, response from EA ${newToken}`, "The only solution may to unlink the dashboard and set it up again")
+      throw new EAAccountError(`Error refreshing tokens, response from EA ${JSON.stringify(newToken)}`, "The only solution may to unlink the dashboard and set it up again")
     }
     const newExpiry = new Date(new Date().getTime() + newToken.expires_in * 1000)
     return { accessToken: newToken.access_token, refreshToken: newToken.refresh_token, expiry: newExpiry, console: token.console }
@@ -319,5 +314,53 @@ export async function ephemeralClientFromToken(token: TokenInformation, session?
         teamId: 0,
       })
     }
+  }
+}
+
+type StoredMaddenConnection = {
+  token: TokenInformation,
+  session?: SessionInformation,
+  leagueId: number,
+  destinations: { [key: string]: ExportDestination }
+}
+type ExportDestination = { autoUpdate: boolean, leagueInfo: boolean, rosters: boolean, weeklyStats: boolean, url: string, lastExportAttempt?: Date, lastSuccessfulExport?: Date, editable: boolean }
+
+const SNALLABOT_EXPORT = "https://snallabot.me"
+
+export async function storeToken(token: TokenInformation, leagueId: number) {
+  const leagueConnection: StoredMaddenConnection = {
+    token: token,
+    leagueId: leagueId,
+    destinations: {
+      [SNALLABOT_EXPORT]: { autoUpdate: true, leagueInfo: true, rosters: true, weeklyStats: true, url: SNALLABOT_EXPORT, editable: false }
+    }
+  }
+  await db.collection("league_data").doc(`${leagueId}`).set(leagueConnection)
+}
+
+interface StoredEAClient extends EAClient {
+  getExports(): { [key: string]: ExportDestination }
+}
+
+export async function storedTokenClient(leagueId: number): Promise<StoredEAClient> {
+  const doc = await db.collection("league_data").doc(`${leagueId}`).get()
+  if (!doc.exists) {
+    throw new Error(`League ${leagueId} not connected to snallabot`)
+  }
+  const leagueConnection = doc.data() as StoredMaddenConnection
+  const newToken = await refreshToken(leagueConnection.token)
+  const session = leagueConnection.session ? leagueConnection.session : await retrieveBlazeSession(newToken)
+  const newSession = await refreshBlazeSession(newToken, session)
+  leagueConnection.token = newToken
+  leagueConnection.session = newSession
+  await db.collection("league_data").doc(`${leagueId}`).set(
+    leagueConnection
+    , { merge: true })
+  const eaClient = await ephemeralClientFromToken(newToken, newSession)
+  return {
+    getExports() {
+      return leagueConnection.destinations
+    },
+    ...eaClient
   }
 }
