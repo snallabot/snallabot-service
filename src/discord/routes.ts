@@ -117,7 +117,7 @@ async function updateScoreboard(leagueSettings: LeagueSettings, guildId: string,
   const teams = await MaddenClient.getLatestTeams(leagueId)
   const games = await MaddenClient.getWeekScheduleForSeason(leagueId, week, seasonIndex)
   const sims = await EventDB.queryEvents<ConfirmedSim>(guildId, "CONFIRMED_SIM", new Date(0), { week: week, seasonIndex: seasonIndex }, 30)
-  const message = formatScoreboard(week, seasonIndex, games, teams, sims)
+  const message = formatScoreboard(week, seasonIndex, games, teams, sims, leagueId)
   try {
     await prodClient.requestDiscord(`channels/${scoreboard_channel.id}/messages/${scoreboard.id}`, { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
   } catch (e) {
