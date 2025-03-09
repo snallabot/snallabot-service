@@ -73,7 +73,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
     const homeTeamId = teams.getTeamForId(game.homeTeamId).teamId
     const awayUser = latestAssignents[awayTeamId]?.discord_user
     const homeUser = latestAssignents[homeTeamId]?.discord_user
-    const event: SnallabotEvent<ConfirmedSim> = { key: guildId, event_type: "CONFIRMED_SIM", result: result, scheduleId: gameChannel.scheduleId, requestedUsers: requestedUsers, confirmedUsers: confirmedUsers, week: week, seasonIndex: season }
+    const event: SnallabotEvent<ConfirmedSim> = { key: guildId, event_type: "CONFIRMED_SIM", result: result, scheduleId: gameChannel.scheduleId, requestedUsers: requestedUsers, confirmedUsers: confirmedUsers, week: week, seasonIndex: season, leagueId: leagueId }
     if (awayUser) {
       event.awayUser = awayUser
     }
