@@ -193,119 +193,124 @@ export type LeagueSettings = {
   skillLevel: string;
   leagueModeType: string;
 }
+export enum Stage {
+  UNKNOWN = -1,
+  PRESEASON = 0,
+  SEASON = 1
+}
 
 export const exportOptions = {
   "Current Week": {
-    stage: -1,
-    week: 101,
+    stage: Stage.UNKNOWN,
+    week: Stage.PRESEASON,
   },
   "Preseason Week 1": {
-    stage: 0,
+    stage: Stage.PRESEASON,
     week: 1,
   },
   "Preseason Week 2": {
-    stage: 0,
+    stage: Stage.PRESEASON,
     week: 2,
   },
   "Preseason Week 3": {
-    stage: 0,
+    stage: Stage.PRESEASON,
     week: 3,
   },
   "Preseason Week 4": {
-    stage: 0,
+    stage: Stage.PRESEASON,
     week: 4,
   },
   "Regular Season Week 1": {
-    stage: 1,
+    stage: Stage.SEASON,
     week: 1,
   },
   "Regular Season Week 2": {
-    stage: 1,
+    stage: Stage.SEASON,
     week: 2,
   },
   "Regular Season Week 3": {
-    stage: 1,
+    stage: Stage.SEASON,
     week: 3,
   },
   "Regular Season Week 4": {
-    stage: 1,
+    stage: Stage.SEASON,
     week: 4,
   },
   "Regular Season Week 5": {
-    stage: 1,
+    stage: Stage.SEASON,
     week: 5,
   },
   "Regular Season Week 6": {
-    stage: 1,
+    stage: Stage.SEASON,
     week: 6,
   },
   "Regular Season Week 7": {
-    stage: 1,
+    stage: Stage.SEASON,
     week: 7,
   },
   "Regular Season Week 8": {
-    stage: 1,
+    stage: Stage.SEASON,
     week: 8,
   },
   "Regular Season Week 9": {
-    stage: 1,
+    stage: Stage.SEASON,
     week: 9,
   },
   "Regular Season Week 10": {
-    stage: 1,
+    stage: Stage.SEASON,
     week: 10,
   },
   "Regular Season Week 11": {
-    stage: 1,
+    stage: Stage.SEASON,
     week: 11,
   },
   "Regular Season Week 12": {
-    stage: 1,
+    stage: Stage.SEASON,
     week: 12,
   },
   "Regular Season Week 13": {
-    stage: 1,
+    stage: Stage.SEASON,
     week: 13,
   },
   "Regular Season Week 14": {
-    stage: 1,
+    stage: Stage.SEASON,
     week: 14,
   },
   "Regular Season Week 15": {
-    stage: 1,
+    stage: Stage.SEASON,
     week: 15,
   },
   "Regular Season Week 16": {
-    stage: 1,
+    stage: Stage.SEASON,
     week: 16,
   },
   "Regular Season Week 17": {
-    stage: 1,
+    stage: Stage.SEASON,
     week: 17,
   },
   "Regular Season Week 18": {
-    stage: 1,
+    stage: Stage.SEASON,
     week: 18,
   },
   "Wildcard Round": {
-    stage: 1,
+    stage: Stage.SEASON,
     week: 19,
   },
   "Divisional Round": {
-    stage: 1,
+    stage: Stage.SEASON,
     week: 20,
   },
 
   "Conference Championship Round": {
-    stage: 1,
+    stage: Stage.SEASON,
     week: 21,
   },
   Superbowl: {
-    stage: 1,
+    stage: Stage.SEASON,
     week: 23,
   },
   "All Weeks": {
-    stage: -1,
+    stage: Stage.UNKNOWN,
     week: 100,
   },
 }

@@ -364,3 +364,82 @@ export async function storedTokenClient(leagueId: number): Promise<StoredEAClien
     ...eaClient
   }
 }
+
+interface MaddenExporter {
+  exportCurrentWeek(): Promise<void>,
+  exportAllWeeks(): Promise<void>,
+  exportSpecificWeek(weekIndex: number, stage: number): Promise<void>,
+  exportSurroundingWeek(): Promise<void>
+}
+export enum ExportContext {
+  UNKNOWN = "UNKNOWN",
+  // manual means directly done by user
+  MANUAL = "MANUAL",
+  // auto means through event driven/polling processes
+  AUTO = "AUTO"
+}
+
+function randomIntFromInterval(min: number, max: number) {
+  return Math.floor(Math.random() * (max - min + 1) + min);
+}
+
+const STAGGERED_MAX_MS = 150 // to stagger requests to EA and other outbound services
+const PRESEASON_WEEKS = Array.from({ length: 4 }, (v, index) => index)
+const SEASON_WEEKS = Array.from({ length: 23 }, (v, index) => index).filter(i => i !== 21) // filters out pro bowl
+
+
+async function exporterForLeague(leagueId: number, context: ExportContext): Promise<MaddenExporter> {
+  const client = await storedTokenClient(leagueId)
+  const exports = client.getExports()
+  const contextualExports = Object.fromEntries(Object.entries(exports).filter(e => {
+    const [url, destination] = e
+    if (context === ExportContext.MANUAL) {
+      return true
+    } else if (context === ExportContext.AUTO) {
+      return destination.autoUpdate
+    } else {
+      return true
+    }
+  }))
+  const leagueInfo = await client.getLeagueInfo(leagueId)
+  const staggeringExport = async (weekIndex: number, stage: number) => {
+    await new Promise(r => setTimeout(r, randomIntFromInterval(1, STAGGERED_MAX_MS)))
+  }
+  return {
+    exportCurrentWeek: async function() {
+      const weekIndex = leagueInfo.careerHubInfo.seasonInfo.seasonWeek
+      const stage = leagueInfo.careerHubInfo.seasonInfo.seasonWeekType === 0 ? 0 : 1
+      await this.exportSpecificWeek(weekIndex, stage)
+    },
+    exportSurroundingWeek: async function() {
+      const currentWeek =
+        leagueInfo.careerHubInfo.seasonInfo.seasonWeekType === 8
+          ? 22
+          : leagueInfo.careerHubInfo.seasonInfo.seasonWeek
+      const stage =
+        leagueInfo.careerHubInfo.seasonInfo.seasonWeekType == 0 ? 0 : 1
+      const maxWeekIndex = stage === 0 ? 3 : 22
+      const previousWeek = currentWeek - 1
+      const nextWeek = currentWeek + 1
+      const weeksToExport = [
+        previousWeek === 21 ? 20 : previousWeek,
+        currentWeek,
+        nextWeek === 21 ? 22 : nextWeek,
+      ].filter((c) => c >= 0 && c <= maxWeekIndex)
+      await Promise.all(weeksToExport.map(async week => {
+        await staggeringExport(week, stage)
+      }))
+    },
+    exportAllWeeks: async function() {
+      PRESEASON_WEEKS.map(async weekIndex => {
+        await staggeringExport(weekIndex, 0)
+      })
+      SEASON_WEEKS.map(async weekIndex => {
+        await staggeringExport(weekIndex, 1)
+      })
+    },
+    exportSpecificWeek: async function(weekIndex: number, stage: number) {
+
+    }
+  } as MaddenExporter
+}
