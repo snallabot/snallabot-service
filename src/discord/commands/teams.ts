@@ -105,7 +105,7 @@ export default {
         }, { merge: true })
         respond(ctx, createMessageResponse("Teams Configured"))
       } else {
-        const oldMessageId = leagueSettings?.commands?.teams?.messageId.id
+        const oldMessageId = leagueSettings?.commands?.teams?.messageId?.id
         if (oldMessageId) {
           try {
             await client.requestDiscord(`channels/${channel}/messages/${oldMessageId}`, { method: "GET" })
