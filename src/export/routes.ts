@@ -6,6 +6,7 @@ import MaddenDB from "../db/madden_db"
 import NodeCache from "node-cache"
 import { Storage } from "@google-cloud/storage";
 import { readFileSync } from "fs"
+import { ExportResult, MaddenExportDestination } from "./exporter"
 
 let serviceAccount;
 if (process.env.SERVICE_ACCOUNT_FILE) {
@@ -142,80 +143,132 @@ async function maddenExportErrorMiddleware(ctx: ParameterizedContext, next: Next
   }
 }
 
+export const SnallabotExportDestination: MaddenExportDestination = {
+  leagueTeams: async function(platform: string, leagueId: string, data: TeamExport): Promise<ExportResult> {
+    const events = data.leagueTeamInfoList.map(team => (
+      { key: leagueId, platform: platform, event_type: "MADDEN_TEAM", ...team }
+    ))
+    await sendEvents(leagueId, "leagueteams", events, e => e.teamId)
+    return ExportResult.SUCCESS
+  },
+  standings: async function(platform: string, leagueId: string, data: StandingExport): Promise<ExportResult> {
+    const events = data.teamStandingInfoList.map(standing => ({ key: leagueId, platform: platform, event_type: "MADDEN_STANDING", ...standing }))
+    await sendEvents(leagueId, "standings", events, e => e.teamId)
+    return ExportResult.SUCCESS
+  },
+  schedules: async function(platform: string, leagueId: string, week: string, stage: string, data: SchedulesExport): Promise<ExportResult> {
+    const events = data.gameScheduleInfoList.map(game => ({ key: leagueId, platform: platform, event_type: "MADDEN_SCHEDULE", ...game }))
+    await sendEvents(leagueId, `schedules${stage}-${week}`, events, e => e.scheduleId)
+    return ExportResult.SUCCESS
+  },
+  punting: async function(platform: string, leagueId: string, week: string, stage: string, data: PuntingExport): Promise<ExportResult> {
+    const events = data.playerPuntingStatInfoList.map(stat => ({ key: leagueId, platform: platform, event_type: "MADDEN_PUNTING_STAT", ...stat }))
+    await sendEvents(leagueId, `punting${stage}-${week}`, events, e => e.statId)
+    return ExportResult.SUCCESS
+  },
+  teamStats: async function(platform: string, leagueId: string, week: string, stage: string, data: TeamStatsExport): Promise<ExportResult> {
+    const events = data.teamStatInfoList.map(stat => ({ key: leagueId, platform: platform, event_type: "MADDEN_TEAM_STAT", ...stat }))
+    await sendEvents(leagueId, `teamstats${stage}-${week}`, events, e => e.statId)
+    return ExportResult.SUCCESS
+  },
+  passing: async function(platform: string, leagueId: string, week: string, stage: string, data: PassingExport): Promise<ExportResult> {
+    const events = data.playerPassingStatInfoList.map(stat => ({ key: leagueId, platform: platform, event_type: "MADDEN_PASSING_STAT", ...stat }))
+    await sendEvents(leagueId, `passing${stage}-${week}`, events, e => e.statId)
+    return ExportResult.SUCCESS
+  },
+  kicking: async function(platform: string, leagueId: string, week: string, stage: string, data: KickingExport): Promise<ExportResult> {
+    const events = data.playerKickingStatInfoList.map(stat => ({ key: leagueId, platform: platform, event_type: "MADDEN_KICKING_STAT", ...stat }))
+    await sendEvents(leagueId, `kicking${stage}-${week}`, events, e => e.statId)
+    return ExportResult.SUCCESS
+  },
+  rushing: async function(platform: string, leagueId: string, week: string, stage: string, data: RushingExport): Promise<ExportResult> {
+    const events = data.playerRushingStatInfoList.map(stat => ({ key: leagueId, platform: platform, event_type: "MADDEN_RUSHING_STAT", ...stat }))
+    await sendEvents(leagueId, `rushing${stage}-${week}`, events, e => e.statId)
+    return ExportResult.SUCCESS
+  },
+  defense: async function(platform: string, leagueId: string, week: string, stage: string, data: DefensiveExport): Promise<ExportResult> {
+    const events = data.playerDefensiveStatInfoList.map(stat => ({ key: leagueId, platform: platform, event_type: "MADDEN_DEFENSIVE_STAT", ...stat }))
+    await sendEvents(leagueId, `defense${stage}-${week}`, events, e => e.statId)
+
+    return ExportResult.SUCCESS
+  },
+  receiving: async function(platform: string, leagueId: string, week: string, stage: string, data: ReceivingExport): Promise<ExportResult> {
+    const events = data.playerReceivingStatInfoList.map(stat => ({ key: leagueId, platform: platform, event_type: "MADDEN_RECEIVING_STAT", ...stat }))
+    await sendEvents(leagueId, `receiving${stage}-${week}`, events, e => e.statId)
+    return ExportResult.SUCCESS
+  },
+  freeagents: async function(platform: string, leagueId: string, data: RosterExport): Promise<ExportResult> {
+    const events = data.rosterInfoList.map(player => ({ key: leagueId, platform: platform, event_type: "MADDEN_PLAYER", ...player }))
+    await sendEvents(leagueId, `rosterfreeagents`, events, e => e.rosterId)
+    return ExportResult.SUCCESS
+  },
+  teamRoster: async function(platform: string, leagueId: string, teamId: string, data: RosterExport): Promise<ExportResult> {
+    const events = data.rosterInfoList.map(player => ({ key: leagueId, platform: platform, event_type: "MADDEN_PLAYER", team: teamId, ...player }))
+    await sendEvents(leagueId, `roster${teamId}`, events, e => e.rosterId)
+    return ExportResult.SUCCESS
+  }
+}
+
 
 router.post("/:platform/:l/leagueteams", maddenExportErrorMiddleware, async (ctx, next) => {
   const { platform, l } = ctx.params
   const teamsExport = ctx.request.body as TeamExport
-  const events = teamsExport.leagueTeamInfoList.map(team => (
-    { key: l, platform: platform, event_type: "MADDEN_TEAM", ...team }
-  ))
-  await sendEvents(l, "leagueteams", events, e => e.teamId)
+  await SnallabotExportDestination.leagueTeams(platform, l, teamsExport)
   ctx.status = 200
 }).post("/:platform/:l/standings", maddenExportErrorMiddleware, async (ctx) => {
   const { platform, l } = ctx.params
   const standingsExport = ctx.request.body as StandingExport
-  const events = standingsExport.teamStandingInfoList.map(standing => ({ key: l, platform: platform, event_type: "MADDEN_STANDING", ...standing }))
-  await sendEvents(l, "standings", events, e => e.teamId)
+  await SnallabotExportDestination.standings(platform, l, standingsExport)
   ctx.status = 200
 }).post("/:platform/:l/week/:stage/:week/schedules", maddenExportErrorMiddleware, async (ctx) => {
   const { platform, l, week, stage } = ctx.params
   const schedulesExport = ctx.request.body as SchedulesExport
-  const events = schedulesExport.gameScheduleInfoList.map(game => ({ key: l, platform: platform, event_type: "MADDEN_SCHEDULE", ...game }))
-  await sendEvents(l, `schedules${stage}-${week}`, events, e => e.scheduleId)
+  await SnallabotExportDestination.schedules(platform, l, week, stage, schedulesExport)
   ctx.status = 200
 }).post("/:platform/:l/week/:stage/:week/punting", maddenExportErrorMiddleware, async (ctx) => {
   const { platform, l, week, stage } = ctx.params
   const puntingExport = ctx.request.body as PuntingExport
-  const events = puntingExport.playerPuntingStatInfoList.map(stat => ({ key: l, platform: platform, event_type: "MADDEN_PUNTING_STAT", ...stat }))
-  await sendEvents(l, `punting${stage}-${week}`, events, e => e.statId)
+  await SnallabotExportDestination.punting(platform, l, week, stage, puntingExport)
   ctx.status = 200
 }).post("/:platform/:l/week/:stage/:week/teamstats", maddenExportErrorMiddleware, async (ctx) => {
   const { platform, l, week, stage } = ctx.params
   const teamStatsExport = ctx.request.body as TeamStatsExport
-  const events = teamStatsExport.teamStatInfoList.map(stat => ({ key: l, platform: platform, event_type: "MADDEN_TEAM_STAT", ...stat }))
-  await sendEvents(l, `teamstats${stage}-${week}`, events, e => e.statId)
+  await SnallabotExportDestination.teamStats(platform, l, week, stage, teamStatsExport)
   ctx.status = 200
 }).post("/:platform/:l/week/:stage/:week/passing", maddenExportErrorMiddleware, async (ctx) => {
   const { platform, l, week, stage } = ctx.params
   const passingStatsExport = ctx.request.body as PassingExport
-  const events = passingStatsExport.playerPassingStatInfoList.map(stat => ({ key: l, platform: platform, event_type: "MADDEN_PASSING_STAT", ...stat }))
-  await sendEvents(l, `passing${stage}-${week}`, events, e => e.statId)
+  await SnallabotExportDestination.passing(platform, l, week, stage, passingStatsExport)
   ctx.status = 200
 }).post("/:platform/:l/week/:stage/:week/kicking", maddenExportErrorMiddleware, async (ctx) => {
   const { platform, l, week, stage } = ctx.params
   const kickingStatsExport = ctx.request.body as KickingExport
-  const events = kickingStatsExport.playerKickingStatInfoList.map(stat => ({ key: l, platform: platform, event_type: "MADDEN_KICKING_STAT", ...stat }))
-  await sendEvents(l, `kicking${stage}-${week}`, events, e => e.statId)
+  await SnallabotExportDestination.kicking(platform, l, week, stage, kickingStatsExport)
   ctx.status = 200
 }).post("/:platform/:l/week/:stage/:week/rushing", maddenExportErrorMiddleware, async (ctx) => {
   const { platform, l, week, stage } = ctx.params
   const rushingStatsExport = ctx.request.body as RushingExport
-  const events = rushingStatsExport.playerRushingStatInfoList.map(stat => ({ key: l, platform: platform, event_type: "MADDEN_RUSHING_STAT", ...stat }))
-  await sendEvents(l, `rushing${stage}-${week}`, events, e => e.statId)
+  await SnallabotExportDestination.rushing(platform, l, week, stage, rushingStatsExport)
   ctx.status = 200
 }).post("/:platform/:l/week/:stage/:week/defense", maddenExportErrorMiddleware, async (ctx) => {
   const { platform, l, week, stage } = ctx.params
   const defensiveStatsExport = ctx.request.body as DefensiveExport
-  const events = defensiveStatsExport.playerDefensiveStatInfoList.map(stat => ({ key: l, platform: platform, event_type: "MADDEN_DEFENSIVE_STAT", ...stat }))
-  await sendEvents(l, `defense${stage}-${week}`, events, e => e.statId)
+  await SnallabotExportDestination.defense(platform, l, week, stage, defensiveStatsExport)
   ctx.status = 200
 }).post("/:platform/:l/week/:stage/:week/receiving", maddenExportErrorMiddleware, async (ctx) => {
   const { platform, l, week, stage } = ctx.params
   const receivingStatsExport = ctx.request.body as ReceivingExport
-  const events = receivingStatsExport.playerReceivingStatInfoList.map(stat => ({ key: l, platform: platform, event_type: "MADDEN_RECEIVING_STAT", ...stat }))
-  await sendEvents(l, `receiving${stage}-${week}`, events, e => e.statId)
+  await SnallabotExportDestination.receiving(platform, l, week, stage, receivingStatsExport)
   ctx.status = 200
 }).post("/:platform/:l/freeagents/roster", async (ctx) => {
   const { platform, l } = ctx.params
   const roster = ctx.request.body as RosterExport
-  const events = roster.rosterInfoList.map(player => ({ key: l, platform: platform, event_type: "MADDEN_PLAYER", ...player }))
-  await sendEvents(l, `rosterfreeagents`, events, e => e.rosterId)
+  await SnallabotExportDestination.freeagents(platform, l, roster)
   ctx.status = 200
 }).post("/:platform/:l/team/:team/roster", maddenExportErrorMiddleware, async (ctx) => {
   const { platform, l, team } = ctx.params
   const roster = ctx.request.body as RosterExport
-  const events = roster.rosterInfoList.map(player => ({ key: l, platform: platform, event_type: "MADDEN_PLAYER", team: team, ...player }))
-  await sendEvents(l, `roster${team}`, events, e => e.rosterId)
+  await SnallabotExportDestination.teamRoster(platform, l, team, roster)
   ctx.status = 200
 })
 

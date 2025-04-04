@@ -189,7 +189,7 @@ async function sendBlazeRequest<T>(token: TokenInformation, session: SessionInfo
   )
   const txtResponse = await res1.text()
   try {
-    conts val = JSON.parse(txtResponse)
+    const val = JSON.parse(txtResponse)
     if (val.error) {
       throw new BlazeError(val as BlazeErrorResponse)
     }
@@ -368,7 +368,7 @@ export async function storedTokenClient(leagueId: number): Promise<StoredEAClien
 interface MaddenExporter {
   exportCurrentWeek(): Promise<void>,
   exportAllWeeks(): Promise<void>,
-  exportSpecificWeek(weekIndex: number, stage: number): Promise<void>,
+  exportSpecificWeeks(weeks: { weekIndex: number, stage: number }[]): Promise<void>,
   exportSurroundingWeek(): Promise<void>
 }
 export enum ExportContext {
@@ -383,9 +383,25 @@ function randomIntFromInterval(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1) + min);
 }
 
-const STAGGERED_MAX_MS = 150 // to stagger requests to EA and other outbound services
+type WeeklyExportData = {
+  weekIndex: number, stage: Stage, passing: PassingExport?, schedules: SchedulesExport?, teamstats: TeamStatsExport?, defense: DefensiveExport?, punting: PuntingExport?, receiving: ReceivingExport?, kicking: KickingExport?, rushing: RushingExport?
+}
+type ExportData = {
+  leagueTeams: TeamExport?,
+  standings: StandingExport?,
+  weeks: WeeklyExportData[],
+  roster: {
+    [key: string]: RosterExport
+  }
+}
+
+const STAGGERED_MAX_MS = 75 // to stagger requests to EA and other outbound services
 const PRESEASON_WEEKS = Array.from({ length: 4 }, (v, index) => index)
 const SEASON_WEEKS = Array.from({ length: 23 }, (v, index) => index).filter(i => i !== 21) // filters out pro bowl
+
+async function exportData(data: ExportData, destinations: { [key: string]: ExportDestination }) {
+
+}
 
 
 async function exporterForLeague(leagueId: number, context: ExportContext): Promise<MaddenExporter> {
@@ -402,14 +418,15 @@ async function exporterForLeague(leagueId: number, context: ExportContext): Prom
     }
   }))
   const leagueInfo = await client.getLeagueInfo(leagueId)
-  const staggeringExport = async (weekIndex: number, stage: number) => {
-    await new Promise(r => setTimeout(r, randomIntFromInterval(1, STAGGERED_MAX_MS)))
+  const staggeringCall = async <T>(p: Promise<T>, waitTime: number = STAGGERED_MAX_MS): Promise<T> => {
+    await new Promise(r => setTimeout(r, randomIntFromInterval(1, waitTime)))
+    return await p
   }
   return {
     exportCurrentWeek: async function() {
       const weekIndex = leagueInfo.careerHubInfo.seasonInfo.seasonWeek
       const stage = leagueInfo.careerHubInfo.seasonInfo.seasonWeekType === 0 ? 0 : 1
-      await this.exportSpecificWeek(weekIndex, stage)
+      await this.exportSpecificWeeks([{ weekIndex, stage }])
     },
     exportSurroundingWeek: async function() {
       const currentWeek =
@@ -426,19 +443,52 @@ async function exporterForLeague(leagueId: number, context: ExportContext): Prom
         currentWeek,
         nextWeek === 21 ? 22 : nextWeek,
       ].filter((c) => c >= 0 && c <= maxWeekIndex)
-      await Promise.all(weeksToExport.map(async week => {
-        await staggeringExport(week, stage)
-      }))
+      await this.exportSpecificWeeks(weeksToExport.map(w => ({ weekIndex: w, stage: stage })))
     },
     exportAllWeeks: async function() {
-      PRESEASON_WEEKS.map(async weekIndex => {
-        await staggeringExport(weekIndex, 0)
-      })
-      SEASON_WEEKS.map(async weekIndex => {
-        await staggeringExport(weekIndex, 1)
-      })
+      const weeksToExport =
+        PRESEASON_WEEKS.map(weekIndex => ({
+          weekIndex: weekIndex, stage: 0
+        })).concat(
+          SEASON_WEEKS.map(weekIndex => ({
+            weekIndex: weekIndex, stage: 1
+          })))
+      await this.exportSpecificWeeks(weeksToExport)
     },
-    exportSpecificWeek: async function(weekIndex: number, stage: number) {
+    exportSpecificWeeks: async function(weeks: { weekIndex: number, stage: number }[]) {
+      const destinations = Object.values(contextualExports)
+      const data = {} as ExportData
+      const dataRequests = [] as Promise<?>[]
+      function toStage(stage: number): Stage {
+        return stage === 0 ? Stage.PRESEASON : Stage.SEASON
+      }
+      if (destinations.some(e => e.leagueInfo)) {
+        dataRequests.push(client.getTeams(leagueId).then(t => data.leagueTeams = t))
+        dataRequests.push(client.getStandings(leagueId).then(t => data.standings = t))
+      }
+      if (destinations.some(e => e.weeklyStats)) {
+        weeks.forEach(week => {
+          const stage = toStage(week.stage)
+          const weekData = { weekIndex: week.weekIndex, stage: stage } as WeeklyExportData
+          dataRequests.push(client.getPassingStats(leagueId, stage, week.weekIndex).then(s => weekData.passing = s))
+          dataRequests.push(client.getSchedules(leagueId, stage, week.weekIndex).then(s => weekData.schedules = s))
+          dataRequests.push(client.getTeamStats(leagueId, stage, week.weekIndex).then(s => weekData.teamstats = s))
+          dataRequests.push(client.getDefensiveStats(leagueId, stage, week.weekIndex).then(s => weekData.defense = s))
+          dataRequests.push(client.getPuntingStats(leagueId, stage, week.weekIndex).then(s => weekData.punting = s))
+          dataRequests.push(client.getReceivingStats(leagueId, stage, week.weekIndex).then(s => weekData.receiving = s))
+          dataRequests.push(client.getKickingStats(leagueId, stage, week.weekIndex).then(s => weekData.kicking = s))
+          dataRequests.push(client.getRushingStats(leagueId, stage, week.weekIndex).then(s => weekData.rushing = s))
+          data.weeks.push(weekData)
+        })
+      }
+      if (destinations.some(e => e.rosters)) {
+        const teamList = leagueInfo.teamIdInfoList
+        dataRequests.push(client.getFreeAgents(leagueId).then(freeAgents => data.roster["freeagents"] = freeAgents))
+        teamList.forEach((team, idx) => {
+          dataRequests.push(client.getTeamRoster(leagueId, team.teamId, idx).then(roster => data.roster[`${team.teamId}`] = roster))
+        })
+      }
+      await Promise.all(dataRequests.map(request => staggeringCall(request, 20)))
 
     }
   } as MaddenExporter
