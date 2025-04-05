@@ -384,11 +384,11 @@ function randomIntFromInterval(min: number, max: number) {
 }
 
 type WeeklyExportData = {
-  weekIndex: number, stage: Stage, passing: PassingExport?, schedules: SchedulesExport?, teamstats: TeamStatsExport?, defense: DefensiveExport?, punting: PuntingExport?, receiving: ReceivingExport?, kicking: KickingExport?, rushing: RushingExport?
+  weekIndex: number, stage: Stage, passing?: PassingExport, schedules?: SchedulesExport, teamstats?: TeamStatsExport, defense?: DefensiveExport, punting?: PuntingExport, receiving?: ReceivingExport, kicking?: KickingExport, rushing?: RushingExport
 }
 type ExportData = {
-  leagueTeams: TeamExport?,
-  standings: StandingExport?,
+  leagueTeams?: TeamExport,
+  standings?: StandingExport,
   weeks: WeeklyExportData[],
   roster: {
     [key: string]: RosterExport
@@ -458,7 +458,7 @@ async function exporterForLeague(leagueId: number, context: ExportContext): Prom
     exportSpecificWeeks: async function(weeks: { weekIndex: number, stage: number }[]) {
       const destinations = Object.values(contextualExports)
       const data = {} as ExportData
-      const dataRequests = [] as Promise<?>[]
+      const dataRequests = [] as Promise<any>[]
       function toStage(stage: number): Stage {
         return stage === 0 ? Stage.PRESEASON : Stage.SEASON
       }
