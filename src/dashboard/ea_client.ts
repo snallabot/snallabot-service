@@ -1,10 +1,11 @@
 import { Agent, fetch } from "undici";
-import { CLIENT_ID, CLIENT_SECRET, AUTH_SOURCE, AccountToken, BLAZE_SERVICE, SystemConsole, BLAZE_PRODUCT_NAME, BlazeAuthenticatedResponse, MACHINE_KEY, League, GetMyLeaguesResponse, LeagueResponse, BlazeLeagueResponse } from "./ea_constants"
+import { CLIENT_ID, CLIENT_SECRET, AUTH_SOURCE, AccountToken, BLAZE_SERVICE, SystemConsole, BLAZE_PRODUCT_NAME, BlazeAuthenticatedResponse, MACHINE_KEY, League, GetMyLeaguesResponse, LeagueResponse, BlazeLeagueResponse, BLAZE_SERVICE_TO_PATH } from "./ea_constants"
 import { EAAccountError } from "./routes";
 import { constants, randomBytes, createHash } from "crypto"
 import { Buffer } from "buffer"
 import { TeamExport, StandingExport, SchedulesExport, RushingExport, TeamStatsExport, PuntingExport, ReceivingExport, DefensiveExport, KickingExport, PassingExport, RosterExport } from "../export/madden_league_types"
 import db from "../db/firebase"
+import { SNALLABOT_EXPORT, createDestination } from "../export/exporter";
 
 export enum LeagueData {
   TEAMS = "CareerMode_GetLeagueTeamsExport",
@@ -39,7 +40,8 @@ interface EAClient {
   getKickingStats(leagueId: number, stage: Stage, weekIndex: number): Promise<KickingExport>,
   getPassingStats(leagueId: number, stage: Stage, weekIndex: number): Promise<PassingExport>,
   getTeamRoster(leagueId: number, teamId: number, teamIndex: number): Promise<RosterExport>,
-  getFreeAgents(leagueId: number): Promise<RosterExport>
+  getFreeAgents(leagueId: number): Promise<RosterExport>,
+  getSystemConsole(): SystemConsole
 }
 
 
@@ -313,6 +315,9 @@ export async function ephemeralClientFromToken(token: TokenInformation, session?
         returnFreeAgents: true,
         teamId: 0,
       })
+    },
+    getSystemConsole() {
+      return token.console
     }
   }
 }
@@ -324,8 +329,6 @@ type StoredMaddenConnection = {
   destinations: { [key: string]: ExportDestination }
 }
 type ExportDestination = { autoUpdate: boolean, leagueInfo: boolean, rosters: boolean, weeklyStats: boolean, url: string, lastExportAttempt?: Date, lastSuccessfulExport?: Date, editable: boolean }
-
-const SNALLABOT_EXPORT = "https://snallabot.me"
 
 export async function storeToken(token: TokenInformation, leagueId: number) {
   const leagueConnection: StoredMaddenConnection = {
@@ -384,11 +387,11 @@ function randomIntFromInterval(min: number, max: number) {
 }
 
 type WeeklyExportData = {
-  weekIndex: number, stage: Stage, passing?: PassingExport, schedules?: SchedulesExport, teamstats?: TeamStatsExport, defense?: DefensiveExport, punting?: PuntingExport, receiving?: ReceivingExport, kicking?: KickingExport, rushing?: RushingExport
+  weekIndex: number, stage: Stage, passing: PassingExport, schedules: SchedulesExport, teamstats: TeamStatsExport, defense: DefensiveExport, punting: PuntingExport, receiving: ReceivingExport, kicking: KickingExport, rushing: RushingExport
 }
 type ExportData = {
-  leagueTeams?: TeamExport,
-  standings?: StandingExport,
+  leagueTeams: TeamExport,
+  standings: StandingExport,
   weeks: WeeklyExportData[],
   roster: {
     [key: string]: RosterExport
@@ -399,8 +402,40 @@ const STAGGERED_MAX_MS = 75 // to stagger requests to EA and other outbound serv
 const PRESEASON_WEEKS = Array.from({ length: 4 }, (v, index) => index)
 const SEASON_WEEKS = Array.from({ length: 23 }, (v, index) => index).filter(i => i !== 21) // filters out pro bowl
 
-async function exportData(data: ExportData, destinations: { [key: string]: ExportDestination }) {
-
+async function exportData(data: ExportData, destinations: { [key: string]: ExportDestination }, leagueId: string, platform: string) {
+  const leagueInfo = Object.values(destinations).filter(d => d.leagueInfo).map(d => createDestination(d.url))
+  const weeklyStats = Object.values(destinations).filter(d => d.weeklyStats).map(d => createDestination(d.url))
+  const roster = Object.values(destinations).filter(d => d.rosters).map(d => createDestination(d.url))
+  if (leagueInfo.length > 0) {
+    await Promise.all(leagueInfo.flatMap(d => {
+      return [d.leagueTeams(platform, leagueId, data.leagueTeams), d.standings(platform, leagueId, data.standings)]
+    }))
+  }
+  if (weeklyStats.length > 0) {
+    await Promise.all(weeklyStats.flatMap(d => {
+      return data.weeks.flatMap(w => [
+        d.passing(platform, leagueId, w.weekIndex + 1, w.stage, w.passing),
+        d.schedules(platform, leagueId, w.weekIndex + 1, w.stage, w.schedules),
+        d.teamStats(platform, leagueId, w.weekIndex + 1, w.stage, w.teamstats),
+        d.defense(platform, leagueId, w.weekIndex + 1, w.stage, w.defense),
+        d.punting(platform, leagueId, w.weekIndex + 1, w.stage, w.punting),
+        d.receiving(platform, leagueId, w.weekIndex + 1, w.stage, w.receiving),
+        d.kicking(platform, leagueId, w.weekIndex + 1, w.stage, w.kicking),
+        d.rushing(platform, leagueId, w.weekIndex + 1, w.stage, w.rushing)
+      ])
+    }))
+  }
+  if (roster.length > 0) {
+    await Promise.all(roster.flatMap(d => {
+      return Object.entries(data.roster).map(e => {
+        const [teamId, roster] = e
+        if (teamId === "freeagents") {
+          return d.freeagents(platform, leagueId, roster)
+        }
+        return d.teamRoster(platform, leagueId, teamId, roster)
+      })
+    }))
+  }
 }
 
 
@@ -457,7 +492,7 @@ async function exporterForLeague(leagueId: number, context: ExportContext): Prom
     },
     exportSpecificWeeks: async function(weeks: { weekIndex: number, stage: number }[]) {
       const destinations = Object.values(contextualExports)
-      const data = {} as ExportData
+      const data = {} as any
       const dataRequests = [] as Promise<any>[]
       function toStage(stage: number): Stage {
         return stage === 0 ? Stage.PRESEASON : Stage.SEASON
@@ -488,8 +523,8 @@ async function exporterForLeague(leagueId: number, context: ExportContext): Prom
           dataRequests.push(client.getTeamRoster(leagueId, team.teamId, idx).then(roster => data.roster[`${team.teamId}`] = roster))
         })
       }
-      await Promise.all(dataRequests.map(request => staggeringCall(request, 20)))
-
+      await Promise.all(dataRequests.map(request => staggeringCall(request, 50)))
+      await exportData(data as ExportData, contextualExports, `${leagueId}`, BLAZE_SERVICE_TO_PATH[client.getSystemConsole()])
     }
   } as MaddenExporter
 }
