@@ -6,6 +6,7 @@ import { Buffer } from "buffer"
 import { TeamExport, StandingExport, SchedulesExport, RushingExport, TeamStatsExport, PuntingExport, ReceivingExport, DefensiveExport, KickingExport, PassingExport, RosterExport } from "../export/madden_league_types"
 import db from "../db/firebase"
 import { SNALLABOT_EXPORT, createDestination } from "../export/exporter";
+import { FieldValue } from "firebase-admin/firestore";
 
 export enum LeagueData {
   TEAMS = "CareerMode_GetLeagueTeamsExport",
@@ -328,7 +329,7 @@ type StoredMaddenConnection = {
   leagueId: number,
   destinations: { [key: string]: ExportDestination }
 }
-type ExportDestination = { autoUpdate: boolean, leagueInfo: boolean, rosters: boolean, weeklyStats: boolean, url: string, lastExportAttempt?: Date, lastSuccessfulExport?: Date, editable: boolean }
+export type ExportDestination = { autoUpdate: boolean, leagueInfo: boolean, rosters: boolean, weeklyStats: boolean, url: string, lastExportAttempt?: Date, lastSuccessfulExport?: Date, editable: boolean }
 
 export async function storeToken(token: TokenInformation, leagueId: number) {
   const leagueConnection: StoredMaddenConnection = {
@@ -342,7 +343,9 @@ export async function storeToken(token: TokenInformation, leagueId: number) {
 }
 
 interface StoredEAClient extends EAClient {
-  getExports(): { [key: string]: ExportDestination }
+  getExports(): { [key: string]: ExportDestination },
+  updateExport(destination: ExportDestination): Promise<void>,
+  removeExport(url: string): Promise<void>
 }
 
 export async function storedTokenClient(leagueId: number): Promise<StoredEAClient> {
@@ -363,6 +366,16 @@ export async function storedTokenClient(leagueId: number): Promise<StoredEAClien
   return {
     getExports() {
       return leagueConnection.destinations
+    },
+    async updateExport(destination: ExportDestination) {
+      await db.collection("league_data").doc(`${leagueId}`).update({
+        [`destinations.${destination.url}`]: destination
+      })
+    },
+    async removeExport(url: string) {
+      await db.collection("league_data").doc(`${leagueId}`).update({
+        [`destinations.${url}`]: FieldValue.delete()
+      })
     },
     ...eaClient
   }
@@ -438,8 +451,7 @@ async function exportData(data: ExportData, destinations: { [key: string]: Expor
   }
 }
 
-
-async function exporterForLeague(leagueId: number, context: ExportContext): Promise<MaddenExporter> {
+export async function exporterForLeague(leagueId: number, context: ExportContext): Promise<MaddenExporter> {
   const client = await storedTokenClient(leagueId)
   const exports = client.getExports()
   const contextualExports = Object.fromEntries(Object.entries(exports).filter(e => {

@@ -3,8 +3,7 @@ import Pug from "pug"
 import path from "path"
 import { Next, ParameterizedContext } from "koa"
 import { EA_LOGIN_URL, AUTH_SOURCE, CLIENT_SECRET, REDIRECT_URL, CLIENT_ID, AccountToken, TokenInfo, Entitlements, VALID_ENTITLEMENTS, Persona, MACHINE_KEY, Personas, ENTITLEMENT_TO_VALID_NAMESPACE, NAMESPACES, ENTITLEMENT_TO_SYSTEM, SystemConsole, exportOptions, seasonType } from "./ea_constants"
-import { BlazeError, ephemeralClientFromToken, storeToken, storedTokenClient } from "./ea_client"
-import { refreshToken } from "firebase-admin/app"
+import { BlazeError, ExportContext, ExportDestination, ephemeralClientFromToken, exporterForLeague, storeToken, storedTokenClient } from "./ea_client"
 
 const startRender = Pug.compileFile(path.join(__dirname, "/templates/start.pug"))
 const errorRender = Pug.compileFile(path.join(__dirname, "/templates/error.pug"))
@@ -220,7 +219,35 @@ router.get("/", (ctx) => {
     careerHubInfo: { seasonInfo },
   } = leagueInfo;
   ctx.body = dashboardRender({ gameScheduleHubInfo: gameScheduleHubInfo, teamIdInfoList: teamIdInfoList, seasonInfo: seasonInfo, leagueName: leagueName, exports: exports, exportOptions: exportOptions, seasonWeekType: seasonType(seasonInfo) })
+}).post("/league/:leagueId/updateExport", async (ctx, next) => {
+  const { leagueId: rawLeagueId } = ctx.params
+  const leagueId = Number(rawLeagueId)
+  const newDestination = ctx.request.body as ExportDestination
+  const client = await storedTokenClient(leagueId)
+  await client.updateExport(newDestination)
+  ctx.status = 200
+}).post("/league/:leagueId/deleteExport", async (ctx, next) => {
+  const { leagueId: rawLeagueId } = ctx.params
+  const leagueId = Number(rawLeagueId)
+  const urlToDelete = ctx.request.body as { url: string }
+  const client = await storedTokenClient(leagueId)
+  await client.removeExport(urlToDelete.url)
+  ctx.status = 200
+}).post("/league/:leagueId/export", async (ctx, next) => {
+  const { leagueId: rawLeagueId } = ctx.params
+  const option = ctx.request.body as { exportOption: keyof typeof exportOptions }
+  const exportValue = exportOptions[`${option.exportOption}`]
+  const leagueId = Number(rawLeagueId)
+  const exporter = await exporterForLeague(leagueId, ExportContext.MANUAL)
+  if (exportValue.week === 100) {
+    await exporter.exportCurrentWeek()
+  } else if (exportValue.week === 101) {
+    await exporter.exportAllWeeks()
+  } else {
+    await exporter.exportSpecificWeeks([{ weekIndex: exportValue.week - 1, stage: exportValue.stage }])
+  }
 
+  ctx.status = 200
 })
 
 export default router

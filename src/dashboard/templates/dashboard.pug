@@ -17,10 +17,10 @@ body
       .col-lg-6
         div(style="margin-top: 16px; margin-bottom: 16px;")
           .input-group
-            select.form-select()
+            select.form-select#exportSelect
               each key in Object.keys(exportOptions)
                 option(value=key) #{key}
-            button.btn.btn-primary(type="button") Export
+            button.btn.btn-primary#exportBtn(type="button") Export
       .col.mt-lg-3
         button.btn.btn-danger.float-end(type="button") Unlink League
     .table-responsive
@@ -34,11 +34,11 @@ body
             th(style="text-align: center;") Rosters
             th(style="text-align: center;") Auto Update
             th(style="text-align: center;")
-              button.btn.btn-success(type="button") Add Export Url
-        tbody
+              button#addExportBtn.btn.btn-success(type="button") Add Export Url
+        tbody#exportTableBody
           each exportDestination in exports
               tr
-                td #{exportDestination.url}
+                td(class="export-url") #{exportDestination.url}
                 td(style="text-align: center;")
                   input(type="checkbox", disabled=true, checked=exportDestination.leagueInfo )
                 td(style="text-align: center;")
@@ -48,9 +48,8 @@ body
                 td(style="text-align: center;")
                   input(type="checkbox", disabled=true, checked=exportDestination.autoUpdate)
                 td(style="text-align: center;")
-                  div
-                    div
-                      R
+                  if exportDestination.editable
+                    button.btn.btn-outline-danger.btn-sm.remove-export-btn(type="button") Remove
     .table-responsive
       table(class="table table-hover table-condensed caption-top" style="margin-top: 16px; margin-bottom: 16px;")
         caption Schedule for #{seasonInfo.weekTitle} #{seasonInfo.displayWeek > 0 ? seasonInfo.displayWeek : ''}
@@ -66,3 +65,95 @@ body
               td #{game.isAwayHuman ? game.awayUserName : 'CPU'} #{game.awayCityName} #{game.awayName} (#{game.awayWin} - #{game.awayLoss}#{game.awayTie > 0 ? ' - ' + game.awayTie : ''}) at #{game.isHomeHuman ? game.homeUserName : 'CPU'} #{game.homeCityName} #{game.homeName} (#{game.homeWin} - #{game.homeLoss}#{game.homeTie > 0 ? ' - ' + game.homeTie : ''})
               td #{game.result || 'Not Played'}
               td #{game.numberTimesPlayed || 0}
+script.
+  document.getElementById('addExportBtn').addEventListener('click', function () {
+  const tableBody = document.getElementById('exportTableBody');
+  const newRow = document.createElement('tr');
+  newRow.innerHTML = `
+    <td><input type="text" class="form-control url-input" placeholder="Enter URL"></td>
+    <td style="text-align: center;"><input class="leagueInfo" type="checkbox"></td>
+    <td style="text-align: center;"><input class="weeklyStats" type="checkbox"></td>
+    <td style="text-align: center;"><input class="rosters" type="checkbox"></td>
+    <td style="text-align: center;"><input class="autoUpdate" type="checkbox"></td>
+    <td style="text-align: center;">
+      <button class="add-export-btn btn btn-outline-primary btn-sm">Add</button>
+    </td>
+  `;
+  tableBody.appendChild(newRow);
+  newRow.querySelector('.add-export-btn').addEventListener('click', async function () {
+  const url = newRow.querySelector('.url-input').value;
+  const leagueInfo = newRow.querySelector('.leagueInfo').checked;
+  const weeklyStats = newRow.querySelector('.weeklyStats').checked;
+  const rosters = newRow.querySelector('.rosters').checked;
+  const autoUpdate = newRow.querySelector('.autoUpdate').checked;
+
+  try {
+    const response = await fetch(window.location.pathname + '/updateExport', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        url,
+        leagueInfo,
+        weeklyStats,
+        rosters,
+        autoUpdate,
+        editable: true
+      })
+    });
+    location.reload()
+  } catch (error) {
+    console.error('Error:', error);
+    alert('An error occurred while adding the export URL.');
+  }
+  });
+  })
+  document.querySelectorAll('.remove-export-btn').forEach(btn => {
+  btn.addEventListener('click', async function () {
+    const row = this.closest('tr');
+    const urlCell = row.querySelector('.export-url');
+    const url = urlCell.textContent.trim();
+
+    try {
+      const response = await fetch(window.location.pathname + '/deleteExport', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({url})
+      });
+
+      if (response.ok) {
+        location.reload();
+      } else {
+        alert('Failed to remove export URL.');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('An error occurred while removing the export URL.');
+    }
+  });
+  });
+  document.getElementById('exportBtn').addEventListener('click', async function () {
+  const selectedOption = document.getElementById('exportSelect').value;
+
+  try {
+    const response = await fetch(window.location.pathname + '/export', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ exportOption: selectedOption })
+    });
+
+    if (response.ok) {
+      alert('Export started successfully.');
+    } else {
+      alert('Export failed.');
+    }
+  } catch (error) {
+    console.error('Error exporting:', error);
+    alert('An error occurred while exporting.');
+  }
+  });

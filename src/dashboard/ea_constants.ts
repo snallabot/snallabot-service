@@ -202,7 +202,7 @@ export enum Stage {
 export const exportOptions = {
   "Current Week": {
     stage: Stage.UNKNOWN,
-    week: Stage.PRESEASON,
+    week: 100,
   },
   "Preseason Week 1": {
     stage: Stage.PRESEASON,
@@ -311,7 +311,7 @@ export const exportOptions = {
   },
   "All Weeks": {
     stage: Stage.UNKNOWN,
-    week: 100,
+    week: 101,
   },
 }
 
