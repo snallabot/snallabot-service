@@ -7,7 +7,7 @@ import { Firestore } from "firebase-admin/firestore"
 export default {
   async handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext) {
     const { guild_id } = command
-    respond(ctx, createMessageResponse(`Snallabot Dashboard: https://nallapareddy.com/snallabot/?league=${guild_id}`))
+    respond(ctx, createMessageResponse(`Snallabot Dashboard: https://snallabot.me/dashboard?discord_connection=${guild_id}`))
   },
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
     return {

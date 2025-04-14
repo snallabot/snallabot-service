@@ -274,33 +274,33 @@ export async function ephemeralClientFromToken(token: TokenInformation, session?
       return await getExportData<StandingExport>(token, validSession, LeagueData.STANDINGS, { leagueId: leagueId })
     },
     async getSchedules(leagueId: number, stage: Stage, weekIndex: number): Promise<SchedulesExport> {
-      return await getExportData<SchedulesExport>(token, validSession, LeagueData.WEEKLY_SCHEDULE, { leagueId: leagueId, stageIndex: Stage, weekIndex: weekIndex })
+      return await getExportData<SchedulesExport>(token, validSession, LeagueData.WEEKLY_SCHEDULE, { leagueId: leagueId, stageIndex: stage, weekIndex: weekIndex })
     },
     async getRushingStats(leagueId: number, stage: Stage, weekIndex: number): Promise<RushingExport> {
-      return await getExportData<RushingExport>(token, validSession, LeagueData.RUSHING_STATS, { leagueId: leagueId, stageIndex: Stage, weekIndex: weekIndex })
+      return await getExportData<RushingExport>(token, validSession, LeagueData.RUSHING_STATS, { leagueId: leagueId, stageIndex: stage, weekIndex: weekIndex })
     },
     async getTeamStats(leagueId: number, stage: Stage, weekIndex: number): Promise<TeamStatsExport> {
-      return await getExportData<TeamStatsExport>(token, validSession, LeagueData.TEAM_STATS, { leagueId: leagueId, stageIndex: Stage, weekIndex: weekIndex })
+      return await getExportData<TeamStatsExport>(token, validSession, LeagueData.TEAM_STATS, { leagueId: leagueId, stageIndex: stage, weekIndex: weekIndex })
     },
 
     async getPuntingStats(leagueId: number, stage: Stage, weekIndex: number): Promise<PuntingExport> {
-      return await getExportData<PuntingExport>(token, validSession, LeagueData.PUNTING_STATS, { leagueId: leagueId, stageIndex: Stage, weekIndex: weekIndex })
+      return await getExportData<PuntingExport>(token, validSession, LeagueData.PUNTING_STATS, { leagueId: leagueId, stageIndex: stage, weekIndex: weekIndex })
     },
 
     async getReceivingStats(leagueId: number, stage: Stage, weekIndex: number): Promise<ReceivingExport> {
-      return await getExportData<ReceivingExport>(token, validSession, LeagueData.RECEIVING_STATS, { leagueId: leagueId, stageIndex: Stage, weekIndex: weekIndex })
+      return await getExportData<ReceivingExport>(token, validSession, LeagueData.RECEIVING_STATS, { leagueId: leagueId, stageIndex: stage, weekIndex: weekIndex })
     },
 
     async getDefensiveStats(leagueId: number, stage: Stage, weekIndex: number): Promise<DefensiveExport> {
-      return await getExportData<DefensiveExport>(token, validSession, LeagueData.DEFENSIVE_STATS, { leagueId: leagueId, stageIndex: Stage, weekIndex: weekIndex })
+      return await getExportData<DefensiveExport>(token, validSession, LeagueData.DEFENSIVE_STATS, { leagueId: leagueId, stageIndex: stage, weekIndex: weekIndex })
     },
 
     async getKickingStats(leagueId: number, stage: Stage, weekIndex: number): Promise<KickingExport> {
-      return await getExportData<KickingExport>(token, validSession, LeagueData.KICKING_STATS, { leagueId: leagueId, stageIndex: Stage, weekIndex: weekIndex })
+      return await getExportData<KickingExport>(token, validSession, LeagueData.KICKING_STATS, { leagueId: leagueId, stageIndex: stage, weekIndex: weekIndex })
     },
 
     async getPassingStats(leagueId: number, stage: Stage, weekIndex: number): Promise<PassingExport> {
-      return await getExportData<PassingExport>(token, validSession, LeagueData.PASSING_STATS, { leagueId: leagueId, stageIndex: Stage, weekIndex: weekIndex })
+      return await getExportData<PassingExport>(token, validSession, LeagueData.PASSING_STATS, { leagueId: leagueId, stageIndex: stage, weekIndex: weekIndex })
     },
 
     async getTeamRoster(leagueId: number, teamId: number, teamIndex: number): Promise<RosterExport> {
@@ -346,6 +346,9 @@ interface StoredEAClient extends EAClient {
   getExports(): { [key: string]: ExportDestination },
   updateExport(destination: ExportDestination): Promise<void>,
   removeExport(url: string): Promise<void>
+}
+export async function deleteLeague(leagueId: number): Promise<void> {
+  await db.collection("league_data").doc(`${leagueId}`).delete()
 }
 
 export async function storedTokenClient(leagueId: number): Promise<StoredEAClient> {
@@ -504,7 +507,7 @@ export async function exporterForLeague(leagueId: number, context: ExportContext
     },
     exportSpecificWeeks: async function(weeks: { weekIndex: number, stage: number }[]) {
       const destinations = Object.values(contextualExports)
-      const data = {} as any
+      const data = { weeks: [], roster: {} } as any
       const dataRequests = [] as Promise<any>[]
       function toStage(stage: number): Stage {
         return stage === 0 ? Stage.PRESEASON : Stage.SEASON
@@ -536,7 +539,7 @@ export async function exporterForLeague(leagueId: number, context: ExportContext
         })
       }
       await Promise.all(dataRequests.map(request => staggeringCall(request, 50)))
-      await exportData(data as ExportData, contextualExports, `${leagueId}`, BLAZE_SERVICE_TO_PATH[client.getSystemConsole()])
+      await exportData(data as ExportData, contextualExports, `${leagueId}`, client.getSystemConsole())
     }
   } as MaddenExporter
 }

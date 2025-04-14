@@ -3,7 +3,10 @@ import Pug from "pug"
 import path from "path"
 import { Next, ParameterizedContext } from "koa"
 import { EA_LOGIN_URL, AUTH_SOURCE, CLIENT_SECRET, REDIRECT_URL, CLIENT_ID, AccountToken, TokenInfo, Entitlements, VALID_ENTITLEMENTS, Persona, MACHINE_KEY, Personas, ENTITLEMENT_TO_VALID_NAMESPACE, NAMESPACES, ENTITLEMENT_TO_SYSTEM, SystemConsole, exportOptions, seasonType } from "./ea_constants"
-import { BlazeError, ExportContext, ExportDestination, ephemeralClientFromToken, exporterForLeague, storeToken, storedTokenClient } from "./ea_client"
+import { BlazeError, ExportContext, ExportDestination, deleteLeague, ephemeralClientFromToken, exporterForLeague, storeToken, storedTokenClient } from "./ea_client"
+import { removeLeague, setLeague } from "../connections/routes"
+import db from "../db/firebase"
+import { discordLeagueView } from "../db/view"
 
 const startRender = Pug.compileFile(path.join(__dirname, "/templates/start.pug"))
 const errorRender = Pug.compileFile(path.join(__dirname, "/templates/error.pug"))
@@ -24,10 +27,10 @@ export class EAAccountError extends Error {
 }
 
 
-type RetrievePersonasRequest = { code: string }
-type LinkPersona = { selected_persona: string, access_token: string }
+type RetrievePersonasRequest = { code: string, discord?: string }
+type LinkPersona = { selected_persona: string, access_token: string, discord?: string }
 type RequestPersona = Persona & { maddenEntitlement: string }
-type ConnectLeague = { access_token: string, refresh_token: string, expiry: string, console: SystemConsole, selected_league: string }
+type ConnectLeague = { access_token: string, refresh_token: string, expiry: string, console: SystemConsole, selected_league: string, discord?: string }
 
 async function renderErrorsMiddleware(ctx: ParameterizedContext, next: Next) {
   try {
@@ -48,10 +51,17 @@ async function renderErrorsMiddleware(ctx: ParameterizedContext, next: Next) {
   }
 }
 
-router.get("/", (ctx) => {
-  ctx.body = startRender({ url: EA_LOGIN_URL })
+router.get("/", async (ctx) => {
+  const { discord_connection: discordConnection } = ctx.query
+  if (discordConnection) {
+    const view = await discordLeagueView.createView(discordConnection as string)
+    if (view?.leagueId) {
+      ctx.redirect(`/dashboard/league/${view.leagueId}`)
+    }
+  }
+  ctx.body = startRender({ url: EA_LOGIN_URL, discord: discordConnection })
 }).post("/retrievePersonas", renderErrorsMiddleware, async (ctx, next) => {
-  const { code: rawCode } = ctx.request.body as RetrievePersonasRequest
+  const { code: rawCode, discord } = ctx.request.body as RetrievePersonasRequest
   const searchParams = rawCode.substring(rawCode.indexOf("?"))
   const eaCodeParams = new URLSearchParams(searchParams)
   const code = eaCodeParams.get("code")
@@ -139,9 +149,9 @@ router.get("/", (ctx) => {
   if (finalPersonas.length === 0) {
     throw new EAAccountError("There are no Madden accounts associated with this EA account!", `This may happen because the EA account used to login is not the right one or is not connected to Madden. One potential fix is to try connecting this EA account to your Madden one, or checking if it is the right one. You can do this at this at this link <a href="https://myaccount.ea.com/cp-ui/connectaccounts/index" target="_blank">https://myaccount.ea.com/cp-ui/connectaccounts/index</a>`)
   }
-  ctx.body = personaRender({ personas: finalPersonas, namespaces: NAMESPACES, access_token })
+  ctx.body = personaRender({ personas: finalPersonas, namespaces: NAMESPACES, access_token, discord: discord })
 }).post("/selectLeague", renderErrorsMiddleware, async (ctx, next) => {
-  const { selected_persona, access_token } = ctx.request.body as LinkPersona
+  const { selected_persona, access_token, discord } = ctx.request.body as LinkPersona
   const persona = JSON.parse(selected_persona) as RequestPersona
   const locationUrlResponse = await fetch(`https://accounts.ea.com/connect/auth?hide_create=true&release_type=prod&response_type=code&redirect_uri=${REDIRECT_URL}&client_id=${CLIENT_ID}&machineProfileKey=${MACHINE_KEY}&authentication_source=${AUTH_SOURCE}&access_token=${access_token}&persona_id=${persona.personaId}&persona_namespace=${persona.namespaceName}`, {
     redirect: "manual", // this fetch resolves to localhost address with a code as a query string. if we follow the redirect, it won't be able to connect. Just take the location from the manual redirect
@@ -191,7 +201,7 @@ router.get("/", (ctx) => {
   const expiry = new Date(new Date().getTime() + token.expires_in * 1000)
   const eaClient = await ephemeralClientFromToken({ accessToken: token.access_token, refreshToken: token.refresh_token, expiry: expiry, console: systemConsole })
   const leagues = await eaClient.getLeagues()
-  ctx.body = selectLeagueRender({ access_token: token.access_token, refresh_token: token.refresh_token, systemConsole: systemConsole, expiry: expiry, leagues: leagues.map(l => ({ leagueId: l.leagueId, leagueName: l.leagueName, userTeamName: l.userTeamName })) })
+  ctx.body = selectLeagueRender({ discord: discord, access_token: token.access_token, refresh_token: token.refresh_token, systemConsole: systemConsole, expiry: expiry, leagues: leagues.map(l => ({ leagueId: l.leagueId, leagueName: l.leagueName, userTeamName: l.userTeamName })) })
 }).post("/connect", renderErrorsMiddleware, async (ctx, next) => {
   const connectRequest = ctx.request.body as ConnectLeague
   const token = { accessToken: connectRequest.access_token, refreshToken: connectRequest.refresh_token, console: connectRequest.console, expiry: new Date(Number(connectRequest.expiry)) }
@@ -201,6 +211,9 @@ router.get("/", (ctx) => {
   }
 
   await storeToken(token, Number(connectRequest.selected_league))
+  if (connectRequest.discord) {
+    await setLeague(connectRequest.discord, `${leagueId}`)
+  }
   ctx.redirect(`/dashboard/league/${leagueId}`)
 }).get("/league/:leagueId", renderErrorsMiddleware, async (ctx) => {
   const { leagueId: rawLeagueId } = ctx.params
@@ -246,7 +259,15 @@ router.get("/", (ctx) => {
   } else {
     await exporter.exportSpecificWeeks([{ weekIndex: exportValue.week - 1, stage: exportValue.stage }])
   }
-
+  ctx.status = 200
+}).post("/league/:leagueId/unlink", async (ctx, next) => {
+  const { leagueId: rawLeagueId } = ctx.params
+  const leagueId = Number(rawLeagueId)
+  await deleteLeague(leagueId)
+  const querySnapshot = await db.collection("league_settings").where("commands.madden_league.league_id", "==", `${leagueId}`).get()
+  await Promise.all(querySnapshot.docs.map(async d => {
+    await removeLeague(d.id)
+  }))
   ctx.status = 200
 })
 

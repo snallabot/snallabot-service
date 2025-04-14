@@ -19,6 +19,10 @@ html
         .input-group.mb-3
           span.input-group-text EA Console (Debug)
           input#console(type="text" name="console" class="form-control" value=systemConsole readonly=true aria-label="EA Console (Debug)")
+        if discord
+          .input-group.mb-3
+            span.input-group-text Discord League (Debug)
+            input#discord(type="text" name="discord" class="form-control" value=discord readonly=true aria-label="Discord League (Debug)")
         .input-group.mb-3
           select#selectLeague(class="form-select" name="selected_league")
             each league in leagues

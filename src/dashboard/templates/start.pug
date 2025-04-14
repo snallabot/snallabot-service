@@ -41,6 +41,8 @@ html
       form(action="/dashboard/retrievePersonas", method="POST")
         label(for="code") Enter the URL of the page. It should start with 127.0.0.1:
         input#code(type="text" name="code" value="")
+        if discord
+          input#discord(type="hidden" name="discord" value=discord readonly=true)
         button#submit(type="submit" class="btn btn-primary" disabled="true") Login to EA
     script.
       const inputElement = document.getElementById('code')
