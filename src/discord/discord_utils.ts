@@ -35,7 +35,6 @@ export function createClient(settings: DiscordSettings): DiscordClient {
           tries = tries + 1
           await new Promise((r) => setTimeout(r, data["retry_after"] * 1000))
         } else {
-          console.log(res)
           throw new Error(JSON.stringify(data))
         }
       } else {
