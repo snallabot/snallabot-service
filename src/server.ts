@@ -7,12 +7,13 @@ import discordRouter from "./discord/routes"
 import twitchRouter from "./twitch-notifier/routes"
 import connectionsRouter from "./connections/routes"
 import debugRouter from "./debug/routes"
+import dashboard from "./dashboard/routes"
 
 const app = new Koa()
 
 app
   .use(serve(path.join(__dirname, 'public')))
-  .use(bodyParser({ enableTypes: ["json"], encoding: "utf-8", jsonLimit: "100mb" }))
+  .use(bodyParser({ enableTypes: ["json", "form"], encoding: "utf-8", jsonLimit: "100mb" }))
   .use(async (ctx, next) => {
     try {
       await next()
@@ -34,5 +35,7 @@ app
   .use(connectionsRouter.allowedMethods())
   .use(debugRouter.routes())
   .use(debugRouter.allowedMethods())
+  .use(dashboard.routes())
+  .use(dashboard.allowedMethods())
 
 export default app

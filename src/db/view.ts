@@ -117,7 +117,6 @@ class CacheableDiscordLeagueConnection extends CachedUpdatingView<DiscordLeagueC
     super(new DiscordLeagueConnection())
   }
   update(event: { [key: string]: any[] }, currentView: DiscordLeagueConnectionEvent) {
-    console.log(event)
     if (event["DISCORD_LEAGUE_CONNECTION"]) {
       const leagueEvents = event["DISCORD_LEAGUE_CONNECTION"] as SnallabotEvent<DiscordLeagueConnectionEvent>[]
       return leagueEvents[0]

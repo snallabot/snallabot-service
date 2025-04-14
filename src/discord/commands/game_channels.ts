@@ -9,6 +9,7 @@ import { formatRecord, getMessageForWeek, MaddenGame } from "../../export/madden
 import createLogger from "../logging"
 import { ConfirmedSim, SimResult } from "../../db/events"
 import createNotifier from "../notifier"
+import { ExportContext, exporterForLeague } from "../../dashboard/ea_client"
 
 async function react(client: DiscordClient, channel: string, message: string, reaction: SnallabotReactions) {
   await client.requestDiscord(`channels/${channel}/messages/${message}/reactions/${reaction}/@me`, { method: "PUT" })
@@ -76,15 +77,13 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
 - ${SnallabotCommandReactions.WAITING} Creating Scoreboard
 - ${SnallabotCommandReactions.WAITING} Logging`
     })
-    const eres = await fetch(`https://snallabot.herokuapp.com/${guild_id}/export`, {
-      method: "POST",
-      body: JSON.stringify({
-        week: 102,
-        stage: -1,
-        auto: true,
-      }),
-    })
-    const exportEmoji = eres.ok ? SnallabotCommandReactions.FINISHED : SnallabotCommandReactions.ERROR
+    const exporter = await exporterForLeague(Number(leagueId), ExportContext.AUTO)
+    let exportEmoji = SnallabotCommandReactions.FINISHED
+    try {
+      await exporter.exportSurroundingWeek()
+    } catch (e) {
+      exportEmoji = SnallabotCommandReactions.ERROR
+    }
     await client.editOriginalInteraction(token, {
       content: `Creating Game Channels:
 - ${exportEmoji} Exporting

@@ -7,6 +7,8 @@ sa-old.json
 migration.sh
 pinger_test.sh
 install_*_commands.sh
+discord_tester.js
+
 
 # Logs
 logs

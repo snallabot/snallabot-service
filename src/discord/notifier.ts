@@ -7,6 +7,7 @@ import { APIGuildMember, APIUser } from "discord-api-types/v10"
 import db from "../db/firebase"
 import { FieldValue } from "firebase-admin/firestore"
 import { ConfirmedSim, SimResult } from "../db/events"
+import { ExportContext, exporterForLeague } from "../dashboard/ea_client"
 
 interface SnallabotNotifier {
   update(currentState: GameChannel, season: number, week: number,): Promise<void>
@@ -90,22 +91,8 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
     } else {
       await client.requestDiscord(`channels/${gameChannel.channel.id}`, { method: "DELETE" })
     }
-    // TODO: replace with new exporter
-    await fetch(
-      `https://nallapareddy.com/.netlify/functions/snallabot-ea-connector`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          path: "export",
-          guild: guildId,
-          exporter_body: {
-            week: 101,
-            stage: -1,
-            auto: true,
-          },
-        }),
-      }
-    )
+    const exporter = await exporterForLeague(Number(leagueId), ExportContext.AUTO)
+    await exporter.exportCurrentWeek()
   }
   return {
     deleteGameChannel: async function(currentState: GameChannel, season: number, week: number, originators: UserId[]) {
