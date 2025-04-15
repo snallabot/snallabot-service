@@ -36,8 +36,6 @@ export function MaddenUrlDestination(baseUrl: string): MaddenExportDestination {
         "Content-Type": "application/json",
       }
     })
-    console.log(res.ok)
-    console.log(stagePrefix)
     return res.ok ? ExportResult.SUCCESS : ExportResult.FAILURE
   }
   return {
