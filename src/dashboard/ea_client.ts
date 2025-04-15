@@ -371,14 +371,15 @@ export async function storedTokenClient(leagueId: number): Promise<StoredEAClien
       return leagueConnection.destinations
     },
     async updateExport(destination: ExportDestination) {
-      await db.collection("league_data").doc(`${leagueId}`).update({
-        [`destinations.${destination.url}`]: destination
-      })
+      await db.collection("league_data").doc(`${leagueId}`).set({
+        destinations: {
+          [destination.url]: destination
+        }
+      }, { merge: true })
     },
     async removeExport(url: string) {
-      await db.collection("league_data").doc(`${leagueId}`).update({
-        [`destinations.${url}`]: FieldValue.delete()
-      })
+      delete leagueConnection.destinations[url]
+      await db.collection("league_data").doc(`${leagueId}`).set(leagueConnection)
     },
     ...eaClient
   }
