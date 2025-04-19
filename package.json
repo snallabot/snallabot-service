@@ -10,7 +10,8 @@
     "yt-notifier": "node dist/yt-notifier/index.js",
     "pinger": "node dist/discord/pinger.js",
     "migration-20241218": "node dist/export/migration.js",
-    "dev": "npx firebase --project dev emulators:start & FIRESTORE_EMULATOR_HOST=localhost:8080 nodemon src/index.ts && kill $!"
+    "dev": "npx firebase --project dev emulators:start & FIRESTORE_EMULATOR_HOST=localhost:8080 nodemon src/index.ts && kill $!",
+    "ea-refresher": "FIRESTORE_EMULATOR_HOST=localhost:8080 node dist/dashboard/ea_refresher.js"
   },
   "engines": {
     "node": "21.x"
