@@ -1,0 +1,38 @@
+doctype html
+html
+  head
+    title Snallabot Dashboard
+    link(rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossOrigin="anonymous")
+  body
+    div(style={padding: "16px 8px"})
+      if canUnlink
+        button.btn.btn-danger#unlinkBtn(type="button") Unlink League
+      h1 Error!
+      div
+        p
+          | There was an error in processing:
+          br 
+          | !{error}
+          br
+        p
+          a(href="/dashboard") Back to login
+script.
+    document.getElementById('unlinkBtn').addEventListener('click', async function () {
+    try {
+      const response = await fetch(window.location.pathname + '/unlink', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        window.location.href = '/dashboard';
+      } else {
+        alert('Failed to unlink league.');
+      }
+    } catch (error) {
+      console.error('Error unlinking league:', error);
+      alert('An error occurred while unlinking the league.');
+    }
+  });
