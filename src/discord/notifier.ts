@@ -91,8 +91,6 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
     } else {
       await client.requestDiscord(`channels/${gameChannel.channel.id}`, { method: "DELETE" })
     }
-    const exporter = await exporterForLeague(Number(leagueId), ExportContext.AUTO)
-    await exporter.exportCurrentWeek()
   }
   return {
     deleteGameChannel: async function(currentState: GameChannel, season: number, week: number, originators: UserId[]) {
@@ -142,8 +140,13 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
       const awayUsers = await getReactedUsers(channelId, messageId, SnallabotReactions.AWAY)
       const fwUsers = await getReactedUsers(channelId, messageId, SnallabotReactions.SIM)
       if (ggUsers.length > 0) {
-        await this.deleteGameChannel(currentState, season, week, ggUsers)
-      } else if (fwUsers.length > 0) {
+        try {
+          const exporter = await exporterForLeague(Number(leagueId), ExportContext.AUTO)
+          await exporter.exportCurrentWeek()
+        } catch (e) {
+        }
+      }
+      if (fwUsers.length > 0) {
         const res = await client.requestDiscord(
           `guilds/${guildId}/members?limit=1000`,
           {
