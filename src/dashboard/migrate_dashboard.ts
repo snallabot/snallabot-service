@@ -48,17 +48,21 @@ async function translate() {
       const maddenData = oldLeagueData.madden_server as oldData
       if (maddenData.blazeProductName.includes("2025")) {
         const token: TokenInformation = { accessToken: maddenData.accessToken, refreshToken: maddenData.refreshToken, console: BLAZE_SERVICE_TO_PATH[maddenData.blazeService] as SystemConsole, expiry: maddenData.expiry, blazeId: maddenData.blazeId }
-        const leagueId = maddenData.leagueId
-        const old = oldLeagueData?.commands?.exports as oldExport[] || [] as oldExport[]
-        const newDestinations: { [key: string]: ExportDestination } = Object.fromEntries(old.filter(e => !e.url.includes("snallabot")).map(oldExport => {
-          return { autoUpdate: oldExport.autoUpdate, leagueInfo: oldExport.leagueInfo, rosters: oldExport.rosters, weeklyStats: oldExport.weeklyStats, url: oldExport.url, editable: true }
-        }).map(d => [d.url, d]))
-        newDestinations[SNALLABOT_EXPORT] = { autoUpdate: true, leagueInfo: true, rosters: true, weeklyStats: true, url: SNALLABOT_EXPORT, editable: false }
-        console.log(`Migrated Server ${d.id} to League ${leagueId}`)
-        await storeToken(token, leagueId)
-        await db.collection("league_data").doc(`${leagueId}`).set({
-          destinations: newDestinations
-        }, { merge: true })
+        try {
+          const leagueId = maddenData.leagueId
+          const old = oldLeagueData?.commands?.exports as oldExport[] || [] as oldExport[]
+          const newDestinations: { [key: string]: ExportDestination } = Object.fromEntries(old.filter(e => !e.url.includes("snallabot")).map(oldExport => {
+            return { autoUpdate: oldExport.autoUpdate, leagueInfo: oldExport.leagueInfo, rosters: oldExport.rosters, weeklyStats: oldExport.weeklyStats, url: oldExport.url, editable: true }
+          }).map(d => [d.url, d]))
+          newDestinations[SNALLABOT_EXPORT] = { autoUpdate: true, leagueInfo: true, rosters: true, weeklyStats: true, url: SNALLABOT_EXPORT, editable: false }
+          console.log(`Migrated Server ${d.id} to League ${leagueId}`)
+          await storeToken(token, leagueId)
+          await db.collection("league_data").doc(`${leagueId}`).set({
+            destinations: newDestinations
+          }, { merge: true })
+        } catch (e) {
+          console.log("Failed to migrate " + d.id)
+        }
       }
     }
   }))
