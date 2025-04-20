@@ -44,10 +44,7 @@ async function checkLeague(leagueId: string) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          exportOption: {
-            stage: Stage.UNKNOWN,
-            week: 100,
-          }
+          exportOption: "Current Week"
         })
       }
     )
