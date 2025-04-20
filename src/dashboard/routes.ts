@@ -30,9 +30,28 @@ export class EAAccountError extends Error {
 type RetrievePersonasRequest = { code: string, discord?: string }
 type LinkPersona = { selected_persona: string, access_token: string, discord?: string }
 type RequestPersona = Persona & { maddenEntitlement: string }
-type ConnectLeague = { access_token: string, refresh_token: string, expiry: string, console: SystemConsole, selected_league: string, discord?: string }
+type ConnectLeague = { access_token: string, refresh_token: string, expiry: string, console: SystemConsole, selected_league: string, blaze_id: string, discord?: string }
 
 async function renderErrorsMiddleware(ctx: ParameterizedContext, next: Next) {
+  try {
+    await next()
+  } catch (e) {
+    console.error(e)
+    if (e instanceof EAAccountError) {
+      const error = `Error receieved from EA <br> Message: ${e.message} <br> Snallabot Guidance: ${e.troubleshoot}`
+      ctx.body = errorRender({ error: error, canUnlink: false })
+    } else if (e instanceof BlazeError) {
+      ctx.body = errorRender({ error: `Error from EA: ${JSON.stringify(e.error)}` })
+    }
+    else {
+      const error = `Error receieved from Dashboard <br> Message: ${e}`
+
+      ctx.body = errorRender({ error: error })
+    }
+  }
+}
+
+async function renderConnectedLeagueErrorsMiddleware(ctx: ParameterizedContext, next: Next) {
   try {
     await next()
   } catch (e) {
@@ -46,7 +65,7 @@ async function renderErrorsMiddleware(ctx: ParameterizedContext, next: Next) {
     else {
       const error = `Error receieved from Dashboard <br> Message: ${e}`
 
-      ctx.body = errorRender({ error: error })
+      ctx.body = errorRender({ error: error, canUnlink: true })
     }
   }
 }
@@ -199,12 +218,12 @@ router.get("/", async (ctx) => {
   const token = (await newAccessTokenResponse.json()) as AccountToken
   const systemConsole = ENTITLEMENT_TO_SYSTEM[persona.maddenEntitlement]
   const expiry = new Date(new Date().getTime() + token.expires_in * 1000)
-  const eaClient = await ephemeralClientFromToken({ accessToken: token.access_token, refreshToken: token.refresh_token, expiry: expiry, console: systemConsole })
+  const eaClient = await ephemeralClientFromToken({ accessToken: token.access_token, refreshToken: token.refresh_token, expiry: expiry, console: systemConsole, blazeId: `${persona.personaId}` })
   const leagues = await eaClient.getLeagues()
-  ctx.body = selectLeagueRender({ discord: discord, access_token: token.access_token, refresh_token: token.refresh_token, systemConsole: systemConsole, expiry: expiry, leagues: leagues.map(l => ({ leagueId: l.leagueId, leagueName: l.leagueName, userTeamName: l.userTeamName })) })
+  ctx.body = selectLeagueRender({ discord: discord, access_token: token.access_token, refresh_token: token.refresh_token, systemConsole: systemConsole, expiry: expiry, blazeId: persona.personaId, leagues: leagues.map(l => ({ leagueId: l.leagueId, leagueName: l.leagueName, userTeamName: l.userTeamName })) })
 }).post("/connect", renderErrorsMiddleware, async (ctx, next) => {
   const connectRequest = ctx.request.body as ConnectLeague
-  const token = { accessToken: connectRequest.access_token, refreshToken: connectRequest.refresh_token, console: connectRequest.console, expiry: new Date(Number(connectRequest.expiry)) }
+  const token = { accessToken: connectRequest.access_token, refreshToken: connectRequest.refresh_token, console: connectRequest.console, expiry: new Date(Number(connectRequest.expiry)), blazeId: connectRequest.blaze_id }
   const leagueId = Number(connectRequest.selected_league)
   if (isNaN(leagueId)) {
     throw new EAAccountError(`Invalid league id ${leagueId}. Select a valid madden league`, `You may not have any madden leagues, which may mean you are signed into the wrong EA account. One potential fix is to try connecting this EA account to your Madden one, or checking if it is the right one. You can do this at this at this link <a href="https://myaccount.ea.com/cp-ui/connectaccounts/index" target="_blank">https://myaccount.ea.com/cp-ui/connectaccounts/index</a>`)
@@ -215,7 +234,7 @@ router.get("/", async (ctx) => {
     await setLeague(connectRequest.discord, `${leagueId}`)
   }
   ctx.redirect(`/dashboard/league/${leagueId}`)
-}).get("/league/:leagueId", renderErrorsMiddleware, async (ctx) => {
+}).get("/league/:leagueId", renderConnectedLeagueErrorsMiddleware, async (ctx) => {
   const { leagueId: rawLeagueId } = ctx.params
   const leagueId = Number(rawLeagueId)
   if (isNaN(leagueId)) {

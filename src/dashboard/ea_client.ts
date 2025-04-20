@@ -46,7 +46,7 @@ interface EAClient {
 }
 
 
-export type TokenInformation = { accessToken: string, refreshToken: string, expiry: Date, console: SystemConsole }
+export type TokenInformation = { accessToken: string, refreshToken: string, expiry: Date, console: SystemConsole, blazeId: string }
 export type SessionInformation = { blazeId: number, sessionKey: string, requestId: number }
 type MessageAuth = { authData: string, authCode: string, authType: number }
 export type BlazeRequest = { commandName: string, componentId: number, commandId: number, requestPayload: Record<string, any>, componentName: string }
@@ -102,7 +102,7 @@ async function refreshToken(token: TokenInformation): Promise<TokenInformation> 
       throw new EAAccountError(`Error refreshing tokens, response from EA ${JSON.stringify(newToken)}`, "The only solution may to unlink the dashboard and set it up again")
     }
     const newExpiry = new Date(new Date().getTime() + newToken.expires_in * 1000)
-    return { accessToken: newToken.access_token, refreshToken: newToken.refresh_token, expiry: newExpiry, console: token.console }
+    return { accessToken: newToken.access_token, refreshToken: newToken.refresh_token, expiry: newExpiry, console: token.console, blazeId: token.blazeId }
   } else {
     return token
   }
@@ -324,22 +324,30 @@ export async function ephemeralClientFromToken(token: TokenInformation, session?
 }
 
 type StoredMaddenConnection = {
-  token: TokenInformation,
+  blazeId: string,
   session?: SessionInformation,
   leagueId: number,
   destinations: { [key: string]: ExportDestination }
+}
+type StoredTokenInformation = {
+  token: TokenInformation,
+  session?: SessionInformation
 }
 export type ExportDestination = { autoUpdate: boolean, leagueInfo: boolean, rosters: boolean, weeklyStats: boolean, url: string, lastExportAttempt?: Date, lastSuccessfulExport?: Date, editable: boolean }
 
 export async function storeToken(token: TokenInformation, leagueId: number) {
   const leagueConnection: StoredMaddenConnection = {
-    token: token,
+    blazeId: token.blazeId,
     leagueId: leagueId,
     destinations: {
       [SNALLABOT_EXPORT]: { autoUpdate: true, leagueInfo: true, rosters: true, weeklyStats: true, url: SNALLABOT_EXPORT, editable: false }
     }
   }
   await db.collection("league_data").doc(`${leagueId}`).set(leagueConnection)
+  const tokenInformation: StoredTokenInformation = {
+    token: token
+  }
+  await db.collection("blaze_tokens").doc(`${token.blazeId}`).set(tokenInformation)
 }
 
 interface StoredEAClient extends EAClient {
@@ -357,14 +365,17 @@ export async function storedTokenClient(leagueId: number): Promise<StoredEAClien
     throw new Error(`League ${leagueId} not connected to snallabot`)
   }
   const leagueConnection = doc.data() as StoredMaddenConnection
-  const newToken = await refreshToken(leagueConnection.token)
-  const session = leagueConnection.session ? leagueConnection.session : await retrieveBlazeSession(newToken)
+  const tokenDoc = await db.collection("blaze_tokens").doc(`${leagueConnection.blazeId}`).get()
+  if (!doc.exists) {
+    throw new Error(`League ${leagueId} is connected, but its missing EA connection with id ${leagueConnection.blazeId}`)
+  }
+  const token = tokenDoc.data() as StoredTokenInformation
+  const newToken = await refreshToken(token.token)
+  const session = token.session ? token.session : await retrieveBlazeSession(newToken)
   const newSession = await refreshBlazeSession(newToken, session)
-  leagueConnection.token = newToken
-  leagueConnection.session = newSession
-  await db.collection("league_data").doc(`${leagueId}`).set(
-    leagueConnection
-    , { merge: true })
+  token.token = newToken
+  token.session = newSession
+  await db.collection("blaze_tokens").doc(`${token.token.blazeId}`).set(token, { merge: true })
   const eaClient = await ephemeralClientFromToken(newToken, newSession)
   return {
     getExports() {

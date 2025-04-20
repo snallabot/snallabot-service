@@ -1,8 +1,8 @@
 import { initializeApp, cert } from "firebase-admin/app"
 import { getFirestore } from "firebase-admin/firestore"
 import { readFileSync } from "node:fs";
-import { BLAZE_SERVICE_TO_PATH } from "./ea_constants";
-import { ExportDestination } from "./ea_client";
+import { BLAZE_SERVICE_TO_PATH, SystemConsole } from "./ea_constants";
+import { ExportDestination, TokenInformation } from "./ea_client";
 import { SNALLABOT_EXPORT } from "../export/exporter";
 import db from "../db/firebase"
 
@@ -47,7 +47,7 @@ async function translate() {
     if (oldLeagueData.madden_server) {
       const maddenData = oldLeagueData.madden_server as oldData
       if (maddenData.blazeProductName.includes("2025")) {
-        const token = { accessToken: maddenData.accessToken, refreshToken: maddenData.refreshToken, console: BLAZE_SERVICE_TO_PATH[maddenData.blazeService], expiry: maddenData.expiry }
+        const token: TokenInformation = { accessToken: maddenData.accessToken, refreshToken: maddenData.refreshToken, console: BLAZE_SERVICE_TO_PATH[maddenData.blazeService] as SystemConsole, expiry: maddenData.expiry, blazeId: maddenData.blazeId }
         const leagueId = maddenData.leagueId
         const old = oldLeagueData?.commands?.exports as oldExport[] || [] as oldExport[]
         const newDestinations: { [key: string]: ExportDestination } = Object.fromEntries(old.filter(e => !e.url.includes("snallabot")).map(oldExport => {
