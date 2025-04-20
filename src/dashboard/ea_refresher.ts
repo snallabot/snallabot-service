@@ -71,6 +71,7 @@ async function runLeagueChecks() {
       }
     }
     console.log("Check complete, sleeping for 5 minutes...\n")
+    await fetch("https://hc-ping.com/82b9220a-02cf-4ca1-9385-3c8b9463cff3")
     await sleep(5 * 60 * 1000)
   }
 }
