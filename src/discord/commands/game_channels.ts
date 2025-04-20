@@ -77,9 +77,9 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
 - ${SnallabotCommandReactions.WAITING} Creating Scoreboard
 - ${SnallabotCommandReactions.WAITING} Logging`
     })
-    const exporter = await exporterForLeague(Number(leagueId), ExportContext.AUTO)
     let exportEmoji = SnallabotCommandReactions.FINISHED
     try {
+      const exporter = await exporterForLeague(Number(leagueId), ExportContext.AUTO)
       await exporter.exportSurroundingWeek()
     } catch (e) {
       exportEmoji = SnallabotCommandReactions.ERROR
