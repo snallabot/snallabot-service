@@ -2,7 +2,7 @@ import { initializeApp, cert } from "firebase-admin/app"
 import { getFirestore } from "firebase-admin/firestore"
 import { readFileSync } from "node:fs";
 import { BLAZE_SERVICE_TO_PATH, SystemConsole } from "./ea_constants";
-import { ExportDestination, TokenInformation } from "./ea_client";
+import { ExportDestination, TokenInformation, storeToken } from "./ea_client";
 import { SNALLABOT_EXPORT } from "../export/exporter";
 import db from "../db/firebase"
 
@@ -54,13 +54,14 @@ async function translate() {
           return { autoUpdate: oldExport.autoUpdate, leagueInfo: oldExport.leagueInfo, rosters: oldExport.rosters, weeklyStats: oldExport.weeklyStats, url: oldExport.url, editable: true }
         }).map(d => [d.url, d]))
         newDestinations[SNALLABOT_EXPORT] = { autoUpdate: true, leagueInfo: true, rosters: true, weeklyStats: true, url: SNALLABOT_EXPORT, editable: false }
-        const leagueConnection = {
-          token: token,
-          leagueId: leagueId,
+        console.log(`Migrated Server ${d.id} to League ${leagueId}`)
+        await storeToken(token, leagueId)
+        await db.collection("league_data").doc(`${leagueId}`).set({
           destinations: newDestinations
-        }
-        await db.collection("league_data").doc(`${leagueId}`).set(leagueConnection)
+        }, { merge: true })
       }
     }
   }))
 }
+
+translate()
