@@ -58,9 +58,9 @@ async function renderConnectedLeagueErrorsMiddleware(ctx: ParameterizedContext, 
     console.error(e)
     if (e instanceof EAAccountError) {
       const error = `Error receieved from EA <br> Message: ${e.message} <br> Snallabot Guidance: ${e.troubleshoot}`
-      ctx.body = errorRender({ error: error })
+      ctx.body = errorRender({ error: error, canUnlink: true })
     } else if (e instanceof BlazeError) {
-      ctx.body = errorRender({ error: `Error from EA: ${JSON.stringify(e.error)}` })
+      ctx.body = errorRender({ error: `Error from EA: ${JSON.stringify(e.error)}`, canUnlink: true })
     }
     else {
       const error = `Error receieved from Dashboard <br> Message: ${e}`
