@@ -63,7 +63,7 @@ async function runLeagueChecks() {
     const leagues = latestLeagues.getLatestLeagues()
     for (const leagueId of leagues) {
       // avoid any overloading of EA
-      await sleep(2000)
+      await sleep(5000)
       try {
         await checkLeague(leagueId)
       } catch (e) {
