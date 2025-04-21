@@ -76,13 +76,13 @@ export default {
       if (playersToSearch && teamsIndex) {
         const players = Object.fromEntries(Object.entries(playersToSearch).map(entry => {
           const [rosterId, roster] = entry
-          const displayName = teamsIndex?.[roster.teamId]?.displayName
-          return [rosterId, { teamDisplayName: displayName, ...roster }]
+          const displayName = roster.teamId === 0 ? "FA" : teamsIndex?.[roster.teamId]?.abbrName
+          return [rosterId, { teamAbbr: displayName, ...roster }]
         }))
         const results = fuzzysort.go(playerSearchPhrase, Object.values(players), {
-          keys: ["firstName", "lastName", "position", "teamDisplayName"], threshold: 0.4, limit: 25
+          keys: ["firstName", "lastName", "position", "teamAbbr"], threshold: 0.4, limit: 25
         })
-        return results.map(r => ({ name: `${r.obj.teamDisplayName} ${r.obj.firstName} ${r.obj.lastName}`, value: `${r.obj.teamDisplayName} ${r.obj.position.toUpperCase()} ${r.obj.firstName} ${r.obj.lastName}` }))
+        return results.map(r => ({ name: `${r.obj.teamAbbr} ${r.obj.firstName} ${r.obj.lastName}`, value: `${r.obj.teamAbbr} ${r.obj.position.toUpperCase()} ${r.obj.firstName} ${r.obj.lastName}` }))
       }
     }
     return []
