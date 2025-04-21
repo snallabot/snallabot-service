@@ -15,11 +15,20 @@ export default {
       throw new Error("logger command not defined properly")
     }
     const options = command.data.options
-    const teamsCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
-    const subCommand = teamsCommand.name
+    const playerCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
+    const subCommand = playerCommand.name
     const doc = await db.collection("league_settings").doc(guild_id).get()
-    const leagueSettings = doc.exists ? doc.data() as LeagueSettings : {} as LeagueSettings
-    respond(ctx, createMessageResponse("wip"))
+    if (subCommand === "get") {
+      if (!playerCommand.options || !playerCommand.options[0]) {
+        throw new Error("player get misconfigured")
+      }
+      const playerSearch = (playerCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value
+      respond(ctx, createMessageResponse(playerSearch))
+    } else if (subCommand === "list") {
+      respond(ctx, createMessageResponse("wip"))
+    }
+    throw new Error(`Missing player command ${subCommand}`)
+
   },
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
     return {
