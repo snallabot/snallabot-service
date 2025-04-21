@@ -71,8 +71,7 @@ export default {
     const leagueId = view?.leagueId
     if (leagueId && (playerCommand?.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.focused && playerCommand?.options?.[0]?.value) {
       const playerSearchPhrase = playerCommand.options[0].value as string
-      const playersToSearch = await playerSearchIndex.createView(leagueId)
-      const teamsIndex = await teamSearchView.createView(leagueId)
+      const [playersToSearch, teamsIndex] = await Promise.all([playerSearchIndex.createView(leagueId), teamSearchView.createView(leagueId)])
       if (playersToSearch && teamsIndex) {
         const players = Object.fromEntries(Object.entries(playersToSearch).map(entry => {
           const [rosterId, roster] = entry
