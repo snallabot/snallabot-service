@@ -64,7 +64,7 @@ function getTopAttributesByPosition(player: Player): Array<{ name: string, value
     { name: "Acceleration", value: player.accelRating },
     { name: "Strength", value: player.strengthRating },
     { name: "Agility", value: player.agilityRating },
-    { name: "Awareness", value: player.awareRating }
+    { name: "Awareness", value: player.awareRating },
   )
 
   // Position specific attributes
@@ -190,14 +190,7 @@ function formatPlayerCard(player: Player, teams: { [key: string]: string }) {
   const heightInches = player.height % 12
   const formattedHeight = `${heightFeet}'${heightInches}"`
 
-  const birthDate = new Date(player.birthYear, player.birthMonth - 1, player.birthDay)
-  // TODO fix age with right date
-  const today = new Date()
-  let age = today.getFullYear() - birthDate.getFullYear()
-  if (today.getMonth() < birthDate.getMonth() ||
-    (today.getMonth() === birthDate.getMonth() && today.getDate() < birthDate.getDate())) {
-    age--
-  }
+  let age = player.age
 
   const contractStatus = player.isFreeAgent ? "Free Agent" :
     `${player.contractYearsLeft} years left, $${(player.contractSalary / 1000000).toFixed(2)}M/yr`
@@ -219,7 +212,7 @@ function formatPlayerCard(player: Player, teams: { [key: string]: string }) {
   return `
 # ${player.firstName} ${player.lastName} | ${player.position} ${teamName} | #${player.jerseyNum}
 ## Physical
-> **Age:** ${age} (Born: ${player.birthMonth}/${player.birthDay}/${player.birthYear})
+> **Age:** ${age}
 > **Height/Weight:** ${formattedHeight}, ${player.weight} lbs
 > **College:** ${player.college}
 > **Hometown:** ${player.homeTown}, ${getStateNameFromCode(player.homeState)}
