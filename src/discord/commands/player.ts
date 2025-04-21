@@ -26,8 +26,9 @@ export default {
       respond(ctx, createMessageResponse(playerSearch))
     } else if (subCommand === "list") {
       respond(ctx, createMessageResponse("wip"))
+    } else {
+      throw new Error(`Missing player command ${subCommand}`)
     }
-    throw new Error(`Missing player command ${subCommand}`)
 
   },
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
