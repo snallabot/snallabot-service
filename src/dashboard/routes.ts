@@ -138,10 +138,11 @@ router.get("/", async (ctx) => {
     const errorResponse = await response.text()
     throw new EAAccountError(`Failed to retrieve madden entitlements: ${errorResponse}`, `This may happen because the EA account used to login is not the right one or is not connected to Madden. One way to fix this is to try connecting this EA account to your Madden one, or checking if it is the right one. You can do this at this at this link <a href="https://myaccount.ea.com/cp-ui/connectaccounts/index" target="_blank">https://myaccount.ea.com/cp-ui/connectaccounts/index</a>`)
   }
-  const { entitlements: { entitlement: userEntitlements } } = (await pidUriResponse.json()) as Entitlements
-  const validEntitlements = userEntitlements.filter(e => e.entitlementTag === "ONLINE_ACCESS" && Object.values(VALID_ENTITLEMENTS).includes(e.groupName))
+  const pidRes: Entitlements = await pidUriResponse.json()
+  const { entitlements: { entitlement: userEntitlements } } = pidRes
+  const validEntitlements = (userEntitlements || []).filter(e => e.entitlementTag === "ONLINE_ACCESS" && Object.values(VALID_ENTITLEMENTS).includes(e.groupName))
   if (validEntitlements.length === 0) {
-    throw new EAAccountError("User cannot access this version of Madden!", `This may happen because the EA account used to login is not the right one or is not connected to Madden. One way to fix this is to try connecting this EA account to your Madden one, or checking if it is the right one. You can do this at this at this link <a href="https://myaccount.ea.com/cp-ui/connectaccounts/index" target="_blank">https://myaccount.ea.com/cp-ui/connectaccounts/index</a>`)
+    throw new EAAccountError("User cannot access this version of Madden!", `This may happen because the EA account used to login is not the right one or is not connected to Madden. One way to fix this is to try connecting this EA account to your Madden one, or checking if it is the right one. You can do this at this at this link <a href="https://myaccount.ea.com/cp-ui/connectaccounts/index" target="_blank">https://myaccount.ea.com/cp-ui/connectaccounts/index</a> <br> <br> Here is the response from EA: ${JSON.stringify(pidRes)}`)
   }
   const retrievedPersonas = await Promise.all(validEntitlements.map(async e => {
     const { pidUri, groupName: maddenEntitlement } = e
