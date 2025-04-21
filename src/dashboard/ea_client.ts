@@ -470,7 +470,7 @@ export async function exporterForLeague(leagueId: number, context: ExportContext
   const client = await storedTokenClient(leagueId)
   const exports = client.getExports()
   const contextualExports = Object.fromEntries(Object.entries(exports).filter(e => {
-    const [url, destination] = e
+    const [_, destination] = e
     if (context === ExportContext.MANUAL) {
       return true
     } else if (context === ExportContext.AUTO) {
