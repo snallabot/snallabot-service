@@ -5,12 +5,13 @@
   "main": "src/index.js",
   "scripts": {
     "test": "npx jest",
-    "build": "npx tsc && cp -r src/public dist/",
+      "build": "npx tsc && cp -r src/public dist/ && cp -r src/dashboard/templates dist/dashboard",
     "start": "node dist/index.js",
     "yt-notifier": "node dist/yt-notifier/index.js",
     "pinger": "node dist/discord/pinger.js",
     "migration-20241218": "node dist/export/migration.js",
-    "dev": "npx firebase --project dev emulators:start & FIRESTORE_EMULATOR_HOST=localhost:8080 nodemon src/index.ts && kill $!"
+    "dev": "npx firebase --project dev emulators:start & FIRESTORE_EMULATOR_HOST=localhost:8080 nodemon src/index.ts && kill $!",
+    "ea-refresher": "dist/dashboard/ea_refresher.js"
   },
   "engines": {
     "node": "21.x"
@@ -26,6 +27,7 @@
   },
   "homepage": "https://github.com/snallabot/snallabot-service#readme",
   "dependencies": {
+    "@google-cloud/storage": "^7.15.0",
     "@koa/bodyparser": "^5.0.0",
     "@koa/router": "^12.0.1",
     "discord-api-types": "^0.37.94",
@@ -37,6 +39,7 @@
     "node-cache": "^5.1.2",
     "object-hash": "^3.0.0",
     "oceanic.js": "^1.11.2",
+    "pug": "^3.0.3",
     "undici": "^6.6.2"
   },
   "devDependencies": {
@@ -46,6 +49,7 @@
     "@types/koa-bodyparser": "^4.3.12",
     "@types/koa-static": "^4.0.4",
     "@types/node": "^20.11.0",
+    "@types/pug": "^2.0.10",
     "@types/supertest": "^6.0.2",
     "firebase-tools": "^13.9.0",
     "jest": "^29.7.0",

@@ -9,6 +9,7 @@ import { formatRecord, getMessageForWeek, MaddenGame } from "../../export/madden
 import createLogger from "../logging"
 import { ConfirmedSim, SimResult } from "../../db/events"
 import createNotifier from "../notifier"
+import { ExportContext, exporterForLeague } from "../../dashboard/ea_client"
 
 async function react(client: DiscordClient, channel: string, message: string, reaction: SnallabotReactions) {
   await client.requestDiscord(`channels/${channel}/messages/${message}/reactions/${reaction}/@me`, { method: "PUT" })
@@ -30,9 +31,9 @@ function createSimMessage(sim: ConfirmedSim): string {
 }
 
 
-export function formatScoreboard(week: number, seasonIndex: number, games: MaddenGame[], teams: TeamList, sims: ConfirmedSim[]) {
+export function formatScoreboard(week: number, seasonIndex: number, games: MaddenGame[], teams: TeamList, sims: ConfirmedSim[], leagueId: string) {
   const gameToSim = new Map<number, ConfirmedSim>()
-  sims.forEach(sim => gameToSim.set(sim.scheduleId, sim))
+  sims.filter(s => s.leagueId ? s.leagueId === leagueId : true).forEach(sim => gameToSim.set(sim.scheduleId, sim))
   const scoreboardGames = games.sort((g1, g2) => g1.scheduleId - g2.scheduleId).map(game => {
     const simMessage = gameToSim.has(game.scheduleId) ? ` (${createSimMessage(gameToSim.get(game.scheduleId)!)})` : ""
     const awayTeamName = teams.getTeamForId(game.awayTeamId)?.displayName
@@ -76,15 +77,13 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
 - ${SnallabotCommandReactions.WAITING} Creating Scoreboard
 - ${SnallabotCommandReactions.WAITING} Logging`
     })
-    const eres = await fetch(`https://snallabot.herokuapp.com/${guild_id}/export`, {
-      method: "POST",
-      body: JSON.stringify({
-        week: 102,
-        stage: -1,
-        auto: true,
-      }),
-    })
-    const exportEmoji = eres.ok ? SnallabotCommandReactions.FINISHED : SnallabotCommandReactions.ERROR
+    let exportEmoji = SnallabotCommandReactions.FINISHED
+    try {
+      const exporter = await exporterForLeague(Number(leagueId), ExportContext.AUTO)
+      await exporter.exportSurroundingWeek()
+    } catch (e) {
+      exportEmoji = SnallabotCommandReactions.ERROR
+    }
     await client.editOriginalInteraction(token, {
       content: `Creating Game Channels:
 - ${exportEmoji} Exporting
@@ -200,7 +199,7 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
     })
 
     const season = weekSchedule[0].seasonIndex
-    const scoreboardMessage = formatScoreboard(week, season, weekSchedule, teams, [])
+    const scoreboardMessage = formatScoreboard(week, season, weekSchedule, teams, [], leagueId)
     const res = await client.requestDiscord(`channels/${settings.commands.game_channel?.scoreboard_channel.id}/messages`, { method: "POST", body: { content: scoreboardMessage, allowed_mentions: { parse: [] } } })
     const message = await res.json() as APIMessage
     const weeklyState: WeekState = { week: week, seasonIndex: season, scoreboard: { id: message.id, id_type: DiscordIdType.MESSAGE }, channel_states: channelsMap }

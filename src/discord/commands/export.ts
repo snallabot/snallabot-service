@@ -3,6 +3,8 @@ import { CommandHandler, Command } from "../commands_handler"
 import { respond, DiscordClient, deferMessageInvisible } from "../discord_utils"
 import { APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ApplicationCommandType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
+import { ExportContext, exporterForLeague } from "../../dashboard/ea_client"
+import { discordLeagueView } from "../../db/view"
 
 
 async function handleExport(guildId: string, week: number, token: string, client: DiscordClient) {
@@ -10,33 +12,32 @@ async function handleExport(guildId: string, week: number, token: string, client
     content: "exporting now...",
     flags: 64
   })
-  const res = await fetch(
-    `https://snallabot.herokuapp.com/${guildId}/export`,
-    {
-      method: "POST",
-      body: JSON.stringify({
-        week: week,
-        stage: week > 99 ? -1 : 1,
-      }),
+  const league = await discordLeagueView.createView(guildId)
+  if (!league) {
+    await client.editOriginalInteraction(token, {
+      content: "missing league for this server",
+      flags: 64
+    })
+    return
+  }
+  const exporter = await exporterForLeague(Number(league.leagueId), ExportContext.MANUAL)
+  try {
+    if (week === 100) {
+      await exporter.exportCurrentWeek()
+    } else if (week === 101) {
+      await exporter.exportAllWeeks()
+    } else {
+      await exporter.exportSpecificWeeks([{ weekIndex: week - 1, stage: 1 }])
     }
-  )
-  if (res.ok) {
     await client.editOriginalInteraction(token, {
       content: "finished exporting!",
       flags: 64
     })
-  } else {
-    if (week === 100) {
-      await client.editOriginalInteraction(token, {
-        content: "All weeks takes some time, it should finish up soon...",
-        flags: 64
-      })
-    } else {
-      await client.editOriginalInteraction(token, {
-        content: "export failed, try again from the dashboard",
-        flags: 64
-      })
-    }
+  } catch (e) {
+    await client.editOriginalInteraction(token, {
+      content: `Export failed :(, error: ${e}`,
+      flags: 64
+    })
   }
 }
 
@@ -63,10 +64,10 @@ export default {
         return week
       }
       if (subCommand === "current") {
-        return 101
+        return 100
       }
       if (subCommand === "all_weeks") {
-        return 100
+        return 101
       }
     })()
     if (!week) {

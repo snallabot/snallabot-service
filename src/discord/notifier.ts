@@ -7,6 +7,7 @@ import { APIGuildMember, APIUser } from "discord-api-types/v10"
 import db from "../db/firebase"
 import { FieldValue } from "firebase-admin/firestore"
 import { ConfirmedSim, SimResult } from "../db/events"
+import { ExportContext, exporterForLeague } from "../dashboard/ea_client"
 
 interface SnallabotNotifier {
   update(currentState: GameChannel, season: number, week: number,): Promise<void>
@@ -73,7 +74,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
     const homeTeamId = teams.getTeamForId(game.homeTeamId).teamId
     const awayUser = latestAssignents[awayTeamId]?.discord_user
     const homeUser = latestAssignents[homeTeamId]?.discord_user
-    const event: SnallabotEvent<ConfirmedSim> = { key: guildId, event_type: "CONFIRMED_SIM", result: result, scheduleId: gameChannel.scheduleId, requestedUsers: requestedUsers, confirmedUsers: confirmedUsers, week: week, seasonIndex: season }
+    const event: SnallabotEvent<ConfirmedSim> = { key: guildId, event_type: "CONFIRMED_SIM", result: result, scheduleId: gameChannel.scheduleId, requestedUsers: requestedUsers, confirmedUsers: confirmedUsers, week: week, seasonIndex: season, leagueId: leagueId }
     if (awayUser) {
       event.awayUser = awayUser
     }
@@ -90,22 +91,6 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
     } else {
       await client.requestDiscord(`channels/${gameChannel.channel.id}`, { method: "DELETE" })
     }
-    // TODO: replace with new exporter
-    await fetch(
-      `https://nallapareddy.com/.netlify/functions/snallabot-ea-connector`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          path: "export",
-          guild: guildId,
-          exporter_body: {
-            week: 101,
-            stage: -1,
-            auto: true,
-          },
-        }),
-      }
-    )
   }
   return {
     deleteGameChannel: async function(currentState: GameChannel, season: number, week: number, originators: UserId[]) {
@@ -155,8 +140,13 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
       const awayUsers = await getReactedUsers(channelId, messageId, SnallabotReactions.AWAY)
       const fwUsers = await getReactedUsers(channelId, messageId, SnallabotReactions.SIM)
       if (ggUsers.length > 0) {
-        await this.deleteGameChannel(currentState, season, week, ggUsers)
-      } else if (fwUsers.length > 0) {
+        try {
+          const exporter = await exporterForLeague(Number(leagueId), ExportContext.AUTO)
+          await exporter.exportCurrentWeek()
+        } catch (e) {
+        }
+      }
+      if (fwUsers.length > 0) {
         const res = await client.requestDiscord(
           `guilds/${guildId}/members?limit=1000`,
           {
