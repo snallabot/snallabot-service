@@ -81,7 +81,7 @@ export default {
         const results = fuzzysort.go(playerSearchPhrase, Object.values(players), {
           keys: ["firstName", "lastName", "position", "teamAbbr"], threshold: 0.4, limit: 25
         })
-        return results.map(r => ({ name: `${r.obj.teamAbbr} ${r.obj.firstName} ${r.obj.lastName}`, value: `${r.obj.teamAbbr} ${r.obj.position.toUpperCase()} ${r.obj.firstName} ${r.obj.lastName}` }))
+        return results.map(r => ({ name: `${r.obj.teamAbbr} ${r.obj.position.toUpperCase()} ${r.obj.firstName} ${r.obj.lastName}`, value: `${r.obj.rosterId}` }))
       }
     }
     return []
