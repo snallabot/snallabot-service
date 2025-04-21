@@ -155,8 +155,7 @@ function getTopAttributesByPosition(player: Player): Array<{ name: string, value
       break
   }
 
-  // Sort by value descending and take top 5
-  return attributes.sort((a, b) => b.value - a.value).slice(0, 6)
+  return attributes
 }
 
 
@@ -212,33 +211,26 @@ function formatPlayerCard(player: Player, teams: { [key: string]: string }) {
     ? "\n**Abilities:** " + player.signatureSlotList
       .filter(ability => !ability.isEmpty)
       .map(ability => {
-        const abilityName = ability.signatureAbility?.signatureTitle || "Unnamed Ability"
-        const abilityRank = ability.signatureAbility?.abilityRank ? ` (${ability.signatureAbility.abilityRank})` : ""
-        const passiveTag = ability.signatureAbility?.isPassive ? " [Passive]" : ""
-        return `${abilityName}${abilityRank}${passiveTag}`
+        return ability.signatureAbility?.signatureTitle || "Unnamed Ability"
       })
       .join(", ")
     : ""
 
   return `
 # ${player.firstName} ${player.lastName} | ${player.position} ${teamName} | #${player.jerseyNum}
-
 ## Physical
 > **Age:** ${age} (Born: ${player.birthMonth}/${player.birthDay}/${player.birthYear})
 > **Height/Weight:** ${formattedHeight}, ${player.weight} lbs
 > **College:** ${player.college}
 > **Hometown:** ${player.homeTown}, ${getStateNameFromCode(player.homeState)}
 > **Experience:** ${player.yearsPro} years (Drafted: Round ${player.draftRound}, Pick ${player.draftPick})
-
 ## Status
 > ${injuryStatus}
 > **Contract:** ${contractStatus}
 > **Development Trait:** ${getDevTraitName(player.devTrait)}
 > **Scheme Fit:** ${player.playerSchemeOvr}%
-
 ## Top Ratings
 ${topAttributes.map(attr => `> **${attr.name}:** ${attr.value}`).join('\n')}${abilities}
-
 ## Overall Grades
 > **Physical:** ${getGradeLetter(player.physicalGrade)}
 > **Production:** ${getGradeLetter(player.productionGrade)}
