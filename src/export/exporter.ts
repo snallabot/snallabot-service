@@ -29,6 +29,7 @@ export function MaddenUrlDestination(baseUrl: string): MaddenExportDestination {
   const url = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl
   async function exportWeeklyData<T>(platform: string, leagueId: string, week: number, stage: Stage, data: T, ending: string) {
     const stagePrefix = stage === Stage.SEASON ? "reg" : "pre"
+    console.log(`${url}/${platform}/${leagueId}/week/${stagePrefix}/${week}/${ending}`)
     const res = await fetch(`${url}/${platform}/${leagueId}/week/${stagePrefix}/${week}/${ending}`, {
       method: "POST",
       body: JSON.stringify(data),

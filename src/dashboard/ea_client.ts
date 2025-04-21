@@ -6,7 +6,6 @@ import { Buffer } from "buffer"
 import { TeamExport, StandingExport, SchedulesExport, RushingExport, TeamStatsExport, PuntingExport, ReceivingExport, DefensiveExport, KickingExport, PassingExport, RosterExport } from "../export/madden_league_types"
 import db from "../db/firebase"
 import { SNALLABOT_EXPORT, createDestination } from "../export/exporter";
-import { FieldValue } from "firebase-admin/firestore";
 
 export enum LeagueData {
   TEAMS = "CareerMode_GetLeagueTeamsExport",
