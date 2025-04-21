@@ -19,7 +19,8 @@ interface MaddenDB {
   getGameForSchedule(leagueId: string, scheduleId: number): Promise<MaddenGame>,
   getStandingForTeam(leagueId: string, teamId: number): Promise<Standing>,
   getLatestStandings(leagueId: string): Promise<Standing[]>,
-  getLatestPlayers(leagueId: string): Promise<Player[]>
+  getLatestPlayers(leagueId: string): Promise<Player[]>,
+  getPlayer(leagueId: string, rosterId: string): Promise<Player>
 }
 
 function convertDate(firebaseObject: any) {
@@ -211,6 +212,13 @@ const MaddenDB: MaddenDB = {
     return playerSnapshot.docs.filter(d => !d.id.startsWith("roster")).map(doc => {
       return doc.data() as SnallabotEvent<Player>
     })
+  },
+  getPlayer: async function(leagueId: string, rosterId: string) {
+    const playerDoc = await db.collection("league_data").doc(leagueId).collection("MADDEN_PLAYER").doc(rosterId).get()
+    if (playerDoc.exists) {
+      return playerDoc.data() as Player
+    }
+    throw new Error(`Player ${rosterId} not found in league ${leagueId}`)
   }
 }
 
