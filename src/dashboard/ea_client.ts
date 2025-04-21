@@ -6,7 +6,6 @@ import { Buffer } from "buffer"
 import { TeamExport, StandingExport, SchedulesExport, RushingExport, TeamStatsExport, PuntingExport, ReceivingExport, DefensiveExport, KickingExport, PassingExport, RosterExport } from "../export/madden_league_types"
 import db from "../db/firebase"
 import { SNALLABOT_EXPORT, createDestination } from "../export/exporter";
-import { FieldValue } from "firebase-admin/firestore";
 
 export enum LeagueData {
   TEAMS = "CareerMode_GetLeagueTeamsExport",
@@ -470,7 +469,7 @@ export async function exporterForLeague(leagueId: number, context: ExportContext
   const client = await storedTokenClient(leagueId)
   const exports = client.getExports()
   const contextualExports = Object.fromEntries(Object.entries(exports).filter(e => {
-    const [url, destination] = e
+    const [_, destination] = e
     if (context === ExportContext.MANUAL) {
       return true
     } else if (context === ExportContext.AUTO) {
