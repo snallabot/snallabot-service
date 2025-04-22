@@ -57,45 +57,81 @@ function getGradeLetter(grade: number): string {
 
 function getTopAttributesByPosition(player: Player): Array<{ name: string, value: number }> {
   const attributes: Array<{ name: string, value: number }> = []
-
-  // Common attributes for all positions
   attributes.push(
     { name: "Speed", value: player.speedRating },
     { name: "Acceleration", value: player.accelRating },
-    { name: "Strength", value: player.strengthRating },
     { name: "Agility", value: player.agilityRating },
     { name: "Awareness", value: player.awareRating },
+    { name: "Injury", value: player.injuryRating }
   )
 
-  // Position specific attributes
   switch (player.position) {
     case "QB":
       attributes.push(
         { name: "Throw Power", value: player.throwPowerRating },
-        { name: "Short Accuracy", value: player.throwAccShortRating },
-        { name: "Medium Accuracy", value: player.throwAccMidRating },
         { name: "Deep Accuracy", value: player.throwAccDeepRating },
-        { name: "Throw Under Pressure", value: player.throwUnderPressureRating }
+        { name: "Medium Accuracy", value: player.throwAccMidRating },
+        { name: "Short Accuracy", value: player.throwAccShortRating },
+        { name: "Play Action", value: player.playActionRating },
+        { name: "Throw Under Pressure", value: player.throwUnderPressureRating },
+        { name: "Break Sack", value: player.breakSackRating },
+      )
+      break
+    case "FB":
+      attributes.push(
+        { name: "Impact Blocking", value: player.impactBlockRating },
+        { name: "Lead Block", value: player.leadBlockRating },
+        { name: "Run Block", value: player.runBlockRating },
+        { name: "Strength", value: player.strengthRating },
+        { name: "Pass Block", value: player.passBlockRating },
+        { name: "Truck", value: player.truckRating },
+        { name: "Stiff Arm", value: player.stiffArmRating },
+        { name: "Carrying", value: player.carryRating },
+        { name: "Break Tackle", value: player.breakTackleRating },
       )
       break
     case "HB":
-    case "FB":
       attributes.push(
-        { name: "Carrying", value: player.carryRating },
         { name: "Break Tackle", value: player.breakTackleRating },
+        { name: "Carrying", value: player.carryRating },
+        { name: "BC Vision", value: player.bCVRating },
         { name: "Truck", value: player.truckRating },
+        { name: "Stiff Arm", value: player.stiffArmRating },
         { name: "Juke Move", value: player.jukeMoveRating },
-        { name: "Spin Move", value: player.spinMoveRating }
+        { name: "Spin Move", value: player.spinMoveRating },
+        { name: "COD", value: player.changeOfDirectionRating },
+        { name: "Strength", value: player.strengthRating }
       )
       break
+    // catching, catch in traffic, short route, medium route, deep route, spec, release, jumping
+    // secondary: BC vision, carryign, cod, trucking, break tackle, stiff arm, juke, spin, run, pass, impact, kick, injury, stamin, toughness
     case "WR":
+      attributes.push(
+        { name: "Catching", value: player.catchRating },
+        { name: "Catch in Traffic", value: player.cITRating },
+        { name: "Short Route", value: player.routeRunShortRating },
+        { name: "Medium Route", value: player.routeRunMedRating },
+        { name: "Deep Route", value: player.routeRunDeepRating },
+        { name: "Spectacular Catch", value: player.specCatchRating },
+        { name: "Release", value: player.releaseRating },
+        { name: "Jumping", value: player.jumpRating },
+      )
+      break
+    // speed, catching, run block, awarness, short, medium, deep, acc, cit, spec, impact, pass, lead, break
+    // secondary: run power, run finess, pass power, pass finess, trucking, stif, carrying, cod, spin, juke, bc, injury, stamina, toughness
     case "TE":
       attributes.push(
         { name: "Catching", value: player.catchRating },
-        { name: "Spectacular Catch", value: player.specCatchRating },
+        { name: "Run Block", value: player.runBlockRating },
         { name: "Short Route", value: player.routeRunShortRating },
         { name: "Medium Route", value: player.routeRunMedRating },
-        { name: "Deep Route", value: player.routeRunDeepRating }
+        { name: "Deep Route", value: player.routeRunDeepRating },
+        { name: "Catch in Traffic", value: player.cITRating },
+        { name: "Spectacular Catch", value: player.specCatchRating },
+        { name: "Impact Blocking", value: player.impactBlockRating },
+        { name: "Pass Blocking", value: player.passBlockRating },
+        { name: "Lead Blocking", value: player.leadBlockRating },
+        { name: "Break Tackle", value: player.breakTackleRating },
       )
       break
     case "LT":
@@ -104,44 +140,82 @@ function getTopAttributesByPosition(player: Player): Array<{ name: string, value
     case "RG":
     case "RT":
       attributes.push(
+        { name: "Strength", value: player.strengthRating },
+        { name: "Run Block", value: player.runBlockRating },
         { name: "Pass Block", value: player.passBlockRating },
+        { name: "Run Block Power", value: player.runBlockPowerRating },
+        { name: "Run Block Finesse", value: player.runBlockFinesseRating },
         { name: "Pass Block Power", value: player.passBlockPowerRating },
         { name: "Pass Block Finesse", value: player.passBlockFinesseRating },
-        { name: "Run Block", value: player.runBlockRating },
-        { name: "Run Block Power", value: player.runBlockPowerRating }
+        { name: "Lead Block", value: player.leadBlockRating },
+        { name: "Impact Blocking", value: player.impactBlockRating },
       )
       break
     case "LE":
     case "RE":
+      attributes.push(
+        { name: "Power Moves", value: player.powerMovesRating },
+        { name: "Finesse Moves", value: player.finesseMovesRating },
+        { name: "Tackle", value: player.tackleRating },
+        { name: "Block Shedding", value: player.blockShedRating },
+        { name: "Play Recognition", value: player.playRecRating },
+        { name: "Strength", value: player.strengthRating },
+      )
+      break
     case "DT":
       attributes.push(
+        { name: "Strength", value: player.strengthRating },
         { name: "Block Shedding", value: player.blockShedRating },
         { name: "Power Moves", value: player.powerMovesRating },
         { name: "Finesse Moves", value: player.finesseMovesRating },
-        { name: "Pursuit", value: player.pursuitRating },
-        { name: "Tackle", value: player.tackleRating }
+        { name: "Tackle", value: player.tackleRating },
+        { name: "Play Recognition", value: player.playRecRating },
       )
       break
     case "LOLB":
-    case "MLB":
     case "ROLB":
       attributes.push(
+        { name: "Hit Power", value: player.hitPowerRating },
         { name: "Tackle", value: player.tackleRating },
         { name: "Pursuit", value: player.pursuitRating },
+        { name: "Power Moves", value: player.powerMovesRating },
+        { name: "Finesse Moves", value: player.finesseMovesRating },
+        { name: "Block Shedding", value: player.blockShedRating },
+        { name: "Play Recognition", value: player.playRecRating },
+      )
+      break
+    case "MLB":
+      attributes.push(
+        { name: "Tackle", value: player.tackleRating },
+        { name: "Block Shedding", value: player.blockShedRating },
+        { name: "Hit Power", value: player.hitPowerRating },
+        { name: "Pursuit", value: player.pursuitRating },
+        { name: "Play Recognition", value: player.playRecRating },
+        { name: "Strength", value: player.strengthRating },
         { name: "Zone Coverage", value: player.zoneCoverRating },
-        { name: "Man Coverage", value: player.manCoverRating },
-        { name: "Hit Power", value: player.hitPowerRating }
       )
       break
     case "CB":
-    case "FS":
-    case "SS":
       attributes.push(
         { name: "Man Coverage", value: player.manCoverRating },
         { name: "Zone Coverage", value: player.zoneCoverRating },
-        { name: "Press", value: player.pressRating },
         { name: "Play Recognition", value: player.playRecRating },
-        { name: "Catching", value: player.catchRating }
+        { name: "Press", value: player.pressRating },
+        { name: "Tackle", value: player.tackleRating },
+        { name: "Jumping", value: player.jumpRating },
+        { name: "Catching", value: player.catchRating },
+      )
+      break
+    case "FS":
+    case "SS":
+      attributes.push(
+        { name: "Zone Coverage", value: player.zoneCoverRating },
+        { name: "Tackle", value: player.tackleRating },
+        { name: "Pursuit", value: player.pursuitRating },
+        { name: "Play Recognition", value: player.playRecRating },
+        { name: "Man Coverage", value: player.manCoverRating },
+        { name: "Hit Power", value: player.hitPowerRating },
+        { name: "Block Shedding", value: player.blockShedRating },
       )
       break
     case "K":
@@ -149,8 +223,6 @@ function getTopAttributesByPosition(player: Player): Array<{ name: string, value
       attributes.push(
         { name: "Kick Power", value: player.kickPowerRating },
         { name: "Kick Accuracy", value: player.kickAccRating },
-        { name: "Stamina", value: player.staminaRating },
-        { name: "Injury", value: player.injuryRating }
       )
       break
   }
@@ -199,10 +271,7 @@ function formatPlayerCard(player: Player, teams: { [key: string]: string }) {
   let age = player.age
 
   const contractStatus = player.isFreeAgent ? "Free Agent" :
-    `${player.contractYearsLeft} years left, $${(player.contractSalary / 1000000).toFixed(2)}M/yr`
-
-  const injuryStatus = player.isOnIR ? "⚠️ On Injured Reserve" :
-    player.isOnPracticeSquad ? "Practice Squad" : player.isActive ? "Active" : "Inactive"
+    `> **Length**: ${player.contractYearsLeft}/${player.contractLength} yrs\n> **Salary**: $${(player.contractSalary / 1000000).toFixed(2)}M\n> **Cap Hit**: $${(player.capHit / 1000000).toFixed(2)}M\n> **Bonus**: $${(player.contractBonus / 10000000).toFixed(2)}M\n> **Savings**: $${(player.capReleaseNetSavings / 10000000).toFixed(2)}M\n> **Penalty**: $${(player.capReleasePenalty / 10000000).toFixed(2)}M`
 
   const topAttributes = getTopAttributesByPosition(player)
 
@@ -216,25 +285,12 @@ function formatPlayerCard(player: Player, teams: { [key: string]: string }) {
     : ""
 
   return `
-# ${player.position} ${player.firstName} ${player.lastName} | ${teamName} | #${player.jerseyNum}
-## Physical
-> **Age:** ${age}
-> **Height/Weight:** ${formattedHeight}, ${player.weight} lbs
-> **College:** ${player.college}
-> **Hometown:** ${player.homeTown}, ${getStateNameFromCode(player.homeState)}
-> **Experience:** ${player.yearsPro} years (Drafted: Round ${player.draftRound}, Pick ${player.draftPick})
-## Status
-> ${injuryStatus}
-> **Contract:** ${contractStatus}
-> **Development Trait:** ${getDevTraitName(player.devTrait)}
-> **Scheme Fit:** ${player.playerSchemeOvr}%
+# ${player.position} ${player.firstName} ${player.lastName} | ${teamName} | #${player.playerBestOvr} OVR
+${getDevTraitName(player.devTrait)} | ${age} yrs | ${formattedHeight}, ${player.weight} lbs
+## Contract
+${contractStatus}
 ## Top Ratings
 ${topAttributes.map(attr => `> **${attr.name}:** ${attr.value}`).join('\n')}${abilities}
-## Overall Grades
-> **Physical:** ${getGradeLetter(player.physicalGrade)}
-> **Production:** ${getGradeLetter(player.productionGrade)}
-> **Intangible:** ${getGradeLetter(player.intangibleGrade)}
-> **Size:** ${getGradeLetter(player.sizeGrade)}
 `
 }
 
