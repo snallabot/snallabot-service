@@ -30,10 +30,10 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, db: F
   }
   const teamsDisplayNames = Object.fromEntries(Object.entries(teamView).map(teamEntry => {
     const [teamId, t] = teamEntry
-    return [teamId, t.displayName]
+    return [teamId, t.abbrName]
   }))
   // 0 team id means the player is a free agent
-  teamsDisplayNames["0"] = "Free Agent"
+  teamsDisplayNames["0"] = "FA"
   await client.editOriginalInteraction(token, {
     content: formatPlayerCard(player, teamsDisplayNames)
   })
@@ -161,10 +161,10 @@ function getTopAttributesByPosition(player: Player): Array<{ name: string, value
 
 function getDevTraitName(devTrait: number): string {
   switch (devTrait) {
-    case 0: return "Normal"
-    case 1: return "Star"
-    case 2: return "Superstar"
-    case 3: return "X-Factor"
+    case 0: return SnallabotDevEmojis.NORMAL
+    case 1: return SnallabotDevEmojis.STAR
+    case 2: return SnallabotDevEmojis.SUPERSTAR
+    case 3: return SnallabotDevEmojis.XFACTOR
     default: return "Unknown"
   }
 }
@@ -181,6 +181,12 @@ function getStateNameFromCode(stateCode: number): string {
   return states[stateCode] || "Unknown"
 }
 
+enum SnallabotDevEmojis {
+  NORMAL = "<:snallabot_normal_dev:1363761484131209226>",
+  STAR = "<:snallabot_star_dev:1363761179805220884>",
+  SUPERSTAR = "<:snallabot_superstar_dev:1363761181525020703>",
+  XFACTOR = "<:snallabot_xfactor_dev:1363761178622562484>",
+}
 
 function formatPlayerCard(player: Player, teams: { [key: string]: string }) {
 
@@ -210,7 +216,7 @@ function formatPlayerCard(player: Player, teams: { [key: string]: string }) {
     : ""
 
   return `
-# ${player.firstName} ${player.lastName} | ${player.position} ${teamName} | #${player.jerseyNum}
+# ${player.position} ${player.firstName} ${player.lastName} | ${teamName} | #${player.jerseyNum}
 ## Physical
 > **Age:** ${age}
 > **Height/Weight:** ${formattedHeight}, ${player.weight} lbs
