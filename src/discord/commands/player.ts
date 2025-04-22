@@ -373,16 +373,16 @@ function formatPlayerCard(player: Player, teams: { [key: string]: string }) {
 
   const abilities = player.signatureSlotList && player.signatureSlotList.length > 0
     ? "\n**Abilities:** " + player.signatureSlotList
-      .filter(ability => !ability.isEmpty)
+      .filter(ability => !ability.isEmpty && ability.signatureAbility)
       .map(ability => {
         return ability.signatureAbility?.signatureTitle || "Unnamed Ability"
       })
       .join(", ")
     : ""
   return `
-# ${getTeamEmoji(teamAbbr)} ${player.position} ${player.firstName} ${player.lastName} | ${player.playerBestOvr} OVR
-${getDevTraitName(player.devTrait)} | **${age} yrs** | **${formattedHeight}, ${player.weight} lbs**
-**${getSeasonFormatting(player.yearsPro)}**
+# ${getTeamEmoji(teamAbbr)} ${player.position} ${player.firstName} ${player.lastName}
+## ${getDevTraitName(player.devTrait)} **${player.playerBestOvr} OVR**
+**${age} yrs** | **${getSeasonFormatting(player.yearsPro)}** | **${formattedHeight}, ${player.weight} lbs**
 ## Contract
 ${contractStatus}
 ## Ratings
