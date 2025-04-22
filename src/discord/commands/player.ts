@@ -363,13 +363,15 @@ function formatPlayerCard(player: Player, teams: { [key: string]: string }) {
       })
       .join(", ")
     : ""
-
+  const experience = player.yearsPro === 0 ? "Rookie" : `${player.yearsPro} Yrs Experience`
   return `
-# ${getTeamEmoji(teamAbbr)} ${player.position} ${player.firstName} ${player.lastName} | #${player.playerBestOvr} OVR
+# ${getTeamEmoji(teamAbbr)} ${player.position} ${player.firstName} ${player.lastName} | ${player.playerBestOvr} OVR
 ${getDevTraitName(player.devTrait)} | ${age} yrs | ${formattedHeight}, ${player.weight} lbs
+${experience}
+${player.yearsPro} yrs
 ## Contract
 ${contractStatus}
-## Top Ratings
+## Ratings
 ${topAttributes.map(attr => `> **${attr.name}:** ${attr.value}`).join('\n')}${abilities}
 `
 }
