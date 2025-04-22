@@ -253,6 +253,86 @@ function getStateNameFromCode(stateCode: number): string {
   return states[stateCode] || "Unknown"
 }
 
+function getTeamEmoji(abbr: string): string {
+  switch (abbr.toLowerCase()) {
+    // AFC East
+    case "ne":
+      return "<:snallabot_ne:1364103345752641587>"
+    case "nyj":
+      return "<:snallabot_nyj:1364103346985635900>"
+    case "buf":
+      return "<:snallabot_buf:1364103347862372434>"
+    case "mia":
+      return "<:snallabot_mia:1364103349091176468>"
+    // AFC North
+    case "cin":
+      return "<:snallabot_cin:1364103477399130144>"
+    case "pit":
+      return "<:snallabot_pit:1364103356393455667>"
+    case "bal":
+      return "<:snallabot_bal:1364105429591785543>"
+    case "cle":
+      return "<:snallabot_cle:1364103360545820742>"
+    // AFC South
+    case "ten":
+      return "<:snallabot_ten:1364103353201856562>"
+    case "ind":
+      return "<:snallabot_ind:1364103350194278484>"
+    case "jax":
+      return "<:snallabot_jax:1364103352115400774>"
+    case "hou":
+      return "<:snallabot_hou:1364103351184396318>"
+    // AFC West
+    case "kc":
+      return "<:snallabot_kc:1364105564711288852>"
+    case "lv":
+      return "<:snallabot_lv:1364105565885825114>"
+    case "den":
+      return "<:snallabot_den:1364103366765973615>"
+    case "lac":
+      return "<:snallabot_lac:1364103363297411142>"
+    // NFC East
+    case "dal":
+      return "<:snallabot_dal:1364105752087887902>"
+    case "nyg":
+      return "<:snallabot_nyg:1364103377411244124>"
+    case "phi":
+      return "<:snallabot_phi:1364105809134354472>"
+    case "was":
+      return "<:snallabot_was:1364103380728811572>"
+    // NFC North
+    case "min":
+      return "<:snallabot_min:1364106069160493066>"
+    case "chi":
+      return "<:snallabot_chi:1364103373825249331>"
+    case "det":
+      return "<:snallabot_det:1364106151796670526>"
+    case "gb":
+      return "<:snallabot_gb:1364103370289184839>"
+    // NFC South
+    case "no":
+      return "<:snallabot_no:1364103387758592051>"
+    case "car":
+      return "<:snallabot_car:1364106419804045353>"
+    case "tb":
+      return "<:snallabot_tb:1364103384222797904>"
+    case "atl":
+      return "<:snallabot_atl:1364106360383471737>"
+    // NFC West
+    case "ari":
+      return "<:snallabot_ari:1364106640315646013>"
+    case "lar":
+      return "<:snallabot_lar:1364103394800701450>"
+    case "sea":
+      return "<:snallabot_sea:1364103391260840018>"
+    case "sf":
+      return "<:snallabot_sf:1364106686083895336>"
+    // NFL Logo as default
+    default:
+      return "<:snallabot_nfl:1364108784229810257>"
+  }
+}
+
 enum SnallabotDevEmojis {
   NORMAL = "<:snallabot_normal_dev:1363761484131209226>",
   STAR = "<:snallabot_star_dev:1363761179805220884>",
@@ -262,7 +342,7 @@ enum SnallabotDevEmojis {
 
 function formatPlayerCard(player: Player, teams: { [key: string]: string }) {
 
-  const teamName = teams[`${player.teamId}`]
+  const teamAbbr = teams[`${player.teamId}`]
 
   const heightFeet = Math.floor(player.height / 12)
   const heightInches = player.height % 12
@@ -285,7 +365,7 @@ function formatPlayerCard(player: Player, teams: { [key: string]: string }) {
     : ""
 
   return `
-# ${player.position} ${player.firstName} ${player.lastName} | ${teamName} | #${player.playerBestOvr} OVR
+# ${getTeamEmoji(teamAbbr)} ${player.position} ${player.firstName} ${player.lastName} | #${player.playerBestOvr} OVR
 ${getDevTraitName(player.devTrait)} | ${age} yrs | ${formattedHeight}, ${player.weight} lbs
 ## Contract
 ${contractStatus}
