@@ -339,6 +339,22 @@ enum SnallabotDevEmojis {
   SUPERSTAR = "<:snallabot_superstar_dev:1363761181525020703>",
   XFACTOR = "<:snallabot_xfactor_dev:1363761178622562484>",
 }
+const rules = new Intl.PluralRules("en-US", { type: "ordinal" })
+const suffixes = new Map([
+  ["one", "st"],
+  ["two", "nd"],
+  ["few", "rd"],
+  ["other", "th"],
+])
+
+function getSeasonFormatting(yearsPro: number) {
+  if (yearsPro === 0) {
+    return "Rookie"
+  }
+  const rule = rules.select(yearsPro)
+  const suffix = suffixes.get(rule)
+  return `${yearsPro}${suffix} Season`
+}
 
 function formatPlayerCard(player: Player, teams: { [key: string]: string }) {
 
@@ -363,12 +379,10 @@ function formatPlayerCard(player: Player, teams: { [key: string]: string }) {
       })
       .join(", ")
     : ""
-  const experience = player.yearsPro === 0 ? "Rookie" : `${player.yearsPro} Yrs Experience`
   return `
 # ${getTeamEmoji(teamAbbr)} ${player.position} ${player.firstName} ${player.lastName} | ${player.playerBestOvr} OVR
-${getDevTraitName(player.devTrait)} | ${age} yrs | ${formattedHeight}, ${player.weight} lbs
-${experience}
-${player.yearsPro} yrs
+${getDevTraitName(player.devTrait)} | **${age} yrs** | **${formattedHeight}, ${player.weight} lbs**
+**${getSeasonFormatting(player.yearsPro)}**
 ## Contract
 ${contractStatus}
 ## Ratings
