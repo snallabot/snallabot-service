@@ -82,7 +82,7 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, token
           {
             type: ComponentType.StringSelect,
             custom_id: "player_card",
-            placeholder: "Overview",
+            placeholder: PlayerSelection.PLAYER_OVERVIEW,
             options: generatePlayerOptions(searchRosterId)
           }
         ]
@@ -126,7 +126,7 @@ async function showPlayerFullRatings(rosterId: number, client: DiscordClient, to
           {
             type: ComponentType.StringSelect,
             custom_id: "player_card",
-            placeholder: "Overview",
+            placeholder: PlayerSelection.PLAYER_FULL_RATINGS,
             options: generatePlayerOptions(rosterId)
           }
         ]
@@ -170,7 +170,7 @@ async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, to
           {
             type: ComponentType.StringSelect,
             custom_id: "player_card",
-            placeholder: "Overview",
+            placeholder: PlayerSelection.PLAYER_WEEKLY_STATS,
             options: generatePlayerOptions(rosterId)
           }
         ]
@@ -214,7 +214,7 @@ async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, to
           {
             type: ComponentType.StringSelect,
             custom_id: "player_card",
-            placeholder: "Overview",
+            placeholder: PlayerSelection.PLAYER_SEASON_STATS,
             options: generatePlayerOptions(rosterId)
           }
         ]
@@ -676,6 +676,7 @@ export default {
   },
   async handleInteraction(interaction: MessageComponentInteraction, client: DiscordClient) {
     const data = interaction.data as APIMessageStringSelectInteractionData
+    console.log(data)
     if (data.values.length !== 1) {
       throw new Error("Somehow did not receive just one selection from player card " + data.values)
     }
