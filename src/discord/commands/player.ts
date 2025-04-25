@@ -153,12 +153,12 @@ async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, to
   }))
   // 0 team id means the player is a free agent
   teamsDisplayNames["0"] = "FA"
-  await client.editMessageInteraction(token, message_id, {
+  await client.editOriginalInteraction(token, {
     flags: 32768,
     components: [
       {
         type: ComponentType.TextDisplay,
-        content: formatFullRatings(player, teamsDisplayNames)
+        content: formatWeeklyStats(player, teamsDisplayNames)
       },
       {
         type: ComponentType.Separator,
@@ -202,7 +202,7 @@ async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, to
     components: [
       {
         type: ComponentType.TextDisplay,
-        content: formatFullRatings(player, teamsDisplayNames)
+        content: formatSeasonStats(player, teamsDisplayNames)
       },
       {
         type: ComponentType.Separator,
