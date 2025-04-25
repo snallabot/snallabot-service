@@ -38,7 +38,7 @@ function generatePlayerOptions(rosterId: number) {
   ].map(option => ({ ...option, value: JSON.stringify(option.value) }))
 }
 
-async function showPlayerCard(playerSearch: string, client: DiscordClient, token: string, guild_id: string) {
+async function showPlayerCard(playerSearch: string, client: DiscordClient, token: string, guild_id: string, message_id?: string) {
   const discordLeague = await discordLeagueView.createView(guild_id)
   const leagueId = discordLeague?.leagueId
   if (!leagueId) {
@@ -64,7 +64,7 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, token
   }))
   // 0 team id means the player is a free agent
   teamsDisplayNames["0"] = "FA"
-  await client.editOriginalInteraction(token, {
+  const response = {
     flags: 32768,
     components: [
       {
@@ -88,10 +88,11 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, token
         ]
       }
     ]
-  })
+  }
+  message_id ? await client.editMessageInteraction(token, message_id, response) : await client.editOriginalInteraction(token, response)
 }
 
-async function showPlayerFullRatings(rosterId: number, client: DiscordClient, token: string, guild_id: string) {
+async function showPlayerFullRatings(rosterId: number, client: DiscordClient, token: string, guild_id: string, message_id: string) {
   const discordLeague = await discordLeagueView.createView(guild_id)
   const leagueId = discordLeague?.leagueId
   if (!leagueId) {
@@ -108,7 +109,7 @@ async function showPlayerFullRatings(rosterId: number, client: DiscordClient, to
   }))
   // 0 team id means the player is a free agent
   teamsDisplayNames["0"] = "FA"
-  await client.editOriginalInteraction(token, {
+  await client.editMessageInteraction(token, message_id, {
     flags: 32768,
     components: [
       {
@@ -135,7 +136,7 @@ async function showPlayerFullRatings(rosterId: number, client: DiscordClient, to
   })
 }
 
-async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, token: string, guild_id: string) {
+async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, token: string, guild_id: string, message_id: string) {
   const discordLeague = await discordLeagueView.createView(guild_id)
   const leagueId = discordLeague?.leagueId
   if (!leagueId) {
@@ -152,7 +153,7 @@ async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, to
   }))
   // 0 team id means the player is a free agent
   teamsDisplayNames["0"] = "FA"
-  await client.editOriginalInteraction(token, {
+  await client.editMessageInteraction(token, message_id, {
     flags: 32768,
     components: [
       {
@@ -179,7 +180,7 @@ async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, to
   })
 }
 
-async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, token: string, guild_id: string) {
+async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, token: string, guild_id: string, message_id: string) {
   const discordLeague = await discordLeagueView.createView(guild_id)
   const leagueId = discordLeague?.leagueId
   if (!leagueId) {
@@ -196,7 +197,7 @@ async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, to
   }))
   // 0 team id means the player is a free agent
   teamsDisplayNames["0"] = "FA"
-  await client.editOriginalInteraction(token, {
+  await client.editMessageInteraction(token, message_id, {
     flags: 32768,
     components: [
       {
@@ -682,13 +683,13 @@ export default {
     }
     const { rosterId, selected } = JSON.parse(data.values[0]) as Selection
     if (selected === PlayerSelection.PLAYER_OVERVIEW) {
-      showPlayerCard(`${rosterId}`, client, interaction.token, interaction.guild_id)
+      showPlayerCard(`${rosterId}`, client, interaction.token, interaction.guild_id, interaction.message_id)
     } else if (selected === PlayerSelection.PLAYER_FULL_RATINGS) {
-      showPlayerFullRatings(rosterId, client, interaction.token, interaction.guild_id)
+      showPlayerFullRatings(rosterId, client, interaction.token, interaction.guild_id, interaction.message_id)
     } else if (selected === PlayerSelection.PLAYER_WEEKLY_STATS) {
-      showPlayerWeeklyStats(rosterId, client, interaction.token, interaction.guild_id)
+      showPlayerWeeklyStats(rosterId, client, interaction.token, interaction.guild_id, interaction.message_id)
     } else if (selected === PlayerSelection.PLAYER_SEASON_STATS) {
-      showPlayerYearlyStats(rosterId, client, interaction.token, interaction.guild_id)
+      showPlayerYearlyStats(rosterId, client, interaction.token, interaction.guild_id, interaction.message_id)
     } else {
       console.error("should not have gotten here")
     }
