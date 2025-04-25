@@ -20,7 +20,7 @@ type Selection = { rosterId: number, selected: PlayerSelection }
 function formatPlaceholder(selection: PlayerSelection): string {
   switch (selection) {
     case PlayerSelection.PLAYER_OVERVIEW:
-      return "overview"
+      return "Overview"
     case PlayerSelection.PLAYER_FULL_RATINGS:
       return "Full Ratings"
     case PlayerSelection.PLAYER_SEASON_STATS:
