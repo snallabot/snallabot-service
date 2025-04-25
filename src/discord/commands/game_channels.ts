@@ -328,7 +328,7 @@ export default {
           if (!gameChannelsCommand.options || !gameChannelsCommand.options[0]) {
             throw new Error("game_channels create command misconfigured")
           }
-          const week = (gameChannelsCommand.options[0] as APIApplicationCommandInteractionDataIntegerOption).value
+          const week = Number((gameChannelsCommand.options[0] as APIApplicationCommandInteractionDataIntegerOption).value)
           if (week < 1 || week > 23 || week === 22) {
             throw new Error("Invalid week number. Valid weeks are week 1-18 and use specific playoff commands or playoff week numbers: Wildcard = 19, Divisional = 20, Conference Championship = 21, Super Bowl = 23")
           }

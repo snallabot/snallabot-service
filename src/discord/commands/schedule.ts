@@ -41,7 +41,7 @@ export default {
       throw new Error("Could not find a linked Madden league, link a league first")
     }
     const league = leagueSettings.commands.madden_league.league_id
-    const week = (command.data.options[0] as APIApplicationCommandInteractionDataIntegerOption).value
+    const week = Number((command.data.options[0] as APIApplicationCommandInteractionDataIntegerOption).value)
     if (week < 1 || week > 23 || week === 22) {
       throw new Error("Invalid week number. Valid weeks are week 1-18 and for playoffs: Wildcard = 19, Divisional = 20, Conference Championship = 21, Super Bowl = 23")
     }
