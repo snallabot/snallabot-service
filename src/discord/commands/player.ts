@@ -73,9 +73,7 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, db: F
             type: ComponentType.StringSelect,
             custom_id: `${searchRosterId}`,
             placeholder: "Overview",
-            options: [
-              PLAYER_OPTIONS
-            ]
+            options: PLAYER_OPTIONS
           }
         ]
       }
