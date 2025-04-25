@@ -1,12 +1,13 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command, AutocompleteHandler, Autocomplete } from "../commands_handler"
 import { respond, createMessageResponse, DiscordClient, deferMessage } from "../discord_utils"
-import { APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
+import { APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ComponentType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
 import { playerSearchIndex, discordLeagueView, teamSearchView } from "../../db/view"
 import fuzzysort from "fuzzysort"
 import MaddenDB from "../../db/madden_db"
 import { Player } from "../../export/madden_league_types"
+
 
 async function showPlayerCard(playerSearch: string, client: DiscordClient, db: Firestore, token: string, guild_id: string) {
   const discordLeague = await discordLeagueView.createView(guild_id)
@@ -35,24 +36,12 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, db: F
   // 0 team id means the player is a free agent
   teamsDisplayNames["0"] = "FA"
   await client.editOriginalInteraction(token, {
-    content: formatPlayerCard(player, teamsDisplayNames)
+    flags: 32768,
+    components: [{
+      type: ComponentType.TextDisplay,
+      content: formatPlayerCard(player, teamsDisplayNames)
+    }]
   })
-}
-
-function getGradeLetter(grade: number): string {
-  if (grade >= 90) return "A+"
-  if (grade >= 85) return "A"
-  if (grade >= 80) return "A-"
-  if (grade >= 75) return "B+"
-  if (grade >= 70) return "B"
-  if (grade >= 65) return "B-"
-  if (grade >= 60) return "C+"
-  if (grade >= 55) return "C"
-  if (grade >= 50) return "C-"
-  if (grade >= 45) return "D+"
-  if (grade >= 40) return "D"
-  if (grade >= 35) return "D-"
-  return "F"
 }
 
 function getTopAttributesByPosition(player: Player): Array<{ name: string, value: number }> {
