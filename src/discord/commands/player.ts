@@ -1,12 +1,31 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command, AutocompleteHandler, Autocomplete } from "../commands_handler"
 import { respond, createMessageResponse, DiscordClient, deferMessage } from "../discord_utils"
-import { APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ComponentType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
+import { APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ComponentType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
 import { playerSearchIndex, discordLeagueView, teamSearchView } from "../../db/view"
 import fuzzysort from "fuzzysort"
 import MaddenDB from "../../db/madden_db"
 import { Player } from "../../export/madden_league_types"
+
+const PLAYER_OPTIONS = [
+  {
+    label: "Overview",
+    value: "player_overview",
+  },
+  {
+    label: "Full Ratings",
+    value: "player_full_ratings"
+  },
+  {
+    label: "Weekly Stats",
+    value: "player_weekly_stats"
+  },
+  {
+    label: "Season Stats",
+    value: "player_season_stats"
+  }
+]
 
 
 async function showPlayerCard(playerSearch: string, client: DiscordClient, db: Firestore, token: string, guild_id: string) {
@@ -37,10 +56,25 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, db: F
   teamsDisplayNames["0"] = "FA"
   await client.editOriginalInteraction(token, {
     flags: 32768,
-    components: [{
-      type: ComponentType.TextDisplay,
-      content: formatPlayerCard(player, teamsDisplayNames)
-    }]
+    components: [
+      {
+        type: ComponentType.TextDisplay,
+        content: formatPlayerCard(player, teamsDisplayNames)
+      },
+      {
+        type: ComponentType.Separator,
+        divider: true,
+        spacing: SeparatorSpacingSize.Large
+      },
+      {
+        type: ComponentType.StringSelect,
+        custom_id: `${searchRosterId}`,
+        placeholder: "Overview",
+        options: [
+          PLAYER_OPTIONS
+        ]
+      }
+    ]
   })
 }
 
