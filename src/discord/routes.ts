@@ -66,6 +66,7 @@ async function handleInteraction(ctx: ParameterizedContext, client: DiscordClien
     if (messageComponentInteraction.guild_id) {
       await handleMessageComponent({ token: messageComponentInteraction.token, custom_id: messageComponentInteraction.data.custom_id, data: messageComponentInteraction.data, guild_id: messageComponentInteraction.guild_id, message_id: messageComponentInteraction.message.id }, ctx, client)
     }
+    return
   }
   // anything else fail the command
   ctx.status = 404
