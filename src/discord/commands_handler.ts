@@ -16,22 +16,27 @@ import gameChannelHandler from "./commands/game_channels"
 import exportHandler from "./commands/export"
 import standingsHandler from "./commands/standings"
 import playerHandler from "./commands/player"
+import { APIMessageComponentInteractionData } from "discord-api-types/v9"
 
 export type Command = { command_name: string, token: string, guild_id: string, data: APIChatInputApplicationCommandInteractionData, member: APIInteractionGuildMember }
 export type Autocomplete = { command_name: string, guild_id: string, data: APIAutocompleteApplicationCommandInteractionData }
+export type MessageComponentInteraction = { custom_id: string, token: string, data: APIMessageComponentInteractionData, guild_id: string }
 export interface CommandHandler {
   handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext): Promise<void>
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody
 }
 
 export interface AutocompleteHandler {
-  choices(query: Autocomplete): Promise<APIApplicationCommandOptionChoice<string | number>>
+  choices(query: Autocomplete): Promise<{ name: string, value: string }[]>
+}
+export interface MessageComponentHandler {
+  handleInteraction(interaction: MessageComponentInteraction, client: DiscordClient): Promise<void>
 }
 
 export type CommandsHandler = { [key: string]: CommandHandler | undefined }
 export type AutocompleteHandlers = Record<string, AutocompleteHandler>
-
-const SlashCommands = {
+export type MessageComponentHandlers = Record<string, MessageComponentHandler>
+const SlashCommands: CommandsHandler = {
   "league_export": leagueExportHandler,
   "dashboard": dashboardHandler,
   "game_channels": gameChannelHandler,
@@ -45,12 +50,16 @@ const SlashCommands = {
   "test": testHandler,
   "standings": standingsHandler,
   "player": playerHandler
-} as CommandsHandler
+}
 
-const AutocompleteCommands = {
+const AutocompleteCommands: AutocompleteHandlers = {
   "teams": teamsHandler,
   "player": playerHandler
-} as AutocompleteHandlers
+}
+
+const MessageComponents: MessageComponentHandlers = {
+  "player_card": playerHandler
+}
 
 export async function handleCommand(command: Command, ctx: ParameterizedContext, discordClient: DiscordClient, db: Firestore) {
   const commandName = command.command_name
@@ -110,6 +119,26 @@ export async function handleAutocomplete(command: Autocomplete, ctx: Parameteriz
   }
 }
 
+export async function handleMessageComponent(interaction: MessageComponentInteraction, ctx: ParameterizedContext, client: DiscordClient) {
+  const custom_id = interaction.custom_id
+  const handler = MessageComponents[custom_id]
+  if (handler) {
+    try {
+      await handler.handleInteraction(interaction, client)
+      ctx.status = 200
+      ctx.set("Content-Type", "application/json")
+      ctx.body = {
+        type: InteractionResponseType.DeferredMessageUpdate,
+      }
+    } catch (e) {
+      const error = e as Error
+      ctx.status = 500
+      console.error(error)
+    }
+  } else {
+    ctx.status = 500
+  }
+}
 
 
 export async function commandsInstaller(client: DiscordClient, commandNames: string[], mode: CommandMode, guildId?: string) {

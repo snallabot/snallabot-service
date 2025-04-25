@@ -347,4 +347,4 @@ export default {
     }
     return []
   }
-} as CommandHandler | AutocompleteHandler
+} as CommandHandler & AutocompleteHandler

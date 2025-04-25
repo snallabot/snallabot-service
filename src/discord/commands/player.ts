@@ -1,34 +1,44 @@
 import { ParameterizedContext } from "koa"
-import { CommandHandler, Command, AutocompleteHandler, Autocomplete } from "../commands_handler"
+import { CommandHandler, Command, AutocompleteHandler, Autocomplete, MessageComponentHandler, MessageComponentInteraction } from "../commands_handler"
 import { respond, createMessageResponse, DiscordClient, deferMessage } from "../discord_utils"
-import { APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ComponentType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
+import { APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageComponentSelectMenuInteraction, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ComponentType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
 import { playerSearchIndex, discordLeagueView, teamSearchView } from "../../db/view"
 import fuzzysort from "fuzzysort"
 import MaddenDB from "../../db/madden_db"
 import { Player } from "../../export/madden_league_types"
 
-const PLAYER_OPTIONS = [
-  {
-    label: "Overview",
-    value: "player_overview",
-  },
-  {
-    label: "Full Ratings",
-    value: "player_full_ratings"
-  },
-  {
-    label: "Weekly Stats",
-    value: "player_weekly_stats"
-  },
-  {
-    label: "Season Stats",
-    value: "player_season_stats"
-  }
-]
+enum PlayerSelection {
+  PLAYER_OVERVIEW = "player_overview",
+  PLAYER_FULL_RATINGS = "player_full_ratings",
+  PLAYER_WEEKLY_STATS = "player_weekly_stats",
+  PLAYER_SEASON_STATS = "player_season_stats"
+}
 
+type Selection = { rosterId: number, selected: PlayerSelection }
 
-async function showPlayerCard(playerSearch: string, client: DiscordClient, db: Firestore, token: string, guild_id: string) {
+function generatePlayerOptions(rosterId: number) {
+  return [
+    {
+      label: "Overview",
+      value: { rosterId: rosterId, selected: PlayerSelection.PLAYER_OVERVIEW },
+    },
+    {
+      label: "Full Ratings",
+      value: { rosterId: rosterId, selected: PlayerSelection.PLAYER_FULL_RATINGS }
+    },
+    {
+      label: "Weekly Stats",
+      value: { rosterId: rosterId, selected: PlayerSelection.PLAYER_WEEKLY_STATS }
+    },
+    {
+      label: "Season Stats",
+      value: { rosterId: rosterId, selected: PlayerSelection.PLAYER_SEASON_STATS }
+    }
+  ].map(option => ({ ...option, value: JSON.stringify(option.value) }))
+}
+
+async function showPlayerCard(playerSearch: string, client: DiscordClient, token: string, guild_id: string) {
   const discordLeague = await discordLeagueView.createView(guild_id)
   const leagueId = discordLeague?.leagueId
   if (!leagueId) {
@@ -71,9 +81,141 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, db: F
         components: [
           {
             type: ComponentType.StringSelect,
-            custom_id: `${searchRosterId}`,
+            custom_id: "player_card",
             placeholder: "Overview",
-            options: PLAYER_OPTIONS
+            options: generatePlayerOptions(searchRosterId)
+          }
+        ]
+      }
+    ]
+  })
+}
+
+async function showPlayerFullRatings(rosterId: number, client: DiscordClient, token: string, guild_id: string) {
+  const discordLeague = await discordLeagueView.createView(guild_id)
+  const leagueId = discordLeague?.leagueId
+  if (!leagueId) {
+    throw new Error(`No League connected to snallabot`)
+  }
+  const player = await MaddenDB.getPlayer(leagueId, `${rosterId}`)
+  const teamView = await teamSearchView.createView(leagueId)
+  if (!teamView) {
+    throw new Error("Missing teams?? Maybe try the command again")
+  }
+  const teamsDisplayNames = Object.fromEntries(Object.entries(teamView).map(teamEntry => {
+    const [teamId, t] = teamEntry
+    return [teamId, t.abbrName]
+  }))
+  // 0 team id means the player is a free agent
+  teamsDisplayNames["0"] = "FA"
+  await client.editOriginalInteraction(token, {
+    flags: 32768,
+    components: [
+      {
+        type: ComponentType.TextDisplay,
+        content: formatFullRatings(player, teamsDisplayNames)
+      },
+      {
+        type: ComponentType.Separator,
+        divider: true,
+        spacing: SeparatorSpacingSize.Large
+      },
+      {
+        type: ComponentType.ActionRow,
+        components: [
+          {
+            type: ComponentType.StringSelect,
+            custom_id: "player_card",
+            placeholder: "Overview",
+            options: generatePlayerOptions(rosterId)
+          }
+        ]
+      }
+    ]
+  })
+}
+
+async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, token: string, guild_id: string) {
+  const discordLeague = await discordLeagueView.createView(guild_id)
+  const leagueId = discordLeague?.leagueId
+  if (!leagueId) {
+    throw new Error(`No League connected to snallabot`)
+  }
+  const player = await MaddenDB.getPlayer(leagueId, `${rosterId}`)
+  const teamView = await teamSearchView.createView(leagueId)
+  if (!teamView) {
+    throw new Error("Missing teams?? Maybe try the command again")
+  }
+  const teamsDisplayNames = Object.fromEntries(Object.entries(teamView).map(teamEntry => {
+    const [teamId, t] = teamEntry
+    return [teamId, t.abbrName]
+  }))
+  // 0 team id means the player is a free agent
+  teamsDisplayNames["0"] = "FA"
+  await client.editOriginalInteraction(token, {
+    flags: 32768,
+    components: [
+      {
+        type: ComponentType.TextDisplay,
+        content: formatFullRatings(player, teamsDisplayNames)
+      },
+      {
+        type: ComponentType.Separator,
+        divider: true,
+        spacing: SeparatorSpacingSize.Large
+      },
+      {
+        type: ComponentType.ActionRow,
+        components: [
+          {
+            type: ComponentType.StringSelect,
+            custom_id: "player_card",
+            placeholder: "Overview",
+            options: generatePlayerOptions(rosterId)
+          }
+        ]
+      }
+    ]
+  })
+}
+
+async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, token: string, guild_id: string) {
+  const discordLeague = await discordLeagueView.createView(guild_id)
+  const leagueId = discordLeague?.leagueId
+  if (!leagueId) {
+    throw new Error(`No League connected to snallabot`)
+  }
+  const player = await MaddenDB.getPlayer(leagueId, `${rosterId}`)
+  const teamView = await teamSearchView.createView(leagueId)
+  if (!teamView) {
+    throw new Error("Missing teams?? Maybe try the command again")
+  }
+  const teamsDisplayNames = Object.fromEntries(Object.entries(teamView).map(teamEntry => {
+    const [teamId, t] = teamEntry
+    return [teamId, t.abbrName]
+  }))
+  // 0 team id means the player is a free agent
+  teamsDisplayNames["0"] = "FA"
+  await client.editOriginalInteraction(token, {
+    flags: 32768,
+    components: [
+      {
+        type: ComponentType.TextDisplay,
+        content: formatFullRatings(player, teamsDisplayNames)
+      },
+      {
+        type: ComponentType.Separator,
+        divider: true,
+        spacing: SeparatorSpacingSize.Large
+      },
+      {
+        type: ComponentType.ActionRow,
+        components: [
+          {
+            type: ComponentType.StringSelect,
+            custom_id: "player_card",
+            placeholder: "Overview",
+            options: generatePlayerOptions(rosterId)
           }
         ]
       }
@@ -267,18 +409,6 @@ function getDevTraitName(devTrait: number): string {
   }
 }
 
-function getStateNameFromCode(stateCode: number): string {
-  const states: { [key: number]: string } = {
-    1: "AL", 2: "AK", 3: "AZ", 4: "AR", 5: "CA", 6: "CO", 7: "CT", 8: "DE", 9: "FL", 10: "GA",
-    11: "HI", 12: "ID", 13: "IL", 14: "IN", 15: "IA", 16: "KS", 17: "KY", 18: "LA", 19: "ME", 20: "MD",
-    21: "MA", 22: "MI", 23: "MN", 24: "MS", 25: "MO", 26: "MT", 27: "NE", 28: "NV", 29: "NH", 30: "NJ",
-    31: "NM", 32: "NY", 33: "NC", 34: "ND", 35: "OH", 36: "OK", 37: "OR", 38: "PA", 39: "RI", 40: "SC",
-    41: "SD", 42: "TN", 43: "TX", 44: "UT", 45: "VT", 46: "VA", 47: "WA", 48: "WV", 49: "WI", 50: "WY",
-    51: "DC"
-  }
-  return states[stateCode] || "Unknown"
-}
-
 function getTeamEmoji(abbr: string): string {
   switch (abbr.toLowerCase()) {
     // AFC East
@@ -416,6 +546,38 @@ ${topAttributes.map(attr => `> **${attr.name}:** ${attr.value}`).join('\n')}${ab
 `
 }
 
+function formatFullRatings(player: Player, teams: { [key: string]: string }) {
+
+  const teamAbbr = teams[`${player.teamId}`]
+
+  return `
+# ${getTeamEmoji(teamAbbr)} ${player.position} ${player.firstName} ${player.lastName}
+## ${getDevTraitName(player.devTrait)} **${player.playerBestOvr} OVR**
+## Ratings
+`
+}
+function formatWeeklyStats(player: Player, teams: { [key: string]: string }) {
+
+  const teamAbbr = teams[`${player.teamId}`]
+
+  return `
+# ${getTeamEmoji(teamAbbr)} ${player.position} ${player.firstName} ${player.lastName}
+## ${getDevTraitName(player.devTrait)} **${player.playerBestOvr} OVR**
+## Stats
+`
+}
+
+function formatSeasonStats(player: Player, teams: { [key: string]: string }) {
+
+  const teamAbbr = teams[`${player.teamId}`]
+
+  return `
+# ${getTeamEmoji(teamAbbr)} ${player.position} ${player.firstName} ${player.lastName}
+## ${getDevTraitName(player.devTrait)} **${player.playerBestOvr} OVR**
+## Stats
+`
+}
+
 type PlayerFound = { teamAbbr: string, rosterId: number, firstName: string, lastName: string, teamId: number, position: string }
 
 async function searchPlayerForRosterId(query: string, leagueId: string): Promise<PlayerFound[]> {
@@ -435,7 +597,7 @@ async function searchPlayerForRosterId(query: string, leagueId: string): Promise
 }
 
 export default {
-  async handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext) {
+  async handleCommand(command: Command, client: DiscordClient, _: Firestore, ctx: ParameterizedContext) {
     const { guild_id, token } = command
     if (!command.data.options) {
       throw new Error("logger command not defined properly")
@@ -443,14 +605,13 @@ export default {
     const options = command.data.options
     const playerCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
     const subCommand = playerCommand.name
-    const doc = await db.collection("league_settings").doc(guild_id).get()
     if (subCommand === "get") {
       if (!playerCommand.options || !playerCommand.options[0]) {
         throw new Error("player get misconfigured")
       }
       const playerSearch = (playerCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value
       respond(ctx, deferMessage())
-      showPlayerCard(playerSearch, client, db, token, guild_id)
+      showPlayerCard(playerSearch, client, token, guild_id)
     } else if (subCommand === "list") {
       respond(ctx, createMessageResponse("wip"))
     } else {
@@ -512,5 +673,23 @@ export default {
       return results.map(r => ({ name: `${r.teamAbbr} ${r.position.toUpperCase()} ${r.firstName} ${r.lastName}`, value: `${r.rosterId}` }))
     }
     return []
+  },
+  async handleInteraction(interaction: MessageComponentInteraction, client: DiscordClient) {
+    const data = interaction.data as APIMessageStringSelectInteractionData
+    if (data.values.length !== 1) {
+      throw new Error("Somehow did not receive just one selection from player card " + data.values)
+    }
+    const { rosterId, selected } = JSON.parse(data.values[0]) as Selection
+    if (selected === PlayerSelection.PLAYER_OVERVIEW) {
+      showPlayerCard(`${rosterId}`, client, interaction.token, interaction.guild_id)
+    } else if (selected === PlayerSelection.PLAYER_FULL_RATINGS) {
+      showPlayerFullRatings(rosterId, client, interaction.token, interaction.guild_id)
+    } else if (selected === PlayerSelection.PLAYER_WEEKLY_STATS) {
+      showPlayerWeeklyStats(rosterId, client, interaction.token, interaction.guild_id)
+    } else if (selected === PlayerSelection.PLAYER_SEASON_STATS) {
+      showPlayerYearlyStats(rosterId, client, interaction.token, interaction.guild_id)
+    } else {
+      console.error("should not have gotten here")
+    }
   }
-} as CommandHandler | AutocompleteHandler
+} as CommandHandler & AutocompleteHandler & MessageComponentHandler
