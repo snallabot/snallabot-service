@@ -160,7 +160,7 @@ export default {
       const user = (streamsCommand.options[0] as APIApplicationCommandInteractionDataUserOption).value
       if (leagueSettings?.commands?.stream_count?.channel?.id) {
         const currentCounts = leagueSettings?.commands?.stream_count?.counts ?? []
-        const step = (streamsCommand?.options?.[1] as APIApplicationCommandInteractionDataIntegerOption)?.value || 1
+        const step = Number((streamsCommand?.options?.[1] as APIApplicationCommandInteractionDataIntegerOption)?.value || 1)
         const idx = currentCounts.findIndex(u => u.user.id === user)
         const newCounts = idx !== -1 ? currentCounts.map(u => u.user.id === user ? { user: u.user, count: u.count + step } : u) : currentCounts.concat([{ user: { id: user, id_type: DiscordIdType.USER }, count: 1 }])
         const newStreamMessage = createStreamCountMessage(newCounts)

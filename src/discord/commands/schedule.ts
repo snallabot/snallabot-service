@@ -48,7 +48,7 @@ export default {
     const season = (command.data.options?.[1] as APIApplicationCommandInteractionDataIntegerOption)?.value
     const [schedule, teams] = await Promise.all([(async () => {
       if (season) {
-        const seasonIndex = season < 100 ? season : season - MADDEN_SEASON
+        const seasonIndex = Number(season) < 100 ? Number(season) : Number(season) - MADDEN_SEASON
         return MaddenClient.getWeekScheduleForSeason(league, week, seasonIndex)
       } else {
         return MaddenClient.getLatestWeekSchedule(league, week)

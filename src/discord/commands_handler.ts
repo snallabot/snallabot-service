@@ -1,6 +1,6 @@
 import { ParameterizedContext } from "koa"
 import { APIChatInputApplicationCommandInteractionData, APIInteractionGuildMember } from "discord-api-types/payloads"
-import { APIApplicationCommandOptionChoice, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
+import { APIApplicationCommandOptionChoice, APIAutocompleteApplicationCommandInteractionData, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { createMessageResponse, respond, DiscordClient, CommandMode } from "./discord_utils"
 import { Firestore } from "firebase-admin/firestore"
 import leagueExportHandler from "./commands/league_export"
@@ -18,7 +18,7 @@ import standingsHandler from "./commands/standings"
 import playerHandler from "./commands/player"
 
 export type Command = { command_name: string, token: string, guild_id: string, data: APIChatInputApplicationCommandInteractionData, member: APIInteractionGuildMember }
-export type Autocomplete = { command_name: string, guild_id: string, data: APIChatInputApplicationCommandInteractionData }
+export type Autocomplete = { command_name: string, guild_id: string, data: APIAutocompleteApplicationCommandInteractionData }
 export interface CommandHandler {
   handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext): Promise<void>
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody
