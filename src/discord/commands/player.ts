@@ -17,6 +17,19 @@ enum PlayerSelection {
 
 type Selection = { rosterId: number, selected: PlayerSelection }
 
+function formatPlaceholder(selection: PlayerSelection): string {
+  switch (selection) {
+    case PlayerSelection.PLAYER_OVERVIEW:
+      return "overview"
+    case PlayerSelection.PLAYER_FULL_RATINGS:
+      return "Full Ratings"
+    case PlayerSelection.PLAYER_SEASON_STATS:
+      return "Season Stats"
+    case PlayerSelection.PLAYER_WEEKLY_STATS:
+      return "Weekly Stats"
+  }
+}
+
 function generatePlayerOptions(rosterId: number) {
   return [
     {
@@ -83,7 +96,7 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, token
           {
             type: ComponentType.StringSelect,
             custom_id: "player_card",
-            placeholder: PlayerSelection.PLAYER_OVERVIEW,
+            placeholder: formatPlaceholder(PlayerSelection.PLAYER_OVERVIEW),
             options: generatePlayerOptions(searchRosterId)
           }
         ]
@@ -127,7 +140,7 @@ async function showPlayerFullRatings(rosterId: number, client: DiscordClient, to
           {
             type: ComponentType.StringSelect,
             custom_id: "player_card",
-            placeholder: PlayerSelection.PLAYER_FULL_RATINGS,
+            placeholder: formatPlaceholder(PlayerSelection.PLAYER_FULL_RATINGS),
             options: generatePlayerOptions(rosterId)
           }
         ]
@@ -171,7 +184,7 @@ async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, to
           {
             type: ComponentType.StringSelect,
             custom_id: "player_card",
-            placeholder: PlayerSelection.PLAYER_WEEKLY_STATS,
+            placeholder: formatPlaceholder(PlayerSelection.PLAYER_WEEKLY_STATS),
             options: generatePlayerOptions(rosterId)
           }
         ]
@@ -215,7 +228,7 @@ async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, to
           {
             type: ComponentType.StringSelect,
             custom_id: "player_card",
-            placeholder: PlayerSelection.PLAYER_SEASON_STATS,
+            placeholder: formatPlaceholder(PlayerSelection.PLAYER_SEASON_STATS),
             options: generatePlayerOptions(rosterId)
           }
         ]
