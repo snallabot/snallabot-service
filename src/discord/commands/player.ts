@@ -676,7 +676,7 @@ export default {
   },
   async handleInteraction(interaction: MessageComponentInteraction, client: DiscordClient) {
     const data = interaction.data as APIMessageStringSelectInteractionData
-    console.log(data)
+    console.log(interaction)
     if (data.values.length !== 1) {
       throw new Error("Somehow did not receive just one selection from player card " + data.values)
     }

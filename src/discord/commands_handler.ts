@@ -124,7 +124,6 @@ export async function handleMessageComponent(interaction: MessageComponentIntera
   const handler = MessageComponents[custom_id]
   if (handler) {
     try {
-      console.log("handling with " + custom_id)
       await handler.handleInteraction(interaction, client)
       ctx.status = 200
       ctx.set("Content-Type", "application/json")

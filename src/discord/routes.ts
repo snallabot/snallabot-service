@@ -64,7 +64,6 @@ async function handleInteraction(ctx: ParameterizedContext, client: DiscordClien
   } else if (interactionType === InteractionType.MessageComponent) {
     const messageComponentInteraction = interaction as APIMessageComponentInteraction
     if (messageComponentInteraction.guild_id) {
-      console.log("handling interaction")
       await handleMessageComponent({ token: messageComponentInteraction.token, custom_id: messageComponentInteraction.data.custom_id, data: messageComponentInteraction.data, guild_id: messageComponentInteraction.guild_id }, ctx, client)
     }
   }
