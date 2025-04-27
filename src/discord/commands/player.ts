@@ -561,13 +561,105 @@ ${topAttributes.map(attr => `> **${attr.name}:** ${attr.value}`).join('\n')}${ab
 }
 
 function formatFullRatings(player: Player, teams: { [key: string]: string }) {
-
   const teamAbbr = teams[`${player.teamId}`]
 
   return `
 # ${getTeamEmoji(teamAbbr)} ${player.position} ${player.firstName} ${player.lastName}
 ## ${getDevTraitName(player.devTrait)} **${player.playerBestOvr} OVR**
 ## Ratings
+__**Physical Attributes:**__
+**Speed:** ${player.speedRating}
+**Acceleration:** ${player.accelRating}
+**Agility:** ${player.agilityRating}
+**Strength:** ${player.strengthRating}
+**Jump:** ${player.jumpRating}
+**Stamina:** ${player.staminaRating}
+**Injury:** ${player.injuryRating}
+**Toughness:** ${player.toughRating}
+**Awareness:** ${player.awareRating}
+
+__**Offensive Skills:**__
+**Carrying:** ${player.carryRating}
+**Break Tackle:** ${player.breakTackleRating}
+**Trucking:** ${player.truckRating}
+**Stiff Arm:** ${player.stiffArmRating}
+**Spin Move:** ${player.spinMoveRating}
+**Juke Move:** ${player.jukeMoveRating}
+**Change of Direction:** ${player.changeOfDirectionRating}
+**Ball Carrier Vision:** ${player.bCVRating}
+
+__**Passing Skills:**__
+**Throw Power:** ${player.throwPowerRating}
+**Throw Accuracy:** ${player.throwAccRating}
+**Throw Accuracy Short:** ${player.throwAccShortRating}
+**Throw Accuracy Mid:** ${player.throwAccMidRating}
+**Throw Accuracy Deep:** ${player.throwAccDeepRating}
+**Throw On Run:** ${player.throwOnRunRating}
+**Play Action:** ${player.playActionRating}
+**Throw Under Pressure:** ${player.throwUnderPressureRating}
+**Break Sack:** ${player.breakSackRating}
+
+__**Receiving Skills:**__
+**Catching:** ${player.catchRating}
+**Spectacular Catch:** ${player.specCatchRating}
+**Catch In Traffic:** ${player.cITRating}
+**Route Running Short:** ${player.routeRunShortRating}
+**Route Running Med:** ${player.routeRunMedRating}
+**Route Running Deep:** ${player.routeRunDeepRating}
+**Release:** ${player.releaseRating}
+
+__**Blocking Skills:**__
+**Run Block:** ${player.runBlockRating}
+**Run Block Power:** ${player.runBlockPowerRating}
+**Run Block Finesse:** ${player.runBlockFinesseRating}
+**Pass Block:** ${player.passBlockRating}
+**Pass Block Power:** ${player.passBlockPowerRating}
+**Pass Block Finesse:** ${player.passBlockFinesseRating}
+**Impact Block:** ${player.impactBlockRating}
+**Lead Block:** ${player.leadBlockRating}
+
+__**Defensive Skills:**__
+**Tackle:** ${player.tackleRating}
+**Hit Power:** ${player.hitPowerRating}
+**Power Moves:** ${player.powerMovesRating}
+**Finesse Moves:** ${player.finesseMovesRating}
+**Block Shedding:** ${player.blockShedRating}
+**Pursuit:** ${player.pursuitRating}
+**Play Recognition:** ${player.playRecRating}
+**Man Coverage:** ${player.manCoverRating}
+**Zone Coverage:** ${player.zoneCoverRating}
+**Press:** ${player.pressRating}
+
+__**Special Teams:**__
+**Kick Power:** ${player.kickPowerRating}
+**Kick Accuracy:** ${player.kickAccRating}
+**Kick Return:** ${player.kickRetRating}
+
+__**Traits:**__
+**Clutch:** ${player.clutchTrait}
+**Tight Spiral:** ${player.tightSpiralTrait}
+**Sense Pressure:** ${player.sensePressureTrait}
+**Throw Away:** ${player.throwAwayTrait}
+**Force Pass:** ${player.forcePassTrait}
+**QB Style:** ${player.qBStyleTrait}
+**LB Style:** ${player.lBStyleTrait}
+**DL Swim:** ${player.dLSwimTrait}
+**DL Spin:** ${player.dLSpinTrait}
+**DL Bull Rush:** ${player.dLBullRushTrait}
+**High Motor:** ${player.highMotorTrait}
+**Penalty:** ${player.penaltyTrait}
+**Big Hit:** ${player.bigHitTrait}
+**Strip Ball:** ${player.stripBallTrait}
+**Play Ball:** ${player.playBallTrait}
+**Predict:** ${player.predictTrait}
+**Cover Ball:** ${player.coverBallTrait}
+**Fight For Yards:** ${player.fightForYardsTrait}
+**YAC Catch:** ${player.yACCatchTrait}
+**Possession Catch:** ${player.posCatchTrait}
+**Highlight Possession Catch:** ${player.hPCatchTrait}
+**Drop Open Pass:** ${player.dropOpenPassTrait}
+**Feet In Bounds:** ${player.feetInBoundsTrait}
+**Run Style:** ${player.runStyle}
 `
 }
 function formatWeeklyStats(player: Player, teams: { [key: string]: string }) {
