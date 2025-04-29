@@ -1,13 +1,12 @@
 import { Agent, fetch } from "undici";
-import { CLIENT_ID, CLIENT_SECRET, AUTH_SOURCE, AccountToken, BLAZE_SERVICE, SystemConsole, BLAZE_PRODUCT_NAME, BlazeAuthenticatedResponse, MACHINE_KEY, League, GetMyLeaguesResponse, LeagueResponse, BlazeLeagueResponse, BLAZE_SERVICE_TO_PATH } from "./ea_constants"
+import { CLIENT_ID, CLIENT_SECRET, AUTH_SOURCE, AccountToken, BLAZE_SERVICE, SystemConsole, BLAZE_PRODUCT_NAME, BlazeAuthenticatedResponse, MACHINE_KEY, League, GetMyLeaguesResponse, LeagueResponse, BlazeLeagueResponse } from "./ea_constants"
 import { EAAccountError } from "./routes";
 import { constants, randomBytes, createHash } from "crypto"
 import { Buffer } from "buffer"
 import { TeamExport, StandingExport, SchedulesExport, RushingExport, TeamStatsExport, PuntingExport, ReceivingExport, DefensiveExport, KickingExport, PassingExport, RosterExport } from "../export/madden_league_types"
 import db from "../db/firebase"
 import { SNALLABOT_EXPORT, createDestination } from "../export/exporter";
-import { readFileSync } from "fs";
-import { Storage } from "@google-cloud/storage";
+
 
 export enum LeagueData {
   TEAMS = "CareerMode_GetLeagueTeamsExport",
@@ -216,26 +215,9 @@ async function getExportData<T>(token: TokenInformation, session: SessionInforma
       body: JSON.stringify(body)
     }
   )
-  const textRes = res1.clone()
   try {
     return await res1.json() as T
   } catch (e) {
-    const text = await textRes.text()
-    let serviceAccount;
-    if (process.env.SERVICE_ACCOUNT_FILE) {
-      serviceAccount = JSON.parse(readFileSync(process.env.SERVICE_ACCOUNT_FILE, 'utf8'))
-    } else if (process.env.SERVICE_ACCOUNT) {
-      serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT)
-    } else {
-      throw new Error("no SA")
-    }
-    const storage = new Storage({
-      projectId: "snallabot",
-      credentials: serviceAccount
-    })
-
-    const bucket = storage.bucket("league_hashes")
-    await bucket.file("errors/errors.txt").save(text, { contentType: "text/plain" })
     throw new EAAccountError(`Could not fetch league data, error: ${e}`, "No Guidance")
   }
 }
