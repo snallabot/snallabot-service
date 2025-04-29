@@ -216,7 +216,9 @@ async function getExportData<T>(token: TokenInformation, session: SessionInforma
   )
   try {
     const text = await res1.text()
+    console.log("replacing")
     const replacedText = text.replaceAll(/[\u0000-\u001F\u007F-\u009F]/g, "")
+    console.log("replacingdone")
     return JSON.parse(replacedText) as T
   } catch (e) {
     throw new EAAccountError(`Could not fetch league data, error: ${e}`, "No Guidance")
