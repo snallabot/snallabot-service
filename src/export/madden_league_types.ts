@@ -384,27 +384,77 @@ export type Ability = {
   isEmpty: boolean
 
 }
+export enum YesNoTrait {
+  YES = 0,
+  NO = 1
+}
+
+export enum DevTrait {
+  NORMAL = 0,
+  STAR = 1,
+  SUPERSTAR = 2,
+  XFACTOR = 3
+}
+
+export enum SensePressureTrait {
+  PARANOID = 0,
+  TRIGGER_HAPPY = 1,
+  IDEAL = 2,
+  AVERAGE = 3,
+  OBLIVIOUS = 4
+}
+
+export enum CoverBallTrait {
+  NEVER = 1,
+  ON_BIG_HITS = 2,
+  ON_MEDIUM_HITS = 3,
+  FOR_ALL_HITS = 4,
+  ALWAYS = 5
+}
+
+export enum PlayBallTrait {
+  CONSERVATIVE = 0,
+  BALANCED = 1,
+  AGGRESSIVE = 2,
+}
+
+export enum PenaltyTrait {
+  UNDISCIPLINED = 0,
+  NORMAL = 1,
+  DISCIPLINED = 2
+}
+
+export enum QBStyleTrait {
+  POCKET = 0,
+  BALANCED = 1,
+  SCRAMBLING = 2,
+}
+export enum LBStyleTrait {
+  PASS_RUSH = 0,
+  BALANCED = 1,
+  COVER_LB = 2,
+}
+
 
 export type Player = {
   rookieYear: number,
   throwOnRunRating: number,
   powerMovesRating: number,
-  dropOpenPassTrait: number,
-  hPCatchTrait: number,
+  dropOpenPassTrait: YesNoTrait,
+  hPCatchTrait: YesNoTrait,
   kickAccRating: number,
-  dLSpinTrait: number,
+  dLSpinTrait: YesNoTrait,
   runBlockFinesseRating: number,
   throwPowerRating: number,
-  forcePassTrait: number,
   homeState: number,
   agilityRating: number,
-  posCatchTrait: number,
+  posCatchTrait: YesNoTrait,
   hitPowerRating: number,
   legacyScore: number,
   throwAccShortRating: number,
   stiffArmRating: number,
   routeRunShortRating: number,
-  feetInBoundsTrait: number,
+  feetInBoundsTrait: YesNoTrait,
   pressRating: number,
   height: number,
   rosterId: number,
@@ -416,10 +466,10 @@ export type Player = {
   breakTackleRating: number,
   jukeMoveRating: number,
   throwAccDeepRating: number,
-  dLBullRushTrait: number,
-  dLSwimTrait: number,
+  dLBullRushTrait: YesNoTrait,
+  dLSwimTrait: YesNoTrait,
   capReleasePenalty: number,
-  devTrait: number,
+  devTrait: DevTrait,
   catchRating: number,
   capHit: number,
   lastName: string,
@@ -429,18 +479,18 @@ export type Player = {
   strengthRating: number,
   contractLength: number,
   desiredLength: number,
-  sensePressureTrait: number,
-  bigHitTrait: number,
+  sensePressureTrait: SensePressureTrait,
+  bigHitTrait: YesNoTrait,
   passBlockFinesseRating: number,
   awareRating: number,
   isFreeAgent: boolean,
   runBlockPowerRating: number,
   capReleaseNetSavings: number,
-  highMotorTrait: number,
+  highMotorTrait: YesNoTrait,
   routeRunMedRating: number,
   productionGrade: number,
   tackleRating: number,
-  throwAwayTrait: number,
+  throwAwayTrait: YesNoTrait,
   experiencePoints: number,
   bCVRating: number,
   sizeGrade: number,
@@ -449,11 +499,11 @@ export type Player = {
   runBlockRating: number,
   durabilityGrade: number,
   birthDay: number,
-  coverBallTrait: number,
+  coverBallTrait: CoverBallTrait,
   skillPoints: number,
-  predictTrait: number,
+  predictTrait: YesNoTrait,
   teamSchemeOvr: number,
-  playBallTrait: number,
+  playBallTrait: PlayBallTrait,
   birthMonth: number,
   kickPowerRating: number,
   jumpRating: number,
@@ -468,7 +518,7 @@ export type Player = {
   isOnPracticeSquad: false,
   finesseMovesRating: number,
   specCatchRating: number,
-  tightSpiralTrait: number,
+  tightSpiralTrait: YesNoTrait,
   manCoverRating: number,
   draftPick: number,
   zoneCoverRating: number,
@@ -480,7 +530,7 @@ export type Player = {
   teamId: number,
   speedRating: number,
   breakSackRating: number,
-  yACCatchTrait: number,
+  yACCatchTrait: YesNoTrait,
   runStyle: number,
   portraitId: number,
   college: string,
@@ -494,15 +544,15 @@ export type Player = {
   throwUnderPressureRating: number,
   yearsPro: number,
   spinMoveRating: number,
-  clutchTrait: number,
+  clutchTrait: YesNoTrait,
   releaseRating: number,
   rosterGoalList: [],
-  penaltyTrait: number,
-  stripBallTrait: number,
-  qBStyleTrait: number,
+  penaltyTrait: PenaltyTrait,
+  stripBallTrait: YesNoTrait,
+  qBStyleTrait: QBStyleTrait,
   position: string,
   injuryRating: number,
-  fightForYardsTrait: number,
+  fightForYardsTrait: YesNoTrait,
   signatureSlotList: Array<Ability>,
   accelRating: number,
   playerSchemeOvr: number,
@@ -512,7 +562,7 @@ export type Player = {
   presentationId: number,
   playRecRating: number,
   scheme: number,
-  lBStyleTrait: number,
+  lBStyleTrait: LBStyleTrait,
   throwAccMidRating: number,
   contractYearsLeft: number,
   routeRunDeepRating: number,

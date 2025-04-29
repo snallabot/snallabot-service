@@ -6,7 +6,7 @@ import { Firestore } from "firebase-admin/firestore"
 import { playerSearchIndex, discordLeagueView, teamSearchView } from "../../db/view"
 import fuzzysort from "fuzzysort"
 import MaddenDB from "../../db/madden_db"
-import { Player } from "../../export/madden_league_types"
+import { DevTrait, Player, YesNoTrait } from "../../export/madden_league_types"
 
 enum PlayerSelection {
   PLAYER_OVERVIEW = "player_overview",
@@ -413,12 +413,12 @@ function getTopAttributesByPosition(player: Player): Array<{ name: string, value
 }
 
 
-function getDevTraitName(devTrait: number): string {
+function getDevTraitName(devTrait: DevTrait): string {
   switch (devTrait) {
-    case 0: return SnallabotDevEmojis.NORMAL
-    case 1: return SnallabotDevEmojis.STAR
-    case 2: return SnallabotDevEmojis.SUPERSTAR
-    case 3: return SnallabotDevEmojis.XFACTOR
+    case DevTrait.NORMAL: return SnallabotDevEmojis.NORMAL
+    case DevTrait.STAR: return SnallabotDevEmojis.STAR
+    case DevTrait.SUPERSTAR: return SnallabotDevEmojis.SUPERSTAR
+    case DevTrait.XFACTOR: return SnallabotDevEmojis.XFACTOR
     default: return "Unknown"
   }
 }
@@ -560,6 +560,14 @@ ${topAttributes.map(attr => `> **${attr.name}:** ${attr.value}`).join('\n')}${ab
 `
 }
 
+function formatYesNoTrait(trait: YesNoTrait) {
+  switch (trait) {
+    case YesNoTrait.YES:
+    case YesNoTrait.NO:
+    default: "Unknown"
+  }
+}
+
 function formatFullRatings(player: Player, teams: { [key: string]: string }) {
   const teamAbbr = teams[`${player.teamId}`]
 
@@ -640,7 +648,6 @@ __**Traits:**__
 **Tight Spiral:** ${player.tightSpiralTrait}
 **Sense Pressure:** ${player.sensePressureTrait}
 **Throw Away:** ${player.throwAwayTrait}
-**Force Pass:** ${player.forcePassTrait}
 **QB Style:** ${player.qBStyleTrait}
 **LB Style:** ${player.lBStyleTrait}
 **DL Swim:** ${player.dLSwimTrait}
