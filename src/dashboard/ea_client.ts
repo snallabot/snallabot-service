@@ -216,10 +216,10 @@ async function getExportData<T>(token: TokenInformation, session: SessionInforma
       body: JSON.stringify(body)
     }
   )
+  const textRes = res1.clone()
   try {
     return await res1.json() as T
   } catch (e) {
-    const textRes = res1.clone()
     const text = await textRes.text()
     let serviceAccount;
     if (process.env.SERVICE_ACCOUNT_FILE) {
