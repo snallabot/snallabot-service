@@ -135,7 +135,7 @@ const MaddenDB: MaddenDB = {
       } catch (e) {
         retryCount = retryCount + 1
         await new Promise((r) => setTimeout(r, 1000))
-        console.log("errored, slept and retrying")
+        console.log("errored, slept and retrying, " + e)
       }
     }
     Object.entries(Object.groupBy(events, e => e.event_type)).map(async entry => {
