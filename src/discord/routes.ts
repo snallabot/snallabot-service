@@ -155,7 +155,7 @@ MaddenDB.on<MaddenGame>("MADDEN_SCHEDULE", async (events) => {
             try {
               await notifier.deleteGameChannel(channelState, season, week, [{ id: SNALLABOT_USER, id_type: DiscordIdType.USER }])
             } catch (e) {
-              console.log("could not delete channel: " + channelState.channel.id)
+
             }
           }
         }))
