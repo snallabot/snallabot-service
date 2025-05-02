@@ -127,7 +127,6 @@ async function updateScoreboard(leagueSettings: LeagueSettings, guildId: string,
   try {
     await prodClient.requestDiscord(`channels/${scoreboard_channel.id}/messages/${scoreboard.id}`, { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
   } catch (e) {
-    console.warn(`could not update scoreboard ${e}`)
   }
 }
 
@@ -161,7 +160,7 @@ MaddenDB.on<MaddenGame>("MADDEN_SCHEDULE", async (events) => {
             try {
               await notifier.deleteGameChannel(channelState, season, week, [{ id: SNALLABOT_USER, id_type: DiscordIdType.USER }])
             } catch (e) {
-              console.log("could not delete channel: " + channelState.channel.id)
+
             }
           }
         }))
@@ -206,7 +205,6 @@ discordClient.on("guildMemberRemove", async (user, guild) => {
       await prodClient.requestDiscord(`channels/${leagueSettings.commands.teams.channel.id}/messages/${leagueSettings.commands.teams.messageId.id}`,
         { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
     } catch (e) {
-      console.log("could not update team message " + e)
     }
   }
 });
@@ -244,7 +242,7 @@ discordClient.on("guildMemberUpdate", async (member, old) => {
           })
           assignments[teamId].discord_user = { id: userInTeam[0].id, id_type: DiscordIdType.USER }
         } else {
-          console.log(`Found multiple users ${userInTeam.map(u => u.id)} with role ${assignment.discord_role.id}`)
+
         }
       }
     }))
@@ -253,7 +251,6 @@ discordClient.on("guildMemberUpdate", async (member, old) => {
       await prodClient.requestDiscord(`channels/${leagueSettings.commands.teams.channel.id}/messages/${leagueSettings.commands.teams.messageId.id}`,
         { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
     } catch (e) {
-      console.log("could not update team message for guild " + guildId + " " + e)
     }
   }
 });
@@ -296,10 +293,8 @@ discordClient.on("messageReactionAdd", async (msg, reactor, reaction) => {
         await new Promise((r) => setTimeout(r, 5000 + jitter * 1000));
 
         try {
-          console.log("UPDATING " + channelState.channel.id)
           await notifier.update(channelState, weeklyState.seasonIndex, weeklyState.week)
         } catch (e) {
-          console.log("could not update notifier " + e)
         }
       }
     }))

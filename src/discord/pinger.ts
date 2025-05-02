@@ -37,7 +37,6 @@ async function updateEachLeagueNotifier() {
             await new Promise((r) => setTimeout(r, 500 + jitter * 100));
             await notifier.update(channelState, weeklyState.seasonIndex, weeklyState.week)
           } catch (e) {
-            console.log("could not update notifier channel " + channelId + " guild" + leagueSettingsDoc.id)
           }
 
         }))

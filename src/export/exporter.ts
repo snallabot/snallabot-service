@@ -274,7 +274,6 @@ async function writeTree(league: string, request_type: string, event_type: strin
   try {
     await bucket.file(filePath(league, event_type, request_type)).save(JSON.stringify(tree), { contentType: "application/json" })
   } catch (e) {
-    console.error(e)
   }
 }
 

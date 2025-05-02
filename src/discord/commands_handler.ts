@@ -71,7 +71,6 @@ export async function handleCommand(command: Command, ctx: ParameterizedContext,
       const error = e as Error
       ctx.status = 200
       respond(ctx, createMessageResponse(`Fatal Error in ${commandName}: ${error.message}`))
-      console.error(e)
 
     }
   } else {
@@ -104,8 +103,6 @@ export async function handleAutocomplete(command: Autocomplete, ctx: Parameteriz
           choices: []
         }
       }
-      console.error(`could not autocomplete ${command.guild_id}: ${e}`)
-
     }
   } else {
     ctx.status = 200

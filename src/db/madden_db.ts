@@ -112,32 +112,39 @@ function createTeamList(teams: StoredEvent<Team>[]): TeamList {
 
 const MaddenDB: MaddenDB = {
   async appendEvents<Event>(events: SnallabotEvent<Event>[], idFn: (event: Event) => string) {
-    const batch = db.batch()
-    const timestamp = new Date()
-    await Promise.all(events.map(async event => {
-      const eventId = idFn(event)
-      const doc = db.collection("league_data").doc(event.key).collection(event.event_type).doc(eventId)
-      const fetchedDoc = await doc.get()
-      if (fetchedDoc.exists) {
-        const { timestamp: oldTimestamp, id, ...oldEvent } = fetchedDoc.data() as StoredEvent<Event>
-        const change = createEventHistoryUpdate(event, oldEvent)
-        if (Object.keys(change).length > 0) {
-          const changeId = randomUUID()
-          const historyDoc = db.collection("league_data").doc(event.key).collection(event.event_type).doc(eventId).collection("history").doc(changeId)
-          batch.set(historyDoc, { ...change, timestamp: timestamp })
+    const BATCH_SIZE = 500;
+    const timestamp = new Date();
+    const totalBatches = Math.ceil(events.length / BATCH_SIZE);
+    for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+      const startIdx = batchIndex * BATCH_SIZE;
+      const endIdx = Math.min((batchIndex + 1) * BATCH_SIZE, events.length);
+      const batchEvents = events.slice(startIdx, endIdx);
+      const batch = db.batch()
+      await Promise.all(batchEvents.map(async event => {
+        const eventId = idFn(event)
+        const doc = db.collection("league_data").doc(event.key).collection(event.event_type).doc(eventId)
+        const fetchedDoc = await doc.get()
+        if (fetchedDoc.exists) {
+          const { timestamp: oldTimestamp, id, ...oldEvent } = fetchedDoc.data() as StoredEvent<Event>
+          const change = createEventHistoryUpdate(event, oldEvent)
+          if (Object.keys(change).length > 0) {
+            const changeId = randomUUID()
+            const historyDoc = db.collection("league_data").doc(event.key).collection(event.event_type).doc(eventId).collection("history").doc(changeId)
+            batch.set(historyDoc, { ...change, timestamp: timestamp })
+          }
         }
-      }
-      batch.set(doc, { ...event, timestamp: timestamp, id: eventId })
-    }))
-    let retryCount = 0
-    while (retryCount < 10) {
-      try {
-        await batch.commit()
-        break
-      } catch (e) {
-        retryCount = retryCount + 1
-        await new Promise((r) => setTimeout(r, 1000))
-        console.log("errored, slept and retrying")
+        batch.set(doc, { ...event, timestamp: timestamp, id: eventId })
+      }))
+      let retryCount = 0
+      while (retryCount < 10) {
+        try {
+          await batch.commit()
+          break
+        } catch (e) {
+          retryCount = retryCount + 1
+          await new Promise((r) => setTimeout(r, 1000))
+          console.log("errored, slept and retrying, " + e)
+        }
       }
     }
     Object.entries(Object.groupBy(events, e => e.event_type)).map(async entry => {

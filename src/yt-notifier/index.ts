@@ -74,7 +74,6 @@ EventDB.on<MaddenBroadcastEvent>("MADDEN_BROADCAST", async (events) => {
     const leagueSettings = doc.exists ? doc.data() as LeagueSettings : {} as LeagueSettings
     const configuration = leagueSettings.commands?.broadcast
     if (!configuration) {
-      console.error(`${discordServer} is not configured for Broadcasts`)
     } else {
       const channel = configuration.channel.id
       const role = configuration.role ? `<@&${configuration.role.id}>` : ""
@@ -86,7 +85,7 @@ EventDB.on<MaddenBroadcastEvent>("MADDEN_BROADCAST", async (events) => {
           }
         })
       } catch (e) {
-        console.error("could not send broadcast " + discordServer)
+
       }
     }
   })
@@ -114,9 +113,7 @@ async function notifyYoutubeBroadcasts() {
     }
   }))
   const serverTitleMap: { [key: string]: string } = Object.fromEntries(serverTitleKeywords.flat())
-  console.log(serverTitleMap)
   const currentlyLiveStreaming = channels.flat()
-  console.log(`currently streaming: ${JSON.stringify(currentlyLiveStreaming)}`)
   const startTime = new Date()
   startTime.setDate(startTime.getDate() - 1)
   const pastBroadcasts = await Promise.all(currentlyLiveStreaming.map(async c => {
