@@ -48,9 +48,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
       const reactedUsers = await res.json() as APIUser[]
       return reactedUsers.filter(u => u.id !== SNALLABOT_USER && u.id !== SNALLABOT_TEST_USER).map(u => ({ id: u.id, id_type: DiscordIdType.USER }))
     } catch (e) {
-      console.error(
-        `get reaction failed for ${channelId}, ${messageId}, and ${reaction}`
-      )
+
       throw e
     }
   }
@@ -130,7 +128,6 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
           method: "GET",
         })
       } catch (e) {
-        console.warn("could not update channel or message " + e)
         return
       }
       const weekKey = createWeekKey(season, week)
@@ -164,7 +161,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
             await forceWin(result, requestedUsers, confirmedUsers, currentState, season, week)
             await this.deleteGameChannel(currentState, season, week, requestedUsers.concat(confirmedUsers))
           } catch (e) {
-            console.warn(`FW requested but no home or away option chosen. Doing nothing ${guildId}, ${channelId.id}: ${e}`)
+
           }
         } else if (currentState.state !== GameChannelState.FORCE_WIN_REQUESTED) {
           const adminRole = settings.commands.game_channel?.admin.id || ""

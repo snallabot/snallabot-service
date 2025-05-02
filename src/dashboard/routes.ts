@@ -36,7 +36,6 @@ async function renderErrorsMiddleware(ctx: ParameterizedContext, next: Next) {
   try {
     await next()
   } catch (e) {
-    console.error(e)
     if (e instanceof EAAccountError) {
       const error = `Error receieved from EA <br> Message: ${e.message} <br> Snallabot Guidance: ${e.troubleshoot}`
       ctx.body = errorRender({ error: error, canUnlink: false })
@@ -55,7 +54,6 @@ async function renderConnectedLeagueErrorsMiddleware(ctx: ParameterizedContext, 
   try {
     await next()
   } catch (e) {
-    console.error(e)
     if (e instanceof EAAccountError) {
       const error = `Error receieved from EA <br> Message: ${e.message} <br> Snallabot Guidance: ${e.troubleshoot}`
       ctx.body = errorRender({ error: error, canUnlink: true })
@@ -198,7 +196,6 @@ router.get("/", async (ctx) => {
 
   const eaCode = new URLSearchParams(locationUrl.replace(REDIRECT_URL, "")).get("code")
   if (!eaCode) {
-    console.error(`Could not retrieve code from ${locationUrl}`)
     throw new EAAccountError("Tried to retrieve new access token but failed!", "No Guidance")
   }
   const newAccessTokenResponse = await fetch(`https://accounts.ea.com/connect/token`, {

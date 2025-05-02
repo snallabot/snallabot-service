@@ -137,7 +137,6 @@ async function handleStreamEvent(twitchEvent: StreamUpEvent) {
   }
   const subscription = subscriptionDoc.data() as SubscriptionDoc
   const subscribedServers = Object.entries(subscription.servers).filter(entry => entry[1].subscribed).map(entry => entry[0])
-  console.log(subscribedServers)
   await Promise.all(subscribedServers.map(async (server) => {
     const doc = await db.collection("league_settings").doc(server).get()
     const leagueSettings = doc.exists ? doc.data() as LeagueSettings : {} as LeagueSettings
@@ -146,7 +145,6 @@ async function handleStreamEvent(twitchEvent: StreamUpEvent) {
       console.error(`${server} is not configured for Broadcasts`)
     } else {
       const titleKeyword = configuration.title_keyword
-      console.log(`broadcast title: ${broadcastTitle} titleKeyword: ${titleKeyword}`)
       if (broadcastTitle.toLowerCase().includes(titleKeyword.toLowerCase())) {
         await EventDB.appendEvents<MaddenBroadcastEvent>([{
           key: server, event_type: "MADDEN_BROADCAST", title: broadcastTitle, video: createTwitchUrl(broadcasterName)
@@ -164,7 +162,6 @@ router.post("/webhook",
     if (verifyMessage(hmac, ctx.request.get(TWITCH_MESSAGE_SIGNATURE))) {
       await next()
     } else {
-      console.log("signatures dont match")
       ctx.status = 403
     }
   },
@@ -180,7 +177,6 @@ router.post("/webhook",
   async (ctx, next) => {
     if (MESSAGE_TYPE_REVOCATION === ctx.request.get(MESSAGE_TYPE)) {
       ctx.status = 204
-      console.log(ctx.request.rawBody)
     } else {
       try {
         await next()
@@ -201,7 +197,6 @@ router.post("/webhook",
     const messageId = ctx.request.get(TWITCH_MESSAGE_ID)
     const messageSeen = messageCache.get(messageId)
     if (messageSeen) {
-      console.log(`duplicate messsage found ${messageId}`)
       return
     }
     handleStreamEvent(twitchEvent)
