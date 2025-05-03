@@ -15,13 +15,13 @@ async function handleExport(guildId: string, week: number, token: string, client
   const league = await discordLeagueView.createView(guildId)
   if (!league) {
     await client.editOriginalInteraction(token, {
-      content: "missing league for this server",
+      content: "Discord server not connected to any Madden league. Try setting up the dashboard again",
       flags: 64
     })
     return
   }
-  const exporter = await exporterForLeague(Number(league.leagueId), ExportContext.MANUAL)
   try {
+    const exporter = await exporterForLeague(Number(league.leagueId), ExportContext.MANUAL)
     if (week === 100) {
       await exporter.exportCurrentWeek()
     } else if (week === 101) {
