@@ -412,6 +412,102 @@ function getTopAttributesByPosition(player: Player): Array<{ name: string, value
   return attributes
 }
 
+function getPositionalTraits(player: Player) {
+  const attributes: Array<{ name: string, value: string }> = []
+  const yesNoAttributes: { name: string, value: YesNoTrait }[] = []
+
+  switch (player.position) {
+    case "QB":
+      attributes.push(
+        { name: "QB Style", value: formatQbStyle(player.qBStyleTrait) },
+        { name: "Sense Pressure", value: formatSensePressure(player.sensePressureTrait) },
+        { name: "Penalty", value: formatPenaltyTrait(player.penaltyTrait) },
+      )
+      yesNoAttributes.push({ name: "Throw Away", value: player.throwAwayTrait },
+        { name: "Tight Spiral", value: player.tightSpiralTrait })
+      break
+    case "FB":
+    case "HB":
+    case "WR":
+    case "TE":
+      attributes.push(
+        { name: "Cover Ball", value: formatCoverBallTrait(player.coverBallTrait) },
+        { name: "Penalty", value: formatPenaltyTrait(player.penaltyTrait) },
+      )
+      yesNoAttributes.push(
+        { name: "YAC Catch", value: player.yACCatchTrait },
+        { name: "Possesion Catch", value: player.posCatchTrait },
+        { name: "Aggressive Catch", value: player.hPCatchTrait },
+        { name: "Fight for Yards", value: player.fightForYardsTrait },
+        { name: "Feet in Bounds", value: player.feetInBoundsTrait },
+        { name: "Drop Open Passes", value: player.dropOpenPassTrait }
+      )
+      break
+    case "LT":
+    case "LG":
+    case "C":
+    case "RG":
+    case "RT":
+      attributes.push(
+        { name: "Penalty", value: formatPenaltyTrait(player.penaltyTrait) },
+      )
+      break
+    case "LE":
+    case "RE":
+    case "DT":
+      attributes.push(
+        { name: "Penalty", value: formatPenaltyTrait(player.penaltyTrait) },
+      )
+      yesNoAttributes.push(
+        { name: "DL Swim Move", value: player.dLSwimTrait },
+        { name: "DL Spin Move", value: player.dLSpinTrait },
+        { name: "DL Bull Rush", value: player.dLBullRushTrait },
+        { name: "Strip Ball", value: player.stripBallTrait },
+        { name: "High Motor", value: player.highMotorTrait },
+      )
+      break
+    case "LOLB":
+    case "ROLB":
+    case "MLB":
+      attributes.push(
+        { name: "Penalty", value: formatPenaltyTrait(player.penaltyTrait) },
+        { name: "LB Style", value: formatLbStyle(player.lBStyleTrait) },
+        { name: "Play Ball", value: formatPlayBallTrait(player.playBallTrait) }
+      )
+      yesNoAttributes.push(
+        { name: "DL Swim Move", value: player.dLSwimTrait },
+        { name: "DL Spin Move", value: player.dLSpinTrait },
+        { name: "DL Bull Rush", value: player.dLBullRushTrait },
+        { name: "Strip Ball", value: player.stripBallTrait },
+        { name: "High Motor", value: player.highMotorTrait },
+        { name: "Big Hitter", value: player.bigHitTrait },
+      )
+      break
+    case "CB":
+    case "FS":
+    case "SS":
+      attributes.push(
+        { name: "Penalty", value: formatPenaltyTrait(player.penaltyTrait) },
+        { name: "Play Ball", value: formatPlayBallTrait(player.playBallTrait) }
+      )
+      yesNoAttributes.push(
+        { name: "Strip Ball", value: player.stripBallTrait },
+        { name: "High Motor", value: player.highMotorTrait },
+        { name: "Big Hitter", value: player.bigHitTrait },
+      )
+      break
+    case "K":
+    case "P":
+      break
+  }
+
+  const yesNoTraits = yesNoAttributes.filter(trait => trait.value === YesNoTrait.YES)
+    .map(attr => `> **${attr.name}:** ${formatYesNoTrait(attr.value)}`).join('\n')
+  const customAttributes = attributes.map(attr => `> **${attr.name}:** ${attr.value}`).join('\n')
+  return `${yesNoTraits}\n${customAttributes}`
+
+}
+
 
 function getDevTraitName(devTrait: DevTrait): string {
   switch (devTrait) {
@@ -556,7 +652,7 @@ function formatPlayerCard(player: Player, teams: { [key: string]: string }) {
 ## Contract
 ${contractStatus}
 ## Ratings
-${topAttributes.map(attr => `> **${attr.name}:** ${attr.value}`).join('\n')}${abilities}
+${topAttributes.map(attr => `> **${attr.name}:** ${attr.value}`).join('\n')}${getPositionalTraits(player)}${abilities}
 `
 }
 
@@ -582,7 +678,7 @@ function formatSensePressure(sensePressureTrait: SensePressureTrait) {
 function formatPenaltyTrait(penalty: PenaltyTrait) {
   switch (penalty) {
     case PenaltyTrait.DISCIPLINED: return "Disciplined"
-    case PenaltyTrait.NORMAL: return "Normal"
+    case PenaltyTrait.NORMAL: return "Balanced"
     case PenaltyTrait.UNDISCIPLINED: return "Undisciplined"
   }
 }
@@ -591,7 +687,7 @@ function formatPlayBallTrait(playBallTrait: PlayBallTrait) {
   switch (playBallTrait) {
     case PlayBallTrait.AGGRESSIVE: return "Aggressive"
     case PlayBallTrait.BALANCED: return "Balanced"
-    case PlayBallTrait.CONSERVATIVE: return "Consevative"
+    case PlayBallTrait.CONSERVATIVE: return "Conservative"
   }
 }
 
@@ -711,16 +807,16 @@ __**Traits:**__
 **DL Bull Rush:** ${formatYesNoTrait(player.dLBullRushTrait)}
 **High Motor:** ${formatYesNoTrait(player.highMotorTrait)}
 **Penalty:** ${formatPenaltyTrait(player.penaltyTrait)}
-**Big Hit:** ${formatYesNoTrait(player.bigHitTrait)}
+**Big Hitter:** ${formatYesNoTrait(player.bigHitTrait)}
 **Strip Ball:** ${formatYesNoTrait(player.stripBallTrait)}
 **Play Ball:** ${formatPlayBallTrait(player.playBallTrait)}
-**Predict:** ${formatYesNoTrait(player.predictTrait)}
+**Predictable:** ${formatYesNoTrait(player.predictTrait)}
 **Cover Ball:** ${formatCoverBallTrait(player.coverBallTrait)}
-**Fight For Yards:** ${formatYesNoTrait(player.fightForYardsTrait)}
+**Fight for Yards:** ${formatYesNoTrait(player.fightForYardsTrait)}
 **YAC Catch:** ${formatYesNoTrait(player.yACCatchTrait)}
 **Possession Catch:** ${formatYesNoTrait(player.posCatchTrait)}
-**Highlight Possession Catch:** ${formatYesNoTrait(player.hPCatchTrait)}
-**Drop Open Pass:** ${formatYesNoTrait(player.dropOpenPassTrait)}
+**Aggressive Catch:** ${formatYesNoTrait(player.hPCatchTrait)}
+**Drop Open Passes:** ${formatYesNoTrait(player.dropOpenPassTrait)}
 **Feet In Bounds:** ${formatYesNoTrait(player.feetInBoundsTrait)}
 `
 }

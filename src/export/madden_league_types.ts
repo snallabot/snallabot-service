@@ -385,8 +385,8 @@ export type Ability = {
 
 }
 export enum YesNoTrait {
-  YES = 0,
-  NO = 1
+  NO = 0,
+  YES = 1
 }
 
 export enum DevTrait {
