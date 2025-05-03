@@ -800,6 +800,8 @@ __**Styles:**__
 **LB Style:** ${formatLbStyle(player.lBStyleTrait)}
 
 __**Traits:**__
+**Penalty:** ${formatPenaltyTrait(player.penaltyTrait)}
+**Predictable:** ${formatYesNoTrait(player.predictTrait)}
 **Clutch:** ${formatYesNoTrait(player.clutchTrait)}
 **Tight Spiral:** ${formatYesNoTrait(player.tightSpiralTrait)}
 **Sense Pressure:** ${formatSensePressure(player.sensePressureTrait)}
@@ -808,11 +810,9 @@ __**Traits:**__
 **DL Spin:** ${formatYesNoTrait(player.dLSpinTrait)}
 **DL Bull Rush:** ${formatYesNoTrait(player.dLBullRushTrait)}
 **High Motor:** ${formatYesNoTrait(player.highMotorTrait)}
-**Penalty:** ${formatPenaltyTrait(player.penaltyTrait)}
 **Big Hitter:** ${formatYesNoTrait(player.bigHitTrait)}
 **Strip Ball:** ${formatYesNoTrait(player.stripBallTrait)}
 **Play Ball:** ${formatPlayBallTrait(player.playBallTrait)}
-**Predictable:** ${formatYesNoTrait(player.predictTrait)}
 **Cover Ball:** ${formatCoverBallTrait(player.coverBallTrait)}
 **Fight for Yards:** ${formatYesNoTrait(player.fightForYardsTrait)}
 **YAC Catch:** ${formatYesNoTrait(player.yACCatchTrait)}
