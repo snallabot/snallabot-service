@@ -435,7 +435,6 @@ export enum LBStyleTrait {
   COVER_LB = 2,
 }
 
-
 export type Player = {
   rookieYear: number,
   throwOnRunRating: number,
