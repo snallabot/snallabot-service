@@ -652,7 +652,9 @@ function formatPlayerCard(player: Player, teams: { [key: string]: string }) {
 ## Contract
 ${contractStatus}
 ## Ratings
-${topAttributes.map(attr => `> **${attr.name}:** ${attr.value}`).join('\n')}${getPositionalTraits(player)}${abilities}
+${topAttributes.map(attr => `> **${attr.name}:** ${attr.value}`).join('\n')}
+${getPositionalTraits(player)}
+${abilities}
 `
 }
 
