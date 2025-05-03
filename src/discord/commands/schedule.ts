@@ -49,9 +49,9 @@ export default {
     const [schedule, teams] = await Promise.all([(async () => {
       if (season) {
         const seasonIndex = season < 100 ? season : season - MADDEN_SEASON
-        return MaddenClient.getWeekScheduleForSeason(league, week, seasonIndex)
+        return await MaddenClient.getWeekScheduleForSeason(league, week, seasonIndex)
       } else {
-        return MaddenClient.getLatestWeekSchedule(league, week)
+        return await MaddenClient.getLatestWeekSchedule(league, week)
       }
     })(), (await MaddenClient.getLatestTeams(league)).getLatestTeams()])
     respond(ctx, createMessageResponse(`${format(schedule, teams, week)}`))
