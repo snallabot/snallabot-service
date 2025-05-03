@@ -84,7 +84,10 @@ export function createClient(settings: DiscordSettings): DiscordClient {
       }
     },
     editOriginalInteraction: async (token: string, body: { [key: string]: any }) => {
-      await sendDiscordRequest(`webhooks/${settings.appId}/${token}/messages/@original`, { method: "PATCH", body })
+      try {
+        await sendDiscordRequest(`webhooks/${settings.appId}/${token}/messages/@original`, { method: "PATCH", body })
+      } catch (e) {
+      }
     }
   }
 }
