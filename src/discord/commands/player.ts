@@ -6,7 +6,7 @@ import { Firestore } from "firebase-admin/firestore"
 import { playerSearchIndex, discordLeagueView, teamSearchView } from "../../db/view"
 import fuzzysort from "fuzzysort"
 import MaddenDB from "../../db/madden_db"
-import { DevTrait, Player, YesNoTrait } from "../../export/madden_league_types"
+import { CoverBallTrait, DevTrait, LBStyleTrait, PenaltyTrait, PlayBallTrait, Player, QBStyleTrait, SensePressureTrait, YesNoTrait } from "../../export/madden_league_types"
 
 enum PlayerSelection {
   PLAYER_OVERVIEW = "player_overview",
@@ -562,11 +562,65 @@ ${topAttributes.map(attr => `> **${attr.name}:** ${attr.value}`).join('\n')}${ab
 
 function formatYesNoTrait(trait: YesNoTrait) {
   switch (trait) {
-    case YesNoTrait.YES:
-    case YesNoTrait.NO:
-    default: "Unknown"
+    case YesNoTrait.YES: return "<:snallabot_yes:1368090206867030056>"
+    case YesNoTrait.NO: return "<:snallabot_nope:1368090205525115030>"
+    default: return "Unknown"
   }
 }
+
+function formatSensePressure(sensePressureTrait: SensePressureTrait) {
+  switch (sensePressureTrait) {
+    case SensePressureTrait.AVERAGE: return "Average"
+    case SensePressureTrait.IDEAL: return "Ideal"
+    case SensePressureTrait.OBLIVIOUS: return "Oblivious"
+    case SensePressureTrait.PARANOID: return "Paranoid"
+    case SensePressureTrait.TRIGGER_HAPPY: return "Trigger Happy"
+    default: return "Unknown"
+  }
+}
+
+function formatPenaltyTrait(penalty: PenaltyTrait) {
+  switch (penalty) {
+    case PenaltyTrait.DISCIPLINED: return "Disciplined"
+    case PenaltyTrait.NORMAL: return "Normal"
+    case PenaltyTrait.UNDISCIPLINED: return "Undisciplined"
+  }
+}
+
+function formatPlayBallTrait(playBallTrait: PlayBallTrait) {
+  switch (playBallTrait) {
+    case PlayBallTrait.AGGRESSIVE: return "Aggressive"
+    case PlayBallTrait.BALANCED: return "Balanced"
+    case PlayBallTrait.CONSERVATIVE: return "Consevative"
+  }
+}
+
+function formatCoverBallTrait(coverBallTrait: CoverBallTrait) {
+  switch (coverBallTrait) {
+    case CoverBallTrait.ALWAYS: return "Always"
+    case CoverBallTrait.FOR_ALL_HITS: return "For All Hits"
+    case CoverBallTrait.NEVER: return "Never"
+    case CoverBallTrait.ON_BIG_HITS: return "On Big Hits"
+    case CoverBallTrait.ON_MEDIUM_HITS: return "On Medium Hits"
+  }
+}
+
+function formatQbStyle(qbStyle: QBStyleTrait) {
+  switch (qbStyle) {
+    case QBStyleTrait.BALANCED: return "Balanced"
+    case QBStyleTrait.POCKET: return "Pocket"
+    case QBStyleTrait.SCRAMBLING: return "Scrambling"
+  }
+}
+
+function formatLbStyle(lbStyle: LBStyleTrait) {
+  switch (lbStyle) {
+    case LBStyleTrait.BALANCED: return "Balanced"
+    case LBStyleTrait.COVER_LB: return "Cover LB"
+    case LBStyleTrait.PASS_RUSH: return "Pass Rush"
+  }
+}
+
 
 function formatFullRatings(player: Player, teams: { [key: string]: string }) {
   const teamAbbr = teams[`${player.teamId}`]
@@ -643,30 +697,31 @@ __**Special Teams:**__
 **Kick Accuracy:** ${player.kickAccRating}
 **Kick Return:** ${player.kickRetRating}
 
+__**Styles:**__
+**QB Style:** ${formatQbStyle(player.qBStyleTrait)}
+**LB Style:** ${formatLbStyle(player.lBStyleTrait)}
+
 __**Traits:**__
-**Clutch:** ${player.clutchTrait}
-**Tight Spiral:** ${player.tightSpiralTrait}
-**Sense Pressure:** ${player.sensePressureTrait}
-**Throw Away:** ${player.throwAwayTrait}
-**QB Style:** ${player.qBStyleTrait}
-**LB Style:** ${player.lBStyleTrait}
-**DL Swim:** ${player.dLSwimTrait}
-**DL Spin:** ${player.dLSpinTrait}
-**DL Bull Rush:** ${player.dLBullRushTrait}
-**High Motor:** ${player.highMotorTrait}
-**Penalty:** ${player.penaltyTrait}
-**Big Hit:** ${player.bigHitTrait}
-**Strip Ball:** ${player.stripBallTrait}
-**Play Ball:** ${player.playBallTrait}
-**Predict:** ${player.predictTrait}
-**Cover Ball:** ${player.coverBallTrait}
-**Fight For Yards:** ${player.fightForYardsTrait}
-**YAC Catch:** ${player.yACCatchTrait}
-**Possession Catch:** ${player.posCatchTrait}
-**Highlight Possession Catch:** ${player.hPCatchTrait}
-**Drop Open Pass:** ${player.dropOpenPassTrait}
-**Feet In Bounds:** ${player.feetInBoundsTrait}
-**Run Style:** ${player.runStyle}
+**Clutch:** ${formatYesNoTrait(player.clutchTrait)}
+**Tight Spiral:** ${formatYesNoTrait(player.tightSpiralTrait)}
+**Sense Pressure:** ${formatSensePressure(player.sensePressureTrait)}
+**Throw Away:** ${formatYesNoTrait(player.throwAwayTrait)}
+**DL Swim:** ${formatYesNoTrait(player.dLSwimTrait)}
+**DL Spin:** ${formatYesNoTrait(player.dLSpinTrait)}
+**DL Bull Rush:** ${formatYesNoTrait(player.dLBullRushTrait)}
+**High Motor:** ${formatYesNoTrait(player.highMotorTrait)}
+**Penalty:** ${formatPenaltyTrait(player.penaltyTrait)}
+**Big Hit:** ${formatYesNoTrait(player.bigHitTrait)}
+**Strip Ball:** ${formatYesNoTrait(player.stripBallTrait)}
+**Play Ball:** ${formatPlayBallTrait(player.playBallTrait)}
+**Predict:** ${formatYesNoTrait(player.predictTrait)}
+**Cover Ball:** ${formatCoverBallTrait(player.coverBallTrait)}
+**Fight For Yards:** ${formatYesNoTrait(player.fightForYardsTrait)}
+**YAC Catch:** ${formatYesNoTrait(player.yACCatchTrait)}
+**Possession Catch:** ${formatYesNoTrait(player.posCatchTrait)}
+**Highlight Possession Catch:** ${formatYesNoTrait(player.hPCatchTrait)}
+**Drop Open Pass:** ${formatYesNoTrait(player.dropOpenPassTrait)}
+**Feet In Bounds:** ${formatYesNoTrait(player.feetInBoundsTrait)}
 `
 }
 function formatWeeklyStats(player: Player, teams: { [key: string]: string }) {

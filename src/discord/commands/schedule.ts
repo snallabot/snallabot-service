@@ -29,6 +29,19 @@ function format(schedule: MaddenGame[], teams: Team[], week: number) {
   return `# ${getMessageForWeek(week)} Schedule\n${schedulesMessage}`
 }
 
+async function getWeekSchedule(league: string, week: number, season?: number) {
+  if (season) {
+    const seasonIndex = season < 100 ? season : season - MADDEN_SEASON
+    return await MaddenClient.getWeekScheduleForSeason(league, week, seasonIndex)
+  } else {
+    return await MaddenClient.getLatestWeekSchedule(league, week)
+  }
+}
+
+async function getLatestTeams(league: string) {
+  return (await MaddenClient.getLatestTeams(league)).getLatestTeams()
+}
+
 export default {
   async handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext) {
     const { guild_id } = command
@@ -46,14 +59,7 @@ export default {
       throw new Error("Invalid week number. Valid weeks are week 1-18 and for playoffs: Wildcard = 19, Divisional = 20, Conference Championship = 21, Super Bowl = 23")
     }
     const season = (command.data.options?.[1] as APIApplicationCommandInteractionDataIntegerOption)?.value
-    const [schedule, teams] = await Promise.all([(async () => {
-      if (season) {
-        const seasonIndex = Number(season) < 100 ? Number(season) : Number(season) - MADDEN_SEASON
-        return MaddenClient.getWeekScheduleForSeason(league, week, seasonIndex)
-      } else {
-        return MaddenClient.getLatestWeekSchedule(league, week)
-      }
-    })(), (await MaddenClient.getLatestTeams(league)).getLatestTeams()])
+    const [schedule, teams] = await Promise.all([getWeekSchedule(league, week, season ? Number(season) : undefined), getLatestTeams(league)])
     respond(ctx, createMessageResponse(`${format(schedule, teams, week)}`))
   },
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
