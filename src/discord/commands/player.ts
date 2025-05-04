@@ -931,6 +931,7 @@ function formatStats(stats: PlayerStats) {
       formattedStats.push({ scheduleId: ps.scheduleId, value: individualStat.join(", ") });
     });
   }
+  console.log(formattedStats)
   return formattedStats
 }
 
