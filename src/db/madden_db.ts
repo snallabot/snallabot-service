@@ -130,7 +130,7 @@ function createTeamList(teams: StoredEvent<Team>[]): TeamList {
 
 async function getStats<T>(leagueId: string, rosterId: number, collection: string): Promise<SnallabotEvent<T>[]> {
   const stats = await db.collection("league_data").doc(leagueId).collection(collection).where("rosterId", "==", rosterId).get()
-  return stats.docs.map(d => d.data as SnallabotEvent<T>)
+  return stats.docs.map(d => d.data() as SnallabotEvent<T>)
 }
 
 
