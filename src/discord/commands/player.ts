@@ -964,13 +964,27 @@ function formatGameEmoji(game: MaddenGame, playerTeam: number) {
   }
 }
 
+function formatWeek(game: MaddenGame) {
+  if (game.weekIndex < 18) {
+    return `Wk ${game.weekIndex + 1}`
+  } if (game.weekIndex === 18) {
+    return `Wildcard`
+  } if (game.weekIndex === 19) {
+    return `Divisional`
+  } if (game.weekIndex === 20) {
+    return `Conference`
+  } if (game.weekIndex === 22) {
+    return `Superbowl`
+  }
+}
+
 function formatGame(game: MaddenGame, player: Player, teams: { [key: string]: string }) {
   const playerTeam = player.teamId
   const homeTeam = game.homeTeamId
   const awayTeam = game.awayTeamId
   const opponentTeam = playerTeam === awayTeam ? homeTeam : awayTeam
   const opponent = teams[opponentTeam]
-  return `Wk ${game.weekIndex + 1} vs ${opponent} ${formatGameEmoji(game, playerTeam)} ${formatScore(game)}:`
+  return `${formatWeek(game)} vs ${opponent} ${formatGameEmoji(game, playerTeam)} ${formatScore(game)}:`
 }
 
 function formatWeeklyStats(player: Player, teams: { [key: string]: string }, stats: PlayerStats, games: MaddenGame[]) {
