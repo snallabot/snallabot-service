@@ -970,7 +970,7 @@ function formatGame(game: MaddenGame, player: Player, teams: { [key: string]: st
   const awayTeam = game.awayTeamId
   const opponentTeam = playerTeam === awayTeam ? homeTeam : awayTeam
   const opponent = teams[opponentTeam]
-  return `Week ${game.weekIndex + 1} vs ${opponent}: ${formatGameEmoji(game, playerTeam)} ${formatScore}`
+  return `Wk ${game.weekIndex + 1} ${opponent}: ${formatGameEmoji(game, playerTeam)} ${formatScore}`
 }
 
 function formatWeeklyStats(player: Player, teams: { [key: string]: string }, stats: PlayerStats, games: MaddenGame[]) {
@@ -989,16 +989,18 @@ function formatWeeklyStats(player: Player, teams: { [key: string]: string }, sta
     return {
       weekIndex: game.weekIndex, value: `${formatGame(game, player, teams)} ${stat}`
     }
-  }).sort((a, b) => (a.weekIndex < b.weekIndex ? -1 : 1)).map(g => g.value).join("\n")
+  }).sort((a, b) => (a.weekIndex < b.weekIndex ? -1 : 1)).map(g => g.value)
+  console.log(weekStats.length)
 
   const teamAbbr = teams[`${player.teamId}`]
-  console.log(weekStats.length)
+  const joinedWeekStats = weekStats.join("\n")
+  console.log(joinedWeekStats.length)
 
   return `
 # ${getTeamEmoji(teamAbbr)} ${player.position} ${player.firstName} ${player.lastName}
 ## ${getDevTraitName(player.devTrait)} **${player.playerBestOvr} OVR**
 ## Stats
-${weekStats}
+${joinedWeekStats}
 `
 }
 
