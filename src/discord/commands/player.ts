@@ -167,9 +167,7 @@ async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, to
   // 0 team id means the player is a free agent
   teamsDisplayNames["0"] = "FA"
   const playerStats = await MaddenDB.getPlayerStats(leagueId, player)
-  console.log(playerStats)
   const statGames = new Set(Object.values(playerStats).flat().map(s => s.scheduleId))
-  console.log(statGames)
   const games = await MaddenDB.getGamesForSchedule(leagueId, Array.from(statGames.values()))
   await client.editOriginalInteraction(token, {
     flags: 32768,
@@ -997,7 +995,7 @@ function formatWeeklyStats(player: Player, teams: { [key: string]: string }, sta
     return {
       weekIndex: game.weekIndex, value: `${formatGame(game, player, teams)} ${stat}`
     }
-  }).sort((a, b) => (a.weekIndex < b.weekIndex ? -1 : 1)).join("\n")
+  }).sort((a, b) => (a.weekIndex < b.weekIndex ? -1 : 1)).map(g => g.value).join("\n")
 
   const teamAbbr = teams[`${player.teamId}`]
 
