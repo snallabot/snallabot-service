@@ -838,14 +838,14 @@ function formatStats(stats: PlayerStats) {
       if (ps.passInts > 0) {
         individualStat.push(`${ps.passInts} INT`)
       }
-      individualStat.push(`${ps.passerRating.toFixed(1)} RTG`)
+      // individualStat.push(`${ps.passerRating.toFixed(1)} RTG`)
       formattedStats.push({ scheduleId: ps.scheduleId, value: individualStat.join(", ") })
     });
   }
   if (stats[PlayerStatType.RUSHING]) {
     stats[PlayerStatType.RUSHING].forEach(rs => {
       const individualStat = [];
-      individualStat.push(`${rs.rushAtt} att`);
+      // individualStat.push(`${rs.rushAtt} att`);
       individualStat.push(`${rs.rushYds} yds`);
       if (rs.rushTDs > 0) {
         individualStat.push(`${rs.rushTDs} TD`);
@@ -853,7 +853,7 @@ function formatStats(stats: PlayerStats) {
       if (rs.rushFum > 0) {
         individualStat.push(`${rs.rushFum} fum`);
       }
-      individualStat.push(`${rs.rushYdsPerAtt.toFixed(1)} avg`);
+      // individualStat.push(`${rs.rushYdsPerAtt.toFixed(1)} avg`);
       formattedStats.push({ scheduleId: rs.scheduleId, value: individualStat.join(", ") });
     });
   }
@@ -861,17 +861,11 @@ function formatStats(stats: PlayerStats) {
   if (stats[PlayerStatType.RECEIVING]) {
     stats[PlayerStatType.RECEIVING].forEach(rs => {
       const individualStat = [];
-      const targets = Math.round(rs.recCatches / rs.recCatchPct);
-      individualStat.push(`${rs.recCatches}/${targets} rec`);
+      individualStat.push(`${rs.recCatches} rec`);
       individualStat.push(`${rs.recYds} yds`);
       if (rs.recTDs > 0) {
         individualStat.push(`${rs.recTDs} TD`);
       }
-      if (rs.recDrops > 0) {
-        individualStat.push(`${rs.recDrops} drop`);
-      }
-      individualStat.push(`${rs.recYdsPerCatch.toFixed(1)} avg`);
-      individualStat.push(`${rs.recYdsAfterCatch} YAC`);
       formattedStats.push({ scheduleId: rs.scheduleId, value: individualStat.join(", ") });
     });
   }
