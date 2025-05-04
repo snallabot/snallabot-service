@@ -831,7 +831,7 @@ function formatStats(stats: PlayerStats) {
     stats[PlayerStatType.PASSING].forEach(ps => {
       const individualStat = []
       individualStat.push(`${ps.passComp}/${ps.passAtt}`)
-      individualStat.push(`${ps.passYds} pass yds`)
+      individualStat.push(`${ps.passYds} PASS YDS`)
       if (ps.passTDs > 0) {
         individualStat.push(`${ps.passTDs} TD`)
       }
@@ -845,15 +845,15 @@ function formatStats(stats: PlayerStats) {
   if (stats[PlayerStatType.RUSHING]) {
     stats[PlayerStatType.RUSHING].forEach(rs => {
       const individualStat = [];
-      individualStat.push(`${rs.rushAtt} att`);
-      individualStat.push(`${rs.rushYds} rush yds`);
+      individualStat.push(`${rs.rushAtt} ATT`);
+      individualStat.push(`${rs.rushYds} RSH YDS`);
       if (rs.rushTDs > 0) {
         individualStat.push(`${rs.rushTDs} TD`);
       }
       if (rs.rushFum > 0) {
-        individualStat.push(`${rs.rushFum} fum`);
+        individualStat.push(`${rs.rushFum} FUM`);
       }
-      individualStat.push(`${rs.rushYdsPerAtt.toFixed(1)} avg`);
+      individualStat.push(`${rs.rushYdsPerAtt.toFixed(1)} AVG`);
       formattedStats.push({ scheduleId: rs.scheduleId, value: individualStat.join(", ") });
     });
   }
@@ -861,8 +861,8 @@ function formatStats(stats: PlayerStats) {
   if (stats[PlayerStatType.RECEIVING]) {
     stats[PlayerStatType.RECEIVING].forEach(rs => {
       const individualStat = [];
-      individualStat.push(`${rs.recCatches} rec`);
-      individualStat.push(`${rs.recYds} yds`);
+      individualStat.push(`${rs.recCatches} REC`);
+      individualStat.push(`${rs.recYds} YDS`);
       if (rs.recTDs > 0) {
         individualStat.push(`${rs.recTDs} TD`);
       }
@@ -873,9 +873,9 @@ function formatStats(stats: PlayerStats) {
   if (stats[PlayerStatType.DEFENSE]) {
     stats[PlayerStatType.DEFENSE].forEach(ds => {
       const individualStat = [];
-      individualStat.push(`${ds.defTotalTackles} tkl`);
+      individualStat.push(`${ds.defTotalTackles} TKL`);
       if (ds.defSacks > 0) {
-        individualStat.push(`${ds.defSacks} sk`);
+        individualStat.push(`${ds.defSacks} SCK`);
       }
       if (ds.defInts > 0) {
         individualStat.push(`${ds.defInts} INT`);
@@ -905,9 +905,9 @@ function formatStats(stats: PlayerStats) {
         individualStat.push(`50+ ${ks.fG50PlusMade}/${ks.fG50PlusAtt}`);
       }
       if (ks.fGLongest > 0) {
-        individualStat.push(`${ks.fGLongest} lng`);
+        individualStat.push(`${ks.fGLongest} LNG`);
       }
-      individualStat.push(`${ks.kickPts} pts`);
+      individualStat.push(`${ks.kickPts} PTS`);
       formattedStats.push({ scheduleId: ks.scheduleId, value: individualStat.join(", ") });
     });
   }
@@ -915,10 +915,10 @@ function formatStats(stats: PlayerStats) {
   if (stats[PlayerStatType.PUNTING]) {
     stats[PlayerStatType.PUNTING].forEach(ps => {
       const individualStat = [];
-      individualStat.push(`${ps.puntAtt} punts`);
-      individualStat.push(`${ps.puntYds} yds`);
-      individualStat.push(`${ps.puntYdsPerAtt.toFixed(1)} avg`);
-      individualStat.push(`${ps.puntNetYdsPerAtt.toFixed(1)} net`);
+      individualStat.push(`${ps.puntAtt} PUNTS`);
+      individualStat.push(`${ps.puntYds} YDS`);
+      individualStat.push(`${ps.puntYdsPerAtt.toFixed(1)} AVG`);
+      individualStat.push(`${ps.puntNetYdsPerAtt.toFixed(1)} NET`);
       if (ps.puntsIn20 > 0) {
         individualStat.push(`${ps.puntsIn20} I20`);
       }
@@ -993,8 +993,6 @@ function formatWeeklyStats(player: Player, teams: { [key: string]: string }, sta
 
   const teamAbbr = teams[`${player.teamId}`]
   const joinedWeekStats = weekStats.join("\n")
-  console.log(joinedWeekStats)
-
   return `
 # ${getTeamEmoji(teamAbbr)} ${player.position} ${player.firstName} ${player.lastName}
 ## ${getDevTraitName(player.devTrait)} **${player.playerBestOvr} OVR**
