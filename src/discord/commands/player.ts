@@ -984,7 +984,7 @@ function formatGame(game: MaddenGame, player: Player, teams: { [key: string]: st
   const awayTeam = game.awayTeamId
   const opponentTeam = playerTeam === awayTeam ? homeTeam : awayTeam
   const opponent = teams[opponentTeam]
-  return `${formatWeek(game)} vs ${opponent} ${formatGameEmoji(game, playerTeam)} ${formatScore(game)}:`
+  return `${formatWeek(game)} vs ${opponent.padEnd(3)} ${formatGameEmoji(game, playerTeam)} ${formatScore(game)}:`
 }
 
 function formatWeeklyStats(player: Player, teams: { [key: string]: string }, stats: PlayerStats, games: MaddenGame[]) {
