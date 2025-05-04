@@ -931,7 +931,6 @@ function formatStats(stats: PlayerStats) {
       formattedStats.push({ scheduleId: ps.scheduleId, value: individualStat.join(", ") });
     });
   }
-  console.log(formattedStats)
   return formattedStats
 }
 
@@ -991,11 +990,10 @@ function formatWeeklyStats(player: Player, teams: { [key: string]: string }, sta
       weekIndex: game.weekIndex, value: `${formatGame(game, player, teams)} ${stat}`
     }
   }).sort((a, b) => (a.weekIndex < b.weekIndex ? -1 : 1)).map(g => g.value)
-  console.log(weekStats.length)
 
   const teamAbbr = teams[`${player.teamId}`]
   const joinedWeekStats = weekStats.join("\n")
-  console.log(joinedWeekStats.length)
+  console.log(joinedWeekStats)
 
   return `
 # ${getTeamEmoji(teamAbbr)} ${player.position} ${player.firstName} ${player.lastName}
