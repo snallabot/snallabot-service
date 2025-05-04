@@ -1,12 +1,12 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command, AutocompleteHandler, Autocomplete, MessageComponentHandler, MessageComponentInteraction } from "../commands_handler"
 import { respond, createMessageResponse, DiscordClient, deferMessage } from "../discord_utils"
-import { APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageComponentSelectMenuInteraction, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ComponentType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
+import { APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ComponentType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
 import { playerSearchIndex, discordLeagueView, teamSearchView } from "../../db/view"
 import fuzzysort from "fuzzysort"
-import MaddenDB from "../../db/madden_db"
-import { CoverBallTrait, DevTrait, LBStyleTrait, PenaltyTrait, PlayBallTrait, Player, QBStyleTrait, SensePressureTrait, YesNoTrait } from "../../export/madden_league_types"
+import MaddenDB, { PlayerStats } from "../../db/madden_db"
+import { CoverBallTrait, DevTrait, LBStyleTrait, MaddenGame, PenaltyTrait, PlayBallTrait, Player, QBStyleTrait, SensePressureTrait, YesNoTrait } from "../../export/madden_league_types"
 
 enum PlayerSelection {
   PLAYER_OVERVIEW = "player_overview",
@@ -166,12 +166,15 @@ async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, to
   }))
   // 0 team id means the player is a free agent
   teamsDisplayNames["0"] = "FA"
+  const playerStats = await MaddenDB.getPlayerStats(leagueId, player)
+  const statGames = new Set(Object.values(playerStats).flat().map(s => s.scheduleId))
+  const games = await MaddenDB.getGamesForSchedule(leagueId, statGames.values())
   await client.editOriginalInteraction(token, {
     flags: 32768,
     components: [
       {
         type: ComponentType.TextDisplay,
-        content: formatWeeklyStats(player, teamsDisplayNames)
+        content: formatWeeklyStats(player, teamsDisplayNames, playerStats, games)
       },
       {
         type: ComponentType.Separator,
@@ -822,7 +825,11 @@ __**Traits:**__
 **Feet In Bounds:** ${formatYesNoTrait(player.feetInBoundsTrait)}
 `
 }
-function formatWeeklyStats(player: Player, teams: { [key: string]: string }) {
+function formatWeeklyStats(player: Player, teams: { [key: string]: string }, stats: PlayerStats, games: MaddenGame[]) {
+  const currentSeason = Math.max(...games.map(g => g.seasonIndex))
+  const currentGameIds = new Set(games.filter(g => g.seasonIndex === currentSeason).map(g => g.scheduleId))
+  const gameResults = games.filter(g => g.seasonIndex === currentSeason && currentGameIds.has(g.scheduleId)).map(g => ({ scheduleId: g.scheduleId, homeTeam: g.homeTeamId, awayTeam: g.awayTeamId, weekIndex: g.weekIndex, awayScore: g.awayScore, homeScore: g.homeScore }))
+
 
   const teamAbbr = teams[`${player.teamId}`]
 

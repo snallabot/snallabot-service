@@ -2,13 +2,30 @@ import { randomUUID } from "crypto"
 import { Timestamp, Filter } from "firebase-admin/firestore"
 import db from "./firebase"
 import EventDB, { EventNotifier, SnallabotEvent, StoredEvent, notifiers } from "./events_db"
-import { MaddenGame, Player, Standing, Team } from "../export/madden_league_types"
-import { TeamAssignment, TeamAssignments } from "../discord/settings_db"
+import { DefensiveStats, KickingStats, MaddenGame, PassingStats, Player, PuntingStats, ReceivingStats, RushingStats, Standing, Team } from "../export/madden_league_types"
+import { TeamAssignments } from "../discord/settings_db"
 
 type HistoryUpdate<ValueType> = { oldValue: ValueType, newValue: ValueType }
 type History = { [key: string]: HistoryUpdate<any> }
 type StoredHistory = { timestamp: Date } & History
 
+export enum PlayerStatType {
+  DEFENSE,
+  KICKING,
+  PUNTING,
+  RECEIVING,
+  RUSHING,
+  PASSING
+}
+
+export type PlayerStats = {
+  [PlayerStatType.DEFENSE]?: DefensiveStats[],
+  [PlayerStatType.KICKING]?: KickingStats[],
+  [PlayerStatType.PUNTING]?: PuntingStats[],
+  [PlayerStatType.RECEIVING]?: ReceivingStats[],
+  [PlayerStatType.RUSHING]?: RushingStats[],
+  [PlayerStatType.PASSING]?: PassingStats[]
+}
 
 interface MaddenDB {
   appendEvents<Event>(event: SnallabotEvent<Event>[], idFn: (event: Event) => string): Promise<void>
@@ -20,7 +37,9 @@ interface MaddenDB {
   getStandingForTeam(leagueId: string, teamId: number): Promise<Standing>,
   getLatestStandings(leagueId: string): Promise<Standing[]>,
   getLatestPlayers(leagueId: string): Promise<Player[]>,
-  getPlayer(leagueId: string, rosterId: string): Promise<Player>
+  getPlayer(leagueId: string, rosterId: string): Promise<Player>,
+  getPlayerStats(leagueId: string, player: Player): Promise<PlayerStats>,
+  getGamesForSchedule(leagueId: string, scheduleIds: Iterable<number>): Promise<MaddenGame[]>
 }
 
 function convertDate(firebaseObject: any) {
@@ -107,6 +126,11 @@ function createTeamList(teams: StoredEvent<Team>[]): TeamList {
       }))
     }
   }
+}
+
+async function getStats<T>(leagueId: string, rosterId: number, collection: string): Promise<SnallabotEvent<T>[]> {
+  const stats = await db.collection("league_data").doc(leagueId).collection(collection).where("rosterId", "==", rosterId).get()
+  return stats.docs.map(d => d.data as SnallabotEvent<T>)
 }
 
 
@@ -226,7 +250,55 @@ const MaddenDB: MaddenDB = {
       return playerDoc.data() as Player
     }
     throw new Error(`Player ${rosterId} not found in league ${leagueId}`)
-  }
+  },
+  getPlayerStats: async function(leagueId: string, player: Player): Promise<PlayerStats> {
+    const rosterId = player.rosterId
+    switch (player.position) {
+      case "QB":
+        const [passingStats, rushingStats] = await Promise.all([getStats<PassingStats>(leagueId, rosterId, "MADDEN_PASSING_STAT"), getStats<RushingStats>(leagueId, rosterId, "MADDEN_RUSHING_STAT")])
+        return {
+          [PlayerStatType.PASSING]: passingStats,
+          [PlayerStatType.RUSHING]: rushingStats,
+        }
+      case "HB":
+      case "FB":
+      case "WR":
+      case "TE":
+        const [rushing, receivingStats] = await Promise.all([getStats<RushingStats>(leagueId, rosterId, "MADDEN_RUSHING_STAT"), getStats<ReceivingStats>(leagueId, rosterId, "MADDEN_RECEIVING_STAT")])
+        return {
+          [PlayerStatType.RUSHING]: rushing,
+          [PlayerStatType.RECEIVING]: receivingStats
+        }
+      case "K":
+        const kickingStats = await getStats<KickingStats>(leagueId, rosterId, "MADDEN_KICKING_STAT")
+        return {
+          [PlayerStatType.KICKING]: kickingStats
+        }
+      case "P":
+        const puntingStats = await getStats<PuntingStats>(leagueId, rosterId, "MADDEN_KICKING_STAT")
+        return {
+          [PlayerStatType.PUNTING]: puntingStats
+        }
+      case "LE":
+      case "RE":
+      case "DT":
+      case "LOLB":
+      case "ROLB":
+      case "MLB":
+      case "CB":
+      case "FS":
+      case "SS":
+        const defenseStats = await getStats<DefensiveStats>(leagueId, rosterId, "MADDEN_DEFENSIVE_STAT")
+        return {
+          [PlayerStatType.DEFENSE]: defenseStats
+        }
+      default:
+        return {}
+    }
+  },
+  getGamesForSchedule: async function(leagueId: string, scheduleIds: number[]) {
+    return await Promise.all(scheduleIds.map(s => this.getGameForSchedule(leagueId, s)))
+  },
 }
 
 export default MaddenDB
