@@ -167,6 +167,7 @@ async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, to
   // 0 team id means the player is a free agent
   teamsDisplayNames["0"] = "FA"
   const playerStats = await MaddenDB.getPlayerStats(leagueId, player)
+  console.log(playerStats)
   const statGames = new Set(Object.values(playerStats).flat().map(s => s.scheduleId))
   console.log(statGames)
   const games = await MaddenDB.getGamesForSchedule(leagueId, Array.from(statGames.values()))
