@@ -5,7 +5,7 @@ import { APIApplicationCommandInteractionDataStringOption, APIApplicationCommand
 import { Firestore } from "firebase-admin/firestore"
 import { playerSearchIndex, discordLeagueView, teamSearchView } from "../../db/view"
 import fuzzysort from "fuzzysort"
-import MaddenDB, { PlayerStats } from "../../db/madden_db"
+import MaddenDB, { PlayerStatType, PlayerStats } from "../../db/madden_db"
 import { CoverBallTrait, DevTrait, LBStyleTrait, MaddenGame, PenaltyTrait, PlayBallTrait, Player, QBStyleTrait, SensePressureTrait, YesNoTrait } from "../../export/madden_league_types"
 
 enum PlayerSelection {
@@ -656,8 +656,7 @@ function formatPlayerCard(player: Player, teams: { [key: string]: string }) {
 ${contractStatus}
 ## Ratings
 ${topAttributes.map(attr => `> **${attr.name}:** ${attr.value}`).join('\n')}
-${getPositionalTraits(player)}
-${abilities}
+${getPositionalTraits(player)}${abilities}
 `
 }
 
@@ -825,11 +824,178 @@ __**Traits:**__
 **Feet In Bounds:** ${formatYesNoTrait(player.feetInBoundsTrait)}
 `
 }
+
+function formatStats(stats: PlayerStats) {
+  const formattedStats: { scheduleId: number, value: string }[] = []
+  if (stats[PlayerStatType.PASSING]) {
+    stats[PlayerStatType.PASSING].forEach(ps => {
+      const individualStat = []
+      individualStat.push(`${ps.passComp}/${ps.passAtt}`)
+      individualStat.push(`${ps.passYds} yds`)
+      if (ps.passTDs > 0) {
+        individualStat.push(`${ps.passTDs} TD`)
+      }
+      if (ps.passInts > 0) {
+        individualStat.push(`${ps.passInts} INT`)
+      }
+      individualStat.push(`${ps.passerRating.toFixed(1)} RTG`)
+      formattedStats.push({ scheduleId: ps.scheduleId, value: individualStat.join(", ") })
+    });
+  }
+  if (stats[PlayerStatType.RUSHING]) {
+    stats[PlayerStatType.RUSHING].forEach(rs => {
+      const individualStat = [];
+      individualStat.push(`${rs.rushAtt} att`);
+      individualStat.push(`${rs.rushYds} yds`);
+      if (rs.rushTDs > 0) {
+        individualStat.push(`${rs.rushTDs} TD`);
+      }
+      if (rs.rushFum > 0) {
+        individualStat.push(`${rs.rushFum} fum`);
+      }
+      individualStat.push(`${rs.rushYdsPerAtt.toFixed(1)} avg`);
+      formattedStats.push({ scheduleId: rs.scheduleId, value: individualStat.join(", ") });
+    });
+  }
+
+  if (stats[PlayerStatType.RECEIVING]) {
+    stats[PlayerStatType.RECEIVING].forEach(rs => {
+      const individualStat = [];
+      const targets = Math.round(rs.recCatches / rs.recCatchPct);
+      individualStat.push(`${rs.recCatches}/${targets} rec`);
+      individualStat.push(`${rs.recYds} yds`);
+      if (rs.recTDs > 0) {
+        individualStat.push(`${rs.recTDs} TD`);
+      }
+      if (rs.recDrops > 0) {
+        individualStat.push(`${rs.recDrops} drop`);
+      }
+      individualStat.push(`${rs.recYdsPerCatch.toFixed(1)} avg`);
+      individualStat.push(`${rs.recYdsAfterCatch} YAC`);
+      formattedStats.push({ scheduleId: rs.scheduleId, value: individualStat.join(", ") });
+    });
+  }
+
+  if (stats[PlayerStatType.DEFENSE]) {
+    stats[PlayerStatType.DEFENSE].forEach(ds => {
+      const individualStat = [];
+      individualStat.push(`${ds.defTotalTackles} tkl`);
+      if (ds.defSacks > 0) {
+        individualStat.push(`${ds.defSacks} sk`);
+      }
+      if (ds.defInts > 0) {
+        individualStat.push(`${ds.defInts} INT`);
+      }
+      if (ds.defFumRec > 0) {
+        individualStat.push(`${ds.defFumRec} FR`);
+      }
+      if (ds.defForcedFum > 0) {
+        individualStat.push(`${ds.defForcedFum} FF`);
+      }
+      if (ds.defTDs > 0) {
+        individualStat.push(`${ds.defTDs} TD`);
+      }
+      if (ds.defDeflections > 0) {
+        individualStat.push(`${ds.defDeflections} PD`);
+      }
+      formattedStats.push({ scheduleId: ds.scheduleId, value: individualStat.join(", ") });
+    });
+  }
+
+  if (stats[PlayerStatType.KICKING]) {
+    stats[PlayerStatType.KICKING].forEach(ks => {
+      const individualStat = [];
+      individualStat.push(`FG ${ks.fGMade}/${ks.fGAtt}`);
+      individualStat.push(`XP ${ks.xPMade}/${ks.xPAtt}`);
+      if (ks.fG50PlusAtt > 0) {
+        individualStat.push(`50+ ${ks.fG50PlusMade}/${ks.fG50PlusAtt}`);
+      }
+      if (ks.fGLongest > 0) {
+        individualStat.push(`${ks.fGLongest} lng`);
+      }
+      individualStat.push(`${ks.kickPts} pts`);
+      formattedStats.push({ scheduleId: ks.scheduleId, value: individualStat.join(", ") });
+    });
+  }
+
+  if (stats[PlayerStatType.PUNTING]) {
+    stats[PlayerStatType.PUNTING].forEach(ps => {
+      const individualStat = [];
+      individualStat.push(`${ps.puntAtt} punts`);
+      individualStat.push(`${ps.puntYds} yds`);
+      individualStat.push(`${ps.puntYdsPerAtt.toFixed(1)} avg`);
+      individualStat.push(`${ps.puntNetYdsPerAtt.toFixed(1)} net`);
+      if (ps.puntsIn20 > 0) {
+        individualStat.push(`${ps.puntsIn20} I20`);
+      }
+      if (ps.puntTBs > 0) {
+        individualStat.push(`${ps.puntTBs} TB`);
+      }
+      if (ps.puntsBlocked > 0) {
+        individualStat.push(`${ps.puntsBlocked} BLK`);
+      }
+      formattedStats.push({ scheduleId: ps.scheduleId, value: individualStat.join(", ") });
+    });
+  }
+  return formattedStats
+}
+
+function formatScore(game: MaddenGame) {
+  if (game.awayScore === game.homeScore) {
+    return `${game.awayScore} - ${game.homeScore}`
+  }
+  if (game.awayScore > game.homeScore) {
+    return `**${game.awayScore}** - ${game.homeScore}`
+  }
+  if (game.awayScore < game.homeScore) {
+    return `${game.awayScore} - **${game.homeScore}**`
+  }
+}
+
+enum SnallabotGameResult {
+  WIN = "<:snallabot_win:1368708001548079304>",
+  LOSS = "<:snallabot_loss:1368708003259482233>",
+  TIE = "<:snallabot_tie:1368713402016337950>"
+}
+
+function formatGameEmoji(game: MaddenGame, playerTeam: number) {
+  if (game.awayScore === game.homeScore) {
+    return SnallabotGameResult.TIE
+  }
+  if (game.awayScore > game.homeScore) {
+    return game.awayTeamId === playerTeam ? SnallabotGameResult.WIN : SnallabotGameResult.LOSS
+  }
+  if (game.awayScore < game.homeScore) {
+    return game.homeTeamId === playerTeam ? SnallabotGameResult.WIN : SnallabotGameResult.LOSS
+  }
+}
+
+function formatGame(game: MaddenGame, player: Player, teams: { [key: string]: string }) {
+  const playerTeam = player.teamId
+  const homeTeam = game.homeTeamId
+  const awayTeam = game.awayTeamId
+  const opponentTeam = playerTeam === awayTeam ? homeTeam : awayTeam
+  const opponent = teams[opponentTeam]
+  return `Week ${game.weekIndex + 1} vs ${opponent}: ${formatGameEmoji(game, playerTeam)} ${formatScore}`
+}
+
 function formatWeeklyStats(player: Player, teams: { [key: string]: string }, stats: PlayerStats, games: MaddenGame[]) {
   const currentSeason = Math.max(...games.map(g => g.seasonIndex))
   const currentGameIds = new Set(games.filter(g => g.seasonIndex === currentSeason).map(g => g.scheduleId))
-  const gameResults = games.filter(g => g.seasonIndex === currentSeason && currentGameIds.has(g.scheduleId)).map(g => ({ scheduleId: g.scheduleId, homeTeam: g.homeTeamId, awayTeam: g.awayTeamId, weekIndex: g.weekIndex, awayScore: g.awayScore, homeScore: g.homeScore }))
-
+  const gameResults = Object.groupBy(games.filter(g => g.seasonIndex === currentSeason && currentGameIds.has(g.scheduleId)), g => g.scheduleId)
+  const gameStats = formatStats(stats)
+  const weekStats = Object.entries(Object.groupBy(gameStats.filter(s => currentGameIds.has(s.scheduleId)), g => g.scheduleId)).map(gameStat => {
+    const [scheduleId, stats] = gameStat
+    const stat = stats?.join(", ") || ""
+    const result = gameResults[Number(scheduleId)]
+    if (!result) {
+      return { weekIndex: -1, value: `` }
+    }
+    const game = result[0]
+    return {
+      weekIndex: game.weekIndex, value: `${formatGame(game, player, teams)} ${stat}`
+    }
+  }).sort((a, b) => (a.weekIndex < b.weekIndex ? -1 : 1)).join("\n")
 
   const teamAbbr = teams[`${player.teamId}`]
 
@@ -837,6 +1003,7 @@ function formatWeeklyStats(player: Player, teams: { [key: string]: string }, sta
 # ${getTeamEmoji(teamAbbr)} ${player.position} ${player.firstName} ${player.lastName}
 ## ${getDevTraitName(player.devTrait)} **${player.playerBestOvr} OVR**
 ## Stats
+${weekStats}
 `
 }
 
