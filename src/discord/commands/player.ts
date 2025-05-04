@@ -948,7 +948,7 @@ function formatScore(game: MaddenGame) {
 
 enum SnallabotGameResult {
   WIN = "<:snallabot_win:1368708001548079304>",
-  LOSS = "<:snallabot_loss:1368708003259482233>",
+  LOSS = "<snallabot_loss:1368708003259482233>",
   TIE = "<:snallabot_tie:1368713402016337950>"
 }
 
