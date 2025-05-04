@@ -831,29 +831,29 @@ function formatStats(stats: PlayerStats) {
     stats[PlayerStatType.PASSING].forEach(ps => {
       const individualStat = []
       individualStat.push(`${ps.passComp}/${ps.passAtt}`)
-      individualStat.push(`${ps.passYds} yds`)
+      individualStat.push(`${ps.passYds} pass yds`)
       if (ps.passTDs > 0) {
         individualStat.push(`${ps.passTDs} TD`)
       }
       if (ps.passInts > 0) {
         individualStat.push(`${ps.passInts} INT`)
       }
-      // individualStat.push(`${ps.passerRating.toFixed(1)} RTG`)
+      individualStat.push(`${ps.passerRating.toFixed(1)} RTG`)
       formattedStats.push({ scheduleId: ps.scheduleId, value: individualStat.join(", ") })
     });
   }
   if (stats[PlayerStatType.RUSHING]) {
     stats[PlayerStatType.RUSHING].forEach(rs => {
       const individualStat = [];
-      // individualStat.push(`${rs.rushAtt} att`);
-      individualStat.push(`${rs.rushYds} yds`);
+      individualStat.push(`${rs.rushAtt} att`);
+      individualStat.push(`${rs.rushYds} rush yds`);
       if (rs.rushTDs > 0) {
         individualStat.push(`${rs.rushTDs} TD`);
       }
       if (rs.rushFum > 0) {
         individualStat.push(`${rs.rushFum} fum`);
       }
-      // individualStat.push(`${rs.rushYdsPerAtt.toFixed(1)} avg`);
+      individualStat.push(`${rs.rushYdsPerAtt.toFixed(1)} avg`);
       formattedStats.push({ scheduleId: rs.scheduleId, value: individualStat.join(", ") });
     });
   }
@@ -970,7 +970,7 @@ function formatGame(game: MaddenGame, player: Player, teams: { [key: string]: st
   const awayTeam = game.awayTeamId
   const opponentTeam = playerTeam === awayTeam ? homeTeam : awayTeam
   const opponent = teams[opponentTeam]
-  return `Wk ${game.weekIndex + 1} ${opponent}: ${formatGameEmoji(game, playerTeam)} ${formatScore}`
+  return `Wk ${game.weekIndex + 1} ${opponent}: ${formatGameEmoji(game, playerTeam)} ${formatScore(game)}`
 }
 
 function formatWeeklyStats(player: Player, teams: { [key: string]: string }, stats: PlayerStats, games: MaddenGame[]) {
@@ -980,7 +980,7 @@ function formatWeeklyStats(player: Player, teams: { [key: string]: string }, sta
   const gameStats = formatStats(stats)
   const weekStats = Object.entries(Object.groupBy(gameStats.filter(s => currentGameIds.has(s.scheduleId)), g => g.scheduleId)).map(gameStat => {
     const [scheduleId, stats] = gameStat
-    const stat = stats?.join(", ") || ""
+    const stat = stats?.map(s => s.value).join(", ") || ""
     const result = gameResults[Number(scheduleId)]
     if (!result) {
       return { weekIndex: -1, value: `` }
