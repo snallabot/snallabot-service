@@ -998,6 +998,7 @@ function formatWeeklyStats(player: Player, teams: { [key: string]: string }, sta
   }).sort((a, b) => (a.weekIndex < b.weekIndex ? -1 : 1)).map(g => g.value).join("\n")
 
   const teamAbbr = teams[`${player.teamId}`]
+  console.log(weekStats.length)
 
   return `
 # ${getTeamEmoji(teamAbbr)} ${player.position} ${player.firstName} ${player.lastName}
