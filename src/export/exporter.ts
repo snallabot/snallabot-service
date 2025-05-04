@@ -293,12 +293,12 @@ export async function sendEvents<T>(league: string, request_type: string, events
   const newTree = createTwoLayer(newNodes)
   const hashDifferences = findDifferences(newTree, oldTree)
   if (hashDifferences.length > 0) {
-    await writeTree(league, request_type, eventType, newTree)
     // if (hashDifferences.length > 0) {
     // console.log(newNodes)
     // }
     const finalEvents = hashDifferences.map(h => hashToEvent.get(h)).filter(e => e) as SnallabotEvent<T>[]
     await MaddenDB.appendEvents(finalEvents, (e: T) => `${identifier(e)}`)
+    await writeTree(league, request_type, eventType, newTree)
   }
   // else {
   //     console.debug("skipped writing!")
