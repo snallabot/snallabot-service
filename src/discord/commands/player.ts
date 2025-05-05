@@ -203,10 +203,12 @@ async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, to
     throw new Error(`No League connected to snallabot`)
   }
   const player = await MaddenDB.getPlayer(leagueId, `${rosterId}`)
+  const playerStats = await MaddenDB.getPlayerStats(leagueId, player)
   const teamView = await teamSearchView.createView(leagueId)
   if (!teamView) {
     throw new Error("Missing teams?? Maybe try the command again")
   }
+
   const teamsDisplayNames = Object.fromEntries(Object.entries(teamView).map(teamEntry => {
     const [teamId, t] = teamEntry
     return [teamId, t.abbrName]
@@ -218,7 +220,7 @@ async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, to
     components: [
       {
         type: ComponentType.TextDisplay,
-        content: formatSeasonStats(player, teamsDisplayNames)
+        content: formatSeasonStats(player, playerStats, teamsDisplayNames)
       },
       {
         type: ComponentType.Separator,
@@ -1015,7 +1017,8 @@ ${joinedWeekStats}
 `
 }
 
-function formatSeasonStats(player: Player, teams: { [key: string]: string }) {
+
+function formatSeasonStats(player: Player, stats: PlayerStats, teams: { [key: string]: string }) {
 
   const teamAbbr = teams[`${player.teamId}`]
 
