@@ -1096,14 +1096,14 @@ function formatSeasonAggregation(agg: SeasonAggregation): string {
     if (seasonStats.recCatches) statItems.push(`${seasonStats.recCatches.value} ${seasonStats.recCatches.name}`);
     if (seasonStats.recYds) statItems.push(`${seasonStats.recYds.value} ${seasonStats.recYds.name}`);
     if (seasonStats.recTDs) statItems.push(`${seasonStats.recTDs.value} ${seasonStats.recTDs.name}`);
-    if (seasonStats.recDrops) statItems.push(`${seasonStats.recDrops.value} ${seasonStats.recDrops.name}`);
+    if (seasonStats.recDrops && seasonStats.recDrops.value > 0) statItems.push(`${seasonStats.recDrops.value} ${seasonStats.recDrops.name}`);
 
-    if (seasonStats.defTotalTackles) statItems.push(`${seasonStats.defTotalTackles.value} ${seasonStats.defTotalTackles.name}`);
-    if (seasonStats.defSacks) statItems.push(`${seasonStats.defSacks.value} ${seasonStats.defSacks.name}`);
-    if (seasonStats.defInts) statItems.push(`${seasonStats.defInts.value} ${seasonStats.defInts.name}`);
-    if (seasonStats.defFumRec) statItems.push(`${seasonStats.defFumRec.value} ${seasonStats.defFumRec.name}`);
-    if (seasonStats.defForcedFum) statItems.push(`${seasonStats.defForcedFum.value} ${seasonStats.defForcedFum.name}`);
-    if (seasonStats.defTDs) statItems.push(`${seasonStats.defTDs.value} ${seasonStats.defTDs.name}`);
+    if (seasonStats.defTotalTackles && seasonStats.defTotalTackles.value > 0) statItems.push(`${seasonStats.defTotalTackles.value} ${seasonStats.defTotalTackles.name}`);
+    if (seasonStats.defSacks && seasonStats.defSacks.value > 0) statItems.push(`${seasonStats.defSacks.value} ${seasonStats.defSacks.name}`);
+    if (seasonStats.defInts && seasonStats.defInts.value > 0) statItems.push(`${seasonStats.defInts.value} ${seasonStats.defInts.name}`);
+    if (seasonStats.defFumRec && seasonStats.defFumRec.value > 0) statItems.push(`${seasonStats.defFumRec.value} ${seasonStats.defFumRec.name}`);
+    if (seasonStats.defForcedFum && seasonStats.defForcedFum.value > 0) statItems.push(`${seasonStats.defForcedFum.value} ${seasonStats.defForcedFum.name}`);
+    if (seasonStats.defTDs && seasonStats.defTDs.value > 0) statItems.push(`${seasonStats.defTDs.value} ${seasonStats.defTDs.name}`);
 
     if (seasonStats.fGMade && seasonStats.fGAtt) {
       statItems.push(`${seasonStats.fGMade.value}/${seasonStats.fGAtt.value} FG`);
