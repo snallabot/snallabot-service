@@ -991,6 +991,7 @@ function formatGame(game: MaddenGame, player: Player, teams: { [key: string]: st
 
 function formatWeeklyStats(player: Player, teams: { [key: string]: string }, stats: PlayerStats, games: MaddenGame[]) {
   const currentSeason = Math.max(...games.map(g => g.seasonIndex))
+  console.log(currentSeason)
   const currentGameIds = new Set(games.filter(g => g.seasonIndex === currentSeason && g.stageIndex > 0).map(g => g.scheduleId))
   console.log(currentGameIds)
   const gameResults = Object.groupBy(games.filter(g => currentGameIds.has(g.scheduleId)), g => g.scheduleId)
