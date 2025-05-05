@@ -922,7 +922,7 @@ function formatStats(stats: PlayerStats) {
       individualStat.push(`${ps.puntYdsPerAtt.toFixed(1)} AVG`);
       individualStat.push(`${ps.puntNetYdsPerAtt.toFixed(1)} NET`);
       if (ps.puntsIn20 > 0) {
-        individualStat.push(`${ps.puntsIn20} I20`);
+        individualStat.push(`${ps.puntsIn20} INS 20`);
       }
       if (ps.puntTBs > 0) {
         individualStat.push(`${ps.puntTBs} TB`);
@@ -1078,7 +1078,7 @@ function formatSeasonAggregation(agg: SeasonAggregation): string {
   for (const seasonIndex of seasonIndices) {
     const seasonStats = agg[seasonIndex];
     const statItems: string[] = [];
-    result += `**Season ${seasonIndex + MADDEN_SEASON}**`;
+    result += `**${seasonIndex + MADDEN_SEASON}**: `;
 
     if (seasonStats.passPercent) {
       statItems.push(`${seasonStats.passPercent.top}/${seasonStats.passPercent.bottom}`);
