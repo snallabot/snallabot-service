@@ -6,7 +6,7 @@ import { Firestore } from "firebase-admin/firestore"
 import { playerSearchIndex, discordLeagueView, teamSearchView } from "../../db/view"
 import fuzzysort from "fuzzysort"
 import MaddenDB, { PlayerStatType, PlayerStats } from "../../db/madden_db"
-import { CoverBallTrait, DevTrait, LBStyleTrait, MaddenGame, PenaltyTrait, PlayBallTrait, Player, QBStyleTrait, SensePressureTrait, YesNoTrait } from "../../export/madden_league_types"
+import { CoverBallTrait, DevTrait, LBStyleTrait, MADDEN_SEASON, MaddenGame, PenaltyTrait, PlayBallTrait, Player, QBStyleTrait, SensePressureTrait, YesNoTrait } from "../../export/madden_league_types"
 
 enum PlayerSelection {
   PLAYER_OVERVIEW = "player_overview",
@@ -1016,16 +1016,386 @@ function formatWeeklyStats(player: Player, teams: { [key: string]: string }, sta
 ${joinedWeekStats}
 `
 }
+export type StatItem = {
+  value: number;
+  name: string;
+}
+export type RatioItem = {
+  top: number,
+  bottom: number,
+}
 
+export type SeasonAggregation = {
+  [seasonIndex: number]: {
+    // Passing stats
+    passYds?: StatItem,
+    passTDs?: StatItem,
+    passInts?: StatItem,
+    passPercent?: RatioItem,
+    passSacks?: StatItem,
+
+    // Rushing stats
+    rushYds?: StatItem,
+    rushTDs?: StatItem,
+    rushAtt?: StatItem,
+    rushFum?: StatItem,
+
+    // Receiving stats
+    recYds?: StatItem,
+    recTDs?: StatItem,
+    recCatches?: StatItem,
+    recDrops?: StatItem,
+
+    // Defensive stats
+    defTotalTackles?: StatItem,
+    defSacks?: StatItem,
+    defInts?: StatItem,
+    defFumRec?: StatItem,
+    defForcedFum?: StatItem,
+    defTDs?: StatItem,
+
+    // Kicking stats
+    fGMade?: StatItem,
+    fGAtt?: StatItem,
+    xPMade?: StatItem,
+    xPAtt?: StatItem,
+    kickPts?: StatItem,
+
+    // Punting stats
+    puntYds?: StatItem,
+    puntAtt?: StatItem,
+    puntsIn20?: StatItem,
+    puntNetYds?: StatItem,
+    puntsBlocked?: StatItem,
+    puntTBs?: StatItem,
+  }
+}
+
+function formatSeasonAggregation(agg: SeasonAggregation): string {
+  let result = "";
+  const seasonIndices = Object.keys(agg).map(Number).sort((a, b) => a - b);
+
+  for (const seasonIndex of seasonIndices) {
+    const seasonStats = agg[seasonIndex];
+    const statItems: string[] = [];
+    result += `**Season ${seasonIndex + MADDEN_SEASON}**`;
+
+    if (seasonStats.passPercent) {
+      statItems.push(`${seasonStats.passPercent.top}/${seasonStats.passPercent.bottom}`);
+    }
+    if (seasonStats.passYds) statItems.push(`${seasonStats.passYds.value} ${seasonStats.passYds.name}`);
+    if (seasonStats.passTDs) statItems.push(`${seasonStats.passTDs.value} ${seasonStats.passTDs.name}`);
+    if (seasonStats.passInts) statItems.push(`${seasonStats.passInts.value} ${seasonStats.passInts.name}`);
+    if (seasonStats.passSacks) statItems.push(`${seasonStats.passSacks.value} ${seasonStats.passSacks.name}`);
+
+    if (seasonStats.rushAtt) statItems.push(`${seasonStats.rushAtt.value} ${seasonStats.rushAtt.name}`);
+    if (seasonStats.rushYds) statItems.push(`${seasonStats.rushYds.value} ${seasonStats.rushYds.name}`);
+    if (seasonStats.rushTDs) statItems.push(`${seasonStats.rushTDs.value} ${seasonStats.rushTDs.name}`);
+    if (seasonStats.rushFum) statItems.push(`${seasonStats.rushFum.value} ${seasonStats.rushFum.name}`);
+
+    if (seasonStats.recCatches) statItems.push(`${seasonStats.recCatches.value} ${seasonStats.recCatches.name}`);
+    if (seasonStats.recYds) statItems.push(`${seasonStats.recYds.value} ${seasonStats.recYds.name}`);
+    if (seasonStats.recTDs) statItems.push(`${seasonStats.recTDs.value} ${seasonStats.recTDs.name}`);
+    if (seasonStats.recDrops) statItems.push(`${seasonStats.recDrops.value} ${seasonStats.recDrops.name}`);
+
+    if (seasonStats.defTotalTackles) statItems.push(`${seasonStats.defTotalTackles.value} ${seasonStats.defTotalTackles.name}`);
+    if (seasonStats.defSacks) statItems.push(`${seasonStats.defSacks.value} ${seasonStats.defSacks.name}`);
+    if (seasonStats.defInts) statItems.push(`${seasonStats.defInts.value} ${seasonStats.defInts.name}`);
+    if (seasonStats.defFumRec) statItems.push(`${seasonStats.defFumRec.value} ${seasonStats.defFumRec.name}`);
+    if (seasonStats.defForcedFum) statItems.push(`${seasonStats.defForcedFum.value} ${seasonStats.defForcedFum.name}`);
+    if (seasonStats.defTDs) statItems.push(`${seasonStats.defTDs.value} ${seasonStats.defTDs.name}`);
+
+    if (seasonStats.fGMade && seasonStats.fGAtt) {
+      statItems.push(`${seasonStats.fGMade.value}/${seasonStats.fGAtt.value} FG`);
+    }
+    if (seasonStats.xPMade && seasonStats.xPAtt) {
+      statItems.push(`${seasonStats.xPMade.value}/${seasonStats.xPAtt.value} XP`);
+    }
+    if (seasonStats.kickPts) statItems.push(`${seasonStats.kickPts.value} ${seasonStats.kickPts.name}`);
+
+    if (seasonStats.puntYds) statItems.push(`${seasonStats.puntYds.value} ${seasonStats.puntYds.name}`);
+    if (seasonStats.puntAtt) statItems.push(`${seasonStats.puntAtt.value} ${seasonStats.puntAtt.name}`);
+    if (seasonStats.puntsIn20) statItems.push(`${seasonStats.puntsIn20.value} ${seasonStats.puntsIn20.name}`);
+    if (seasonStats.puntNetYds) statItems.push(`${seasonStats.puntNetYds.value} ${seasonStats.puntNetYds.name}`);
+    if (seasonStats.puntsBlocked) statItems.push(`${seasonStats.puntsBlocked.value} ${seasonStats.puntsBlocked.name}`);
+    if (seasonStats.puntTBs) statItems.push(`${seasonStats.puntTBs.value} ${seasonStats.puntTBs.name}`);
+
+    result += statItems.join(", ");
+    result += "\n";
+  }
+
+  return result.trim();
+}
+
+
+function aggregateSeason(stats: PlayerStats): SeasonAggregation {
+  const seasonAggregation: SeasonAggregation = {};
+
+  // Process passing stats
+  if (stats[PlayerStatType.PASSING]) {
+    for (const passStat of stats[PlayerStatType.PASSING]) {
+      if (!seasonAggregation[passStat.seasonIndex]) {
+        seasonAggregation[passStat.seasonIndex] = {}
+      }
+
+      const season = seasonAggregation[passStat.seasonIndex];
+
+      // Initialize or add to existing values
+      if (!season.passYds) {
+        season.passYds = { value: passStat.passYds, name: 'PASS YDS' };
+      } else {
+        season.passYds.value += passStat.passYds;
+      }
+
+      if (!season.passTDs) {
+        season.passTDs = { value: passStat.passTDs, name: 'TD' };
+      } else {
+        season.passTDs.value += passStat.passTDs;
+      }
+
+      if (!season.passInts) {
+        season.passInts = { value: passStat.passInts, name: 'INT' };
+      } else {
+        season.passInts.value += passStat.passInts;
+      }
+
+
+      if (!season.passPercent) {
+        season.passPercent = { top: passStat.passComp, bottom: passStat.passAtt }
+      } else {
+        season.passPercent.top += passStat.passComp
+        season.passPercent.bottom += passStat.passAtt
+      }
+
+      if (!season.passSacks) {
+        season.passSacks = { value: passStat.passSacks, name: 'SCKS' };
+      } else {
+        season.passSacks.value += passStat.passSacks;
+      }
+    }
+  }
+
+  // Process rushing stats
+  if (stats[PlayerStatType.RUSHING]) {
+    for (const rushStat of stats[PlayerStatType.RUSHING]) {
+      if (!seasonAggregation[rushStat.seasonIndex]) {
+        seasonAggregation[rushStat.seasonIndex] = {
+        }
+      }
+
+      const season = seasonAggregation[rushStat.seasonIndex];
+
+      if (!season.rushYds) {
+        season.rushYds = { value: rushStat.rushYds, name: 'RUSH YDS' };
+      } else {
+        season.rushYds.value += rushStat.rushYds;
+      }
+
+      if (!season.rushTDs) {
+        season.rushTDs = { value: rushStat.rushTDs, name: 'TD' };
+      } else {
+        season.rushTDs.value += rushStat.rushTDs;
+      }
+
+      if (!season.rushAtt) {
+        season.rushAtt = { value: rushStat.rushAtt, name: 'ATT' };
+      } else {
+        season.rushAtt.value += rushStat.rushAtt;
+      }
+
+      if (!season.rushFum) {
+        season.rushFum = { value: rushStat.rushFum, name: 'FUM' };
+      } else {
+        season.rushFum.value += rushStat.rushFum;
+      }
+    }
+  }
+
+  // Process receiving stats
+  if (stats[PlayerStatType.RECEIVING]) {
+    for (const recStat of stats[PlayerStatType.RECEIVING]) {
+      if (!seasonAggregation[recStat.seasonIndex]) {
+        seasonAggregation[recStat.seasonIndex] = {}
+      }
+
+      const season = seasonAggregation[recStat.seasonIndex];
+
+      if (!season.recYds) {
+        season.recYds = { value: recStat.recYds, name: 'REC YDS' };
+      } else {
+        season.recYds.value += recStat.recYds;
+      }
+
+      if (!season.recTDs) {
+        season.recTDs = { value: recStat.recTDs, name: 'TD' };
+      } else {
+        season.recTDs.value += recStat.recTDs;
+      }
+
+      if (!season.recCatches) {
+        season.recCatches = { value: recStat.recCatches, name: 'REC' };
+      } else {
+        season.recCatches.value += recStat.recCatches;
+      }
+
+      if (!season.recDrops) {
+        season.recDrops = { value: recStat.recDrops, name: 'DROPS' };
+      } else {
+        season.recDrops.value += recStat.recDrops;
+      }
+    }
+  }
+
+  // Process defensive stats
+  if (stats[PlayerStatType.DEFENSE]) {
+    for (const defStat of stats[PlayerStatType.DEFENSE]) {
+      if (!seasonAggregation[defStat.seasonIndex]) {
+        seasonAggregation[defStat.seasonIndex] = {
+        };
+      }
+
+      const season = seasonAggregation[defStat.seasonIndex];
+
+      if (!season.defTotalTackles) {
+        season.defTotalTackles = { value: defStat.defTotalTackles, name: 'TCKLS' };
+      } else {
+        season.defTotalTackles.value += defStat.defTotalTackles;
+      }
+
+      if (!season.defSacks) {
+        season.defSacks = { value: defStat.defSacks, name: 'SCKS' };
+      } else {
+        season.defSacks.value += defStat.defSacks;
+      }
+
+      if (!season.defInts) {
+        season.defInts = { value: defStat.defInts, name: 'INT' };
+      } else {
+        season.defInts.value += defStat.defInts;
+      }
+
+      if (!season.defFumRec) {
+        season.defFumRec = { value: defStat.defFumRec, name: 'FR' };
+      } else {
+        season.defFumRec.value += defStat.defFumRec;
+      }
+
+      if (!season.defForcedFum) {
+        season.defForcedFum = { value: defStat.defForcedFum, name: 'FF' };
+      } else {
+        season.defForcedFum.value += defStat.defForcedFum;
+      }
+
+      if (!season.defTDs) {
+        season.defTDs = { value: defStat.defTDs, name: 'TD' };
+      } else {
+        season.defTDs.value += defStat.defTDs;
+      }
+    }
+  }
+
+  // Process kicking stats
+  if (stats[PlayerStatType.KICKING]) {
+    for (const kickStat of stats[PlayerStatType.KICKING]) {
+      if (!seasonAggregation[kickStat.seasonIndex]) {
+        seasonAggregation[kickStat.seasonIndex] = {}
+      }
+
+      const season = seasonAggregation[kickStat.seasonIndex];
+
+      if (!season.fGMade) {
+        season.fGMade = { value: kickStat.fGMade, name: 'FGS' };
+      } else {
+        season.fGMade.value += kickStat.fGMade;
+      }
+
+      if (!season.fGAtt) {
+        season.fGAtt = { value: kickStat.fGAtt, name: 'FG ATT' };
+      } else {
+        season.fGAtt.value += kickStat.fGAtt;
+      }
+
+      if (!season.xPMade) {
+        season.xPMade = { value: kickStat.xPMade, name: 'XP' };
+      } else {
+        season.xPMade.value += kickStat.xPMade;
+      }
+
+      if (!season.xPAtt) {
+        season.xPAtt = { value: kickStat.xPAtt, name: 'XP ATT' };
+      } else {
+        season.xPAtt.value += kickStat.xPAtt;
+      }
+
+      if (!season.kickPts) {
+        season.kickPts = { value: kickStat.kickPts, name: 'PTS' };
+      } else {
+        season.kickPts.value += kickStat.kickPts;
+      }
+    }
+  }
+
+  // Process punting stats
+  if (stats[PlayerStatType.PUNTING]) {
+    for (const puntStat of stats[PlayerStatType.PUNTING]) {
+      if (!seasonAggregation[puntStat.seasonIndex]) {
+        seasonAggregation[puntStat.seasonIndex] = {}
+      }
+
+      const season = seasonAggregation[puntStat.seasonIndex];
+
+      if (!season.puntYds) {
+        season.puntYds = { value: puntStat.puntYds, name: 'PUNT YDS' };
+      } else {
+        season.puntYds.value += puntStat.puntYds;
+      }
+
+      if (!season.puntAtt) {
+        season.puntAtt = { value: puntStat.puntAtt, name: 'ATT' };
+      } else {
+        season.puntAtt.value += puntStat.puntAtt;
+      }
+
+      if (!season.puntsIn20) {
+        season.puntsIn20 = { value: puntStat.puntsIn20, name: 'INS 20' };
+      } else {
+        season.puntsIn20.value += puntStat.puntsIn20;
+      }
+
+      if (!season.puntNetYds) {
+        season.puntNetYds = { value: puntStat.puntNetYds, name: 'PUNT YDS NET' };
+      } else {
+        season.puntNetYds.value += puntStat.puntNetYds;
+      }
+
+      if (!season.puntsBlocked) {
+        season.puntsBlocked = { value: puntStat.puntsBlocked, name: 'BLOCK' };
+      } else {
+        season.puntsBlocked.value += puntStat.puntsBlocked;
+      }
+
+      if (!season.puntTBs) {
+        season.puntTBs = { value: puntStat.puntTBs, name: 'TBS' };
+      } else {
+        season.puntTBs.value += puntStat.puntTBs;
+      }
+    }
+  }
+
+  return seasonAggregation;
+}
 
 function formatSeasonStats(player: Player, stats: PlayerStats, teams: { [key: string]: string }) {
 
   const teamAbbr = teams[`${player.teamId}`]
+  const agg = aggregateSeason(stats)
+  const formattedAgg = formatSeasonAggregation(agg)
 
   return `
 # ${getTeamEmoji(teamAbbr)} ${player.position} ${player.firstName} ${player.lastName}
 ## ${getDevTraitName(player.devTrait)} **${player.playerBestOvr} OVR**
 ## Stats
+${formattedAgg}
 `
 }
 

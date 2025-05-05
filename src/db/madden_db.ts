@@ -275,7 +275,7 @@ const MaddenDB: MaddenDB = {
           [PlayerStatType.KICKING]: kickingStats
         }
       case "P":
-        const puntingStats = await getStats<PuntingStats>(leagueId, rosterId, "MADDEN_KICKING_STAT")
+        const puntingStats = await getStats<PuntingStats>(leagueId, rosterId, "MADDEN_PUNTING_STAT")
         return {
           [PlayerStatType.PUNTING]: puntingStats
         }
