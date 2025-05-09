@@ -82,6 +82,7 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
       const exporter = await exporterForLeague(Number(leagueId), ExportContext.AUTO)
       await exporter.exportSurroundingWeek()
     } catch (e) {
+      console.log(e)
       exportEmoji = SnallabotCommandReactions.ERROR
     }
     await client.editOriginalInteraction(token, {
