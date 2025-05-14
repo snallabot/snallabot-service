@@ -84,29 +84,35 @@ export default (config: LoggerConfiguration) => ({
       const threadId = thread.id
       const messagePromise = logMessages.reduce((p, message) => {
         return p.then(async (_) => {
-          await client.requestDiscord(`channels/${threadId}/messages`, {
-            method: "POST",
-            body: {
-              content: `(${dateFormatter.format(new Date(message.time))} EST) <@${message.user}>: ${message.content}`,
-              allowed_mentions: {
-                parse: [],
+          try {
+            await client.requestDiscord(`channels/${threadId}/messages`, {
+              method: "POST",
+              body: {
+                content: `(${dateFormatter.format(new Date(message.time))} EST) <@${message.user}>: ${message.content}`,
+                allowed_mentions: {
+                  parse: [],
+                },
               },
-            },
-          })
+            })
+          } catch (e) {
+          }
           return Promise.resolve()
         }
         )
       }, Promise.resolve())
       messagePromise.then(async (_) => {
-        await client.requestDiscord(`channels/${threadId}/messages`, {
-          method: "POST",
-          body: {
-            content: `cleared by ${joinUsers(loggedAuthors)}`,
-            allowed_mentions: {
-              parse: [],
+        try {
+          await client.requestDiscord(`channels/${threadId}/messages`, {
+            method: "POST",
+            body: {
+              content: `cleared by ${joinUsers(loggedAuthors)}`,
+              allowed_mentions: {
+                parse: [],
+              },
             },
-          },
-        })
+          })
+        } catch (e) {
+        }
       })
       return messagePromise
     })
