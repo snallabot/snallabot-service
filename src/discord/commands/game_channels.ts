@@ -9,7 +9,7 @@ import { formatRecord, getMessageForWeek, MaddenGame } from "../../export/madden
 import createLogger from "../logging"
 import { ConfirmedSim, SimResult } from "../../db/events"
 import createNotifier from "../notifier"
-import { ExportContext, exporterForLeague } from "../../dashboard/ea_client"
+import { ExportContext, Stage, exporterForLeague } from "../../dashboard/ea_client"
 import { EAAccountError } from "../../dashboard/routes"
 
 async function react(client: DiscordClient, channel: ChannelId, message: MessageId, reaction: SnallabotReactions) {
@@ -113,14 +113,9 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
 - ${SnallabotCommandReactions.WAITING} Creating Scoreboard
 - ${SnallabotCommandReactions.WAITING} Logging`
       })
-      await fetch(`https://snallabot.herokuapp.com/${guild_id}/export`, {
-        method: "POST",
-        body: JSON.stringify({
-          week: week,
-          stage: 1,
-        }),
-      })
       try {
+        const exporter = await exporterForLeague(Number(leagueId), ExportContext.AUTO)
+        await exporter.exportSpecificWeeks([{ weekIndex: week, stage: Stage.SEASON }])
         weekSchedule = (await MaddenClient.getLatestWeekSchedule(leagueId, week)).sort((g, g2) => g.scheduleId - g2.scheduleId)
       } catch (e) {
         await client.editOriginalInteraction(token, { content: "This week is not exported! Export it via dashboard or companion app" })
