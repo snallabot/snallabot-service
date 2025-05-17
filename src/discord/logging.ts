@@ -54,13 +54,17 @@ export default (config: LoggerConfiguration) => ({
         const threadId = await client.createThreadInChannel(loggerChannel, `${channelName} channel log`)
         const messagePromise = logMessages.reduce((p, message) => {
           return p.then(async (_) => {
-            await client.createMessage(threadId, `(${dateFormatter.format(new Date(message.time))} EST) <@${message.user}>: ${message.content} (<t:${Math.round(new Date(message.time).getTime() / 1000)}>)`, [])
+            try {
+              await client.createMessage(threadId, `(${dateFormatter.format(new Date(message.time))} EST) <@${message.user}>: ${message.content} (<t:${Math.round(new Date(message.time).getTime() / 1000)}>)`, [])
+            } catch (e) { }
             return Promise.resolve()
           }
           )
         }, Promise.resolve())
         messagePromise.then(async (_) => {
-          await client.createMessage(threadId, `cleared by ${joinUsers(loggedAuthors)}`, [])
+          try {
+            await client.createMessage(threadId, `cleared by ${joinUsers(loggedAuthors)}`, [])
+          } catch (e) { }
         })
         return messagePromise
       } catch (e) {
