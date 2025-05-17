@@ -41,12 +41,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
   const leagueId = settings.commands.madden_league.league_id
   async function getReactedUsers(channelId: ChannelId, messageId: MessageId, reaction: SnallabotReactions): Promise<UserId[]> {
     try {
-      const res = await client.requestDiscord(
-        `channels/${channelId.id}/messages/${messageId.id}/reactions/${reaction}`,
-        { method: "GET" }
-      )
-      const reactedUsers = await res.json() as APIUser[]
-      return reactedUsers.filter(u => u.id !== SNALLABOT_USER && u.id !== SNALLABOT_TEST_USER).map(u => ({ id: u.id, id_type: DiscordIdType.USER }))
+      return client.getUsersReacted(`${reaction}`, messageId, channelId)
     } catch (e) {
 
       throw e
@@ -87,16 +82,19 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
       const logger = createLogger(settings.commands.logger)
       await logger.logChannels([gameChannel.channel], reactors, client)
     } else {
-      await client.requestDiscord(`channels/${gameChannel.channel.id}`, { method: "DELETE" })
+      await client.deleteChannel(gameChannel.channel)
     }
+  }
+  async function deleteTracking(currentState: GameChannel, season: number, week: number) {
+    const channelId = currentState.channel
+    const weekKey = createWeekKey(season, week)
+    await db.collection("league_settings").doc(guildId).update({
+      [`commands.game_channel.weekly_states.${weekKey}.channel_states.${channelId.id}`]: FieldValue.delete()
+    })
   }
   return {
     deleteGameChannel: async function(currentState: GameChannel, season: number, week: number, originators: UserId[]) {
-      const channelId = currentState.channel
-      const weekKey = createWeekKey(season, week)
-      await db.collection("league_settings").doc(guildId).update({
-        [`commands.game_channel.weekly_states.${weekKey}.channel_states.${channelId.id}`]: FieldValue.delete()
-      })
+      await deleteTracking(currentState, season, week)
       await gameFinished(originators, currentState)
     },
     ping: async function ping(gameChannel: GameChannel, season: number, week: number) {
@@ -110,24 +108,14 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
       await db.collection("league_settings").doc(guildId).update({
         [`commands.game_channel.weekly_states.${weekKey}.channel_states.${gameChannel.channel.id}.notifiedTime`]: new Date().getTime()
       })
-      await client.requestDiscord(`channels/${gameChannel.channel.id}/messages`, {
-        method: "POST",
-        body: {
-          content: `${awayTag} ${homeTag} is your game scheduled? Schedule it! or react to my first message to set it as scheduled! Hit the trophy if its done already`,
-        },
-      })
+      await client.createMessage(gameChannel.channel, `${awayTag} ${homeTag} is your game scheduled? Schedule it! or react to my first message to set it as scheduled! Hit the trophy if its done already`, [])
     },
     update: async function(currentState: GameChannel, season: number, week: number) {
       const channelId = currentState.channel
       const messageId = currentState.message
-      try {
-        await client.requestDiscord(`channels/${channelId.id}`, {
-          method: "GET",
-        })
-        await client.requestDiscord(`channels/${channelId.id}/messages/${messageId.id}`, {
-          method: "GET",
-        })
-      } catch (e) {
+      const messageExists = await client.checkMessageExists(channelId, messageId)
+      if (!messageExists) {
+        await deleteTracking(currentState, season, week)
         return
       }
       const weekKey = createWeekKey(season, week)
@@ -144,13 +132,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
         }
       }
       if (fwUsers.length > 0) {
-        const res = await client.requestDiscord(
-          `guilds/${guildId}/members?limit=1000`,
-          {
-            method: "GET",
-          }
-        )
-        const users = await res.json() as APIGuildMember[]
+        const users = await client.getUsers(guildId)
         const adminRole = settings.commands.game_channel?.admin.id || ""
         const admins = users.map((u) => ({ id: u.user.id, roles: u.roles })).filter(u => u.roles.includes(adminRole)).map(u => u.id)
         const confirmedUsers = fwUsers.filter(u => admins.includes(u.id))
@@ -169,15 +151,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
           await db.collection("league_settings").doc(guildId).update({
             [`commands.game_channel.weekly_states.${weekKey}.channel_states.${channelId.id}.state`]: GameChannelState.FORCE_WIN_REQUESTED
           })
-          await client.requestDiscord(`channels/${channelId.id}/messages`, {
-            method: "POST",
-            body: {
-              content: message,
-              allowed_mentions: {
-                parse: ["roles"],
-              },
-            },
-          })
+          await client.createMessage(channelId, message, ["roles"])
         }
       } else if (scheduledUsers.length === 0 && currentState.state !== GameChannelState.FORCE_WIN_REQUESTED) {
         const waitPing = settings.commands.game_channel?.wait_ping || 12
