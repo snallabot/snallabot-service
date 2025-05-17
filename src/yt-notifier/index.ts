@@ -75,15 +75,10 @@ EventDB.on<MaddenBroadcastEvent>("MADDEN_BROADCAST", async (events) => {
     const configuration = leagueSettings.commands?.broadcast
     if (!configuration) {
     } else {
-      const channel = configuration.channel.id
+      const channel = configuration.channel
       const role = configuration.role ? `<@&${configuration.role.id}>` : ""
       try {
-        await prodClient.requestDiscord(`channels/${channel}/messages`, {
-          method: "POST",
-          body: {
-            content: `${role} ${broadcastEvent.title}\n\n${broadcastEvent.video}`
-          }
-        })
+        await prodClient.createMessage(channel, `${role} ${broadcastEvent.title}\n\n${broadcastEvent.video}`, ["roles"])
       } catch (e) {
 
       }

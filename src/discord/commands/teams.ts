@@ -3,7 +3,7 @@ import { CommandHandler, Command, AutocompleteHandler, Autocomplete } from "../c
 import { respond, createMessageResponse, DiscordClient } from "../discord_utils"
 import { APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIApplicationCommandInteractionDataUserOption, APIMessage, ApplicationCommandOptionType, ApplicationCommandType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { FieldValue, Firestore } from "firebase-admin/firestore"
-import { DiscordIdType, LeagueSettings, TeamAssignments } from "../settings_db"
+import { ChannelId, DiscordIdType, LeagueSettings, MessageId, TeamAssignments } from "../settings_db"
 import MaddenClient from "../../db/madden_db"
 import { Team } from "../../export/madden_league_types"
 import { teamSearchView, discordLeagueView } from "../../db/view"
@@ -11,24 +11,13 @@ import fuzzysort from "fuzzysort"
 import MaddenDB from "../../db/madden_db"
 import firebaseDB from "../../db/firebase"
 
-async function moveTeamsMessage(client: DiscordClient, oldChannelId: string, newChannelId: string, oldMessageId: string, teamsMessage: string): Promise<string> {
+async function moveTeamsMessage(client: DiscordClient, oldChannelId: ChannelId, oldMessageId: MessageId, newChannelId: ChannelId, teamsMessage: string): Promise<MessageId> {
   try {
-    await client.requestDiscord(`channels/${oldChannelId}/messages/${oldMessageId}`, {
-      method: "DELETE"
-    })
+    await client.deleteMessage(oldChannelId, oldMessageId)
   } catch (e) { }
-  const res = await client.requestDiscord(`channels/${newChannelId}/messages`, {
-    method: "POST",
-    body: {
-      content: teamsMessage,
-      allowed_mentions: {
-        parse: []
-      }
-    }
-  })
-  const message = await res.json() as APIMessage
-  return message.id
+  return await client.createMessage(newChannelId, teamsMessage, [])
 }
+
 
 function formatTeamMessage(teams: Team[], teamAssignments: TeamAssignments): string {
   const header = "# Teams"
@@ -86,13 +75,13 @@ export default {
       if (!teamsCommand.options || !teamsCommand.options[0]) {
         throw new Error("teams configure misconfigured")
       }
-      const channel = (teamsCommand.options[0] as APIApplicationCommandInteractionDataChannelOption).value
+      const channel: ChannelId = { id: (teamsCommand.options[0] as APIApplicationCommandInteractionDataChannelOption).value, id_type: DiscordIdType.CHANNEL }
       const useRoleUpdates = (teamsCommand.options?.[1] as APIApplicationCommandInteractionDataBooleanOption)?.value || false
-      const oldChannelId = leagueSettings?.commands?.teams?.channel?.id
-      const oldMessageId = leagueSettings?.commands?.teams?.messageId?.id || ""
+      const oldChannelId = leagueSettings?.commands?.teams?.channel
+      const oldMessageId = leagueSettings?.commands?.teams?.messageId
       if (oldChannelId && oldChannelId !== channel) {
         const message = await fetchTeamsMessage(leagueSettings)
-        const newMessageId = await moveTeamsMessage(client, oldChannelId, channel, oldMessageId, message)
+        const newMessageId = await moveTeamsMessage(client, oldChannelId, oldMessageId || { id: "", id_type: DiscordIdType.MESSAGE }, channel, message)
         await db.collection("league_settings").doc(guild_id).set({
           commands: {
             teams: {
@@ -105,39 +94,35 @@ export default {
         }, { merge: true })
         respond(ctx, createMessageResponse("Teams Configured"))
       } else {
-        const oldMessageId = leagueSettings?.commands?.teams?.messageId?.id
+        const oldMessageId = leagueSettings?.commands?.teams?.messageId
         if (oldMessageId) {
           try {
-            await client.requestDiscord(`channels/${channel}/messages/${oldMessageId}`, { method: "GET" })
-            await db.collection("league_settings").doc(guild_id).set({
-              commands: {
-                teams: {
-                  useRoleUpdates: useRoleUpdates,
-                  assignments: leagueSettings?.commands.teams?.assignments || {},
+            const messageExists = await client.checkMessageExists(channel, oldMessageId)
+            if (messageExists) {
+              await db.collection("league_settings").doc(guild_id).set({
+                commands: {
+                  teams: {
+                    useRoleUpdates: useRoleUpdates,
+                    assignments: leagueSettings?.commands.teams?.assignments || {},
+                  }
                 }
-              }
-            }, { merge: true })
-            const message = await fetchTeamsMessage(leagueSettings)
-            await client.requestDiscord(`channels/${channel}/messages/${oldMessageId}`, { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
-            respond(ctx, createMessageResponse("Teams Configured"))
+              }, { merge: true })
+              const message = await fetchTeamsMessage(leagueSettings)
+              await client.editMessage(channel, oldMessageId, message, [])
+              respond(ctx, createMessageResponse("Teams Configured"))
+            }
             return
           } catch (e) {
             console.debug(e)
           }
         }
         const message = await fetchTeamsMessage(leagueSettings)
-        const res = await client.requestDiscord(`channels/${channel}/messages`, {
-          method: "POST", body: {
-            content: message,
-            allowed_mentions: { parse: [] }
-          }
-        })
-        const messageData = await res.json() as APIMessage
+        const messageId = await client.createMessage(channel, message, [])
         await db.collection("league_settings").doc(guild_id).set({
           commands: {
             teams: {
-              channel: { id: channel, id_type: DiscordIdType.CHANNEL },
-              messageId: { id: messageData.id, id_type: DiscordIdType.MESSAGE },
+              channel: channel,
+              messageId: messageId,
               useRoleUpdates: useRoleUpdates,
               assignments: leagueSettings?.commands?.teams?.assignments || {},
             }
@@ -183,8 +168,7 @@ export default {
       }, { merge: true })
       const message = createTeamsMessage(leagueSettings, teams.getLatestTeams())
       try {
-        await client.requestDiscord(`channels/${leagueSettings.commands.teams.channel.id}/messages/${leagueSettings.commands.teams.messageId.id} `,
-          { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
+        await client.editMessage(leagueSettings.commands.teams.channel, leagueSettings.commands.teams.messageId, message, [])
         respond(ctx, createMessageResponse("Team Assigned"))
       } catch (e) {
         respond(ctx, createMessageResponse("Could not update teams message, this could be a permission issue. The assignment was saved, Error: " + e))
@@ -222,8 +206,7 @@ export default {
       })
       const message = createTeamsMessage(leagueSettings, teams.getLatestTeams())
       try {
-        await client.requestDiscord(`channels/${leagueSettings.commands.teams.channel.id}/messages/${leagueSettings.commands.teams.messageId.id} `,
-          { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
+        await client.editMessage(leagueSettings.commands.teams.channel, leagueSettings.commands.teams.messageId, message, [])
         respond(ctx, createMessageResponse("Team Freed"))
       } catch (e) {
         respond(ctx, createMessageResponse("Could not update teams message, this could be a permission issue. The assignment was freed1, Error: " + e))
@@ -240,8 +223,7 @@ export default {
       }
       const message = await fetchTeamsMessage(leagueSettings)
       try {
-        await client.requestDiscord(`channels/${leagueSettings.commands.teams.channel.id}/messages/${leagueSettings.commands.teams.messageId.id}`,
-          { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
+        await client.editMessage(leagueSettings.commands.teams.channel, leagueSettings.commands.teams.messageId, message, [])
         respond(ctx, createMessageResponse("Team Assignments Reset"))
       } catch (e) {
         respond(ctx, createMessageResponse("Could not update teams message, this could be a permission issue. The teams were still reset, Error: " + e))
