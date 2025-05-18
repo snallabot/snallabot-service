@@ -133,7 +133,7 @@ async function getStats<T>(leagueId: string, rosterId: number, collection: strin
   const allStats = await Promise.all(stats.docs.map(async d => {
     const data = d.data() as StoredEvent<T>
     const history = await db.collection("league_data").doc(leagueId).collection(collection).doc(d.id).collection("history").get()
-    const changes = history.docs.map(d => d.data() as StoredHistory)
+    const changes = history.docs.map(d => convertDate(d.data() as StoredHistory))
     const historyStats = reconstructFromHistory<T>(changes, data)
     historyStats.push(data)
     return historyStats
@@ -251,7 +251,7 @@ const MaddenDB: MaddenDB = {
     const allGameChanges = await Promise.all(allDocs.docs.map(async (doc) => {
       const data = doc.data() as StoredEvent<MaddenGame>
       const changesSnapshot = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").doc(doc.id).collection("history").get()
-      const changes = changesSnapshot.docs.map(d => d.data() as StoredHistory)
+      const changes = changesSnapshot.docs.map(d => convertDate(d.data() as StoredHistory))
       return reconstructFromHistory(changes, data)
     }))
     const allGames = Object.entries(Object.groupBy(allGameChanges.flat(), g => `${g.weekIndex}|${g.seasonIndex}`))
@@ -278,7 +278,7 @@ const MaddenDB: MaddenDB = {
     }
     const history = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").doc(`${scheduleId}`).collection("history").get()
     const changes: StoredHistory[] = history.docs
-      .map(doc => doc.data() as StoredHistory)
+      .map(doc => convertDate(doc.data() as StoredHistory))
     const allGames = reconstructFromHistory(changes, game)
     const correctGame = allGames.filter(g => g.weekIndex === week - 1 && g.seasonIndex === season)
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
