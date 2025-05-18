@@ -131,7 +131,29 @@ function createTeamList(teams: StoredEvent<Team>[]): TeamList {
 async function getStats<T extends { rosterId: number }>(leagueId: string, rosterId: number, collection: string): Promise<SnallabotEvent<T>[]> {
   const stats = await db.collection("league_data").doc(leagueId).collection(collection).where("rosterId", "==", rosterId).get()
   const playerStats = stats.docs.map(d => d.data() as StoredEvent<T>)
-  return playerStats
+  try {
+    const historyDocs = await db.collectionGroup("history").where("rosterId.oldValue", "==", rosterId).get()
+    const fromhistory = await Promise.all(historyDocs.docs.filter(d => {
+      console.log(d.ref.parent.id)
+      console.log(d.ref.parent.parent?.id)
+      console.log(d.ref.parent.parent?.parent.id)
+      return d.ref.parent.parent?.parent.id === collection
+    }).flatMap(d => d.ref.parent.parent?.id ? [d.ref.parent.parent.id] : [])
+      .map(async d => {
+        const ogDoc = await db.collection("league_data").doc(leagueId).collection(collection).doc(d).get()
+        const data = ogDoc.data() as StoredEvent<T>
+        const histories = await db.collection("league_data").doc(leagueId).collection(collection).doc(d).collection("history").get()
+        const changes = histories.docs.map(d => convertDate(d.data() as StoredHistory))
+        const historyStats = reconstructFromHistory<T>(changes, data)
+        historyStats.push(data)
+        return historyStats.filter(d => d.rosterId === rosterId)
+      }))
+    return playerStats.concat(fromhistory.flat())
+  }
+  catch (e) {
+    console.error(e)
+    return playerStats
+  }
 }
 
 
