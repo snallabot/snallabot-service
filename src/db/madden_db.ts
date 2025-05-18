@@ -128,7 +128,7 @@ function createTeamList(teams: StoredEvent<Team>[]): TeamList {
   }
 }
 
-async function getStats<T>(leagueId: string, rosterId: number, collection: string): Promise<SnallabotEvent<T>[]> {
+async function getStats<T extends { stageIndex: number }>(leagueId: string, rosterId: number, collection: string): Promise<SnallabotEvent<T>[]> {
   const stats = await db.collection("league_data").doc(leagueId).collection(collection).get()
   const allStats = await Promise.all(stats.docs.map(async d => {
     if (d.id.includes("-")) {
@@ -141,7 +141,7 @@ async function getStats<T>(leagueId: string, rosterId: number, collection: strin
     historyStats.push(data)
     return historyStats
   }))
-  return allStats.flat()
+  return allStats.flat().filter(s => s.stageIndex > 0)
 }
 
 function reconstructFromHistory<T>(histories: StoredHistory[], og: T) {
