@@ -128,7 +128,7 @@ function createTeamList(teams: StoredEvent<Team>[]): TeamList {
   }
 }
 
-async function getStats<T extends { stageIndex: number }>(leagueId: string, rosterId: number, collection: string): Promise<SnallabotEvent<T>[]> {
+async function getStats<T extends { stageIndex: number, rosterId: number }>(leagueId: string, rosterId: number, collection: string): Promise<SnallabotEvent<T>[]> {
   const stats = await db.collection("league_data").doc(leagueId).collection(collection).get()
   const allStats = await Promise.all(stats.docs.map(async d => {
     if (d.id.includes("-")) {
@@ -141,7 +141,7 @@ async function getStats<T extends { stageIndex: number }>(leagueId: string, rost
     historyStats.push(data)
     return historyStats
   }))
-  return allStats.flat().filter(s => s.stageIndex > 0)
+  return allStats.flat().filter(s => s.stageIndex > 0 && rosterId === rosterId)
 }
 
 function reconstructFromHistory<T>(histories: StoredHistory[], og: T) {
@@ -268,7 +268,6 @@ const MaddenDB: MaddenDB = {
         }
         return []
       }).filter(g => g.weekIndex === week - 1 && g.seasonIndex === season && g.stageIndex > 0)
-    console.log(allGames.length)
     if (allGames.length === 0) {
       throw new Error(`Missing schedule for week ${week} and season ${MADDEN_SEASON + season}`)
     }
