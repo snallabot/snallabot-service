@@ -90,15 +90,10 @@ EventDB.on<MaddenBroadcastEvent>("MADDEN_BROADCAST", async (events) => {
     if (!configuration) {
       console.error(`${discordServer} is not configured for Broadcasts`)
     } else {
-      const channel = configuration.channel.id
+      const channel = configuration.channel
       const role = configuration.role ? `<@&${configuration.role.id}>` : ""
       try {
-        await prodClient.requestDiscord(`channels/${channel}/messages`, {
-          method: "POST",
-          body: {
-            content: `${role} ${broadcastEvent.title}\n\n${broadcastEvent.video}`
-          }
-        })
+        prodClient.createMessage(channel, `channels/${channel}/messages`, ["roles"])
       } catch (e) {
         console.error("could not send broacast")
       }
@@ -125,7 +120,7 @@ async function updateScoreboard(leagueSettings: LeagueSettings, guildId: string,
     const games = await MaddenClient.getWeekScheduleForSeason(leagueId, week, seasonIndex)
     const sims = await EventDB.queryEvents<ConfirmedSim>(guildId, "CONFIRMED_SIM", new Date(0), { week: week, seasonIndex: seasonIndex }, 30)
     const message = formatScoreboard(week, seasonIndex, games, teams, sims, leagueId)
-    await prodClient.requestDiscord(`channels/${scoreboard_channel.id}/messages/${scoreboard.id}`, { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
+    await prodClient.editMessage(scoreboard_channel, scoreboard, message, [])
   } catch (e) {
   }
 }
@@ -202,8 +197,7 @@ discordClient.on("guildMemberRemove", async (user, guild) => {
     }))
     const message = await fetchTeamsMessage(leagueSettings)
     try {
-      await prodClient.requestDiscord(`channels/${leagueSettings.commands.teams.channel.id}/messages/${leagueSettings.commands.teams.messageId.id}`,
-        { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
+      await prodClient.editMessage(leagueSettings.commands.teams.channel, leagueSettings.commands.teams.messageId, message, [])
     } catch (e) {
     }
   }
@@ -217,13 +211,7 @@ discordClient.on("guildMemberUpdate", async (member, old) => {
   }
   const leagueSettings = doc.data() as LeagueSettings
   if (leagueSettings.commands.teams?.useRoleUpdates) {
-    const res = await prodClient.requestDiscord(
-      `guilds/${guildId}/members?limit=1000`,
-      {
-        method: "GET",
-      }
-    )
-    const users = await res.json() as APIGuildMember[]
+    const users = await prodClient.getUsers(guildId)
     const userWithRoles = users.map((u) => ({ id: u.user.id, roles: u.roles }))
     const assignments = leagueSettings.commands.teams.assignments || {} as TeamAssignments
     await Promise.all(Object.entries(assignments).map(async entry => {
@@ -248,8 +236,7 @@ discordClient.on("guildMemberUpdate", async (member, old) => {
     }))
     const message = await fetchTeamsMessage(leagueSettings)
     try {
-      await prodClient.requestDiscord(`channels/${leagueSettings.commands.teams.channel.id}/messages/${leagueSettings.commands.teams.messageId.id}`,
-        { method: "PATCH", body: { content: message, allowed_mentions: { parse: [] } } })
+      await prodClient.editMessage(leagueSettings.commands.teams.channel, leagueSettings.commands.teams.messageId, message, [])
     } catch (e) {
     }
   }

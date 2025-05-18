@@ -2,11 +2,11 @@ import { randomUUID } from "crypto"
 import { Timestamp, Filter } from "firebase-admin/firestore"
 import db from "./firebase"
 import EventDB, { EventNotifier, SnallabotEvent, StoredEvent, notifiers } from "./events_db"
-import { DefensiveStats, KickingStats, MaddenGame, PassingStats, Player, PuntingStats, ReceivingStats, RushingStats, Standing, Team } from "../export/madden_league_types"
+import { DefensiveStats, KickingStats, MADDEN_SEASON, MaddenGame, PassingStats, Player, PuntingStats, ReceivingStats, RushingStats, Standing, Team } from "../export/madden_league_types"
 import { TeamAssignments } from "../discord/settings_db"
 
 type HistoryUpdate<ValueType> = { oldValue: ValueType, newValue: ValueType }
-type History = { [key: string]: HistoryUpdate<any> }
+type History = { [key: string]: HistoryUpdate<any>, }
 type StoredHistory = { timestamp: Date } & History
 
 export enum PlayerStatType {
@@ -33,13 +33,13 @@ interface MaddenDB {
   getLatestTeams(leagueId: string): Promise<TeamList>,
   getLatestWeekSchedule(leagueId: string, week: number): Promise<MaddenGame[]>,
   getWeekScheduleForSeason(leagueId: string, week: number, season: number): Promise<MaddenGame[]>
-  getGameForSchedule(leagueId: string, scheduleId: number): Promise<MaddenGame>,
+  getGameForSchedule(leagueId: string, scheduleId: number, week: number, season: number): Promise<MaddenGame>,
   getStandingForTeam(leagueId: string, teamId: number): Promise<Standing>,
   getLatestStandings(leagueId: string): Promise<Standing[]>,
   getLatestPlayers(leagueId: string): Promise<Player[]>,
   getPlayer(leagueId: string, rosterId: string): Promise<Player>,
   getPlayerStats(leagueId: string, player: Player): Promise<PlayerStats>,
-  getGamesForSchedule(leagueId: string, scheduleIds: Iterable<number>): Promise<MaddenGame[]>
+  getGamesForSchedule(leagueId: string, scheduleIds: Iterable<{ id: number, week: number, season: number }>): Promise<MaddenGame[]>
 }
 
 function convertDate(firebaseObject: any) {
@@ -133,6 +133,27 @@ async function getStats<T>(leagueId: string, rosterId: number, collection: strin
   return stats.docs.map(d => d.data() as SnallabotEvent<T>)
 }
 
+function reconstructFromHistory<T>(histories: StoredHistory[], og: T) {
+  const changes = histories.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+  const all: StoredEvent<T>[] = []
+  let previousVersion = { ...og };
+  for (let i = changes.length - 1; i >= 0; i--) {
+    const change = changes[i];
+    const reconstructedSchedule = { ...previousVersion };
+
+    Object.entries(change).forEach(([field, values]) => {
+      if (field !== "timestamp") {
+        (reconstructedSchedule as any)[field] = (values as HistoryUpdate<any>).oldValue;
+      } else {
+        (reconstructedSchedule as StoredEvent<T>).timestamp = (values as Date);
+      }
+    });
+    all.push(reconstructedSchedule as StoredEvent<T>);
+    previousVersion = { ...reconstructedSchedule };
+  }
+  return all
+}
+
 
 const MaddenDB: MaddenDB = {
   async appendEvents<Event>(events: SnallabotEvent<Event>[], idFn: (event: Event) => string) {
@@ -198,6 +219,7 @@ const MaddenDB: MaddenDB = {
     const weekDocs = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").where("weekIndex", "==", week - 1)
       .where("stageIndex", "==", 1).get()
     const maddenSchedule = weekDocs.docs.filter(d => !d.id.startsWith("schedules")).map(d => d.data() as SnallabotEvent<MaddenGame>)
+      .filter(game => game.awayTeamId != 0 && game.homeTeamId != 0)
     if (maddenSchedule.length === 0) {
       throw new Error("Missing schedule for week " + week)
     }
@@ -213,17 +235,49 @@ const MaddenDB: MaddenDB = {
     const weekDocs = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").where("weekIndex", "==", week - 1).where("seasonIndex", "==", season)
       .where("stageIndex", "==", 1).get()
     const maddenSchedule = weekDocs.docs.filter(d => !d.id.startsWith("schedules")).map(d => d.data() as SnallabotEvent<MaddenGame>)
-    if (maddenSchedule.length === 0) {
-      throw new Error("Missing schedule for week " + week)
+      .filter(game => game.awayTeamId != 0 && game.homeTeamId != 0)
+    if (maddenSchedule.length !== 0) {
+      return maddenSchedule
+    }
+    const allDocs = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").get()
+    const allGameChanges = await Promise.all(allDocs.docs.map(async (doc) => {
+      const data = doc.data() as StoredEvent<MaddenGame>
+      const changesSnapshot = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").doc(doc.id).collection("history").get()
+      const changes = changesSnapshot.docs.map(d => d.data() as StoredHistory)
+      return reconstructFromHistory(changes, data)
+    }))
+    const allGames = Object.entries(Object.groupBy(allGameChanges.flat(), g => `${g.weekIndex}|${g.seasonIndex}`))
+      .flatMap(entry => {
+        const [_, gamesInWeek] = entry
+        if (gamesInWeek && gamesInWeek.length > 0) {
+          return [gamesInWeek.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())[0]]
+        }
+        return []
+      }).filter(g => g.weekIndex === week - 1 && g.seasonIndex === season)
+    if (allGames.length === 0) {
+      throw new Error(`Missing schedule for week ${week} and season ${MADDEN_SEASON + season}`)
     }
     return maddenSchedule
   },
-  getGameForSchedule: async function(leagueId: string, scheduleId: number) {
+  getGameForSchedule: async function(leagueId: string, scheduleId: number, week: number, season: number) {
     const schedule = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").doc(`${scheduleId}`).get()
     if (!schedule.exists) {
       throw new Error("Schedule not found for id " + scheduleId)
     }
-    return schedule.data() as MaddenGame
+    const game = schedule.data() as MaddenGame
+    if (game.weekIndex === week - 1 && season === game.seasonIndex) {
+      return game
+    }
+    const history = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").doc(`${scheduleId}`).collection("history").get()
+    const changes: StoredHistory[] = history.docs
+      .map(doc => doc.data() as StoredHistory)
+    const allGames = reconstructFromHistory(changes, game)
+    const correctGame = allGames.filter(g => g.weekIndex === week - 1 && g.seasonIndex === season)
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+    if (correctGame.length === 0) {
+      throw new Error("Schedule not found for id " + scheduleId)
+    }
+    return correctGame[0]
   },
   getStandingForTeam: async function(leagueId: string, teamId: number) {
     const standing = await db.collection("league_data").doc(leagueId).collection("MADDEN_STANDING").doc(`${teamId}`).get()
@@ -296,8 +350,8 @@ const MaddenDB: MaddenDB = {
         return {}
     }
   },
-  getGamesForSchedule: async function(leagueId: string, scheduleIds: number[]) {
-    return await Promise.all(scheduleIds.map(s => this.getGameForSchedule(leagueId, s)))
+  getGamesForSchedule: async function(leagueId: string, scheduleIds: { id: number, week: number, season: number }[]) {
+    return await Promise.all(scheduleIds.map(s => this.getGameForSchedule(leagueId, s.id, s.week, s.season)))
   },
 }
 

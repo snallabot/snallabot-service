@@ -3,27 +3,14 @@ import { CommandHandler, Command } from "../commands_handler"
 import { respond, createMessageResponse, DiscordClient, deferMessage } from "../discord_utils"
 import { APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataSubcommandOption, APIApplicationCommandInteractionDataUserOption, APIMessage, ApplicationCommandOptionType, ApplicationCommandType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
-import { DiscordIdType, LeagueSettings, StreamCountConfiguration, UserStreamCount } from "../settings_db"
+import { ChannelId, DiscordIdType, LeagueSettings, MessageId, StreamCountConfiguration, UserStreamCount } from "../settings_db"
 
-async function moveStreamCountMessage(client: DiscordClient, oldChannelId: string, oldMessageId: string, newChannelId: string, counts: Array<UserStreamCount>): Promise<string> {
+async function moveStreamCountMessage(client: DiscordClient, oldChannelId: ChannelId, oldMessageId: MessageId, newChannelId: ChannelId, counts: Array<UserStreamCount>): Promise<MessageId> {
   try {
-
-    await client.requestDiscord(`channels/${oldChannelId}/messages/${oldMessageId}`, {
-      method: "DELETE"
-    })
+    await client.deleteMessage(oldChannelId, oldMessageId)
   } catch (e) { }
-  const res = await client.requestDiscord(`channels/${newChannelId}/messages`, {
-    method: "POST",
-    body: {
-      content: createStreamCountMessage(counts),
-      allowed_mentions: {
-        parse: [],
-      },
-
-    }
-  })
-  const message = await res.json() as APIMessage
-  return message.id
+  const message = await client.createMessage(newChannelId, createStreamCountMessage(counts), [])
+  return { id: message.id, id_type: DiscordIdType.MESSAGE }
 }
 
 function createStreamCountMessage(counts: Array<UserStreamCount>) {
@@ -40,32 +27,20 @@ function createStreamCountMessage(counts: Array<UserStreamCount>) {
 }
 
 async function updateStreamMessage(ctx: ParameterizedContext, streamConfiguration: Required<StreamCountConfiguration>, client: DiscordClient, newStreamMessage: string): Promise<string> {
-  const channel = streamConfiguration.channel.id
-  const currentMessage = streamConfiguration.message.id
+  const channel = streamConfiguration.channel
+  const currentMessage = streamConfiguration.message
   try {
-    await client.requestDiscord(`channels/${channel}/messages/${currentMessage}`, {
-      method: "PATCH", body: {
-        content: newStreamMessage, allowed_mentions: {
-          parse: [],
-        }
-      }
-    })
+    await client.editMessage(channel, currentMessage, newStreamMessage, [])
     respond(ctx, createMessageResponse("count updated!", { flags: 64 }))
-    return currentMessage
+    return currentMessage.id
   } catch (e) {
     try {
-      const res = await client.requestDiscord(`channels/${channel}/messages`, {
-        method: "POST", body: {
-          content: newStreamMessage, allowed_mentions: {
-            parse: [],
-          }
-        }
-      })
+      const message = await client.createMessage(channel, newStreamMessage, [])
       respond(ctx, createMessageResponse("count updated!", { flags: 64 }))
-      return (await res.json() as APIMessage).id
+      return message.id
     } catch (e) {
       respond(ctx, createMessageResponse("count was recorded, but I could not update the discord message error: " + e))
-      return currentMessage
+      return currentMessage.id
     }
   }
 }
@@ -85,24 +60,18 @@ export default {
       if (!streamsCommand.options || !streamsCommand.options[0]) {
         throw new Error("streams configure misconfigured")
       }
-      const channel = (streamsCommand.options[0] as APIApplicationCommandInteractionDataChannelOption).value
-      const oldChannelId = leagueSettings?.commands?.stream_count?.channel?.id
+      const channel: ChannelId = { id: (streamsCommand.options[0] as APIApplicationCommandInteractionDataChannelOption).value, id_type: DiscordIdType.CHANNEL }
+      const oldChannelId = leagueSettings?.commands?.stream_count?.channel
       const counts = leagueSettings?.commands?.stream_count?.counts ?? []
-      if (oldChannelId && oldChannelId !== channel) {
+      if (oldChannelId && oldChannelId.id !== channel.id) {
         respond(ctx, deferMessage())
         // don't await so we can process these in the background
-        const oldMessage = leagueSettings.commands?.stream_count?.message?.id || ""
-        const update = async (newMessageId: string) => {
+        const oldMessage = leagueSettings.commands?.stream_count?.message || {} as MessageId
+        const update = async (newMessageId: MessageId) => {
           const streamConfiguration = {
-            channel: {
-              id: channel,
-              id_type: DiscordIdType.CHANNEL
-            },
+            channel: channel,
             counts: counts,
-            message: {
-              id: newMessageId,
-              id_type: DiscordIdType.MESSAGE
-            }
+            message: newMessageId
           } as StreamCountConfiguration
           await db.collection("league_settings").doc(guild_id).set({
             commands: {
@@ -115,36 +84,23 @@ export default {
         }
         moveStreamCountMessage(client, oldChannelId, oldMessage, channel, counts).then(update).catch(e => client.editOriginalInteraction(token, { content: `could not update stream configuration ${e}` }))
       } else {
-        const oldMessage = leagueSettings?.commands?.stream_count?.message?.id
+        const oldMessage = leagueSettings?.commands?.stream_count?.message
         if (oldMessage) {
           try {
-            await client.requestDiscord(`channels/${channel}/messages/${oldMessage}`, { method: "GET" })
-            respond(ctx, createMessageResponse("Stream already configured"))
+            const messageExists = await client.checkMessageExists(channel, oldMessage)
+            if (messageExists) {
+              respond(ctx, createMessageResponse("Stream already configured"))
+            }
             return
           } catch (e) {
             console.log(e)
           }
         }
-        const res = await client.requestDiscord(`channels/${channel}/messages`, {
-          method: "POST",
-          body: {
-            content: createStreamCountMessage(counts),
-            allowed_mentions: {
-              parse: [],
-            },
-          }
-        })
-        const messageData = await res.json() as APIMessage
+        const messageId = await client.createMessage(channel, createStreamCountMessage(counts), [])
         const streamConfiguration = {
-          channel: {
-            id: channel,
-            id_type: DiscordIdType.CHANNEL
-          },
+          channel: channel,
           counts: counts,
-          message: {
-            id: messageData.id,
-            id_type: DiscordIdType.MESSAGE
-          }
+          message: messageId
         } as StreamCountConfiguration
         await db.collection("league_settings").doc(guild_id).set({
           commands: {
