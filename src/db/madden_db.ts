@@ -267,7 +267,7 @@ const MaddenDB: MaddenDB = {
           return [gamesInWeek.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())[0]]
         }
         return []
-      }).filter(g => g.weekIndex === week - 1 && g.seasonIndex === season)
+      }).filter(g => g.weekIndex === week - 1 && g.seasonIndex === season && g.stageIndex > 0)
     console.log(allGames.length)
     if (allGames.length === 0) {
       throw new Error(`Missing schedule for week ${week} and season ${MADDEN_SEASON + season}`)
@@ -287,7 +287,7 @@ const MaddenDB: MaddenDB = {
     const changes: StoredHistory[] = history.docs
       .map(doc => convertDate(doc.data() as StoredHistory))
     const allGames = reconstructFromHistory(changes, game)
-    const correctGame = allGames.filter(g => g.weekIndex === week - 1 && g.seasonIndex === season)
+    const correctGame = allGames.filter(g => g.weekIndex === week - 1 && g.seasonIndex === season && g.stageIndex > 0)
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
     if (correctGame.length === 0) {
       throw new Error("Schedule not found for id " + scheduleId)
