@@ -132,7 +132,7 @@ async function getStats<T extends { rosterId: number }>(leagueId: string, roster
   const stats = await db.collection("league_data").doc(leagueId).collection(collection).where("rosterId", "==", rosterId).get()
   const playerStats = stats.docs.map(d => d.data() as StoredEvent<T>)
   try {
-    const historyDocs = await db.collectionGroup("histories").where("rosterId.oldValue", "==", rosterId).get()
+    const historyDocs = await db.collectionGroup("history").where("rosterId.oldValue", "==", rosterId).get()
     const fromhistory = await Promise.all(historyDocs.docs.filter(d => {
       console.log(d.ref.parent.id)
       console.log(d.ref.parent.parent?.id)
