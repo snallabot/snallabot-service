@@ -134,9 +134,6 @@ async function getStats<T extends { rosterId: number }>(leagueId: string, roster
   try {
     const historyDocs = await db.collectionGroup("history").where("rosterId.oldValue", "==", rosterId).get()
     const fromhistory = await Promise.all(historyDocs.docs.filter(d => {
-      console.log(d.ref.parent.id)
-      console.log(d.ref.parent.parent?.id)
-      console.log(d.ref.parent.parent?.parent.id)
       return d.ref.parent.parent?.parent.id === collection
     }).flatMap(d => d.ref.parent.parent?.id ? [d.ref.parent.parent.id] : [])
       .map(async d => {
@@ -151,7 +148,6 @@ async function getStats<T extends { rosterId: number }>(leagueId: string, roster
     return playerStats.concat(fromhistory.flat())
   }
   catch (e) {
-    console.error(e)
     return playerStats
   }
 }
