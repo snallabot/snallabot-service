@@ -285,7 +285,7 @@ const MaddenDB: MaddenDB = {
   getGameForSchedule: async function(leagueId: string, scheduleId: number, week: number, season: number) {
     const schedule = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").doc(`${scheduleId}`).get()
     if (!schedule.exists) {
-      throw new Error("Schedule not found for id " + scheduleId)
+      throw new Error("Schedule document not found for id " + scheduleId)
     }
     const game = schedule.data() as MaddenGame
     if (game.weekIndex === week - 1 && season === game.seasonIndex) {
@@ -295,8 +295,10 @@ const MaddenDB: MaddenDB = {
     const changes: StoredHistory[] = history.docs
       .map(doc => convertDate(doc.data() as StoredHistory))
     const allGames = reconstructFromHistory(changes, game)
+    console.log(allGames.length)
     const correctGame = allGames.filter(g => g.weekIndex === week - 1 && g.seasonIndex === season && g.stageIndex > 0)
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+    console.log(correctGame)
     if (correctGame.length === 0) {
       throw new Error("Schedule not found for id " + scheduleId)
     }
