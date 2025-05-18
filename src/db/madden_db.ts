@@ -272,7 +272,7 @@ const MaddenDB: MaddenDB = {
     if (allGames.length === 0) {
       throw new Error(`Missing schedule for week ${week} and season ${MADDEN_SEASON + season}`)
     }
-    return maddenSchedule
+    return allGames
   },
   getGameForSchedule: async function(leagueId: string, scheduleId: number, week: number, season: number) {
     const schedule = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").doc(`${scheduleId}`).get()
