@@ -131,6 +131,9 @@ function createTeamList(teams: StoredEvent<Team>[]): TeamList {
 async function getStats<T>(leagueId: string, rosterId: number, collection: string): Promise<SnallabotEvent<T>[]> {
   const stats = await db.collection("league_data").doc(leagueId).collection(collection).get()
   const allStats = await Promise.all(stats.docs.map(async d => {
+    if (d.id.includes("-")) {
+      return []
+    }
     const data = d.data() as StoredEvent<T>
     const history = await db.collection("league_data").doc(leagueId).collection(collection).doc(d.id).collection("history").get()
     const changes = history.docs.map(d => convertDate(d.data() as StoredHistory))
@@ -249,6 +252,9 @@ const MaddenDB: MaddenDB = {
     }
     const allDocs = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").get()
     const allGameChanges = await Promise.all(allDocs.docs.map(async (doc) => {
+      if (doc.id.startsWith("schedules")) {
+        return []
+      }
       const data = doc.data() as StoredEvent<MaddenGame>
       const changesSnapshot = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").doc(doc.id).collection("history").get()
       const changes = changesSnapshot.docs.map(d => convertDate(d.data() as StoredHistory))
