@@ -223,7 +223,11 @@ ${errorMessage}
       [`commands.game_channel.weekly_states.${weekKey}`]: weeklyState
     })
   } catch (e) {
-    await client.editOriginalInteraction(token, { content: `Game Channels Create Failed with Error: ${e}` })
+    if (e instanceof SnallabotDiscordError) {
+      await client.editOriginalInteraction(token, { content: `Game Channels Create Failed with Error: ${e} Guidance: ${e.guidance}` })
+    } else {
+      await client.editOriginalInteraction(token, { content: `Game Channels Create Failed with Error: ${e}` })
+    }
   }
 }
 
