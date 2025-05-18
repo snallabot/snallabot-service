@@ -85,7 +85,6 @@ export async function handleAutocomplete(command: Autocomplete, ctx: Parameteriz
         }
       }
     } catch (e) {
-      const error = e as Error
       ctx.status = 200
       ctx.set("Content-Type", "application/json")
       ctx.body = {

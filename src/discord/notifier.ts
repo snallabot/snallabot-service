@@ -97,7 +97,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
       await deleteTracking(currentState, season, week)
       await gameFinished(originators, currentState)
     },
-    ping: async function ping(gameChannel: GameChannel, season: number, week: number) {
+    ping: async function(gameChannel: GameChannel, season: number, week: number) {
       const game = await MaddenDB.getGameForSchedule(leagueId, gameChannel.scheduleId)
       const teams = await MaddenDB.getLatestTeams(leagueId)
       const awayTeam = game.awayTeamId
@@ -108,7 +108,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
       await db.collection("league_settings").doc(guildId).update({
         [`commands.game_channel.weekly_states.${weekKey}.channel_states.${gameChannel.channel.id}.notifiedTime`]: new Date().getTime()
       })
-      await client.createMessage(gameChannel.channel, `${awayTag} ${homeTag} is your game scheduled? Schedule it! or react to my first message to set it as scheduled! Hit the trophy if its done already`, [])
+      await client.createMessage(gameChannel.channel, `${awayTag} ${homeTag} is your game scheduled? Schedule it! or react to my first message to set it as scheduled! Hit the trophy if its done already`, ["users"])
     },
     update: async function(currentState: GameChannel, season: number, week: number) {
       const channelId = currentState.channel
