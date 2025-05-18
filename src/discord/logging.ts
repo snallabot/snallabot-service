@@ -55,7 +55,7 @@ export default (config: LoggerConfiguration) => ({
         const messagePromise = logMessages.reduce((p, message) => {
           return p.then(async (_) => {
             try {
-              await client.createMessage(threadId, `(${dateFormatter.format(new Date(message.time))} EST) <@${message.user}>: ${message.content} (<t:${Math.round(new Date(message.time).getTime() / 1000)}>)`, [])
+              await client.createMessage(threadId, `<@${message.user}>: ${message.content} (<t:${Math.round(new Date(message.time).getTime() / 1000)}>)`, [])
             } catch (e) { }
             return Promise.resolve()
           }
