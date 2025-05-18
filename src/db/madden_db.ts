@@ -145,7 +145,7 @@ async function getStats<T>(leagueId: string, rosterId: number, collection: strin
 }
 
 function reconstructFromHistory<T>(histories: StoredHistory[], og: T) {
-  const changes = histories.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+  const changes = histories.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
   const all: StoredEvent<T>[] = []
   let previousVersion = { ...og };
   for (let i = changes.length - 1; i >= 0; i--) {
@@ -272,7 +272,7 @@ const MaddenDB: MaddenDB = {
     if (allGames.length === 0) {
       throw new Error(`Missing schedule for week ${week} and season ${MADDEN_SEASON + season}`)
     }
-    return allGames
+    return maddenSchedule
   },
   getGameForSchedule: async function(leagueId: string, scheduleId: number, week: number, season: number) {
     const schedule = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").doc(`${scheduleId}`).get()
