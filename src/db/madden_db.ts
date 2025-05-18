@@ -258,6 +258,7 @@ const MaddenDB: MaddenDB = {
       .flatMap(entry => {
         const [_, gamesInWeek] = entry
         if (gamesInWeek && gamesInWeek.length > 0) {
+          console.log(gamesInWeek)
           return [gamesInWeek.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())[0]]
         }
         return []
