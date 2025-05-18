@@ -1,18 +1,19 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command } from "../commands_handler"
-import { respond, createMessageResponse, DiscordClient, deferMessage, formatTeamMessageName, createWeekKey, SnallabotReactions } from "../discord_utils"
+import { respond, createMessageResponse, DiscordClient, deferMessage, formatTeamMessageName, createWeekKey, SnallabotReactions, SnallabotDiscordError } from "../discord_utils"
 import { APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataSubcommandOption, APIChannel, APIMessage, ApplicationCommandOptionType, ApplicationCommandType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
-import { DiscordIdType, GameChannel, GameChannelState, LeagueSettings, MaddenLeagueConfiguration, RoleId, UserId, WeekState } from "../settings_db"
+import { CategoryId, ChannelId, DiscordIdType, GameChannel, GameChannelState, LeagueSettings, MaddenLeagueConfiguration, MessageId, RoleId, UserId, WeekState } from "../settings_db"
 import MaddenClient, { TeamList } from "../../db/madden_db"
 import { formatRecord, getMessageForWeek, MaddenGame } from "../../export/madden_league_types"
 import createLogger from "../logging"
 import { ConfirmedSim, SimResult } from "../../db/events"
 import createNotifier from "../notifier"
-import { ExportContext, exporterForLeague } from "../../dashboard/ea_client"
+import { ExportContext, Stage, exporterForLeague } from "../../dashboard/ea_client"
+import { EAAccountError } from "../../dashboard/routes"
 
-async function react(client: DiscordClient, channel: string, message: string, reaction: SnallabotReactions) {
-  await client.requestDiscord(`channels/${channel}/messages/${message}/reactions/${reaction}/@me`, { method: "PUT" })
+async function react(client: DiscordClient, channel: ChannelId, message: MessageId, reaction: SnallabotReactions) {
+  await client.reactToMessage(`${reaction}`, message, channel)
 }
 
 function notifierMessage(users: string, waitPing: number, role: RoleId): string {
@@ -65,7 +66,7 @@ enum SnallabotCommandReactions {
   ERROR = "<:snallabot_error:1288692698320076820>"
 }
 
-async function createGameChannels(client: DiscordClient, db: Firestore, token: string, guild_id: string, settings: LeagueSettings, week: number, category: string, author: UserId) {
+async function createGameChannels(client: DiscordClient, db: Firestore, token: string, guild_id: string, settings: LeagueSettings, week: number, category: CategoryId, author: UserId) {
   try {
     const leagueId = (settings.commands.madden_league as Required<MaddenLeagueConfiguration>).league_id
     await client.editOriginalInteraction(token, {
@@ -78,12 +79,17 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
 - ${SnallabotCommandReactions.WAITING} Logging`
     })
     let exportEmoji = SnallabotCommandReactions.FINISHED
+    let errorMessage = ""
     try {
       const exporter = await exporterForLeague(Number(leagueId), ExportContext.AUTO)
       await exporter.exportSurroundingWeek()
     } catch (e) {
-      console.log(e)
       exportEmoji = SnallabotCommandReactions.ERROR
+      if (e instanceof EAAccountError) {
+        errorMessage = `Export Failed with: EA Error ${e.message} Guidance: ${e.troubleshoot}`
+      } else {
+        errorMessage = `Export Failed with: ${e}`
+      }
     }
     await client.editOriginalInteraction(token, {
       content: `Creating Game Channels:
@@ -107,14 +113,9 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
 - ${SnallabotCommandReactions.WAITING} Creating Scoreboard
 - ${SnallabotCommandReactions.WAITING} Logging`
       })
-      await fetch(`https://snallabot.herokuapp.com/${guild_id}/export`, {
-        method: "POST",
-        body: JSON.stringify({
-          week: week,
-          stage: 1,
-        }),
-      })
       try {
+        const exporter = await exporterForLeague(Number(leagueId), ExportContext.AUTO)
+        await exporter.exportSpecificWeeks([{ weekIndex: week, stage: Stage.SEASON }])
         weekSchedule = (await MaddenClient.getLatestWeekSchedule(leagueId, week)).sort((g, g2) => g.scheduleId - g2.scheduleId)
       } catch (e) {
         await client.editOriginalInteraction(token, { content: "This week is not exported! Export it via dashboard or companion app" })
@@ -126,16 +127,8 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
     const gameChannels = await Promise.all(weekSchedule.map(async game => {
       const awayTeam = teams.getTeamForId(game.awayTeamId)?.displayName
       const homeTeam = teams.getTeamForId(game.homeTeamId)?.displayName
-      const res = await client.requestDiscord(`guilds/${guild_id}/channels`, {
-        method: "POST",
-        body: {
-          type: 0,
-          name: `${awayTeam}-at-${homeTeam}`,
-          parent_id: category,
-        },
-      })
-      const channel = await res.json() as APIChannel
-      return { game: game, scheduleId: game.scheduleId, channel: { id: channel.id, id_type: DiscordIdType.CHANNEL } }
+      const channel = await client.createChannel(guild_id, `${awayTeam}-at-${homeTeam}`, category)
+      return { game: game, scheduleId: game.scheduleId, channel: channel }
     }))
     await client.editOriginalInteraction(token, {
       content: `Creating Game Channels:
@@ -153,7 +146,7 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
     const waitPing = settings.commands.game_channel.wait_ping || 12
     const role = settings.commands.game_channel.admin
     const gameChannelsWithMessage = await Promise.all(gameChannels.map(async gameChannel => {
-      const channel = gameChannel.channel.id
+      const channel = gameChannel.channel
       const game = gameChannel.game
       const awayTeamId = teams.getTeamForId(game.awayTeamId).teamId
       const homeTeamId = teams.getTeamForId(game.homeTeamId).teamId
@@ -162,9 +155,8 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
       const awayTeamStanding = await MaddenClient.getStandingForTeam(leagueId, awayTeamId)
       const homeTeamStanding = await MaddenClient.getStandingForTeam(leagueId, homeTeamId)
       const usersMessage = `${awayUser} (${formatRecord(awayTeamStanding)}) at ${homeUser} (${formatRecord(homeTeamStanding)})`
-      const res = await client.requestDiscord(`channels/${channel}/messages`, { method: "POST", body: { content: notifierMessage(usersMessage, waitPing, role), allowed_mentions: { parse: ["users"] } } })
-      const message = await res.json() as APIMessage
-      return { message: { id: message.id, id_type: DiscordIdType.MESSAGE }, ...gameChannel }
+      const message = await client.createMessage(channel, notifierMessage(usersMessage, waitPing, role), ["users"])
+      return { message: message, ...gameChannel }
     }))
     await client.editOriginalInteraction(token, {
       content: `Creating Game Channels:
@@ -176,15 +168,15 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
 - ${SnallabotCommandReactions.WAITING} Logging`
     })
     const finalGameChannels: GameChannel[] = await Promise.all(gameChannelsWithMessage.map(async gameChannel => {
-      const { channel: { id: channelId }, message: { id: messageId } } = gameChannel
-      await react(client, channelId, messageId, SnallabotReactions.SCHEDULE)
-      await react(client, channelId, messageId, SnallabotReactions.GG)
-      await react(client, channelId, messageId, SnallabotReactions.HOME)
-      await react(client, channelId, messageId, SnallabotReactions.AWAY)
-      await react(client, channelId, messageId, SnallabotReactions.SIM)
+      const { channel: channel, message: message } = gameChannel
+      await react(client, channel, message, SnallabotReactions.SCHEDULE)
+      await react(client, channel, message, SnallabotReactions.GG)
+      await react(client, channel, message, SnallabotReactions.HOME)
+      await react(client, channel, message, SnallabotReactions.AWAY)
+      await react(client, channel, message, SnallabotReactions.SIM)
       const { game, ...rest } = gameChannel
       const createdTime = new Date().getTime()
-      return { ...rest, state: GameChannelState.CREATED, notifiedTime: createdTime, channel: { id: channelId, id_type: DiscordIdType.CHANNEL }, message: { id: messageId, id_type: DiscordIdType.MESSAGE } }
+      return { ...rest, state: GameChannelState.CREATED, notifiedTime: createdTime, channel: channel, message: message }
     }))
     const channelsMap = {} as { [key: string]: GameChannel }
     finalGameChannels.forEach(g => channelsMap[g.channel.id] = g)
@@ -200,9 +192,8 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
 
     const season = weekSchedule[0].seasonIndex
     const scoreboardMessage = formatScoreboard(week, season, weekSchedule, teams, [], leagueId)
-    const res = await client.requestDiscord(`channels/${settings.commands.game_channel?.scoreboard_channel.id}/messages`, { method: "POST", body: { content: scoreboardMessage, allowed_mentions: { parse: [] } } })
-    const message = await res.json() as APIMessage
-    const weeklyState: WeekState = { week: week, seasonIndex: season, scoreboard: { id: message.id, id_type: DiscordIdType.MESSAGE }, channel_states: channelsMap }
+    const scoreboardMessageId = await client.createMessage(settings.commands.game_channel?.scoreboard_channel, scoreboardMessage, [])
+    const weeklyState: WeekState = { week: week, seasonIndex: season, scoreboard: scoreboardMessageId, channel_states: channelsMap }
     const weekKey = createWeekKey(season, week)
     await client.editOriginalInteraction(token, {
       content: `Creating Game Channels:
@@ -224,13 +215,19 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
 - ${SnallabotCommandReactions.FINISHED} Creating Notification Messages
 - ${SnallabotCommandReactions.FINISHED} Setting up notifier
 - ${SnallabotCommandReactions.FINISHED} Creating Scoreboard
-- ${SnallabotCommandReactions.FINISHED} Logging`
+- ${SnallabotCommandReactions.FINISHED} Logging
+${errorMessage}
+`
     })
     await db.collection("league_settings").doc(guild_id).update({
       [`commands.game_channel.weekly_states.${weekKey}`]: weeklyState
     })
   } catch (e) {
-    await client.editOriginalInteraction(token, { content: `Game Channels Create Failed with Error: ${e}` })
+    if (e instanceof SnallabotDiscordError) {
+      await client.editOriginalInteraction(token, { content: `Game Channels Create Failed with Error: ${e} Guidance: ${e.guidance}` })
+    } else {
+      await client.editOriginalInteraction(token, { content: `Game Channels Create Failed with Error: ${e}` })
+    }
   }
 }
 
@@ -256,7 +253,17 @@ async function clearGameChannels(client: DiscordClient, db: Firestore, token: st
       await logger.logUsedCommand("game_channels clear", author, client)
     } else {
       await Promise.all(channelsToClear.map(async channel => {
-        return await client.requestDiscord(`/channels/${channel.id}`, { method: "DELETE" })
+        try {
+          await client.deleteChannel(channel)
+        } catch (e) {
+          if (e instanceof SnallabotDiscordError) {
+            if (e.isDeletedChannel()) {
+              return
+            }
+          }
+          throw e
+        }
+        return await client.deleteChannel(channel)
       }))
     }
     await client.editOriginalInteraction(token, { content: `Game Channels Cleared` })
@@ -364,7 +371,7 @@ export default {
       }
       const category = categoryOverride ? categoryOverride : leagueSettings.commands.game_channel.default_category.id
       respond(ctx, deferMessage())
-      createGameChannels(client, db, token, guild_id, leagueSettings, week, category, author)
+      createGameChannels(client, db, token, guild_id, leagueSettings, week, { id: category, id_type: DiscordIdType.CATEGORY }, author)
     } else if (subCommand === "clear") {
       respond(ctx, deferMessage())
       clearGameChannels(client, db, token, guild_id, leagueSettings, author)

@@ -172,6 +172,7 @@ const MaddenDB: MaddenDB = {
     const weekDocs = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").where("weekIndex", "==", week - 1)
       .where("stageIndex", "==", 1).get()
     const maddenSchedule = weekDocs.docs.filter(d => !d.id.startsWith("schedules")).map(d => d.data() as SnallabotEvent<MaddenGame>)
+      .filter(game => game.awayTeamId != 0 && game.homeTeamId != 0)
     if (maddenSchedule.length === 0) {
       throw new Error("Missing schedule for week " + week)
     }
@@ -187,6 +188,7 @@ const MaddenDB: MaddenDB = {
     const weekDocs = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").where("weekIndex", "==", week - 1).where("seasonIndex", "==", season)
       .where("stageIndex", "==", 1).get()
     const maddenSchedule = weekDocs.docs.filter(d => !d.id.startsWith("schedules")).map(d => d.data() as SnallabotEvent<MaddenGame>)
+      .filter(game => game.awayTeamId != 0 && game.homeTeamId != 0)
     if (maddenSchedule.length === 0) {
       throw new Error("Missing schedule for week " + week)
     }
