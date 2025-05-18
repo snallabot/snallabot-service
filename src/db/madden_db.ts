@@ -264,11 +264,11 @@ const MaddenDB: MaddenDB = {
       .flatMap(entry => {
         const [_, gamesInWeek] = entry
         if (gamesInWeek && gamesInWeek.length > 0) {
-          console.log(gamesInWeek)
           return [gamesInWeek.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())[0]]
         }
         return []
       }).filter(g => g.weekIndex === week - 1 && g.seasonIndex === season)
+    console.log(allGames.length)
     if (allGames.length === 0) {
       throw new Error(`Missing schedule for week ${week} and season ${MADDEN_SEASON + season}`)
     }
