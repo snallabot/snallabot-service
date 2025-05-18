@@ -129,8 +129,16 @@ function createTeamList(teams: StoredEvent<Team>[]): TeamList {
 }
 
 async function getStats<T>(leagueId: string, rosterId: number, collection: string): Promise<SnallabotEvent<T>[]> {
-  const stats = await db.collection("league_data").doc(leagueId).collection(collection).where("rosterId", "==", rosterId).get()
-  return stats.docs.map(d => d.data() as SnallabotEvent<T>)
+  const stats = await db.collection("league_data").doc(leagueId).collection(collection).get()
+  const allStats = await Promise.all(stats.docs.map(async d => {
+    const data = d.data() as StoredEvent<T>
+    const history = await db.collection("league_data").doc(leagueId).collection(collection).doc(d.id).collection("history").get()
+    const changes = history.docs.map(d => d.data() as StoredHistory)
+    const historyStats = reconstructFromHistory<T>(changes, data)
+    historyStats.push(data)
+    return historyStats
+  }))
+  return allStats.flat()
 }
 
 function reconstructFromHistory<T>(histories: StoredHistory[], og: T) {
