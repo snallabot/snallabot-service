@@ -8,9 +8,10 @@ import { ChannelId, DiscordIdType, LeagueSettings, MessageId, StreamCountConfigu
 async function moveStreamCountMessage(client: DiscordClient, oldChannelId: ChannelId, oldMessageId: MessageId, newChannelId: ChannelId, counts: Array<UserStreamCount>): Promise<MessageId> {
   try {
     await client.deleteMessage(oldChannelId, oldMessageId)
+    const message = await client.createMessage(newChannelId, createStreamCountMessage(counts), [])
+    return { id: message.id, id_type: DiscordIdType.MESSAGE }
   } catch (e) { }
-  const message = await client.createMessage(newChannelId, createStreamCountMessage(counts), [])
-  return { id: message.id, id_type: DiscordIdType.MESSAGE }
+  return { id: "0", id_type: DiscordIdType.MESSAGE }
 }
 
 function createStreamCountMessage(counts: Array<UserStreamCount>) {
