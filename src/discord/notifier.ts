@@ -108,7 +108,10 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
       await db.collection("league_settings").doc(guildId).update({
         [`commands.game_channel.weekly_states.${weekKey}.channel_states.${gameChannel.channel.id}.notifiedTime`]: new Date().getTime()
       })
-      await client.createMessage(gameChannel.channel, `${awayTag} ${homeTag} is your game scheduled? Schedule it! or react to my first message to set it as scheduled! Hit the trophy if its done already`, ["users"])
+      try {
+        await client.createMessage(gameChannel.channel, `${awayTag} ${homeTag} is your game scheduled? Schedule it! or react to my first message to set it as scheduled! Hit the trophy if its done already`, ["users"])
+      } catch (e) {
+      }
     },
     update: async function(currentState: GameChannel, season: number, week: number) {
       const channelId = currentState.channel

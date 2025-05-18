@@ -39,8 +39,11 @@ function joinUsers(users: UserId[]) {
 export default (config: LoggerConfiguration) => ({
   logUsedCommand: async (command: string, author: UserId, client: DiscordClient) => {
     const loggerChannel = config.channel
-    await client.createMessage(loggerChannel, `${command} by <@${author.id}>`, [])
+    try {
+      await client.createMessage(loggerChannel, `${command} by <@${author.id}>`, [])
+    } catch (e) {
 
+    }
   },
   logChannels: async (channels: ChannelId[], loggedAuthors: UserId[], client: DiscordClient) => {
     const loggerChannels = channels.map(async channel => {
