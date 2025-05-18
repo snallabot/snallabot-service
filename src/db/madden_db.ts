@@ -136,11 +136,10 @@ async function getStats<T extends { rosterId: number }>(leagueId: string, roster
     const fromhistory = await Promise.all(historyDocs.docs.filter(d => {
       return d.ref.parent.parent?.parent.id === collection
     }).flatMap(d => d.ref.parent.parent?.id ? [d.ref.parent.parent.id] : [])
-      .map(async d => {
-        console.log(d)
-        const ogDoc = await db.collection("league_data").doc(leagueId).collection(collection).doc(d).get()
+      .map(async docId => {
+        const ogDoc = await db.collection("league_data").doc(leagueId).collection(collection).doc(docId).get()
         const data = ogDoc.data() as StoredEvent<T>
-        const histories = await db.collection("league_data").doc(leagueId).collection(collection).doc(d).collection("history").get()
+        const histories = await db.collection("league_data").doc(leagueId).collection(collection).doc(docId).collection("history").get()
         const changes = histories.docs.map(d => convertDate(d.data() as StoredHistory))
         const historyStats = reconstructFromHistory<T>(changes, data)
         historyStats.push(data)
