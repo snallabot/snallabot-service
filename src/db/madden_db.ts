@@ -260,7 +260,7 @@ const MaddenDB: MaddenDB = {
       const changes = changesSnapshot.docs.map(d => convertDate(d.data() as StoredHistory))
       return reconstructFromHistory(changes, data)
     }))
-    const allGames = Object.entries(Object.groupBy(allGameChanges.flat(), g => `${g.weekIndex}|${g.seasonIndex}`))
+    const allGames = Object.entries(Object.groupBy(allGameChanges.flat(), g => `${g.id}|${g.weekIndex}|${g.seasonIndex}`))
       .flatMap(entry => {
         const [_, gamesInWeek] = entry
         if (gamesInWeek && gamesInWeek.length > 0) {
