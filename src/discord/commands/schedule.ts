@@ -25,8 +25,8 @@ function format(schedule: MaddenGame[], teams: Team[], week: number) {
         } ${teamMap.get(game.homeTeamId)?.displayName}`
     }
   }).join("\n")
-
-  return `# ${getMessageForWeek(week)} Schedule\n${schedulesMessage}`
+  const season = schedule[0].seasonIndex
+  return `# ${MADDEN_SEASON + season} ${getMessageForWeek(week)} Schedule\n${schedulesMessage}`
 }
 
 async function getWeekSchedule(league: string, week: number, season?: number) {
