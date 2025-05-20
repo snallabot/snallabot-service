@@ -85,8 +85,8 @@ export default {
         await db.collection("league_settings").doc(guild_id).set({
           commands: {
             teams: {
-              channel: { id: channel, id_type: DiscordIdType.CHANNEL },
-              messageId: { id: newMessageId, id_type: DiscordIdType.MESSAGE },
+              channel: channel,
+              messageId: newMessageId,
               useRoleUpdates: useRoleUpdates,
               assignments: leagueSettings?.commands?.teams?.assignments || {},
             }
