@@ -110,8 +110,15 @@ export type StandingExport = {
   teamStandingInfoList: Array<Standing>
 }
 
+export enum GameResult {
+  NOT_PLAYED = 1,
+  AWAY_WIN = 2,
+  HOME_WIN = 3,
+  TIE = 4 // unconfirmed
+}
+
 export type MaddenGame = {
-  status: number,
+  status: GameResult,
   awayScore: number,
   awayTeamId: number,
   weekIndex: number,

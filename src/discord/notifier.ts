@@ -8,6 +8,7 @@ import db from "../db/firebase"
 import { FieldValue } from "firebase-admin/firestore"
 import { ConfirmedSim, SimResult } from "../db/events"
 import { ExportContext, exporterForLeague } from "../dashboard/ea_client"
+import { GameResult } from "../export/madden_league_types"
 
 interface SnallabotNotifier {
   update(currentState: GameChannel, season: number, week: number,): Promise<void>
@@ -131,6 +132,10 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
         try {
           const exporter = await exporterForLeague(Number(leagueId), ExportContext.AUTO)
           await exporter.exportCurrentWeek()
+          const game = await MaddenDB.getGameForSchedule(leagueId, currentState.scheduleId, week, season)
+          if (game.status !== GameResult.NOT_PLAYED) {
+            await this.deleteGameChannel(currentState, season, week, ggUsers)
+          }
         } catch (e) {
         }
       }

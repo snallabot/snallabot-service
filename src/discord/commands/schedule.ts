@@ -3,7 +3,7 @@ import { CommandHandler, Command } from "../commands_handler"
 import { respond, createMessageResponse, DiscordClient } from "../discord_utils"
 import { APIApplicationCommandInteractionDataIntegerOption, ApplicationCommandOptionType, ApplicationCommandType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
-import { MADDEN_SEASON, MaddenGame, Team, getMessageForWeek } from "../../export/madden_league_types"
+import { GameResult, MADDEN_SEASON, MaddenGame, Team, getMessageForWeek } from "../../export/madden_league_types"
 import MaddenClient from "../../db/madden_db"
 import { LeagueSettings } from "../settings_db"
 
@@ -11,7 +11,7 @@ function format(schedule: MaddenGame[], teams: Team[], week: number) {
   const teamMap = new Map<Number, Team>()
   teams.forEach(t => teamMap.set(t.teamId, t))
   const schedulesMessage = schedule.sort((a, b) => a.scheduleId - b.scheduleId).filter(w => w.awayTeamId !== 0 && w.homeTeamId !== 0).map(game => {
-    if (game.awayScore == 0 && game.homeScore == 0) {
+    if (game.status === GameResult.NOT_PLAYED) {
       return `${teamMap.get(game.awayTeamId)?.displayName} vs ${teamMap.get(game.homeTeamId)?.displayName}`
     } else {
       if (game.awayScore > game.homeScore) {

@@ -8,14 +8,13 @@ import { handleCommand, commandsInstaller, handleAutocomplete, handleMessageComp
 import { ConfirmedSim, MaddenBroadcastEvent } from "../db/events"
 import { Client } from "oceanic.js"
 import { DiscordIdType, LeagueSettings, TeamAssignments } from "./settings_db"
-import { APIGuildMember } from "discord-api-types/v9"
 import { FieldValue } from "firebase-admin/firestore"
 import { fetchTeamsMessage } from "./commands/teams"
 import createNotifier from "./notifier"
 import MaddenClient from "../db/madden_db"
 import { formatScoreboard } from "./commands/game_channels"
 import MaddenDB from "../db/madden_db"
-import { MaddenGame } from "../export/madden_league_types"
+import { GameResult, MaddenGame } from "../export/madden_league_types"
 
 const router = new Router({ prefix: "/discord/webhook" })
 
@@ -55,7 +54,7 @@ async function handleInteraction(ctx: ParameterizedContext, client: DiscordClien
     return
   } else if (interactionType === InteractionType.ApplicationCommandAutocomplete) {
     const slashCommandInteraction = interaction as APIApplicationCommandAutocompleteInteraction
-    const { token, guild_id, data, member } = slashCommandInteraction
+    const { guild_id, data } = slashCommandInteraction
     if (guild_id) {
       const { name } = data
       await handleAutocomplete({ command_name: name, guild_id, data, }, ctx)
@@ -138,7 +137,7 @@ MaddenDB.on<MaddenGame>("MADDEN_SCHEDULE", async (events) => {
   Object.entries(Object.groupBy(events, e => e.key)).map(async entry => {
     const [leagueId, groupedGames] = entry
     const games = groupedGames || []
-    const finishedGames = games.filter(g => g.status !== 1)
+    const finishedGames = games.filter(g => g.status !== GameResult.NOT_PLAYED)
     const finishedGame = finishedGames[0]
     const querySnapshot = await db.collection("league_settings").where("commands.madden_league.league_id", "==", leagueId).get()
     await Promise.all(querySnapshot.docs.map(async leagueSettingsDoc => {
