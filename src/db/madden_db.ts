@@ -143,8 +143,7 @@ async function getStats<T extends { rosterId: number }>(leagueId: string, roster
         const changes = histories.docs.map(d => convertDate(d.data() as StoredHistory))
         const historyStats = reconstructFromHistory<T>(changes, data)
         historyStats.push(data)
-        const newh = historyStats.filter(d => d.rosterId === rosterId)
-        return newh
+        return historyStats.filter(d => d.rosterId === rosterId)
       }))
     return playerStats.concat(fromhistory.flat())
   }
