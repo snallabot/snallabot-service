@@ -25,8 +25,8 @@ function format(schedule: MaddenGame[], teams: Team[], week: number) {
         } ${teamMap.get(game.homeTeamId)?.displayName}`
     }
   }).join("\n")
-
-  return `# ${getMessageForWeek(week)} Schedule\n${schedulesMessage}`
+  const season = schedule[0].seasonIndex
+  return `# ${MADDEN_SEASON + season} ${getMessageForWeek(week)} Schedule\n${schedulesMessage}`
 }
 
 async function getWeekSchedule(league: string, week: number, season?: number) {
@@ -54,12 +54,12 @@ export default {
       throw new Error("Could not find a linked Madden league, link a league first")
     }
     const league = leagueSettings.commands.madden_league.league_id
-    const week = (command.data.options[0] as APIApplicationCommandInteractionDataIntegerOption).value
+    const week = Number((command.data.options[0] as APIApplicationCommandInteractionDataIntegerOption).value)
     if (week < 1 || week > 23 || week === 22) {
       throw new Error("Invalid week number. Valid weeks are week 1-18 and for playoffs: Wildcard = 19, Divisional = 20, Conference Championship = 21, Super Bowl = 23")
     }
     const season = (command.data.options?.[1] as APIApplicationCommandInteractionDataIntegerOption)?.value
-    const [schedule, teams] = await Promise.all([getWeekSchedule(league, week, season), getLatestTeams(league)])
+    const [schedule, teams] = await Promise.all([getWeekSchedule(league, week, season ? Number(season) : undefined), getLatestTeams(league)])
     respond(ctx, createMessageResponse(`${format(schedule, teams, week)}`))
   },
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {

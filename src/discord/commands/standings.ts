@@ -70,7 +70,7 @@ export default {
       throw new Error("No madden league linked. Setup snallabot with your Madden league first")
     }
     const league = leagueSettings.commands.madden_league.league_id
-    const top = standingsCommand?.options?.[0] ? (standingsCommand.options[0] as APIApplicationCommandInteractionDataIntegerOption).value : 32
+    const top = Number(standingsCommand?.options?.[0] ? (standingsCommand.options[0] as APIApplicationCommandInteractionDataIntegerOption).value : 32)
     if (standingsCommand?.options?.[0]) {
 
     }

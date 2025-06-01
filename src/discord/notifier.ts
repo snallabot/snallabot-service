@@ -62,7 +62,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
     }
     const teams = await MaddenDB.getLatestTeams(leagueId)
     const latestAssignents = teams.getLatestTeamAssignments(assignments)
-    const game = await MaddenDB.getGameForSchedule(leagueId, gameChannel.scheduleId)
+    const game = await MaddenDB.getGameForSchedule(leagueId, gameChannel.scheduleId, week, season)
     const awayTeamId = teams.getTeamForId(game.awayTeamId).teamId
     const homeTeamId = teams.getTeamForId(game.homeTeamId).teamId
     const awayUser = latestAssignents[awayTeamId]?.discord_user
@@ -98,7 +98,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
       await gameFinished(originators, currentState)
     },
     ping: async function(gameChannel: GameChannel, season: number, week: number) {
-      const game = await MaddenDB.getGameForSchedule(leagueId, gameChannel.scheduleId)
+      const game = await MaddenDB.getGameForSchedule(leagueId, gameChannel.scheduleId, week, season)
       const teams = await MaddenDB.getLatestTeams(leagueId)
       const awayTeam = game.awayTeamId
       const homeTeam = game.homeTeamId

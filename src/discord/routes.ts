@@ -1,10 +1,10 @@
 import { ParameterizedContext } from "koa"
 import Router from "@koa/router"
 import { CommandMode, DiscordClient, SNALLABOT_TEST_USER, SNALLABOT_USER, createClient, createWeekKey } from "./discord_utils"
-import { APIInteraction, InteractionType, InteractionResponseType, APIChatInputApplicationCommandGuildInteraction, APIApplicationCommandAutocompleteInteraction } from "discord-api-types/payloads"
+import { APIInteraction, InteractionType, InteractionResponseType, APIChatInputApplicationCommandGuildInteraction, APIApplicationCommandAutocompleteInteraction, APIMessageComponentInteraction } from "discord-api-types/payloads"
 import db from "../db/firebase"
-import EventDB, { StoredEvent } from "../db/events_db"
-import { handleCommand, commandsInstaller, handleAutocomplete } from "./commands_handler"
+import EventDB from "../db/events_db"
+import { handleCommand, commandsInstaller, handleAutocomplete, handleMessageComponent } from "./commands_handler"
 import { ConfirmedSim, MaddenBroadcastEvent } from "../db/events"
 import { Client } from "oceanic.js"
 import { DiscordIdType, LeagueSettings, TeamAssignments } from "./settings_db"
@@ -59,6 +59,12 @@ async function handleInteraction(ctx: ParameterizedContext, client: DiscordClien
     if (guild_id) {
       const { name } = data
       await handleAutocomplete({ command_name: name, guild_id, data, }, ctx)
+    }
+    return
+  } else if (interactionType === InteractionType.MessageComponent) {
+    const messageComponentInteraction = interaction as APIMessageComponentInteraction
+    if (messageComponentInteraction.guild_id) {
+      await handleMessageComponent({ token: messageComponentInteraction.token, custom_id: messageComponentInteraction.data.custom_id, data: messageComponentInteraction.data, guild_id: messageComponentInteraction.guild_id }, ctx, client)
     }
     return
   }
