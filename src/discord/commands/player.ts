@@ -829,7 +829,7 @@ __**Traits:**__
 }
 
 function formatStats(stats: PlayerStats) {
-  const formattedStats: { scheduleId: number, value: string }[] = []
+  const formattedStats: { scheduleId: string, value: string }[] = []
   if (stats[PlayerStatType.PASSING]) {
     stats[PlayerStatType.PASSING].forEach(ps => {
       const individualStat = []
@@ -842,7 +842,7 @@ function formatStats(stats: PlayerStats) {
         individualStat.push(`${ps.passInts} INT`)
       }
       individualStat.push(`${ps.passerRating.toFixed(1)} RTG`)
-      formattedStats.push({ scheduleId: ps.scheduleId, value: individualStat.join(", ") })
+      formattedStats.push({ scheduleId: formatGameKey(ps), value: individualStat.join(", ") })
     });
   }
   if (stats[PlayerStatType.RUSHING]) {
@@ -857,7 +857,7 @@ function formatStats(stats: PlayerStats) {
         individualStat.push(`${rs.rushFum} FUM`);
       }
       individualStat.push(`${rs.rushYdsPerAtt.toFixed(1)} AVG`);
-      formattedStats.push({ scheduleId: rs.scheduleId, value: individualStat.join(", ") });
+      formattedStats.push({ scheduleId: formatGameKey(rs), value: individualStat.join(", ") });
     });
   }
 
@@ -869,7 +869,7 @@ function formatStats(stats: PlayerStats) {
       if (rs.recTDs > 0) {
         individualStat.push(`${rs.recTDs} TD`);
       }
-      formattedStats.push({ scheduleId: rs.scheduleId, value: individualStat.join(", ") });
+      formattedStats.push({ scheduleId: formatGameKey(rs), value: individualStat.join(", ") });
     });
   }
 
@@ -895,7 +895,7 @@ function formatStats(stats: PlayerStats) {
       if (ds.defDeflections > 0) {
         individualStat.push(`${ds.defDeflections} PD`);
       }
-      formattedStats.push({ scheduleId: ds.scheduleId, value: individualStat.join(", ") });
+      formattedStats.push({ scheduleId: formatGameKey(ds), value: individualStat.join(", ") });
     });
   }
 
@@ -911,7 +911,7 @@ function formatStats(stats: PlayerStats) {
         individualStat.push(`${ks.fGLongest} LNG`);
       }
       individualStat.push(`${ks.kickPts} PTS`);
-      formattedStats.push({ scheduleId: ks.scheduleId, value: individualStat.join(", ") });
+      formattedStats.push({ scheduleId: formatGameKey(ks), value: individualStat.join(", ") });
     });
   }
 
@@ -931,7 +931,7 @@ function formatStats(stats: PlayerStats) {
       if (ps.puntsBlocked > 0) {
         individualStat.push(`${ps.puntsBlocked} BLK`);
       }
-      formattedStats.push({ scheduleId: ps.scheduleId, value: individualStat.join(", ") });
+      formattedStats.push({ scheduleId: formatGameKey(ps), value: individualStat.join(", ") });
     });
   }
   return formattedStats
@@ -981,6 +981,10 @@ function formatWeek(game: MaddenGame) {
   }
 }
 
+function formatGameKey(g: { scheduleId: number, weekIndex: number, seasonIndex: number }) {
+  return `${g.scheduleId}|${g.weekIndex}|${g.seasonIndex}`
+}
+
 function formatGame(game: MaddenGame, player: Player, teams: { [key: string]: string }) {
   const playerTeam = player.teamId
   const homeTeam = game.homeTeamId
@@ -992,13 +996,13 @@ function formatGame(game: MaddenGame, player: Player, teams: { [key: string]: st
 
 function formatWeeklyStats(player: Player, teams: { [key: string]: string }, stats: PlayerStats, games: MaddenGame[]) {
   const currentSeason = Math.max(...games.map(g => g.seasonIndex))
-  const currentGameIds = new Set(games.filter(g => g.seasonIndex === currentSeason && g.stageIndex > 0).map(g => g.scheduleId))
-  const gameResults = Object.groupBy(games.filter(g => currentGameIds.has(g.scheduleId)), g => g.scheduleId)
+  const currentGameIds = new Set(games.filter(g => g.seasonIndex === currentSeason && g.stageIndex > 0).map(g => formatGameKey(g)))
+  const gameResults = Object.groupBy(games.filter(g => currentGameIds.has(formatGameKey(g))), g => formatGameKey(g))
   const gameStats = formatStats(stats)
   const weekStats = Object.entries(Object.groupBy(gameStats.filter(s => currentGameIds.has(s.scheduleId)), g => g.scheduleId)).map(gameStat => {
-    const [scheduleId, stats] = gameStat
+    const [gameKey, stats] = gameStat
     const stat = stats?.map(s => s.value).join(", ") || ""
-    const result = gameResults[Number(scheduleId)]
+    const result = gameResults[gameKey]
     if (!result) {
       return { weekIndex: -1, value: `` }
     }
