@@ -128,9 +128,9 @@ function createTeamList(teams: StoredEvent<Team>[]): TeamList {
   }
 }
 
-async function getStats<T extends { rosterId: number }>(leagueId: string, rosterId: number, collection: string): Promise<SnallabotEvent<T>[]> {
+async function getStats<T extends { rosterId: number, stageIndex: number }>(leagueId: string, rosterId: number, collection: string): Promise<SnallabotEvent<T>[]> {
   const stats = await db.collection("league_data").doc(leagueId).collection(collection).where("rosterId", "==", rosterId).get()
-  const playerStats = stats.docs.map(d => d.data() as StoredEvent<T>)
+  const playerStats = stats.docs.map(d => d.data() as StoredEvent<T>).filter(d => d.stageIndex > 0)
   try {
     const historyDocs = await db.collectionGroup("history").where("rosterId.oldValue", "==", rosterId).get()
     const fromhistory = await Promise.all(historyDocs.docs.filter(d => {
@@ -143,7 +143,7 @@ async function getStats<T extends { rosterId: number }>(leagueId: string, roster
         const changes = histories.docs.map(d => convertDate(d.data() as StoredHistory))
         const historyStats = reconstructFromHistory<T>(changes, data)
         historyStats.push(data)
-        return historyStats.filter(d => d.rosterId === rosterId)
+        return historyStats.filter(d => d.rosterId === rosterId && d.stageIndex > 0)
       }))
     return playerStats.concat(fromhistory.flat())
   }

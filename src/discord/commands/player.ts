@@ -168,7 +168,7 @@ async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, to
   teamsDisplayNames["0"] = "FA"
   const playerStats = await MaddenDB.getPlayerStats(leagueId, player)
   const statGames = new Map<String, { id: number, week: number, season: number }>()
-  Object.values(playerStats).flat().filter(p => p.stageIndex > 0).forEach(p => statGames.set(`${p.scheduleId}|${p.weekIndex}|${p.seasonIndex}`, { id: p.scheduleId, week: p.weekIndex + 1, season: p.seasonIndex }))
+  Object.values(playerStats).flat().forEach(p => statGames.set(`${p.scheduleId}|${p.weekIndex}|${p.seasonIndex}`, { id: p.scheduleId, week: p.weekIndex + 1, season: p.seasonIndex }))
   const games = await MaddenDB.getGamesForSchedule(leagueId, Array.from(statGames.values()))
   await client.editOriginalInteraction(token, {
     flags: 32768,
