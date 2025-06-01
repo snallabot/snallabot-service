@@ -142,9 +142,9 @@ async function getStats<T extends { rosterId: number }>(leagueId: string, roster
         const histories = await db.collection("league_data").doc(leagueId).collection(collection).doc(docId).collection("history").get()
         const changes = histories.docs.map(d => convertDate(d.data() as StoredHistory))
         const historyStats = reconstructFromHistory<T>(changes, data)
+        console.log(historyStats.filter(d => d.rosterId === rosterId))
         historyStats.push(data)
         const newh = historyStats.filter(d => d.rosterId === rosterId)
-        console.log(newh)
         return newh
       }))
     return playerStats.concat(fromhistory.flat())
