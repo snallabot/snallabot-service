@@ -152,7 +152,7 @@ class CacheablePlayerSearchIndex extends CachedUpdatingView<PlayerSearch> {
   }
   update(event: { [key: string]: any[] }, currentView: PlayerSearch) {
     if (event["MADDEN_PLAYER"]) {
-      const playerUpdates = event["MADDEN_PLAER"] as SnallabotEvent<Player>[]
+      const playerUpdates = event["MADDEN_PLAYER"] as SnallabotEvent<Player>[]
       playerUpdates.forEach(p => {
         currentView[p.rosterId] = { rosterId: p.rosterId, firstName: p.firstName, lastName: p.lastName, teamId: p.teamId, position: p.position }
       })
