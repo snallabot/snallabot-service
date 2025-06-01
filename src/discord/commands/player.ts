@@ -848,15 +848,19 @@ function formatStats(stats: PlayerStats) {
   if (stats[PlayerStatType.RUSHING]) {
     stats[PlayerStatType.RUSHING].forEach(rs => {
       const individualStat = [];
-      individualStat.push(`${rs.rushAtt} ATT`);
-      individualStat.push(`${rs.rushYds} RSH YDS`);
+      if (rs.rushAtt > 0) {
+        individualStat.push(`${rs.rushAtt} ATT`);
+        individualStat.push(`${rs.rushYds} RSH YDS`);
+      }
       if (rs.rushTDs > 0) {
         individualStat.push(`${rs.rushTDs} TD`);
       }
       if (rs.rushFum > 0) {
         individualStat.push(`${rs.rushFum} FUM`);
       }
-      individualStat.push(`${rs.rushYdsPerAtt.toFixed(1)} AVG`);
+      if (rs.rushYdsPerAtt > 0) {
+        individualStat.push(`${rs.rushYdsPerAtt.toFixed(1)} AVG`);
+      }
       formattedStats.push({ scheduleId: formatGameKey(rs), value: individualStat.join(", ") });
     });
   }
