@@ -1469,21 +1469,22 @@ export default {
             },
           ],
         },
-        {
-          type: ApplicationCommandOptionType.Subcommand,
-          name: "list",
-          description: "list the players matching search",
-          options: [
-            {
-              type: ApplicationCommandOptionType.String,
-              name: "players",
-              description:
-                "players to search for",
-              required: true,
-              autocomplete: true
-            },
-          ],
-        }],
+        // {
+        //   type: ApplicationCommandOptionType.Subcommand,
+        //   name: "list",
+        //   description: "list the players matching search",
+        //   options: [
+        //     {
+        //       type: ApplicationCommandOptionType.String,
+        //       name: "players",
+        //       description:
+        //         "players to search for",
+        //       required: true,
+        //       autocomplete: true
+        //     },
+        //   ],
+        // }
+      ],
       type: 1,
     }
   },
