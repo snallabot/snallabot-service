@@ -52,57 +52,69 @@ function generatePlayerOptions(rosterId: number) {
 }
 
 async function showPlayerCard(playerSearch: string, client: DiscordClient, token: string, guild_id: string) {
-  const discordLeague = await discordLeagueView.createView(guild_id)
-  const leagueId = discordLeague?.leagueId
-  if (!leagueId) {
-    throw new Error(`No League connected to snallabot`)
-  }
-  let searchRosterId = Number(playerSearch)
-  if (isNaN(searchRosterId)) {
-    // get top search result
-    const results = await searchPlayerForRosterId(playerSearch, leagueId)
-    if (results.length === 0) {
-      throw new Error(`No player results for ${playerSearch} in ${leagueId}`)
+  try {
+    const discordLeague = await discordLeagueView.createView(guild_id)
+    const leagueId = discordLeague?.leagueId
+    if (!leagueId) {
+      throw new Error(`No League connected to snallabot`)
     }
-    searchRosterId = results[0].rosterId
-  }
-  const player = await MaddenDB.getPlayer(leagueId, `${searchRosterId}`)
-  const teamView = await teamSearchView.createView(leagueId)
-  if (!teamView) {
-    throw new Error("Missing teams?? Maybe try the command again")
-  }
-  const teamsDisplayNames = Object.fromEntries(Object.entries(teamView).map(teamEntry => {
-    const [teamId, t] = teamEntry
-    return [teamId, t.abbrName]
-  }))
-  // 0 team id means the player is a free agent
-  teamsDisplayNames["0"] = "FA"
-
-  await client.editOriginalInteraction(token, {
-    flags: 32768,
-    components: [
-      {
-        type: ComponentType.TextDisplay,
-        content: formatPlayerCard(player, teamsDisplayNames)
-      },
-      {
-        type: ComponentType.Separator,
-        divider: true,
-        spacing: SeparatorSpacingSize.Large
-      },
-      {
-        type: ComponentType.ActionRow,
-        components: [
-          {
-            type: ComponentType.StringSelect,
-            custom_id: "player_card",
-            placeholder: formatPlaceholder(PlayerSelection.PLAYER_OVERVIEW),
-            options: generatePlayerOptions(searchRosterId)
-          }
-        ]
+    let searchRosterId = Number(playerSearch)
+    if (isNaN(searchRosterId)) {
+      // get top search result
+      const results = await searchPlayerForRosterId(playerSearch, leagueId)
+      if (results.length === 0) {
+        throw new Error(`No player results for ${playerSearch} in ${leagueId}`)
       }
-    ]
-  })
+      searchRosterId = results[0].rosterId
+    }
+    const player = await MaddenDB.getPlayer(leagueId, `${searchRosterId}`)
+    const teamView = await teamSearchView.createView(leagueId)
+    if (!teamView) {
+      throw new Error("Missing teams?? Maybe try the command again")
+    }
+    const teamsDisplayNames = Object.fromEntries(Object.entries(teamView).map(teamEntry => {
+      const [teamId, t] = teamEntry
+      return [teamId, t.abbrName]
+    }))
+    // 0 team id means the player is a free agent
+    teamsDisplayNames["0"] = "FA"
+
+    await client.editOriginalInteraction(token, {
+      flags: 32768,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: formatPlayerCard(player, teamsDisplayNames)
+        },
+        {
+          type: ComponentType.Separator,
+          divider: true,
+          spacing: SeparatorSpacingSize.Large
+        },
+        {
+          type: ComponentType.ActionRow,
+          components: [
+            {
+              type: ComponentType.StringSelect,
+              custom_id: "player_card",
+              placeholder: formatPlaceholder(PlayerSelection.PLAYER_OVERVIEW),
+              options: generatePlayerOptions(searchRosterId)
+            }
+          ]
+        }
+      ]
+    })
+  } catch (e) {
+    await client.editOriginalInteraction(token, {
+      flags: 32768,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: `Could not show player card Error: ${e}`
+        }
+      ]
+    })
+  }
 }
 
 async function showPlayerFullRatings(rosterId: number, client: DiscordClient, token: string, guild_id: string) {
@@ -1511,16 +1523,44 @@ export default {
       throw new Error("Somehow did not receive just one selection from player card " + data.values)
     }
     const { rosterId, selected } = JSON.parse(data.values[0]) as Selection
-    if (selected === PlayerSelection.PLAYER_OVERVIEW) {
-      showPlayerCard(`${rosterId}`, client, interaction.token, interaction.guild_id)
-    } else if (selected === PlayerSelection.PLAYER_FULL_RATINGS) {
-      showPlayerFullRatings(rosterId, client, interaction.token, interaction.guild_id)
-    } else if (selected === PlayerSelection.PLAYER_WEEKLY_STATS) {
-      showPlayerWeeklyStats(rosterId, client, interaction.token, interaction.guild_id)
-    } else if (selected === PlayerSelection.PLAYER_SEASON_STATS) {
-      showPlayerYearlyStats(rosterId, client, interaction.token, interaction.guild_id)
-    } else {
-      console.error("should not have gotten here")
+    try {
+      if (selected === PlayerSelection.PLAYER_OVERVIEW) {
+        showPlayerCard(`${rosterId}`, client, interaction.token, interaction.guild_id)
+      } else if (selected === PlayerSelection.PLAYER_FULL_RATINGS) {
+        showPlayerFullRatings(rosterId, client, interaction.token, interaction.guild_id)
+      } else if (selected === PlayerSelection.PLAYER_WEEKLY_STATS) {
+        showPlayerWeeklyStats(rosterId, client, interaction.token, interaction.guild_id)
+      } else if (selected === PlayerSelection.PLAYER_SEASON_STATS) {
+        showPlayerYearlyStats(rosterId, client, interaction.token, interaction.guild_id)
+      } else {
+        console.error("should not have gotten here")
+      }
+    } catch (e) {
+      await client.editOriginalInteraction(interaction.token, {
+        flags: 32768,
+        components: [
+          {
+            type: ComponentType.TextDisplay,
+            content: `Could not show player card Error: ${e}`
+          },
+          {
+            type: ComponentType.Separator,
+            divider: true,
+            spacing: SeparatorSpacingSize.Large
+          },
+          {
+            type: ComponentType.ActionRow,
+            components: [
+              {
+                type: ComponentType.StringSelect,
+                custom_id: "player_card",
+                placeholder: formatPlaceholder(PlayerSelection.PLAYER_OVERVIEW),
+                options: generatePlayerOptions(rosterId)
+              }
+            ]
+          }
+        ]
+      })
     }
   }
 } as CommandHandler & AutocompleteHandler & MessageComponentHandler
