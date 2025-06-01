@@ -295,10 +295,8 @@ const MaddenDB: MaddenDB = {
     const changes: StoredHistory[] = history.docs
       .map(doc => convertDate(doc.data() as StoredHistory))
     const allGames = reconstructFromHistory(changes, game)
-    console.log(allGames.length)
     const correctGame = allGames.filter(g => g.weekIndex === week - 1 && g.seasonIndex === season && g.stageIndex > 0)
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-    console.log(correctGame.length)
     if (correctGame.length === 0) {
       throw new Error("Schedule not found for id " + scheduleId)
     }
