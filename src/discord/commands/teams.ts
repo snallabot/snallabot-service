@@ -1,7 +1,7 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command, AutocompleteHandler, Autocomplete } from "../commands_handler"
 import { respond, createMessageResponse, DiscordClient } from "../discord_utils"
-import { APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIApplicationCommandInteractionDataUserOption, APIMessage, ApplicationCommandOptionType, ApplicationCommandType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
+import { APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIApplicationCommandInteractionDataUserOption, ApplicationCommandOptionType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { FieldValue, Firestore } from "firebase-admin/firestore"
 import { ChannelId, DiscordIdType, LeagueSettings, MessageId, TeamAssignments } from "../settings_db"
 import MaddenClient from "../../db/madden_db"
@@ -9,14 +9,6 @@ import { Team } from "../../export/madden_league_types"
 import { teamSearchView, discordLeagueView } from "../../db/view"
 import fuzzysort from "fuzzysort"
 import MaddenDB from "../../db/madden_db"
-import firebaseDB from "../../db/firebase"
-
-async function moveTeamsMessage(client: DiscordClient, oldChannelId: ChannelId, oldMessageId: MessageId, newChannelId: ChannelId, teamsMessage: string): Promise<MessageId> {
-  try {
-    await client.deleteMessage(oldChannelId, oldMessageId)
-  } catch (e) { }
-  return await client.createMessage(newChannelId, teamsMessage, [])
-}
 
 
 function formatTeamMessage(teams: Team[], teamAssignments: TeamAssignments): string {
@@ -81,7 +73,10 @@ export default {
       const oldMessageId = leagueSettings?.commands?.teams?.messageId
       if (oldChannelId && oldChannelId !== channel) {
         const message = await fetchTeamsMessage(leagueSettings)
-        const newMessageId = await moveTeamsMessage(client, oldChannelId, oldMessageId || { id: "", id_type: DiscordIdType.MESSAGE }, channel, message)
+        try {
+          await client.deleteMessage(oldChannelId, oldMessageId || { id: "", id_type: DiscordIdType.MESSAGE })
+        } catch (e) { }
+        const newMessageId = await client.createMessage(channel, message, [])
         await db.collection("league_settings").doc(guild_id).set({
           commands: {
             teams: {
