@@ -316,7 +316,7 @@ const MaddenDB: MaddenDB = {
     })
   },
   getLatestPlayers: async function(leagueId: string) {
-    const playerSnapshot = await db.collection("league_data").doc(leagueId).collection("MADDEN_PLAYER").get()
+    const playerSnapshot = await db.collection("league_data").doc(leagueId).collection("MADDEN_PLAYER").select("rosterId", "firstName", "lastName", "teamId", "position").get()
     return playerSnapshot.docs.filter(d => !d.id.startsWith("roster")).map(doc => {
       return doc.data() as SnallabotEvent<Player>
     })
