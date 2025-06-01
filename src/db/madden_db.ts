@@ -374,7 +374,6 @@ const MaddenDB: MaddenDB = {
     }
   },
   getGamesForSchedule: async function(leagueId: string, scheduleIds: { id: number, week: number, season: number }[]) {
-    console.log(scheduleIds)
     return await Promise.all(scheduleIds.map(s => this.getGameForSchedule(leagueId, s.id, s.week, s.season)))
   },
 }
