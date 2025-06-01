@@ -1018,7 +1018,7 @@ function formatWeeklyStats(player: Player, teams: { [key: string]: string }, sta
 
   const teamAbbr = teams[`${player.teamId}`]
   const joinedWeekStats = weekStats.join("\n")
-  return `Xb
+  return `
 # ${getTeamEmoji(teamAbbr)} ${player.position} ${player.firstName} ${player.lastName}
 ## ${getDevTraitName(player.devTrait)} **${player.playerBestOvr} OVR**
 ## Stats
