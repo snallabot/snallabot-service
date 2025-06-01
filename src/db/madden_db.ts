@@ -300,7 +300,7 @@ const MaddenDB: MaddenDB = {
     const correctGame = allGames.filter(g => g.weekIndex === week - 1 && g.seasonIndex === season && g.stageIndex > 0)
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
     if (correctGame.length === 0) {
-      throw new Error("Schedule not found for id " + scheduleId)
+      throw new Error("Schedule not found for id " + scheduleId + ` ${week} and ${season}`)
     }
     return correctGame[0]
   },
