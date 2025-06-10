@@ -363,10 +363,10 @@ export default {
           return (gameChannelsCommand.options?.[0] as APIApplicationCommandInteractionDataChannelOption)?.value
         }
       })()
-      if (!leagueSettings.commands.game_channel?.scoreboard_channel) {
+      if (!leagueSettings.commands?.game_channel?.scoreboard_channel) {
         throw new Error("Game channels are not configured! run /game_channels configure first")
       }
-      if (!leagueSettings.commands.madden_league?.league_id) {
+      if (!leagueSettings.commands?.madden_league?.league_id) {
         throw new Error("No madden league linked. Setup snallabot with your Madden league first")
       }
       const category = categoryOverride ? categoryOverride : leagueSettings.commands.game_channel.default_category.id

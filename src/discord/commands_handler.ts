@@ -69,7 +69,6 @@ export async function handleCommand(command: Command, ctx: ParameterizedContext,
       await handler.handleCommand(command, discordClient, db, ctx)
     } catch (e) {
       const error = e as Error
-      console.log(e)
       ctx.status = 200
       if (error instanceof SnallabotDiscordError) {
         respond(ctx, createMessageResponse(`Discord Error in ${commandName}: ${error.message} Guidance: ${error.guidance}`))

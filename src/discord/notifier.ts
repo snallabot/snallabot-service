@@ -132,6 +132,9 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
         try {
           const exporter = await exporterForLeague(Number(leagueId), ExportContext.AUTO)
           await exporter.exportCurrentWeek()
+        } catch (e) {
+        }
+        try {
           const game = await MaddenDB.getGameForSchedule(leagueId, currentState.scheduleId, week, season)
           if (game.status !== GameResult.NOT_PLAYED) {
             await this.deleteGameChannel(currentState, season, week, ggUsers)
