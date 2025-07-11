@@ -568,14 +568,14 @@ export async function exporterForLeague(leagueId: number, context: ExportContext
             )
           )
           if ((idx + 1) % 4 == 0) {
-            await Promise.all(teamRequests.map(request => staggeringCall(request, 50)))
+            await Promise.all(teamRequests)
             await exportTeamData(teamData, contextualExports, `${leagueId}`, client.getSystemConsole())
             teamRequests = []
             teamData = { roster: {} }
           }
         }
         if (teamRequests.length > 0) {
-          await Promise.all(teamRequests.map(request => staggeringCall(request, 50)))
+          await Promise.all(teamRequests)
           await exportTeamData(teamData, contextualExports, `${leagueId}`, client.getSystemConsole())
           teamRequests = []
           teamData = { roster: {} }
