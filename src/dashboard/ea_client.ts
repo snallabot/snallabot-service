@@ -423,6 +423,8 @@ type ExportData = {
   leagueTeams: TeamExport,
   standings: StandingExport,
   weeks: WeeklyExportData[],
+}
+type TeamData = {
   roster: {
     [key: string]: RosterExport
   }
@@ -435,7 +437,6 @@ const SEASON_WEEKS = Array.from({ length: 23 }, (v, index) => index).filter(i =>
 async function exportData(data: ExportData, destinations: { [key: string]: ExportDestination }, leagueId: string, platform: string) {
   const leagueInfo = Object.values(destinations).filter(d => d.leagueInfo).map(d => createDestination(d.url))
   const weeklyStats = Object.values(destinations).filter(d => d.weeklyStats).map(d => createDestination(d.url))
-  const roster = Object.values(destinations).filter(d => d.rosters).map(d => createDestination(d.url))
   if (leagueInfo.length > 0) {
     await Promise.all(leagueInfo.flatMap(d => {
       return [d.leagueTeams(platform, leagueId, data.leagueTeams), d.standings(platform, leagueId, data.standings)]
@@ -455,6 +456,10 @@ async function exportData(data: ExportData, destinations: { [key: string]: Expor
       ])
     }))
   }
+}
+
+async function exportTeamData(data: TeamData, destinations: { [key: string]: ExportDestination }, leagueId: string, platform: string) {
+  const roster = Object.values(destinations).filter(d => d.rosters).map(d => createDestination(d.url))
   if (roster.length > 0) {
     await Promise.all(roster.flatMap(d => {
       return Object.entries(data.roster).map(e => {
@@ -545,15 +550,37 @@ export async function exporterForLeague(leagueId: number, context: ExportContext
           data.weeks.push(weekData)
         })
       }
-      if (destinations.some(e => e.rosters)) {
-        const teamList = leagueInfo.teamIdInfoList
-        dataRequests.push(client.getFreeAgents(leagueId).then(freeAgents => data.roster["freeagents"] = freeAgents))
-        teamList.forEach((team, idx) => {
-          dataRequests.push(client.getTeamRoster(leagueId, team.teamId, idx).then(roster => data.roster[`${team.teamId}`] = roster))
-        })
-      }
+
+      // avoid using too much memory, process weekly data first then team rosters
       await Promise.all(dataRequests.map(request => staggeringCall(request, 50)))
       await exportData(data as ExportData, contextualExports, `${leagueId}`, client.getSystemConsole())
+      if (destinations.some(e => e.rosters)) {
+        let teamRequests = [] as Promise<any>[]
+        let teamData: TeamData = { roster: {} }
+        const teamList = leagueInfo.teamIdInfoList
+        teamRequests.push(client.getFreeAgents(leagueId).then(freeAgents => teamData.roster["freeagents"] = freeAgents))
+
+        for (let idx = 0; idx < teamList.length; idx++) {
+          const team = teamList[idx];
+          teamRequests.push(
+            client.getTeamRoster(leagueId, team.teamId, idx).then(roster =>
+              teamData.roster[`${team.teamId}`] = roster
+            )
+          )
+          if ((idx + 1) % 4 == 0) {
+            await Promise.all(teamRequests)
+            await exportTeamData(teamData, contextualExports, `${leagueId}`, client.getSystemConsole())
+            teamRequests = []
+            teamData = { roster: {} }
+          }
+        }
+        if (teamRequests.length > 0) {
+          await Promise.all(teamRequests)
+          await exportTeamData(teamData, contextualExports, `${leagueId}`, client.getSystemConsole())
+          teamRequests = []
+          teamData = { roster: {} }
+        }
+      }
     }
   } as MaddenExporter
 }
