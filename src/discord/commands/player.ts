@@ -1548,7 +1548,7 @@ export default {
   async choices(command: Autocomplete) {
     const { guild_id } = command
     if (!command.data.options) {
-      throw new Error("logger command not defined properly")
+      throw new Error("player command not defined properly")
     }
     const options = command.data.options
     const playerCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
@@ -1567,7 +1567,11 @@ export default {
       if (leagueId && (playerCommand?.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.focused && playerCommand?.options?.[0]?.value) {
         const playerListSearchPhrase = playerCommand.options[0].value as string
         const results = await searchPlayerListForQuery(playerListSearchPhrase, leagueId)
-        return results.map(r => ({ name: formatQuery(r), value: JSON.stringify(r) }))
+        console.log(results)
+        return results.map(r => {
+          const { teamDisplayName, teamNickName, ...rest } = r
+          { name: formatQuery(r), value: JSON.stringify(rest) }
+        })
       }
     }
 
