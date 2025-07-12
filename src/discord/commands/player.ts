@@ -1439,9 +1439,9 @@ async function searchPlayerForRosterId(query: string, leagueId: string): Promise
 }
 const positions = POSITIONS.concat(POSITION_GROUP).map(p => ({ teamDisplayName: "", teamId: 0, teamNickName: "", position: p, rookie: "" }))
 const rookies = [{
-  teamDisplayName: "", teamId: 0, teamNickName: "", position: "", rookie: "Rookie"
+  teamDisplayName: "", teamId: 0, teamNickName: "", position: "", rookie: "Rookies"
 }]
-const rookiePositions = positions.map(p => ({ ...p, rookie: "Rookie" }))
+const rookiePositions = positions.map(p => ({ ...p, rookie: "Rookies" }))
 type PlayerListQuery = { teamDisplayName: string, teamId: number, teamNickName: string, position: string, rookie: string }
 
 // to boost top level queries like team names, position groups, and rookies
@@ -1470,7 +1470,7 @@ async function searchPlayerListForQuery(textQuery: string, leagueId: string): Pr
   if (teamIndex) {
     const fullTeams = Object.values(teamIndex).map(t => ({ teamDisplayName: t.displayName, teamId: t.id, teamNickName: t.nickName, position: "", rookie: "" })).concat([{ teamDisplayName: "Free Agents", teamId: 0, teamNickName: "FA", position: "", rookie: "" }])
     const teamPositions = fullTeams.flatMap(t => positions.map(p => ({ teamDisplayName: t.teamDisplayName, teamId: t.teamId, teamNickName: t.teamNickName, position: p.position, rookie: "" })))
-    const teamRookies = fullTeams.map(t => ({ ...t, rookie: "Rookie" }))
+    const teamRookies = fullTeams.map(t => ({ ...t, rookie: "Rookies" }))
     const allQueries: PlayerListQuery[] = fullTeams.concat(positions).concat(rookies).concat(rookiePositions).concat(teamPositions).concat(teamRookies)
     const results = fuzzysort.go(textQuery, allQueries, {
       keys: ["teamDisplayName", "teamNickName", "position", "rookie"],
@@ -1567,7 +1567,6 @@ export default {
       if (leagueId && (playerCommand?.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.focused && playerCommand?.options?.[0]?.value) {
         const playerListSearchPhrase = playerCommand.options[0].value as string
         const results = await searchPlayerListForQuery(playerListSearchPhrase, leagueId)
-        console.log(results)
         return results.map(r => {
           const { teamDisplayName, teamNickName, ...rest } = r
           return { name: formatQuery(r), value: JSON.stringify(rest) }
