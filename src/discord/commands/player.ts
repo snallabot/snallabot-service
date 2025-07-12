@@ -1570,7 +1570,7 @@ export default {
         console.log(results)
         return results.map(r => {
           const { teamDisplayName, teamNickName, ...rest } = r
-          { name: formatQuery(r), value: JSON.stringify(rest) }
+          return { name: formatQuery(r), value: JSON.stringify(rest) }
         })
       }
     }
