@@ -1500,7 +1500,12 @@ export default {
       respond(ctx, deferMessage())
       showPlayerCard(playerSearch, client, token, guild_id)
     } else if (subCommand === "list") {
-      respond(ctx, createMessageResponse("wip"))
+      if (!playerCommand.options || !playerCommand.options[0]) {
+        throw new Error("player get misconfigured")
+      }
+      const playerSearch = (playerCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value
+      // respond(ctx, deferMessage())
+      respond(ctx, createMessageResponse(playerSearch))
     } else {
       throw new Error(`Missing player command ${subCommand}`)
     }
