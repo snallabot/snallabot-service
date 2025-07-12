@@ -576,7 +576,7 @@ export type Player = {
   cITRating: number
 }
 
-const POSITIONS = [
+export const POSITIONS = [
   // Offense
   "QB",   // Quarterback
   "HB",   // Halfback/Running Back
@@ -603,9 +603,9 @@ const POSITIONS = [
   "P"     // Punter
 ]
 
-const POSITION_GROUP = ["OL", "DL", "DB"]
+export const POSITION_GROUP = ["OL", "DL", "DB"]
 
-const TEAM_GROUP = ["FA", "Rookie"]
+export const TEAM_GROUP = ["FA", "Rookie"]
 
 export type RosterExport = {
   success: boolean,

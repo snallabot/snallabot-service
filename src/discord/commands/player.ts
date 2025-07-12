@@ -6,7 +6,7 @@ import { Firestore } from "firebase-admin/firestore"
 import { playerSearchIndex, discordLeagueView, teamSearchView } from "../../db/view"
 import fuzzysort from "fuzzysort"
 import MaddenDB, { PlayerStatType, PlayerStats } from "../../db/madden_db"
-import { CoverBallTrait, DevTrait, LBStyleTrait, MADDEN_SEASON, MaddenGame, PenaltyTrait, PlayBallTrait, Player, QBStyleTrait, SensePressureTrait, YesNoTrait } from "../../export/madden_league_types"
+import { CoverBallTrait, DevTrait, LBStyleTrait, MADDEN_SEASON, MaddenGame, POSITIONS, POSITION_GROUP, PenaltyTrait, PlayBallTrait, Player, QBStyleTrait, SensePressureTrait, TEAM_GROUP, YesNoTrait } from "../../export/madden_league_types"
 
 enum PlayerSelection {
   PLAYER_OVERVIEW = "player_overview",
@@ -1437,6 +1437,51 @@ async function searchPlayerForRosterId(query: string, leagueId: string): Promise
   }
   return []
 }
+const positions = POSITIONS.concat(POSITION_GROUP).map(p => ({ teamDisplayName: "", teamId: 0, teamNickName: "", position: p, rookie: "" }))
+const rookies = [{
+  teamDisplayName: "", teamId: 0, teamNickName: "", position: "", rookie: "Rookie"
+}]
+const rookiePositions = positions.map(p => ({ ...p, rookie: "Rookie" }))
+type PlayerListQuery = { teamDisplayName: string, teamId: number, teamNickName: string, position: string, rookie: string }
+
+// to boost top level queries like team names, position groups, and rookies
+function isTopLevel(q: PlayerListQuery) {
+  if (q.teamDisplayName && !q.position && !q.rookie) {
+    return true
+  }
+  if (!q.teamDisplayName && q.position && !q.rookie) {
+    return true
+  }
+  if (!q.teamDisplayName && !q.position && q.rookie) {
+    return true
+  }
+  return false
+}
+
+function formatQuery(q: PlayerListQuery) {
+  const teamName = q.teamDisplayName ? [q.teamDisplayName] : []
+  const position = q.position ? [q.position] : []
+  const rookie = q.rookie ? [q.rookie] : []
+  return [teamName, rookie, position].join(" ")
+}
+
+async function searchPlayerListForQuery(textQuery: string, leagueId: string): Promise<PlayerListQuery[]> {
+  const teamIndex = await teamSearchView.createView(leagueId)
+  if (teamIndex) {
+    const fullTeams = Object.values(teamIndex).map(t => ({ teamDisplayName: t.displayName, teamId: t.id, teamNickName: t.nickName, position: "", rookie: "" })).concat([{ teamDisplayName: "Free Agents", teamId: 0, teamNickName: "FA", position: "", rookie: "" }])
+    const teamPositions = fullTeams.flatMap(t => positions.map(p => ({ teamDisplayName: t.teamDisplayName, teamId: t.teamId, teamNickName: t.teamNickName, position: p.position, rookie: "" })))
+    const teamRookies = fullTeams.map(t => ({ ...t, rookie: "Rookie" }))
+    const allQueries: PlayerListQuery[] = fullTeams.concat(positions).concat(rookies).concat(rookiePositions).concat(teamPositions).concat(teamRookies)
+    const results = fuzzysort.go(textQuery, allQueries, {
+      keys: ["teamDisplayName", "teamNickName", "position", "rookie"],
+      scoreFn: r => r.score * (isTopLevel(r.obj) ? 2 : 1),
+      threshold: 0.4,
+      limit: 25
+    })
+    return results.map(r => r.obj)
+  }
+  return []
+}
 
 export default {
   async handleCommand(command: Command, client: DiscordClient, _: Firestore, ctx: ParameterizedContext) {
@@ -1481,21 +1526,21 @@ export default {
             },
           ],
         },
-        // {
-        //   type: ApplicationCommandOptionType.Subcommand,
-        //   name: "list",
-        //   description: "list the players matching search",
-        //   options: [
-        //     {
-        //       type: ApplicationCommandOptionType.String,
-        //       name: "players",
-        //       description:
-        //         "players to search for",
-        //       required: true,
-        //       autocomplete: true
-        //     },
-        //   ],
-        // }
+        {
+          type: ApplicationCommandOptionType.Subcommand,
+          name: "list",
+          description: "list the players matching search",
+          options: [
+            {
+              type: ApplicationCommandOptionType.String,
+              name: "players",
+              description:
+                "players to search for",
+              required: true,
+              autocomplete: true
+            },
+          ],
+        }
       ],
       type: 1,
     }
@@ -1519,11 +1564,10 @@ export default {
     } else if (subCommand === "list") {
       const view = await discordLeagueView.createView(guild_id)
       const leagueId = view?.leagueId
-      if (leagueId) {
-        const teamView = await teamSearchView.createView(leagueId)
-        if (teamView) {
-          const fullTeams = Object.values(teamView).map(t => ({ name: `${t.displayName}`, value: JSON.stringify() }))
-        }
+      if (leagueId && (playerCommand?.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.focused && playerCommand?.options?.[0]?.value) {
+        const playerListSearchPhrase = playerCommand.options[0].value as string
+        const results = await searchPlayerListForQuery(playerListSearchPhrase, leagueId)
+        return results.map(r => ({ name: formatQuery(r), value: JSON.stringify(r) }))
       }
     }
 
