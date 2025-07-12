@@ -1508,13 +1508,25 @@ export default {
     const options = command.data.options
     const playerCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
     const subCommand = playerCommand.name
-    const view = await discordLeagueView.createView(guild_id)
-    const leagueId = view?.leagueId
-    if (leagueId && (playerCommand?.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.focused && playerCommand?.options?.[0]?.value) {
-      const playerSearchPhrase = playerCommand.options[0].value as string
-      const results = await searchPlayerForRosterId(playerSearchPhrase, leagueId)
-      return results.map(r => ({ name: `${r.teamAbbr} ${r.position.toUpperCase()} ${r.firstName} ${r.lastName}`, value: `${r.rosterId}` }))
+    if (subCommand === "get") {
+      const view = await discordLeagueView.createView(guild_id)
+      const leagueId = view?.leagueId
+      if (leagueId && (playerCommand?.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.focused && playerCommand?.options?.[0]?.value) {
+        const playerSearchPhrase = playerCommand.options[0].value as string
+        const results = await searchPlayerForRosterId(playerSearchPhrase, leagueId)
+        return results.map(r => ({ name: `${r.teamAbbr} ${r.position.toUpperCase()} ${r.firstName} ${r.lastName}`, value: `${r.rosterId}` }))
+      }
+    } else if (subCommand === "list") {
+      const view = await discordLeagueView.createView(guild_id)
+      const leagueId = view?.leagueId
+      if (leagueId) {
+        const teamView = await teamSearchView.createView(leagueId)
+        if (teamView) {
+          const fullTeams = Object.values(teamView).map(t => ({ name: `${t.displayName}`, value: JSON.stringify() }))
+        }
+      }
     }
+
     return []
   },
   async handleInteraction(interaction: MessageComponentInteraction, client: DiscordClient) {
