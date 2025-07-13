@@ -289,7 +289,7 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
     // 0 team id means the player is a free agent
     teamsDisplayNames["0"] = "FA"
     const message = players.length === 0 ? `# No results` : formatPlayerList(players, teamsDisplayNames)
-    const backDisabled = paginatedPlayers.length === 0 ? false : true
+    const backDisabled = paginatedPlayers.length === 0 ? true : false
     const nextDisabled = players.length < PAGINATION_LIMIT ? true : false
     const nextPagination = players.length === 0 ? paginatedPlayer : paginatedPlayers.concat([players[players.length - 1].rosterId])
     const newQuery: PlayerListQuery = {}
