@@ -52,6 +52,9 @@ function generatePlayerOptions(rosterId: number) {
 }
 
 function generatePlayerZoomOptions(players: Player[], currentPagination: PlayerPagination) {
+  players.map(p => ({ label: `${p.position} ${p.firstName} ${p.lastName}`, value: { rosterId: p.rosterId, selected: PlayerSelection.PLAYER_OVERVIEW, query: currentPagination } }))
+    .map(option => ({ ...option, value: JSON.stringify(option.value) }))
+    .map(o => o.value.length).forEach(console.log)
   return players.map(p => ({ label: `${p.position} ${p.firstName} ${p.lastName}`, value: { rosterId: p.rosterId, selected: PlayerSelection.PLAYER_OVERVIEW, query: currentPagination } }))
     .map(option => ({ ...option, value: JSON.stringify(option.value) }))
 }
@@ -356,7 +359,7 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
           components: [
             {
               type: ComponentType.StringSelect,
-              custom_id: "player_card",
+              custom_id: "search_to_player_card",
               placeholder: `Show Player Card`,
               options: generatePlayerZoomOptions(players, { q: query, s: startAfterPlayer, b: endBeforePlayer })
             }
@@ -1756,7 +1759,7 @@ export default {
           components: [
             {
               type: ComponentType.TextDisplay,
-              content: `Could not list players  Error: ${e}`
+              content: `Could not list players Error: ${e}`
             }
           ]
         })
