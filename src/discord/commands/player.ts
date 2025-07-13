@@ -1,6 +1,6 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command, AutocompleteHandler, Autocomplete, MessageComponentHandler, MessageComponentInteraction } from "../commands_handler"
-import { respond, createMessageResponse, DiscordClient, deferMessage } from "../discord_utils"
+import { respond, DiscordClient, deferMessage } from "../discord_utils"
 import { APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ButtonStyle, ComponentType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
 import { playerSearchIndex, discordLeagueView, teamSearchView } from "../../db/view"
@@ -49,6 +49,11 @@ function generatePlayerOptions(rosterId: number) {
       value: { rosterId: rosterId, selected: PlayerSelection.PLAYER_SEASON_STATS }
     }
   ].map(option => ({ ...option, value: JSON.stringify(option.value) }))
+}
+
+function generatePlayerZoomOptions(players: Player[], currentPagination: PlayerPagination) {
+  return players.map(p => ({ label: `${p.position} ${p.firstName} ${p.lastName}`, value: { rosterId: p.rosterId, selected: PlayerSelection.PLAYER_OVERVIEW, query: currentPagination } }))
+    .map(option => ({ ...option, value: JSON.stringify(option.value) }))
 }
 
 async function showPlayerCard(playerSearch: string, client: DiscordClient, token: string, guild_id: string) {
@@ -110,7 +115,7 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, token
       components: [
         {
           type: ComponentType.TextDisplay,
-          content: `Could not show player card Error: ${e}`
+          content: `Could not show player card ${e}`
         }
       ]
     })
@@ -255,7 +260,7 @@ async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, to
   })
 }
 
-type PlayerPagination = { q: PlayerListQuery, s: number, b: number }
+type PlayerPagination = { q: PlayerListQuery, s?: number, b?: number }
 const PAGINATION_LIMIT = 5
 
 async function getPlayers(leagueId: string, query: PlayerListQuery, startAfterPlayer?: number, endBeforePlayer?: number) {
@@ -346,17 +351,17 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
           divider: true,
           spacing: SeparatorSpacingSize.Large
         },
-        // {
-        //   type: ComponentType.ActionRow,
-        //   components: [
-        //     {
-        //       type: ComponentType.StringSelect,
-        //       custom_id: "player_card",
-        //       placeholder: formatPlaceholder(PlayerSelection.PLAYER_OVERVIEW),
-        //       options: generatePlayerOptions(searchRosterId)
-        //     }
-        //   ]
-        // }
+        {
+          type: ComponentType.ActionRow,
+          components: [
+            {
+              type: ComponentType.StringSelect,
+              custom_id: "player_card",
+              placeholder: `Show Player Card`,
+              options: generatePlayerZoomOptions(players, { q: query, s: startAfterPlayer, b: endBeforePlayer })
+            }
+          ]
+        }
       ]
     })
   } catch (e) {
@@ -365,7 +370,7 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
       components: [
         {
           type: ComponentType.TextDisplay,
-          content: `Could not list players  Error: ${e} `
+          content: `Could not list players  ${e} `
         }
       ]
     })
