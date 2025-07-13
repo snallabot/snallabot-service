@@ -1764,6 +1764,7 @@ export default {
     } else {
       try {
         const { q: query, s: next, b: prev } = JSON.parse(customId) as PlayerPagination
+        console.log(customId)
         showPlayerList(JSON.stringify(fromShortQuery(query)), client, interaction.token, interaction.guild_id, next, prev)
       } catch (e) {
         await client.editOriginalInteraction(interaction.token, {
