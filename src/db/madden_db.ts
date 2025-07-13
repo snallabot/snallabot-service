@@ -406,12 +406,12 @@ const MaddenDB: MaddenDB = {
     }
 
     if (startAfter) {
-      playersQuery = playersQuery.orderBy("playerBestOvr", "desc").orderBy("rosterId", "desc")
+      playersQuery = playersQuery.orderBy("playerBestOvr", "desc").orderBy("rosterId", "asc")
       playersQuery = playersQuery.startAfter(startAfter.playerBestOvr, startAfter.rosterId);
     }
 
     if (endBefore) {
-      playersQuery = playersQuery.orderBy("playerBestOvr", "asc").orderBy("rosterId", "asc")
+      playersQuery = playersQuery.orderBy("playerBestOvr", "asc").orderBy("rosterId", "desc")
       playersQuery = playersQuery.endBefore(endBefore.playerBestOvr, endBefore.rosterId);
       const snapshot = await playersQuery.get();
       return snapshot.docs.map(d => d.data() as Player).reverse()
