@@ -381,7 +381,7 @@ const MaddenDB: MaddenDB = {
   },
   getPlayers: async function(leagueId: string, query: PlayerListQuery, limit, startAfter?: Player, endBefore?: Player) {
 
-    let playersQuery = db.collection("league_data").doc(leagueId).collection("MADDEN_PLAYER").orderBy("playerBestOvr", "desc").orderBy("rosterId").limit(limit)
+    let playersQuery = db.collection("league_data").doc(leagueId).collection("MADDEN_PLAYER").limit(limit)
 
     if (query.teamId && query.teamId !== -1) {
       playersQuery = playersQuery.where("teamId", "==", query.teamId);
@@ -406,17 +406,20 @@ const MaddenDB: MaddenDB = {
     }
 
     if (startAfter) {
+      playersQuery = playersQuery.orderBy("playerBestOvr", "desc").orderBy("rosterId", "desc")
       playersQuery = playersQuery.startAfter(startAfter.playerBestOvr, startAfter.rosterId);
     }
 
     if (endBefore) {
+      playersQuery = playersQuery.orderBy("playerBestOvr", "asc").orderBy("rosterId", "asc")
       playersQuery = playersQuery.endBefore(endBefore.playerBestOvr, endBefore.rosterId);
+      const snapshot = await playersQuery.get();
+      return snapshot.docs.map(d => d.data() as Player).reverse()
     }
 
     const snapshot = await playersQuery.get();
 
     return snapshot.docs.map(d => d.data() as Player)
-
   }
 }
 
