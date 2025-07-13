@@ -1475,7 +1475,7 @@ function formatPlayerList(players: Player[], teams: { [key: string]: string }) {
     const experience = getSeasonFormatting(player.yearsPro)
     const devTraitEmoji = getDevTraitName(player.devTrait)
     message += `## ${teamEmoji} ${player.position} ${fullName} - ${player.playerBestOvr} OVR\n`;
-    message += `${devTraitEmoji} | **${player.age} yrs** | **${experience}** | **${heightFormatted}** | **${player.weight} lbs**\n`;
+    message += `${devTraitEmoji} | ${player.age} yrs | ${experience} | ${heightFormatted} | ${player.weight} lbs\n`;
   }
 
   return message;
