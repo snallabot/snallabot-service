@@ -50,7 +50,8 @@ function generatePlayerOptions(rosterId: number, pagination?: PlayerPagination) 
     }
   ].map(option => {
     if (pagination) (option.value as Selection).q = pagination
-    console.log(option)
+    console.log(JSON.stringify(option))
+    console.log(JSON.stringify(option).length)
     return option
   })
     .map(option => ({ ...option, value: JSON.stringify(option.value) }))
