@@ -1488,7 +1488,7 @@ ${formattedAgg}
 }
 
 function formatPlayerList(players: Player[], teams: { [key: string]: string }) {
-  let message = "# Player Results:";
+  let message = "# Player Results:\n";
 
   for (const player of players) {
     const teamName = teams[`${player.teamId}`]
@@ -1501,8 +1501,7 @@ function formatPlayerList(players: Player[], teams: { [key: string]: string }) {
     const devTraitEmoji = getDevTraitName(player.devTrait)
 
     message += `## ${teamEmoji} ${player.position} ${fullName}\n`;
-    message += `**Overall:** ${player.playerBestOvr}`
-    message += `${devTraitEmoji} | **${player.age} yrs** | **${player.yearsPro}** | **${heightFormatted}** | **${player.weight} lbs**\n\n`;
+    message += `**${player.playerBestOvr} ovr** | ${devTraitEmoji} | **${player.age} yrs** | **${player.yearsPro}** | **${heightFormatted}** | **${player.weight} lbs**\n\n`;
   }
 
   return message;
