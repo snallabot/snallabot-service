@@ -741,9 +741,9 @@ function getPositionalTraits(player: Player) {
   }
 
   const yesNoTraits = yesNoAttributes.filter(trait => trait.value === YesNoTrait.YES)
-    .map(attr => `> ** ${attr.name}:** ${formatYesNoTrait(attr.value)} `).join('\n')
-  const customAttributes = attributes.map(attr => `> ** ${attr.name}:** ${attr.value} `).join('\n')
-  return `${yesNoTraits} \n${customAttributes} `
+    .map(attr => `> **${attr.name}:** ${formatYesNoTrait(attr.value)}`).join('\n')
+  const customAttributes = attributes.map(attr => `> **${attr.name}:** ${attr.value}`).join('\n')
+  return `${yesNoTraits} \n${customAttributes}`
 
 }
 
