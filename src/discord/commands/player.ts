@@ -1716,12 +1716,24 @@ export default {
         })
       }
     } else {
-      const { q: query, l: rosterId, league } = JSON.parse(customId) as PlayerPagination
-      if (rosterId) {
-        const player = await MaddenDB.getPlayer(league, `${rosterId}`)
-        showPlayerList(JSON.stringify(query), client, interaction.token, interaction.guild_id, player)
-      } else {
-        showPlayerList(JSON.stringify(query), client, interaction.token, interaction.guild_id)
+      try {
+        const { q: query, l: rosterId, league } = JSON.parse(customId) as PlayerPagination
+        if (rosterId) {
+          const player = await MaddenDB.getPlayer(league, `${rosterId}`)
+          showPlayerList(JSON.stringify(query), client, interaction.token, interaction.guild_id, player)
+        } else {
+          showPlayerList(JSON.stringify(query), client, interaction.token, interaction.guild_id)
+        }
+      } catch (e) {
+        await client.editOriginalInteraction(interaction.token, {
+          flags: 32768,
+          components: [
+            {
+              type: ComponentType.TextDisplay,
+              content: `Could not list players  Error: ${e}`
+            }
+          ]
+        })
       }
     }
   }
