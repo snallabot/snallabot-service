@@ -15,7 +15,7 @@ enum PlayerSelection {
   PLAYER_SEASON_STATS = "ps"
 }
 
-type Selection = { r: number, s: PlayerSelection, q?: ShortPlayerListQuery }
+type Selection = { r: number, s: PlayerSelection, q?: PlayerPagination }
 
 function formatPlaceholder(selection: PlayerSelection): string {
   switch (selection) {
@@ -30,7 +30,7 @@ function formatPlaceholder(selection: PlayerSelection): string {
   }
 }
 
-function generatePlayerOptions(rosterId: number) {
+function generatePlayerOptions(rosterId: number, pagination?: PlayerPagination) {
   return [
     {
       label: "Overview",
@@ -48,7 +48,11 @@ function generatePlayerOptions(rosterId: number) {
       label: "Season Stats",
       value: { r: rosterId, s: PlayerSelection.PLAYER_SEASON_STATS }
     }
-  ].map(option => ({ ...option, value: JSON.stringify(option.value) }))
+  ].map(option => {
+    if (pagination) (option.value as Selection).q = pagination
+    return option
+  })
+    .map(option => ({ ...option, value: JSON.stringify(option.value) }))
 }
 
 function generatePlayerZoomOptions(players: Player[], currentPagination: PlayerPagination) {
@@ -56,7 +60,7 @@ function generatePlayerZoomOptions(players: Player[], currentPagination: PlayerP
     .map(option => ({ ...option, value: JSON.stringify(option.value) }))
 }
 
-async function showPlayerCard(playerSearch: string, client: DiscordClient, token: string, guild_id: string) {
+async function showPlayerCard(playerSearch: string, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
   try {
     const discordLeague = await discordLeagueView.createView(guild_id)
     const leagueId = discordLeague?.leagueId
@@ -83,7 +87,19 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, token
     }))
     // 0 team id means the player is a free agent
     teamsDisplayNames["0"] = "FA"
-
+    const backToSearch = pagination ? [
+      {
+        type: ComponentType.Separator,
+        divider: true,
+        spacing: SeparatorSpacingSize.Small
+      },
+      {
+        type: ComponentType.Button,
+        style: ButtonStyle.Secondary,
+        label: "Back to List",
+        custom_id: `${JSON.stringify(pagination)}`
+      }
+    ] : []
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
@@ -103,10 +119,11 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, token
               type: ComponentType.StringSelect,
               custom_id: "player_card",
               placeholder: formatPlaceholder(PlayerSelection.PLAYER_OVERVIEW),
-              options: generatePlayerOptions(searchRosterId)
+              options: generatePlayerOptions(searchRosterId, pagination)
             }
           ]
-        }
+        },
+        ...backToSearch
       ]
     })
   } catch (e) {
@@ -122,7 +139,7 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, token
   }
 }
 
-async function showPlayerFullRatings(rosterId: number, client: DiscordClient, token: string, guild_id: string) {
+async function showPlayerFullRatings(rosterId: number, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
   const discordLeague = await discordLeagueView.createView(guild_id)
   const leagueId = discordLeague?.leagueId
   if (!leagueId) {
@@ -139,6 +156,19 @@ async function showPlayerFullRatings(rosterId: number, client: DiscordClient, to
   }))
   // 0 team id means the player is a free agent
   teamsDisplayNames["0"] = "FA"
+  const backToSearch = pagination ? [
+    {
+      type: ComponentType.Separator,
+      divider: true,
+      spacing: SeparatorSpacingSize.Small
+    },
+    {
+      type: ComponentType.Button,
+      style: ButtonStyle.Secondary,
+      label: "Back to List",
+      custom_id: `${JSON.stringify(pagination)}`
+    }
+  ] : []
   await client.editOriginalInteraction(token, {
     flags: 32768,
     components: [
@@ -158,15 +188,16 @@ async function showPlayerFullRatings(rosterId: number, client: DiscordClient, to
             type: ComponentType.StringSelect,
             custom_id: "player_card",
             placeholder: formatPlaceholder(PlayerSelection.PLAYER_FULL_RATINGS),
-            options: generatePlayerOptions(rosterId)
+            options: generatePlayerOptions(rosterId, pagination)
           }
         ]
-      }
+      },
+      ...backToSearch
     ]
   })
 }
 
-async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, token: string, guild_id: string) {
+async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
   const discordLeague = await discordLeagueView.createView(guild_id)
   const leagueId = discordLeague?.leagueId
   if (!leagueId) {
@@ -187,6 +218,19 @@ async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, to
   const statGames = new Map<String, { id: number, week: number, season: number }>()
   Object.values(playerStats).flat().forEach(p => statGames.set(`${p.scheduleId}|${p.weekIndex}|${p.seasonIndex}`, { id: p.scheduleId, week: p.weekIndex + 1, season: p.seasonIndex }))
   const games = await MaddenDB.getGamesForSchedule(leagueId, Array.from(statGames.values()))
+  const backToSearch = pagination ? [
+    {
+      type: ComponentType.Separator,
+      divider: true,
+      spacing: SeparatorSpacingSize.Small
+    },
+    {
+      type: ComponentType.Button,
+      style: ButtonStyle.Secondary,
+      label: "Back to List",
+      custom_id: `${JSON.stringify(pagination)}`
+    }
+  ] : []
   await client.editOriginalInteraction(token, {
     flags: 32768,
     components: [
@@ -206,15 +250,16 @@ async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, to
             type: ComponentType.StringSelect,
             custom_id: "player_card",
             placeholder: formatPlaceholder(PlayerSelection.PLAYER_WEEKLY_STATS),
-            options: generatePlayerOptions(rosterId)
+            options: generatePlayerOptions(rosterId, pagination)
           }
         ]
-      }
+      },
+      ...backToSearch
     ]
   })
 }
 
-async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, token: string, guild_id: string) {
+async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
   const discordLeague = await discordLeagueView.createView(guild_id)
   const leagueId = discordLeague?.leagueId
   if (!leagueId) {
@@ -233,6 +278,19 @@ async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, to
   }))
   // 0 team id means the player is a free agent
   teamsDisplayNames["0"] = "FA"
+  const backToSearch = pagination ? [
+    {
+      type: ComponentType.Separator,
+      divider: true,
+      spacing: SeparatorSpacingSize.Small
+    },
+    {
+      type: ComponentType.Button,
+      style: ButtonStyle.Secondary,
+      label: "Back to List",
+      custom_id: `${JSON.stringify(pagination)}`
+    }
+  ] : []
   await client.editOriginalInteraction(token, {
     flags: 32768,
     components: [
@@ -252,10 +310,11 @@ async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, to
             type: ComponentType.StringSelect,
             custom_id: "player_card",
             placeholder: formatPlaceholder(PlayerSelection.PLAYER_SEASON_STATS),
-            options: generatePlayerOptions(rosterId)
+            options: generatePlayerOptions(rosterId, pagination)
           }
         ]
-      }
+      },
+      ...backToSearch
     ]
   })
 }
@@ -371,7 +430,7 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
           components: [
             {
               type: ComponentType.StringSelect,
-              custom_id: "search_to_player_card",
+              custom_id: "player_card",
               placeholder: `Show Player Card`,
               options: generatePlayerZoomOptions(players, { q: toShortQuery(query), s: startAfterPlayer, b: endBeforePlayer })
             }
@@ -1721,16 +1780,17 @@ export default {
       if (data.values.length !== 1) {
         throw new Error("Somehow did not receive just one selection from player card " + data.values)
       }
-      const { r: rosterId, s: selected } = JSON.parse(data.values[0]) as Selection
+      console.log(data.values[0].length)
+      const { r: rosterId, s: selected, q: pagination } = JSON.parse(data.values[0]) as Selection
       try {
         if (selected === PlayerSelection.PLAYER_OVERVIEW) {
-          showPlayerCard(`${rosterId}`, client, interaction.token, interaction.guild_id)
+          showPlayerCard(`${rosterId}`, client, interaction.token, interaction.guild_id, pagination)
         } else if (selected === PlayerSelection.PLAYER_FULL_RATINGS) {
-          showPlayerFullRatings(rosterId, client, interaction.token, interaction.guild_id)
+          showPlayerFullRatings(rosterId, client, interaction.token, interaction.guild_id, pagination)
         } else if (selected === PlayerSelection.PLAYER_WEEKLY_STATS) {
-          showPlayerWeeklyStats(rosterId, client, interaction.token, interaction.guild_id)
+          showPlayerWeeklyStats(rosterId, client, interaction.token, interaction.guild_id, pagination)
         } else if (selected === PlayerSelection.PLAYER_SEASON_STATS) {
-          showPlayerYearlyStats(rosterId, client, interaction.token, interaction.guild_id)
+          showPlayerYearlyStats(rosterId, client, interaction.token, interaction.guild_id, pagination)
         } else {
           console.error("should not have gotten here")
         }
