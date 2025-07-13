@@ -292,7 +292,7 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
     const backDisabled = paginatedPlayers.length === 0 ? true : false
     const nextDisabled = players.length < PAGINATION_LIMIT ? true : false
     const nextPagination = players.length === 0 ? paginatedPlayer : paginatedPlayers.concat([players[players.length - 1].rosterId])
-    const previousPagination = paginatedPlayers.length === 0 ? [] : paginatedPlayers.splice(-1)
+    const previousPagination = paginatedPlayers.length === 0 ? [] : paginatedPlayers.slice(0, -1)
     const newQuery: PlayerListQuery = {}
 
     if (query.teamId && query.teamId !== -1) newQuery.teamId = query.teamId
