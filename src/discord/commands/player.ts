@@ -1805,7 +1805,6 @@ export default {
       if (data.values.length !== 1) {
         throw new Error("Somehow did not receive just one selection from player card " + data.values)
       }
-      console.log(data.values[0])
       const { r: rosterId, s: selected, q: pagination } = JSON.parse(data.values[0]) as Selection
       try {
         if (selected === PlayerSelection.PLAYER_OVERVIEW) {
