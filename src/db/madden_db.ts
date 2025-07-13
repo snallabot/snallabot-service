@@ -387,7 +387,6 @@ const MaddenDB: MaddenDB = {
     } else {
       playersQuery = db.collection("league_data").doc(leagueId).collection("MADDEN_PLAYER").orderBy("playerBestOvr", "desc").orderBy("rosterId").limit(limit)
     }
-    console.log(query)
     if ((query.teamId && query.teamId !== -1) || query.teamId === 0) {
       playersQuery = playersQuery.where("teamId", "==", query.teamId);
     }
