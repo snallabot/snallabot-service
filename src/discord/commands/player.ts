@@ -255,7 +255,8 @@ async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, to
   })
 }
 
-type PlayerPagination = { q: PlayerListQuery, l: number[], league: string }
+type ShortPlayerListQuery = { t?: number, p?: string, r?: boolean }
+type PlayerPagination = { q: ShortPlayerListQuery, l: number[] }
 const PAGINATION_LIMIT = 5
 
 async function showPlayerList(playerSearch: string, client: DiscordClient, token: string, guild_id: string, paginatedPlayers: number[] = []) {
@@ -293,15 +294,15 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
     const nextDisabled = players.length < PAGINATION_LIMIT ? true : false
     const nextPagination = players.length === 0 ? paginatedPlayer : paginatedPlayers.concat([players[players.length - 1].rosterId])
     const previousPagination = paginatedPlayers.length === 0 ? [] : paginatedPlayers.slice(0, -1)
-    const newQuery: PlayerListQuery = {}
+    const newQuery: ShortPlayerListQuery = {}
 
-    if (query.teamId && query.teamId !== -1) newQuery.teamId = query.teamId
-    if (query.rookie) newQuery.rookie = query.rookie
-    if (query.position) newQuery.position = query.position
-    console.log(`${JSON.stringify({ q: newQuery, l: nextPagination, league: leagueId })}`)
-    console.log(`${JSON.stringify({ q: newQuery, l: nextPagination, league: leagueId }).length}`)
-    console.log(JSON.stringify({ q: newQuery, l: previousPagination, league: leagueId }))
-    console.log(JSON.stringify({ q: newQuery, l: previousPagination, league: leagueId }).length)
+    if (query.teamId && query.teamId !== -1) newQuery.t = query.teamId
+    if (query.rookie) newQuery.r = query.rookie
+    if (query.position) newQuery.p = query.position
+    console.log(`${JSON.stringify({ q: newQuery, l: nextPagination })}`)
+    console.log(`${JSON.stringify({ q: newQuery, l: nextPagination }).length}`)
+    console.log(JSON.stringify({ q: newQuery, l: previousPagination }))
+    console.log(JSON.stringify({ q: newQuery, l: previousPagination }).length)
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
@@ -317,13 +318,13 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
               style: ButtonStyle.Secondary,
               label: "Back",
               disabled: backDisabled,
-              custom_id: `${JSON.stringify({ q: newQuery, l: previousPagination, league: leagueId })}`
+              custom_id: `${JSON.stringify({ q: newQuery, l: previousPagination })}`
             },
             {
               type: ComponentType.Button,
               style: ButtonStyle.Secondary,
               label: "Next",
-              custom_id: `${JSON.stringify({ q: newQuery, l: nextPagination, league: leagueId })}`,
+              custom_id: `${JSON.stringify({ q: newQuery, l: nextPagination })}`,
               disabled: nextDisabled
             }
           ]
@@ -1730,8 +1731,12 @@ export default {
       }
     } else {
       try {
-        const { q: query, l: pagination, league } = JSON.parse(customId) as PlayerPagination
-        showPlayerList(JSON.stringify(query), client, interaction.token, interaction.guild_id, pagination)
+        const { q: query, l: pagination } = JSON.parse(customId) as PlayerPagination
+        const newQuery: PlayerListQuery = {}
+        if (query.t) newQuery.teamId = query.t
+        if (query.p) newQuery.position = query.p
+        if (query.r) newQuery.rookie = query.r
+        showPlayerList(JSON.stringify(newQuery), client, interaction.token, interaction.guild_id, pagination)
       } catch (e) {
         await client.editOriginalInteraction(interaction.token, {
           flags: 32768,
