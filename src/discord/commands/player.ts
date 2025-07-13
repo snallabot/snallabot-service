@@ -255,9 +255,9 @@ async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, to
   })
 }
 
-type PlayerPagination = { q: PlayerListQuery, l: number, league: string }
+type PlayerPagination = { q: PlayerListQuery, l: number, p: number, league: string }
 
-async function showPlayerList(playerSearch: string, client: DiscordClient, token: string, guild_id: string, lastPlayer?: Player) {
+async function showPlayerList(playerSearch: string, client: DiscordClient, token: string, guild_id: string, currentPagePlayer?: Player, previousPagePlayer?: Player) {
   try {
     const discordLeague = await discordLeagueView.createView(guild_id)
     const leagueId = discordLeague?.leagueId
@@ -274,7 +274,7 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
       }
       query = results[0]
     }
-    const players = await MaddenDB.getPlayers(leagueId, query, lastPlayer)
+    const players = await MaddenDB.getPlayers(leagueId, query, currentPagePlayer)
     const teamView = await teamSearchView.createView(leagueId)
     if (!teamView) {
       throw new Error("Missing teams?? Maybe try the command again")
@@ -286,9 +286,9 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
     // 0 team id means the player is a free agent
     teamsDisplayNames["0"] = "FA"
     const message = players.length === 0 ? `# No results` : formatPlayerList(players, teamsDisplayNames)
-    const backDisabled = lastPlayer ? false : true
+    const backDisabled = currentPagePlayer ? false : true
     const nextDisabled = players.length === 0 ? true : false
-    const nextLastPlayer = players.length === 0 ? lastPlayer?.rosterId : players[players.length - 1].rosterId
+    const nextLastPlayer = players.length === 0 ? currentPagePlayer?.rosterId : players[players.length - 1].rosterId
     console.log(`${JSON.stringify({ q: query, l: nextLastPlayer, league: leagueId })}`)
     console.log(`${JSON.stringify({ q: query, l: nextLastPlayer, league: leagueId }).length}`)
     await client.editOriginalInteraction(token, {
@@ -306,13 +306,13 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
               style: ButtonStyle.Secondary,
               label: "Back",
               disabled: backDisabled,
-              custom_id: `${JSON.stringify({ q: query, l: lastPlayer?.rosterId, league: leagueId })} `
+              custom_id: `${JSON.stringify({ q: query, l: currentPagePlayer?.rosterId, p: previousPagePlayer?.rosterId, league: leagueId })} `
             },
             {
               type: ComponentType.Button,
               style: ButtonStyle.Secondary,
               label: "Next",
-              custom_id: `${JSON.stringify({ q: query, l: nextLastPlayer, league: leagueId })} `,
+              custom_id: `${JSON.stringify({ q: query, l: nextLastPlayer, p: currentPagePlayer?.rosterId, league: leagueId })} `,
               disabled: nextDisabled
             }
           ]
@@ -1719,13 +1719,11 @@ export default {
       }
     } else {
       try {
-        const { q: query, l: rosterId, league } = JSON.parse(customId) as PlayerPagination
-        if (rosterId) {
-          const player = await MaddenDB.getPlayer(league, `${rosterId}`)
-          showPlayerList(JSON.stringify(query), client, interaction.token, interaction.guild_id, player)
-        } else {
-          showPlayerList(JSON.stringify(query), client, interaction.token, interaction.guild_id)
-        }
+        const { q: query, l: rosterId, p: previousRosterId, league } = JSON.parse(customId) as PlayerPagination
+        const getCurrent = rosterId ? MaddenDB.getPlayer(league, `${rosterId}`) : Promise.resolve(undefined)
+        const getLast = previousRosterId ? MaddenDB.getPlayer(league, `${previousRosterId}`) : Promise.resolve(undefined)
+        const [currentPlayer, lastPlayer] = await Promise.all([getCurrent, getLast])
+        showPlayerList(JSON.stringify(query), client, interaction.token, interaction.guild_id, currentPlayer, lastPlayer)
       } catch (e) {
         await client.editOriginalInteraction(interaction.token, {
           flags: 32768,
