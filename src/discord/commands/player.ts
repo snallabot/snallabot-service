@@ -1670,6 +1670,7 @@ export default {
   },
   async handleInteraction(interaction: MessageComponentInteraction, client: DiscordClient) {
     const customId = interaction.custom_id
+    console.log(customId)
     if (customId === "player_card") {
       const data = interaction.data as APIMessageStringSelectInteractionData
       if (data.values.length !== 1) {
