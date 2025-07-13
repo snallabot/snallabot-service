@@ -42,7 +42,7 @@ interface MaddenDB {
   getPlayer(leagueId: string, rosterId: string): Promise<Player>,
   getPlayerStats(leagueId: string, player: Player): Promise<PlayerStats>,
   getGamesForSchedule(leagueId: string, scheduleIds: Iterable<{ id: number, week: number, season: number }>): Promise<MaddenGame[]>,
-  getPlayers(leagueId: string, query: PlayerListQuery, limit: number, lastPlayer?: Player): Promise<Player[]>
+  getPlayers(leagueId: string, query: PlayerListQuery, limit: number, startAfter?: Player, endBefore?: Player): Promise<Player[]>
 }
 
 function convertDate(firebaseObject: any) {
@@ -379,7 +379,8 @@ const MaddenDB: MaddenDB = {
   getGamesForSchedule: async function(leagueId: string, scheduleIds: { id: number, week: number, season: number }[]) {
     return await Promise.all(scheduleIds.map(s => this.getGameForSchedule(leagueId, s.id, s.week, s.season)))
   },
-  getPlayers: async function(leagueId: string, query: PlayerListQuery, limit, lastPlayer?: Player) {
+  getPlayers: async function(leagueId: string, query: PlayerListQuery, limit, startAfter?: Player, endBefore?: Player) {
+
     let playersQuery = db.collection("league_data").doc(leagueId).collection("MADDEN_PLAYER").orderBy("playerBestOvr", "desc").orderBy("rosterId").limit(limit)
 
     if (query.teamId && query.teamId !== -1) {
@@ -404,9 +405,13 @@ const MaddenDB: MaddenDB = {
       playersQuery = playersQuery.where("yearsPro", "==", 0);
     }
 
-    if (lastPlayer) {
-      playersQuery = playersQuery.startAfter(lastPlayer.playerBestOvr, lastPlayer.rosterId);
-    };
+    if (startAfter) {
+      playersQuery = playersQuery.startAfter(startAfter.playerBestOvr, startAfter.rosterId);
+    }
+
+    if (endBefore) {
+      playersQuery = playersQuery.endBefore(endBefore.playerBestOvr, endBefore.rosterId);
+    }
 
     const snapshot = await playersQuery.get();
 
