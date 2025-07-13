@@ -2,7 +2,7 @@ import { randomUUID } from "crypto"
 import { Timestamp, Filter } from "firebase-admin/firestore"
 import db from "./firebase"
 import EventDB, { EventNotifier, SnallabotEvent, StoredEvent, notifiers } from "./events_db"
-import { DefensiveStats, KickingStats, MADDEN_SEASON, MaddenGame, PassingStats, Player, PuntingStats, ReceivingStats, RushingStats, Standing, Team } from "../export/madden_league_types"
+import { DefensiveStats, KickingStats, MADDEN_SEASON, MaddenGame, POSITION_GROUP, PassingStats, Player, PuntingStats, ReceivingStats, RushingStats, Standing, Team, dLinePositions, dbPositoins, oLinePositions } from "../export/madden_league_types"
 import { TeamAssignments } from "../discord/settings_db"
 
 type HistoryUpdate<ValueType> = { oldValue: ValueType, newValue: ValueType }
@@ -380,14 +380,24 @@ const MaddenDB: MaddenDB = {
     return await Promise.all(scheduleIds.map(s => this.getGameForSchedule(leagueId, s.id, s.week, s.season)))
   },
   getPlayers: async function(leagueId: string, query: PlayerListQuery, lastPlayer?: Player) {
-    let playersQuery = db.collection("league_data").doc(leagueId).collection("MADDEN_PLAYER").orderBy("playerBestOvr", "desc").orderBy("rosterId").limit(7)
+    let playersQuery = db.collection("league_data").doc(leagueId).collection("MADDEN_PLAYER").orderBy("playerBestOvr", "desc").orderBy("rosterId").limit(5)
 
     if (query.teamId !== -1) {
       playersQuery = playersQuery.where("teamId", "==", query.teamId);
     }
 
     if (query.position) {
-      playersQuery = playersQuery.where("position", "==", query.position);
+      if (POSITION_GROUP.includes(query.position)) {
+        if (query.position === "OL") {
+          playersQuery = playersQuery.where("position", "in", oLinePositions)
+        } else if (query.position === "DL") {
+          playersQuery = playersQuery.where("position", "in", dLinePositions)
+        } else if (query.position === "DB") {
+          playersQuery = playersQuery.where("position", "in", dbPositoins)
+        }
+      } else {
+        playersQuery = playersQuery.where("position", "==", query.position);
+      }
     }
 
     if (query.rookie) {

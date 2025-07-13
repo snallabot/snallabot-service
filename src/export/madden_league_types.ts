@@ -604,6 +604,9 @@ export const POSITIONS = [
 ]
 
 export const POSITION_GROUP = ["OL", "DL", "DB"]
+export const oLinePositions = ["LT", "LG", "C", "RG", "RT"];
+export const dLinePositions = ["LE", "RE", "DT", "LOLB", "ROLB"]
+export const dbPositoins = ["CB", "FS", "SS"]
 
 export type RosterExport = {
   success: boolean,
