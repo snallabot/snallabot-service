@@ -106,8 +106,7 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, token
       components: [
         {
           type: ComponentType.TextDisplay,
-          content: "test"
-          // content: formatPlayerCard(player, teamsDisplayNames)
+          content: formatPlayerCard(player, teamsDisplayNames)
         },
         {
           type: ComponentType.Separator,
