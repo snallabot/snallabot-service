@@ -814,7 +814,7 @@ function getSeasonFormatting(yearsPro: number) {
 
 function formatPlayerCard(player: Player, teams: { [key: string]: string }) {
 
-  const teamAbbr = teams[`${player.teamId} `]
+  const teamAbbr = teams[`${player.teamId}`]
 
   const heightFeet = Math.floor(player.height / 12)
   const heightInches = player.height % 12
