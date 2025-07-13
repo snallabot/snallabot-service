@@ -5,8 +5,8 @@ import { APIApplicationCommandInteractionDataStringOption, APIApplicationCommand
 import { Firestore } from "firebase-admin/firestore"
 import { playerSearchIndex, discordLeagueView, teamSearchView } from "../../db/view"
 import fuzzysort from "fuzzysort"
-import MaddenDB, { PlayerStatType, PlayerStats } from "../../db/madden_db"
-import { CoverBallTrait, DevTrait, LBStyleTrait, MADDEN_SEASON, MaddenGame, POSITIONS, POSITION_GROUP, PenaltyTrait, PlayBallTrait, Player, QBStyleTrait, SensePressureTrait, TEAM_GROUP, YesNoTrait } from "../../export/madden_league_types"
+import MaddenDB, { PlayerListQuery, PlayerStatType, PlayerStats } from "../../db/madden_db"
+import { CoverBallTrait, DevTrait, LBStyleTrait, MADDEN_SEASON, MaddenGame, POSITIONS, POSITION_GROUP, PenaltyTrait, PlayBallTrait, Player, QBStyleTrait, SensePressureTrait, YesNoTrait } from "../../export/madden_league_types"
 
 enum PlayerSelection {
   PLAYER_OVERVIEW = "player_overview",
@@ -253,6 +253,73 @@ async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, to
       }
     ]
   })
+}
+
+async function showPlayerList(playerSearch: string, client: DiscordClient, token: string, guild_id: string) {
+  try {
+    const discordLeague = await discordLeagueView.createView(guild_id)
+    const leagueId = discordLeague?.leagueId
+    if (!leagueId) {
+      throw new Error(`No League connected to snallabot`)
+    }
+    let query: PlayerListQuery;
+    try {
+      query = JSON.parse(playerSearch) as PlayerListQuery
+    } catch (e) {
+      const results = await searchPlayerListForQuery(playerSearch, leagueId)
+      if (results.length === 0) {
+        throw new Error(`No listable results for ${playerSearch} in ${leagueId}`)
+      }
+      query = results[0]
+    }
+    const players = await MaddenDB.getPlayers(leagueId, query)
+    const teamView = await teamSearchView.createView(leagueId)
+    if (!teamView) {
+      throw new Error("Missing teams?? Maybe try the command again")
+    }
+    const teamsDisplayNames = Object.fromEntries(Object.entries(teamView).map(teamEntry => {
+      const [teamId, t] = teamEntry
+      return [teamId, t.abbrName]
+    }))
+    // 0 team id means the player is a free agent
+    teamsDisplayNames["0"] = "FA"
+
+    await client.editOriginalInteraction(token, {
+      flags: 32768,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: formatPlayerList(players, teamsDisplayNames)
+        },
+        // {
+        //   type: ComponentType.Separator,
+        //   divider: true,
+        //   spacing: SeparatorSpacingSize.Large
+        // },
+        // {
+        //   type: ComponentType.ActionRow,
+        //   components: [
+        //     {
+        //       type: ComponentType.StringSelect,
+        //       custom_id: "player_card",
+        //       placeholder: formatPlaceholder(PlayerSelection.PLAYER_OVERVIEW),
+        //       options: generatePlayerOptions(searchRosterId)
+        //     }
+        //   ]
+        // }
+      ]
+    })
+  } catch (e) {
+    await client.editOriginalInteraction(token, {
+      flags: 32768,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: `Could not list players  Error: ${e}`
+        }
+      ]
+    })
+  }
 }
 
 function getTopAttributesByPosition(player: Player): Array<{ name: string, value: number }> {
@@ -1420,6 +1487,28 @@ ${formattedAgg}
 `
 }
 
+function formatPlayerList(players: Player[], teams: { [key: string]: string }) {
+  let message = "# Player Results:";
+
+  for (const player of players) {
+    const teamName = teams[`${player.teamId}`]
+    const fullName = `${player.firstName} ${player.lastName}`;
+    const heightFeet = Math.floor(player.height / 12);
+    const heightInches = player.height % 12;
+    const heightFormatted = `${heightFeet}'${heightInches}"`;
+    const teamEmoji = getTeamEmoji(teamName)
+    const experience = getSeasonFormatting(player.yearsPro)
+    const devTraitEmoji = getDevTraitName(player.devTrait)
+
+    message += `## ${teamEmoji} ${player.position} ${fullName}\n`;
+    message += `**Overall:** ${player.playerBestOvr}`
+    message += `${devTraitEmoji} | **${player.age} yrs** | **${player.yearsPro}** | **${heightFormatted}** | **${player.weight} lbs**\n\n`;
+  }
+
+  return message;
+
+}
+
 type PlayerFound = { teamAbbr: string, rosterId: number, firstName: string, lastName: string, teamId: number, position: string }
 
 async function searchPlayerForRosterId(query: string, leagueId: string): Promise<PlayerFound[]> {
@@ -1437,15 +1526,16 @@ async function searchPlayerForRosterId(query: string, leagueId: string): Promise
   }
   return []
 }
-const positions = POSITIONS.concat(POSITION_GROUP).map(p => ({ teamDisplayName: "", teamId: 0, teamNickName: "", position: p, rookie: "" }))
+const positions = POSITIONS.concat(POSITION_GROUP).map(p => ({ teamDisplayName: "", teamId: -1, teamNickName: "", position: p, rookie: "" }))
 const rookies = [{
-  teamDisplayName: "", teamId: 0, teamNickName: "", position: "", rookie: "Rookies"
+  teamDisplayName: "", teamId: -1, teamNickName: "", position: "", rookie: "Rookies"
 }]
 const rookiePositions = positions.map(p => ({ ...p, rookie: "Rookies" }))
-type PlayerListQuery = { teamDisplayName: string, teamId: number, teamNickName: string, position: string, rookie: string }
+type PlayerListSearchQuery = { teamDisplayName: string, teamId: number, teamNickName: string, position: string, rookie: string }
+
 
 // to boost top level queries like team names, position groups, and rookies
-function isTopLevel(q: PlayerListQuery) {
+function isTopLevel(q: PlayerListSearchQuery) {
   if (q.teamDisplayName && !q.position && !q.rookie) {
     return true
   }
@@ -1458,20 +1548,20 @@ function isTopLevel(q: PlayerListQuery) {
   return false
 }
 
-function formatQuery(q: PlayerListQuery) {
+function formatQuery(q: PlayerListSearchQuery) {
   const teamName = q.teamDisplayName ? [q.teamDisplayName] : []
   const position = q.position ? [q.position] : []
   const rookie = q.rookie ? [q.rookie] : []
   return [teamName, rookie, position].join(" ")
 }
 
-async function searchPlayerListForQuery(textQuery: string, leagueId: string): Promise<PlayerListQuery[]> {
+async function searchPlayerListForQuery(textQuery: string, leagueId: string): Promise<PlayerListSearchQuery[]> {
   const teamIndex = await teamSearchView.createView(leagueId)
   if (teamIndex) {
     const fullTeams = Object.values(teamIndex).map(t => ({ teamDisplayName: t.displayName, teamId: t.id, teamNickName: t.nickName, position: "", rookie: "" })).concat([{ teamDisplayName: "Free Agents", teamId: 0, teamNickName: "FA", position: "", rookie: "" }])
     const teamPositions = fullTeams.flatMap(t => positions.map(p => ({ teamDisplayName: t.teamDisplayName, teamId: t.teamId, teamNickName: t.teamNickName, position: p.position, rookie: "" })))
     const teamRookies = fullTeams.map(t => ({ ...t, rookie: "Rookies" }))
-    const allQueries: PlayerListQuery[] = fullTeams.concat(positions).concat(rookies).concat(rookiePositions).concat(teamPositions).concat(teamRookies)
+    const allQueries: PlayerListSearchQuery[] = fullTeams.concat(positions).concat(rookies).concat(rookiePositions).concat(teamPositions).concat(teamRookies)
     const results = fuzzysort.go(textQuery, allQueries, {
       keys: ["teamDisplayName", "teamNickName", "position", "rookie"],
       scoreFn: r => r.score * (isTopLevel(r.obj) ? 2 : 1),
@@ -1504,8 +1594,8 @@ export default {
         throw new Error("player get misconfigured")
       }
       const playerSearch = (playerCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value
-      // respond(ctx, deferMessage())
-      respond(ctx, createMessageResponse(playerSearch))
+      respond(ctx, deferMessage())
+      showPlayerList(playerSearch, client, token, guild_id)
     } else {
       throw new Error(`Missing player command ${subCommand}`)
     }

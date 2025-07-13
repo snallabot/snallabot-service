@@ -27,6 +27,8 @@ export type PlayerStats = {
   [PlayerStatType.PASSING]?: PassingStats[]
 }
 
+export type PlayerListQuery = { teamId: number, position: string, rookie: string }
+
 interface MaddenDB {
   appendEvents<Event>(event: SnallabotEvent<Event>[], idFn: (event: Event) => string): Promise<void>
   on<Event>(event_type: string, notifier: EventNotifier<Event>): void,
@@ -39,7 +41,8 @@ interface MaddenDB {
   getLatestPlayers(leagueId: string): Promise<Player[]>,
   getPlayer(leagueId: string, rosterId: string): Promise<Player>,
   getPlayerStats(leagueId: string, player: Player): Promise<PlayerStats>,
-  getGamesForSchedule(leagueId: string, scheduleIds: Iterable<{ id: number, week: number, season: number }>): Promise<MaddenGame[]>
+  getGamesForSchedule(leagueId: string, scheduleIds: Iterable<{ id: number, week: number, season: number }>): Promise<MaddenGame[]>,
+  getPlayers(leagueId: string, query: PlayerListQuery, lastPlayer?: Player): Promise<Player[]>
 }
 
 function convertDate(firebaseObject: any) {
@@ -376,6 +379,30 @@ const MaddenDB: MaddenDB = {
   getGamesForSchedule: async function(leagueId: string, scheduleIds: { id: number, week: number, season: number }[]) {
     return await Promise.all(scheduleIds.map(s => this.getGameForSchedule(leagueId, s.id, s.week, s.season)))
   },
+  getPlayers: async function(leagueId: string, query: PlayerListQuery, lastPlayer?: Player) {
+    let playersQuery = db.collection("league_data").doc(leagueId).collection("MADDEN_PLAYER").orderBy("playerBestOvr", "desc").orderBy("rosterId").limit(7)
+
+    if (query.teamId !== -1) {
+      playersQuery = playersQuery.where("teamId", "==", query.teamId);
+    }
+
+    if (query.position) {
+      playersQuery = playersQuery.where("position", "==", query.position);
+    }
+
+    if (query.rookie) {
+      playersQuery = playersQuery.where("yearsPro", "==", 0);
+    }
+
+    if (lastPlayer) {
+      playersQuery = playersQuery.startAfter(lastPlayer.playerBestOvr, lastPlayer.rosterId);
+    };
+
+    const snapshot = await playersQuery.get();
+
+    return snapshot.docs.map(d => d.data() as Player)
+
+  }
 }
 
 export default MaddenDB

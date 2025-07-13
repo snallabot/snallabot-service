@@ -605,8 +605,6 @@ export const POSITIONS = [
 
 export const POSITION_GROUP = ["OL", "DL", "DB"]
 
-export const TEAM_GROUP = ["FA", "Rookie"]
-
 export type RosterExport = {
   success: boolean,
   message: string,
