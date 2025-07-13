@@ -9,13 +9,13 @@ import MaddenDB, { PlayerListQuery, PlayerStatType, PlayerStats } from "../../db
 import { CoverBallTrait, DevTrait, LBStyleTrait, MADDEN_SEASON, MaddenGame, POSITIONS, POSITION_GROUP, PenaltyTrait, PlayBallTrait, Player, QBStyleTrait, SensePressureTrait, YesNoTrait } from "../../export/madden_league_types"
 
 enum PlayerSelection {
-  PLAYER_OVERVIEW = "player_overview",
-  PLAYER_FULL_RATINGS = "player_full_ratings",
-  PLAYER_WEEKLY_STATS = "player_weekly_stats",
-  PLAYER_SEASON_STATS = "player_season_stats"
+  PLAYER_OVERVIEW = "po",
+  PLAYER_FULL_RATINGS = "pr",
+  PLAYER_WEEKLY_STATS = "pw",
+  PLAYER_SEASON_STATS = "ps"
 }
 
-type Selection = { rosterId: number, selected: PlayerSelection }
+type Selection = { r: number, s: PlayerSelection, q?: ShortPlayerListQuery }
 
 function formatPlaceholder(selection: PlayerSelection): string {
   switch (selection) {
@@ -34,28 +34,25 @@ function generatePlayerOptions(rosterId: number) {
   return [
     {
       label: "Overview",
-      value: { rosterId: rosterId, selected: PlayerSelection.PLAYER_OVERVIEW },
+      value: { r: rosterId, s: PlayerSelection.PLAYER_OVERVIEW },
     },
     {
       label: "Full Ratings",
-      value: { rosterId: rosterId, selected: PlayerSelection.PLAYER_FULL_RATINGS }
+      value: { r: rosterId, s: PlayerSelection.PLAYER_FULL_RATINGS }
     },
     {
       label: "Weekly Stats",
-      value: { rosterId: rosterId, selected: PlayerSelection.PLAYER_WEEKLY_STATS }
+      value: { r: rosterId, s: PlayerSelection.PLAYER_WEEKLY_STATS }
     },
     {
       label: "Season Stats",
-      value: { rosterId: rosterId, selected: PlayerSelection.PLAYER_SEASON_STATS }
+      value: { r: rosterId, s: PlayerSelection.PLAYER_SEASON_STATS }
     }
   ].map(option => ({ ...option, value: JSON.stringify(option.value) }))
 }
 
 function generatePlayerZoomOptions(players: Player[], currentPagination: PlayerPagination) {
-  players.map(p => ({ label: `${p.position} ${p.firstName} ${p.lastName}`, value: { rosterId: p.rosterId, selected: PlayerSelection.PLAYER_OVERVIEW, query: currentPagination } }))
-    .map(option => ({ ...option, value: JSON.stringify(option.value) }))
-    .map(o => o.value).forEach(console.log)
-  return players.map(p => ({ label: `${p.position} ${p.firstName} ${p.lastName}`, value: { rosterId: p.rosterId, selected: PlayerSelection.PLAYER_OVERVIEW, query: currentPagination } }))
+  return players.map(p => ({ label: `${p.position} ${p.firstName} ${p.lastName}`, value: { r: p.rosterId, s: PlayerSelection.PLAYER_OVERVIEW, q: currentPagination } }))
     .map(option => ({ ...option, value: JSON.stringify(option.value) }))
 }
 
@@ -262,8 +259,23 @@ async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, to
     ]
   })
 }
+type ShortPlayerListQuery = { t?: number, p?: string, r?: boolean }
+function toShortQuery(q: PlayerListQuery) {
+  const query: ShortPlayerListQuery = {}
+  if (q.teamId && q.teamId === -1) query.t = q.teamId
+  if (q.position) query.p = q.position
+  if (q.rookie) query.r = q.rookie
+  return query
+}
 
-type PlayerPagination = { q: PlayerListQuery, s?: number, b?: number }
+function fromShortQuery(q: ShortPlayerListQuery) {
+  const query: PlayerListQuery = {}
+  if (q.t && q.t === -1) query.teamId = q.t
+  if (q.p) query.position = q.p
+  if (q.r) query.rookie = q.r
+  return query
+}
+type PlayerPagination = { q: ShortPlayerListQuery, s?: number, b?: number }
 const PAGINATION_LIMIT = 5
 
 async function getPlayers(leagueId: string, query: PlayerListQuery, startAfterPlayer?: number, endBeforePlayer?: number) {
@@ -338,13 +350,13 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
               style: ButtonStyle.Secondary,
               label: "Back",
               disabled: backDisabled,
-              custom_id: `${JSON.stringify({ q: query, b: previousPagination })}`
+              custom_id: `${JSON.stringify({ q: toShortQuery(query), b: previousPagination })}`
             },
             {
               type: ComponentType.Button,
               style: ButtonStyle.Secondary,
               label: "Next",
-              custom_id: `${JSON.stringify({ q: query, s: nextPagination })}`,
+              custom_id: `${JSON.stringify({ q: toShortQuery(query), s: nextPagination })}`,
               disabled: nextDisabled
             }
           ]
@@ -361,7 +373,7 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
               type: ComponentType.StringSelect,
               custom_id: "search_to_player_card",
               placeholder: `Show Player Card`,
-              options: generatePlayerZoomOptions(players, { q: query, s: startAfterPlayer, b: endBeforePlayer })
+              options: generatePlayerZoomOptions(players, { q: toShortQuery(query), s: startAfterPlayer, b: endBeforePlayer })
             }
           ]
         }
@@ -1709,7 +1721,7 @@ export default {
       if (data.values.length !== 1) {
         throw new Error("Somehow did not receive just one selection from player card " + data.values)
       }
-      const { rosterId, selected } = JSON.parse(data.values[0]) as Selection
+      const { r: rosterId, s: selected } = JSON.parse(data.values[0]) as Selection
       try {
         if (selected === PlayerSelection.PLAYER_OVERVIEW) {
           showPlayerCard(`${rosterId}`, client, interaction.token, interaction.guild_id)
@@ -1752,7 +1764,7 @@ export default {
     } else {
       try {
         const { q: query, s: next, b: prev } = JSON.parse(customId) as PlayerPagination
-        showPlayerList(JSON.stringify(query), client, interaction.token, interaction.guild_id, next, prev)
+        showPlayerList(JSON.stringify(fromShortQuery(query)), client, interaction.token, interaction.guild_id, next, prev)
       } catch (e) {
         await client.editOriginalInteraction(interaction.token, {
           flags: 32768,
