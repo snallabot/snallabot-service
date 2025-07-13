@@ -27,7 +27,7 @@ export type PlayerStats = {
   [PlayerStatType.PASSING]?: PassingStats[]
 }
 
-export type PlayerListQuery = { teamId: number, position: string, rookie: string }
+export type PlayerListQuery = { teamId?: number, position?: string, rookie?: boolean }
 
 interface MaddenDB {
   appendEvents<Event>(event: SnallabotEvent<Event>[], idFn: (event: Event) => string): Promise<void>
@@ -42,7 +42,7 @@ interface MaddenDB {
   getPlayer(leagueId: string, rosterId: string): Promise<Player>,
   getPlayerStats(leagueId: string, player: Player): Promise<PlayerStats>,
   getGamesForSchedule(leagueId: string, scheduleIds: Iterable<{ id: number, week: number, season: number }>): Promise<MaddenGame[]>,
-  getPlayers(leagueId: string, query: PlayerListQuery, lastPlayer?: Player): Promise<Player[]>
+  getPlayers(leagueId: string, query: PlayerListQuery, limit: number, lastPlayer?: Player): Promise<Player[]>
 }
 
 function convertDate(firebaseObject: any) {
@@ -379,8 +379,8 @@ const MaddenDB: MaddenDB = {
   getGamesForSchedule: async function(leagueId: string, scheduleIds: { id: number, week: number, season: number }[]) {
     return await Promise.all(scheduleIds.map(s => this.getGameForSchedule(leagueId, s.id, s.week, s.season)))
   },
-  getPlayers: async function(leagueId: string, query: PlayerListQuery, lastPlayer?: Player) {
-    let playersQuery = db.collection("league_data").doc(leagueId).collection("MADDEN_PLAYER").orderBy("playerBestOvr", "desc").orderBy("rosterId").limit(5)
+  getPlayers: async function(leagueId: string, query: PlayerListQuery, limit, lastPlayer?: Player) {
+    let playersQuery = db.collection("league_data").doc(leagueId).collection("MADDEN_PLAYER").orderBy("playerBestOvr", "desc").orderBy("rosterId").limit(limit)
 
     if (query.teamId !== -1) {
       playersQuery = playersQuery.where("teamId", "==", query.teamId);

@@ -255,9 +255,10 @@ async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, to
   })
 }
 
-type PlayerPagination = { q: PlayerListQuery, l: number, p: number, league: string }
+type PlayerPagination = { q: PlayerListQuery, l: number[], league: string }
+const PAGINATION_LIMIT = 5
 
-async function showPlayerList(playerSearch: string, client: DiscordClient, token: string, guild_id: string, currentPagePlayer?: Player, previousPagePlayer?: Player) {
+async function showPlayerList(playerSearch: string, client: DiscordClient, token: string, guild_id: string, paginatedPlayers: number[] = []) {
   try {
     const discordLeague = await discordLeagueView.createView(guild_id)
     const leagueId = discordLeague?.leagueId
@@ -272,9 +273,11 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
       if (results.length === 0) {
         throw new Error(`No listable results for ${playerSearch} in ${leagueId}`)
       }
-      query = results[0]
+      const { teamId, rookie, position } = results[0]
+      query = { teamId, rookie: rookie ? true : false, position }
     }
-    const players = await MaddenDB.getPlayers(leagueId, query, currentPagePlayer)
+    const paginatedPlayer = await (paginatedPlayers.length > 0 ? MaddenDB.getPlayer(leagueId, `${paginatedPlayers[paginatedPlayers.length - 1]}`) : Promise.resolve(undefined))
+    const players = await MaddenDB.getPlayers(leagueId, query, PAGINATION_LIMIT, paginatedPlayer)
     const teamView = await teamSearchView.createView(leagueId)
     if (!teamView) {
       throw new Error("Missing teams?? Maybe try the command again")
@@ -286,11 +289,16 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
     // 0 team id means the player is a free agent
     teamsDisplayNames["0"] = "FA"
     const message = players.length === 0 ? `# No results` : formatPlayerList(players, teamsDisplayNames)
-    const backDisabled = currentPagePlayer ? false : true
-    const nextDisabled = players.length === 0 ? true : false
-    const nextLastPlayer = players.length === 0 ? currentPagePlayer?.rosterId : players[players.length - 1].rosterId
-    console.log(`${JSON.stringify({ q: query, l: nextLastPlayer, league: leagueId })}`)
-    console.log(`${JSON.stringify({ q: query, l: nextLastPlayer, league: leagueId }).length}`)
+    const backDisabled = paginatedPlayers.length === 0 ? false : true
+    const nextDisabled = players.length < PAGINATION_LIMIT ? true : false
+    const nextPagination = players.length === 0 ? paginatedPlayer : paginatedPlayers.concat([players[players.length - 1].rosterId])
+    const newQuery: PlayerListQuery = {}
+
+    if (query.teamId) newQuery.teamId = query.teamId
+    if (query.rookie) newQuery.rookie = query.rookie
+    if (query.position) newQuery.position = query.position
+    console.log(`${JSON.stringify({ q: newQuery, l: nextPagination, league: leagueId })}`)
+    console.log(`${JSON.stringify({ q: newQuery, l: nextPagination, league: leagueId }).length}`)
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
@@ -306,13 +314,13 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
               style: ButtonStyle.Secondary,
               label: "Back",
               disabled: backDisabled,
-              custom_id: `${JSON.stringify({ q: query, l: currentPagePlayer?.rosterId, p: previousPagePlayer?.rosterId, league: leagueId })} `
+              custom_id: `${JSON.stringify({ q: newQuery, l: paginatedPlayers, league: leagueId })} `
             },
             {
               type: ComponentType.Button,
               style: ButtonStyle.Secondary,
               label: "Next",
-              custom_id: `${JSON.stringify({ q: query, l: nextLastPlayer, p: currentPagePlayer?.rosterId, league: leagueId })} `,
+              custom_id: `${JSON.stringify({ q: newQuery, l: nextPagination, league: leagueId })} `,
               disabled: nextDisabled
             }
           ]
@@ -1662,8 +1670,8 @@ export default {
         const playerListSearchPhrase = playerCommand.options[0].value as string
         const results = await searchPlayerListForQuery(playerListSearchPhrase, leagueId)
         return results.map(r => {
-          const { teamDisplayName, teamNickName, ...rest } = r
-          return { name: formatQuery(r), value: JSON.stringify(rest) }
+          const { teamId, rookie, position } = r
+          return { name: formatQuery(r), value: JSON.stringify({ teamId: teamId, rookie: !!rookie, position: position }) }
         })
       }
     }
@@ -1719,11 +1727,8 @@ export default {
       }
     } else {
       try {
-        const { q: query, l: rosterId, p: previousRosterId, league } = JSON.parse(customId) as PlayerPagination
-        const getCurrent = rosterId ? MaddenDB.getPlayer(league, `${rosterId}`) : Promise.resolve(undefined)
-        const getLast = previousRosterId ? MaddenDB.getPlayer(league, `${previousRosterId}`) : Promise.resolve(undefined)
-        const [currentPlayer, lastPlayer] = await Promise.all([getCurrent, getLast])
-        showPlayerList(JSON.stringify(query), client, interaction.token, interaction.guild_id, currentPlayer, lastPlayer)
+        const { q: query, l: pagination, league } = JSON.parse(customId) as PlayerPagination
+        showPlayerList(JSON.stringify(query), client, interaction.token, interaction.guild_id, pagination)
       } catch (e) {
         await client.editOriginalInteraction(interaction.token, {
           flags: 32768,
