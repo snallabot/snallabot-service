@@ -50,8 +50,6 @@ function generatePlayerOptions(rosterId: number, pagination?: PlayerPagination) 
     }
   ].map(option => {
     if (pagination) (option.value as Selection).q = pagination
-    console.log(JSON.stringify(option))
-    console.log(JSON.stringify(option).length)
     return option
   })
     .map(option => ({ ...option, value: JSON.stringify(option.value) }))
@@ -90,11 +88,6 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, token
     // 0 team id means the player is a free agent
     teamsDisplayNames["0"] = "FA"
     const backToSearch = pagination ? [
-      {
-        type: ComponentType.Separator,
-        divider: true,
-        spacing: SeparatorSpacingSize.Small
-      },
       {
         type: ComponentType.Button,
         style: ButtonStyle.Secondary,
