@@ -77,6 +77,7 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, token
       searchRosterId = results[0].rosterId
     }
     const player = await MaddenDB.getPlayer(leagueId, `${searchRosterId}`)
+    console.log(player.firstName)
     const teamView = await teamSearchView.createView(leagueId)
     if (!teamView) {
       throw new Error("Missing teams?? Maybe try the command again")
