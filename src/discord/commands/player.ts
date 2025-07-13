@@ -300,6 +300,8 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
     if (query.position) newQuery.position = query.position
     console.log(`${JSON.stringify({ q: newQuery, l: nextPagination, league: leagueId })}`)
     console.log(`${JSON.stringify({ q: newQuery, l: nextPagination, league: leagueId }).length}`)
+    console.log(JSON.stringify({ q: newQuery, l: previousPagination, league: leagueId }))
+    console.log(JSON.stringify({ q: newQuery, l: previousPagination, league: leagueId }).length)
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
@@ -315,13 +317,13 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
               style: ButtonStyle.Secondary,
               label: "Back",
               disabled: backDisabled,
-              custom_id: `${JSON.stringify({ q: newQuery, l: previousPagination, league: leagueId })} `
+              custom_id: `${JSON.stringify({ q: newQuery, l: previousPagination, league: leagueId })}`
             },
             {
               type: ComponentType.Button,
               style: ButtonStyle.Secondary,
               label: "Next",
-              custom_id: `${JSON.stringify({ q: newQuery, l: nextPagination, league: leagueId })} `,
+              custom_id: `${JSON.stringify({ q: newQuery, l: nextPagination, league: leagueId })}`,
               disabled: nextDisabled
             }
           ]
