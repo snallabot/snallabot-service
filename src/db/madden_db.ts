@@ -1,8 +1,8 @@
 import { randomUUID } from "crypto"
-import { Timestamp, Filter } from "firebase-admin/firestore"
+import { Timestamp } from "firebase-admin/firestore"
 import db from "./firebase"
 import EventDB, { EventNotifier, SnallabotEvent, StoredEvent, notifiers } from "./events_db"
-import { DefensiveStats, KickingStats, MADDEN_SEASON, MaddenGame, PassingStats, Player, PuntingStats, ReceivingStats, RushingStats, Standing, Team } from "../export/madden_league_types"
+import { DefensiveStats, KickingStats, MADDEN_SEASON, MaddenGame, POSITION_GROUP, PassingStats, Player, PuntingStats, ReceivingStats, RushingStats, Standing, Team, dLinePositions, dbPositions, oLinePositions } from "../export/madden_league_types"
 import { TeamAssignments } from "../discord/settings_db"
 
 type HistoryUpdate<ValueType> = { oldValue: ValueType, newValue: ValueType }
@@ -27,6 +27,8 @@ export type PlayerStats = {
   [PlayerStatType.PASSING]?: PassingStats[]
 }
 
+export type PlayerListQuery = { teamId?: number, position?: string, rookie?: boolean }
+
 interface MaddenDB {
   appendEvents<Event>(event: SnallabotEvent<Event>[], idFn: (event: Event) => string): Promise<void>
   on<Event>(event_type: string, notifier: EventNotifier<Event>): void,
@@ -39,7 +41,8 @@ interface MaddenDB {
   getLatestPlayers(leagueId: string): Promise<Player[]>,
   getPlayer(leagueId: string, rosterId: string): Promise<Player>,
   getPlayerStats(leagueId: string, player: Player): Promise<PlayerStats>,
-  getGamesForSchedule(leagueId: string, scheduleIds: Iterable<{ id: number, week: number, season: number }>): Promise<MaddenGame[]>
+  getGamesForSchedule(leagueId: string, scheduleIds: Iterable<{ id: number, week: number, season: number }>): Promise<MaddenGame[]>,
+  getPlayers(leagueId: string, query: PlayerListQuery, limit: number, startAfter?: Player, endBefore?: Player): Promise<Player[]>
 }
 
 function convertDate(firebaseObject: any) {
@@ -376,6 +379,54 @@ const MaddenDB: MaddenDB = {
   getGamesForSchedule: async function(leagueId: string, scheduleIds: { id: number, week: number, season: number }[]) {
     return await Promise.all(scheduleIds.map(s => this.getGameForSchedule(leagueId, s.id, s.week, s.season)))
   },
+  getPlayers: async function(leagueId: string, query: PlayerListQuery, limit, startAfter?: Player, endBefore?: Player) {
+    let playersQuery;
+    // flip the query for going backwards by ordering opposite and using start after
+    if (endBefore) {
+      playersQuery = db.collection("league_data").doc(leagueId).collection("MADDEN_PLAYER").orderBy("playerBestOvr", "asc").orderBy("rosterId", "desc").limit(limit)
+    } else {
+      playersQuery = db.collection("league_data").doc(leagueId).collection("MADDEN_PLAYER").orderBy("playerBestOvr", "desc").orderBy("rosterId").limit(limit)
+    }
+    if ((query.teamId && query.teamId !== -1) || query.teamId === 0) {
+      playersQuery = playersQuery.where("teamId", "==", query.teamId);
+    }
+
+    if (query.position) {
+      if (POSITION_GROUP.includes(query.position)) {
+        if (query.position === "OL") {
+          playersQuery = playersQuery.where("position", "in", oLinePositions)
+        } else if (query.position === "DL") {
+          playersQuery = playersQuery.where("position", "in", dLinePositions)
+        } else if (query.position === "DB") {
+          playersQuery = playersQuery.where("position", "in", dbPositions)
+        }
+      } else {
+        playersQuery = playersQuery.where("position", "==", query.position);
+      }
+    }
+
+    if (query.rookie) {
+      playersQuery = playersQuery.where("yearsPro", "==", 0);
+    }
+
+    if (startAfter) {
+      playersQuery = playersQuery.startAfter(startAfter.playerBestOvr, startAfter.rosterId);
+    }
+
+    if (endBefore) {
+      playersQuery = playersQuery.startAfter(endBefore.playerBestOvr, endBefore.rosterId);
+    }
+
+    const snapshot = await playersQuery.get();
+
+    const players = snapshot.docs.map(d => d.data() as Player)
+    if (endBefore) {
+      return players.reverse()
+    } else {
+      return players
+    }
+
+  }
 }
 
 export default MaddenDB

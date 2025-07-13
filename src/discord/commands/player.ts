@@ -1,21 +1,21 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command, AutocompleteHandler, Autocomplete, MessageComponentHandler, MessageComponentInteraction } from "../commands_handler"
-import { respond, createMessageResponse, DiscordClient, deferMessage } from "../discord_utils"
-import { APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ComponentType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
+import { respond, DiscordClient, deferMessage } from "../discord_utils"
+import { APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ButtonStyle, ComponentType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
 import { playerSearchIndex, discordLeagueView, teamSearchView } from "../../db/view"
 import fuzzysort from "fuzzysort"
-import MaddenDB, { PlayerStatType, PlayerStats } from "../../db/madden_db"
-import { CoverBallTrait, DevTrait, LBStyleTrait, MADDEN_SEASON, MaddenGame, PenaltyTrait, PlayBallTrait, Player, QBStyleTrait, SensePressureTrait, YesNoTrait } from "../../export/madden_league_types"
+import MaddenDB, { PlayerListQuery, PlayerStatType, PlayerStats } from "../../db/madden_db"
+import { CoverBallTrait, DevTrait, LBStyleTrait, MADDEN_SEASON, MaddenGame, POSITIONS, POSITION_GROUP, PenaltyTrait, PlayBallTrait, Player, QBStyleTrait, SensePressureTrait, YesNoTrait } from "../../export/madden_league_types"
 
 enum PlayerSelection {
-  PLAYER_OVERVIEW = "player_overview",
-  PLAYER_FULL_RATINGS = "player_full_ratings",
-  PLAYER_WEEKLY_STATS = "player_weekly_stats",
-  PLAYER_SEASON_STATS = "player_season_stats"
+  PLAYER_OVERVIEW = "po",
+  PLAYER_FULL_RATINGS = "pr",
+  PLAYER_WEEKLY_STATS = "pw",
+  PLAYER_SEASON_STATS = "ps"
 }
 
-type Selection = { rosterId: number, selected: PlayerSelection }
+type Selection = { r: number, s: PlayerSelection, q?: PlayerPagination }
 
 function formatPlaceholder(selection: PlayerSelection): string {
   switch (selection) {
@@ -30,28 +30,37 @@ function formatPlaceholder(selection: PlayerSelection): string {
   }
 }
 
-function generatePlayerOptions(rosterId: number) {
+function generatePlayerOptions(rosterId: number, pagination?: PlayerPagination) {
   return [
     {
       label: "Overview",
-      value: { rosterId: rosterId, selected: PlayerSelection.PLAYER_OVERVIEW },
+      value: { r: rosterId, s: PlayerSelection.PLAYER_OVERVIEW },
     },
     {
       label: "Full Ratings",
-      value: { rosterId: rosterId, selected: PlayerSelection.PLAYER_FULL_RATINGS }
+      value: { r: rosterId, s: PlayerSelection.PLAYER_FULL_RATINGS }
     },
     {
       label: "Weekly Stats",
-      value: { rosterId: rosterId, selected: PlayerSelection.PLAYER_WEEKLY_STATS }
+      value: { r: rosterId, s: PlayerSelection.PLAYER_WEEKLY_STATS }
     },
     {
       label: "Season Stats",
-      value: { rosterId: rosterId, selected: PlayerSelection.PLAYER_SEASON_STATS }
+      value: { r: rosterId, s: PlayerSelection.PLAYER_SEASON_STATS }
     }
-  ].map(option => ({ ...option, value: JSON.stringify(option.value) }))
+  ].map(option => {
+    if (pagination) (option.value as Selection).q = pagination
+    return option
+  })
+    .map(option => ({ ...option, value: JSON.stringify(option.value) }))
 }
 
-async function showPlayerCard(playerSearch: string, client: DiscordClient, token: string, guild_id: string) {
+function generatePlayerZoomOptions(players: Player[], currentPagination: PlayerPagination) {
+  return players.map(p => ({ label: `${p.position} ${p.firstName} ${p.lastName}`, value: { r: p.rosterId, s: PlayerSelection.PLAYER_OVERVIEW, q: currentPagination } }))
+    .map(option => ({ ...option, value: JSON.stringify(option.value) }))
+}
+
+async function showPlayerCard(playerSearch: string, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
   try {
     const discordLeague = await discordLeagueView.createView(guild_id)
     const leagueId = discordLeague?.leagueId
@@ -78,7 +87,25 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, token
     }))
     // 0 team id means the player is a free agent
     teamsDisplayNames["0"] = "FA"
+    const backToSearch = pagination ? [
+      {
+        type: ComponentType.Separator,
+        divider: true,
+        spacing: SeparatorSpacingSize.Small
+      },
+      {
+        type: ComponentType.ActionRow,
+        components: [
+          {
+            type: ComponentType.Button,
+            style: ButtonStyle.Secondary,
+            label: "Back to List",
+            custom_id: `${JSON.stringify(pagination)}`
+          }
+        ]
+      }
 
+    ] : []
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
@@ -98,26 +125,28 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, token
               type: ComponentType.StringSelect,
               custom_id: "player_card",
               placeholder: formatPlaceholder(PlayerSelection.PLAYER_OVERVIEW),
-              options: generatePlayerOptions(searchRosterId)
+              options: generatePlayerOptions(searchRosterId, pagination)
             }
           ]
-        }
+        },
+        ...backToSearch
       ]
     })
   } catch (e) {
+    console.error(e)
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
         {
           type: ComponentType.TextDisplay,
-          content: `Could not show player card Error: ${e}`
+          content: `Could not show player card ${e}`
         }
       ]
     })
   }
 }
 
-async function showPlayerFullRatings(rosterId: number, client: DiscordClient, token: string, guild_id: string) {
+async function showPlayerFullRatings(rosterId: number, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
   const discordLeague = await discordLeagueView.createView(guild_id)
   const leagueId = discordLeague?.leagueId
   if (!leagueId) {
@@ -134,6 +163,25 @@ async function showPlayerFullRatings(rosterId: number, client: DiscordClient, to
   }))
   // 0 team id means the player is a free agent
   teamsDisplayNames["0"] = "FA"
+  const backToSearch = pagination ? [
+    {
+      type: ComponentType.Separator,
+      divider: true,
+      spacing: SeparatorSpacingSize.Small
+    },
+    {
+      type: ComponentType.ActionRow,
+      components: [
+        {
+          type: ComponentType.Button,
+          style: ButtonStyle.Secondary,
+          label: "Back to List",
+          custom_id: `${JSON.stringify(pagination)}`
+        }
+      ]
+    }
+
+  ] : []
   await client.editOriginalInteraction(token, {
     flags: 32768,
     components: [
@@ -153,15 +201,16 @@ async function showPlayerFullRatings(rosterId: number, client: DiscordClient, to
             type: ComponentType.StringSelect,
             custom_id: "player_card",
             placeholder: formatPlaceholder(PlayerSelection.PLAYER_FULL_RATINGS),
-            options: generatePlayerOptions(rosterId)
+            options: generatePlayerOptions(rosterId, pagination)
           }
         ]
-      }
+      },
+      ...backToSearch
     ]
   })
 }
 
-async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, token: string, guild_id: string) {
+async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
   const discordLeague = await discordLeagueView.createView(guild_id)
   const leagueId = discordLeague?.leagueId
   if (!leagueId) {
@@ -182,6 +231,25 @@ async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, to
   const statGames = new Map<String, { id: number, week: number, season: number }>()
   Object.values(playerStats).flat().forEach(p => statGames.set(`${p.scheduleId}|${p.weekIndex}|${p.seasonIndex}`, { id: p.scheduleId, week: p.weekIndex + 1, season: p.seasonIndex }))
   const games = await MaddenDB.getGamesForSchedule(leagueId, Array.from(statGames.values()))
+  const backToSearch = pagination ? [
+    {
+      type: ComponentType.Separator,
+      divider: true,
+      spacing: SeparatorSpacingSize.Small
+    },
+    {
+      type: ComponentType.ActionRow,
+      components: [
+        {
+          type: ComponentType.Button,
+          style: ButtonStyle.Secondary,
+          label: "Back to List",
+          custom_id: `${JSON.stringify(pagination)}`
+        }
+      ]
+    }
+
+  ] : []
   await client.editOriginalInteraction(token, {
     flags: 32768,
     components: [
@@ -201,15 +269,16 @@ async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, to
             type: ComponentType.StringSelect,
             custom_id: "player_card",
             placeholder: formatPlaceholder(PlayerSelection.PLAYER_WEEKLY_STATS),
-            options: generatePlayerOptions(rosterId)
+            options: generatePlayerOptions(rosterId, pagination)
           }
         ]
-      }
+      },
+      ...backToSearch
     ]
   })
 }
 
-async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, token: string, guild_id: string) {
+async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
   const discordLeague = await discordLeagueView.createView(guild_id)
   const leagueId = discordLeague?.leagueId
   if (!leagueId) {
@@ -228,6 +297,25 @@ async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, to
   }))
   // 0 team id means the player is a free agent
   teamsDisplayNames["0"] = "FA"
+  const backToSearch = pagination ? [
+    {
+      type: ComponentType.Separator,
+      divider: true,
+      spacing: SeparatorSpacingSize.Small
+    },
+    {
+      type: ComponentType.ActionRow,
+      components: [
+        {
+          type: ComponentType.Button,
+          style: ButtonStyle.Secondary,
+          label: "Back to List",
+          custom_id: `${JSON.stringify(pagination)}`
+        }
+      ]
+    }
+
+  ] : []
   await client.editOriginalInteraction(token, {
     flags: 32768,
     components: [
@@ -247,12 +335,145 @@ async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, to
             type: ComponentType.StringSelect,
             custom_id: "player_card",
             placeholder: formatPlaceholder(PlayerSelection.PLAYER_SEASON_STATS),
-            options: generatePlayerOptions(rosterId)
+            options: generatePlayerOptions(rosterId, pagination)
           }
         ]
-      }
+      },
+      ...backToSearch
     ]
   })
+}
+type ShortPlayerListQuery = { t?: number, p?: string, r?: boolean }
+function toShortQuery(q: PlayerListQuery) {
+  const query: ShortPlayerListQuery = {}
+  if (q.teamId === 0 || (q.teamId && q.teamId !== -1)) query.t = q.teamId
+  if (q.position) query.p = q.position
+  if (q.rookie) query.r = q.rookie
+  return query
+}
+
+function fromShortQuery(q: ShortPlayerListQuery) {
+  const query: PlayerListQuery = {}
+  if (q.t === 0 || (q.t && q.t !== -1)) query.teamId = q.t
+  if (q.p) query.position = q.p
+  if (q.r) query.rookie = q.r
+  return query
+}
+type PlayerPagination = { q: ShortPlayerListQuery, s?: number, b?: number }
+const PAGINATION_LIMIT = 5
+
+async function getPlayers(leagueId: string, query: PlayerListQuery, startAfterPlayer?: number, endBeforePlayer?: number) {
+  // if we reach the end just start over 
+  if (startAfterPlayer) {
+    const player = await MaddenDB.getPlayer(leagueId, `${startAfterPlayer}`)
+    const players = await MaddenDB.getPlayers(leagueId, query, PAGINATION_LIMIT, player)
+    if (players.length === 0) {
+      return await MaddenDB.getPlayers(leagueId, query, PAGINATION_LIMIT)
+    }
+    return players
+  }
+  else if (endBeforePlayer) {
+    const player = await MaddenDB.getPlayer(leagueId, `${endBeforePlayer}`)
+    const players = await MaddenDB.getPlayers(leagueId, query, PAGINATION_LIMIT, undefined, player)
+    if (players.length === 0) {
+      return await MaddenDB.getPlayers(leagueId, query, PAGINATION_LIMIT)
+    }
+    return players
+  } else {
+    return await MaddenDB.getPlayers(leagueId, query, PAGINATION_LIMIT)
+  }
+}
+
+async function showPlayerList(playerSearch: string, client: DiscordClient, token: string, guild_id: string, startAfterPlayer?: number, endBeforePlayer?: number) {
+  try {
+    const discordLeague = await discordLeagueView.createView(guild_id)
+    const leagueId = discordLeague?.leagueId
+    if (!leagueId) {
+      throw new Error(`No League connected to snallabot`)
+    }
+    let query: PlayerListQuery;
+    try {
+      query = JSON.parse(playerSearch) as PlayerListQuery
+    } catch (e) {
+      const results = await searchPlayerListForQuery(playerSearch, leagueId)
+      if (results.length === 0) {
+        throw new Error(`No listable results for ${playerSearch} in ${leagueId}`)
+      }
+      const { teamId, rookie, position } = results[0]
+      query = { teamId, rookie: rookie ? true : false, position }
+    }
+
+    const players = await getPlayers(leagueId, query, startAfterPlayer, endBeforePlayer)
+    const teamView = await teamSearchView.createView(leagueId)
+    if (!teamView) {
+      throw new Error("Missing teams?? Maybe try the command again")
+    }
+    const teamsDisplayNames = Object.fromEntries(Object.entries(teamView).map(teamEntry => {
+      const [teamId, t] = teamEntry
+      return [teamId, t.abbrName]
+    }))
+    // 0 team id means the player is a free agent
+    teamsDisplayNames["0"] = "FA"
+    const message = players.length === 0 ? `# No results` : formatPlayerList(players, teamsDisplayNames)
+    const backDisabled = startAfterPlayer || endBeforePlayer ? false : true
+    const nextDisabled = players.length < PAGINATION_LIMIT ? true : false
+    const nextPagination = players.length === 0 ? startAfterPlayer : players[players.length - 1].rosterId
+    const previousPagination = players.length === 0 ? endBeforePlayer : players[0].rosterId
+    await client.editOriginalInteraction(token, {
+      flags: 32768,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: message
+        },
+        {
+          type: ComponentType.ActionRow,
+          components: [
+            {
+              type: ComponentType.Button,
+              style: ButtonStyle.Secondary,
+              label: "Back",
+              disabled: backDisabled,
+              custom_id: `${JSON.stringify({ q: toShortQuery(query), b: previousPagination })}`
+            },
+            {
+              type: ComponentType.Button,
+              style: ButtonStyle.Secondary,
+              label: "Next",
+              custom_id: `${JSON.stringify({ q: toShortQuery(query), s: nextPagination })}`,
+              disabled: nextDisabled
+            }
+          ]
+        },
+        {
+          type: ComponentType.Separator,
+          divider: true,
+          spacing: SeparatorSpacingSize.Large
+        },
+        {
+          type: ComponentType.ActionRow,
+          components: [
+            {
+              type: ComponentType.StringSelect,
+              custom_id: "player_card",
+              placeholder: `Show Player Card`,
+              options: generatePlayerZoomOptions(players, { q: toShortQuery(query), s: startAfterPlayer, b: endBeforePlayer })
+            }
+          ]
+        }
+      ]
+    })
+  } catch (e) {
+    await client.editOriginalInteraction(token, {
+      flags: 32768,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: `Could not list players  ${e} `
+        }
+      ]
+    })
+  }
 }
 
 function getTopAttributesByPosition(player: Player): Array<{ name: string, value: number }> {
@@ -522,7 +743,7 @@ function getPositionalTraits(player: Player) {
   const yesNoTraits = yesNoAttributes.filter(trait => trait.value === YesNoTrait.YES)
     .map(attr => `> **${attr.name}:** ${formatYesNoTrait(attr.value)}`).join('\n')
   const customAttributes = attributes.map(attr => `> **${attr.name}:** ${attr.value}`).join('\n')
-  return `${yesNoTraits}\n${customAttributes}`
+  return `${yesNoTraits} \n${customAttributes}`
 
 }
 
@@ -537,84 +758,59 @@ function getDevTraitName(devTrait: DevTrait): string {
   }
 }
 
-function getTeamEmoji(abbr: string): string {
-  switch (abbr.toLowerCase()) {
-    // AFC East
-    case "ne":
-      return "<:snallabot_ne:1364103345752641587>"
-    case "nyj":
-      return "<:snallabot_nyj:1364103346985635900>"
-    case "buf":
-      return "<:snallabot_buf:1364103347862372434>"
-    case "mia":
-      return "<:snallabot_mia:1364103349091176468>"
-    // AFC North
-    case "cin":
-      return "<:snallabot_cin:1364103477399130144>"
-    case "pit":
-      return "<:snallabot_pit:1364103356393455667>"
-    case "bal":
-      return "<:snallabot_bal:1364105429591785543>"
-    case "cle":
-      return "<:snallabot_cle:1364103360545820742>"
-    // AFC South
-    case "ten":
-      return "<:snallabot_ten:1364103353201856562>"
-    case "ind":
-      return "<:snallabot_ind:1364103350194278484>"
-    case "jax":
-      return "<:snallabot_jax:1364103352115400774>"
-    case "hou":
-      return "<:snallabot_hou:1364103351184396318>"
-    // AFC West
-    case "kc":
-      return "<:snallabot_kc:1364105564711288852>"
-    case "lv":
-      return "<:snallabot_lv:1364105565885825114>"
-    case "den":
-      return "<:snallabot_den:1364103366765973615>"
-    case "lac":
-      return "<:snallabot_lac:1364103363297411142>"
-    // NFC East
-    case "dal":
-      return "<:snallabot_dal:1364105752087887902>"
-    case "nyg":
-      return "<:snallabot_nyg:1364103377411244124>"
-    case "phi":
-      return "<:snallabot_phi:1364105809134354472>"
-    case "was":
-      return "<:snallabot_was:1364103380728811572>"
-    // NFC North
-    case "min":
-      return "<:snallabot_min:1364106069160493066>"
-    case "chi":
-      return "<:snallabot_chi:1364103373825249331>"
-    case "det":
-      return "<:snallabot_det:1364106151796670526>"
-    case "gb":
-      return "<:snallabot_gb:1364103370289184839>"
-    // NFC South
-    case "no":
-      return "<:snallabot_no:1364103387758592051>"
-    case "car":
-      return "<:snallabot_car:1364106419804045353>"
-    case "tb":
-      return "<:snallabot_tb:1364103384222797904>"
-    case "atl":
-      return "<:snallabot_atl:1364106360383471737>"
-    // NFC West
-    case "ari":
-      return "<:snallabot_ari:1364106640315646013>"
-    case "lar":
-      return "<:snallabot_lar:1364103394800701450>"
-    case "sea":
-      return "<:snallabot_sea:1364103391260840018>"
-    case "sf":
-      return "<:snallabot_sf:1364106686083895336>"
-    // NFL Logo as default
-    default:
-      return "<:snallabot_nfl:1364108784229810257>"
-  }
+enum SnallabotTeamEmojis {
+  // AFC East
+  NE = "<:snallabot_ne:1364103345752641587>",
+  NYJ = "<:snallabot_nyj:1364103346985635900>",
+  BUF = "<:snallabot_buf:1364103347862372434>",
+  MIA = "<:snallabot_mia:1364103349091176468>",
+
+  // AFC North
+  CIN = "<:snallabot_cin:1364103477399130144>",
+  PIT = "<:snallabot_pit:1364103356393455667>",
+  BAL = "<:snallabot_bal:1364105429591785543>",
+  CLE = "<:snallabot_cle:1364103360545820742>",
+
+  // AFC South
+  TEN = "<:snallabot_ten:1364103353201856562>",
+  IND = "<:snallabot_ind:1364103350194278484>",
+  JAX = "<:snallabot_jax:1364103352115400774>",
+  HOU = "<:snallabot_hou:1364103351184396318>",
+
+  // AFC West
+  KC = "<:snallabot_kc:1364105564711288852>",
+  LV = "<:snallabot_lv:1364105565885825114>",
+  DEN = "<:snallabot_den:1364103366765973615>",
+  LAC = "<:snallabot_lac:1364103363297411142>",
+
+  // NFC East
+  DAL = "<:snallabot_dal:1364105752087887902>",
+  NYG = "<:snallabot_nyg:1364103377411244124>",
+  PHI = "<:snallabot_phi:1364105809134354472>",
+  WAS = "<:snallabot_was:1364103380728811572>",
+
+  // NFC North
+  MIN = "<:snallabot_min:1364106069160493066>",
+  CHI = "<:snallabot_chi:1364103373825249331>",
+  DET = "<:snallabot_det:1364106151796670526>",
+  GB = "<:snallabot_gb:1364103370289184839>",
+
+  // NFC South
+  NO = "<:snallabot_no:1364103387758592051>",
+  CAR = "<:snallabot_car:1364106419804045353>",
+  TB = "<:snallabot_tb:1364103384222797904>",
+  ATL = "<:snallabot_atl:1364106360383471737>",
+
+  // NFC West
+  ARI = "<:snallabot_ari:1364106640315646013>",
+  LAR = "<:snallabot_lar:1364103394800701450>",
+  SEA = "<:snallabot_sea:1364103391260840018>",
+  SF = "<:snallabot_sf:1364106686083895336>",
+  NFL = "<:snallabot_nfl:1364108784229810257>"
+}
+
+function getTeamEmoji(teamAbbr: string): SnallabotTeamEmojis {
+  return SnallabotTeamEmojis[teamAbbr.toUpperCase() as keyof typeof SnallabotTeamEmojis] || SnallabotTeamEmojis.NFL
 }
 
 enum SnallabotDevEmojis {
@@ -635,9 +831,9 @@ function getSeasonFormatting(yearsPro: number) {
   if (yearsPro === 0) {
     return "Rookie"
   }
-  const rule = rules.select(yearsPro)
+  const rule = rules.select(yearsPro + 1)
   const suffix = suffixes.get(rule)
-  return `${yearsPro}${suffix} Season`
+  return `${yearsPro + 1}${suffix} Season`
 }
 
 function formatPlayerCard(player: Player, teams: { [key: string]: string }) {
@@ -1420,6 +1616,26 @@ ${formattedAgg}
 `
 }
 
+function formatPlayerList(players: Player[], teams: { [key: string]: string }) {
+  let message = "# Player Results:\n";
+
+  for (const player of players) {
+    const teamName = teams[`${player.teamId}`]
+    const fullName = `${player.firstName} ${player.lastName}`;
+    const heightFeet = Math.floor(player.height / 12);
+    const heightInches = player.height % 12;
+    const heightFormatted = `${heightFeet}'${heightInches}"`;
+    const teamEmoji = getTeamEmoji(teamName) === SnallabotTeamEmojis.NFL ? `**${teamName.toUpperCase()}**` : getTeamEmoji(teamName)
+    const experience = getSeasonFormatting(player.yearsPro)
+    const devTraitEmoji = getDevTraitName(player.devTrait)
+    message += `## ${teamEmoji} ${player.position} ${fullName} - ${player.playerBestOvr} OVR\n`;
+    message += `${devTraitEmoji} | ${player.age} yrs | ${experience} | ${heightFormatted} | ${player.weight} lbs\n\n`;
+  }
+
+  return message;
+
+}
+
 type PlayerFound = { teamAbbr: string, rosterId: number, firstName: string, lastName: string, teamId: number, position: string }
 
 async function searchPlayerForRosterId(query: string, leagueId: string): Promise<PlayerFound[]> {
@@ -1432,6 +1648,52 @@ async function searchPlayerForRosterId(query: string, leagueId: string): Promise
     }))
     const results = fuzzysort.go(query, Object.values(players), {
       keys: ["firstName", "lastName", "position", "teamAbbr"], threshold: 0.4, limit: 25
+    })
+    return results.map(r => r.obj)
+  }
+  return []
+}
+const positions = POSITIONS.concat(POSITION_GROUP).map(p => ({ teamDisplayName: "", teamId: -1, teamNickName: "", position: p, rookie: "" }))
+const rookies = [{
+  teamDisplayName: "", teamId: -1, teamNickName: "", position: "", rookie: "Rookies"
+}]
+const rookiePositions = positions.map(p => ({ ...p, rookie: "Rookies" }))
+type PlayerListSearchQuery = { teamDisplayName: string, teamId: number, teamNickName: string, position: string, rookie: string }
+
+
+// to boost top level queries like team names, position groups, and rookies
+function isTopLevel(q: PlayerListSearchQuery) {
+  if (q.teamDisplayName && !q.position && !q.rookie) {
+    return true
+  }
+  if (!q.teamDisplayName && q.position && !q.rookie) {
+    return true
+  }
+  if (!q.teamDisplayName && !q.position && q.rookie) {
+    return true
+  }
+  return false
+}
+
+function formatQuery(q: PlayerListSearchQuery) {
+  const teamName = q.teamDisplayName ? [q.teamDisplayName] : []
+  const position = q.position ? [q.position] : []
+  const rookie = q.rookie ? [q.rookie] : []
+  return [teamName, rookie, position].join(" ")
+}
+
+async function searchPlayerListForQuery(textQuery: string, leagueId: string): Promise<PlayerListSearchQuery[]> {
+  const teamIndex = await teamSearchView.createView(leagueId)
+  if (teamIndex) {
+    const fullTeams = Object.values(teamIndex).map(t => ({ teamDisplayName: t.displayName, teamId: t.id, teamNickName: t.nickName, position: "", rookie: "" })).concat([{ teamDisplayName: "Free Agents", teamId: 0, teamNickName: "FA", position: "", rookie: "" }])
+    const teamPositions = fullTeams.flatMap(t => positions.map(p => ({ teamDisplayName: t.teamDisplayName, teamId: t.teamId, teamNickName: t.teamNickName, position: p.position, rookie: "" })))
+    const teamRookies = fullTeams.map(t => ({ ...t, rookie: "Rookies" }))
+    const allQueries: PlayerListSearchQuery[] = fullTeams.concat(positions).concat(rookies).concat(rookiePositions).concat(teamPositions).concat(teamRookies)
+    const results = fuzzysort.go(textQuery, allQueries, {
+      keys: ["teamDisplayName", "teamNickName", "position", "rookie"],
+      scoreFn: r => r.score * (isTopLevel(r.obj) ? 2 : 1),
+      threshold: 0.4,
+      limit: 25
     })
     return results.map(r => r.obj)
   }
@@ -1455,7 +1717,12 @@ export default {
       respond(ctx, deferMessage())
       showPlayerCard(playerSearch, client, token, guild_id)
     } else if (subCommand === "list") {
-      respond(ctx, createMessageResponse("wip"))
+      if (!playerCommand.options || !playerCommand.options[0]) {
+        throw new Error("player get misconfigured")
+      }
+      const playerSearch = (playerCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value
+      respond(ctx, deferMessage())
+      showPlayerList(playerSearch, client, token, guild_id)
     } else {
       throw new Error(`Missing player command ${subCommand}`)
     }
@@ -1481,21 +1748,21 @@ export default {
             },
           ],
         },
-        // {
-        //   type: ApplicationCommandOptionType.Subcommand,
-        //   name: "list",
-        //   description: "list the players matching search",
-        //   options: [
-        //     {
-        //       type: ApplicationCommandOptionType.String,
-        //       name: "players",
-        //       description:
-        //         "players to search for",
-        //       required: true,
-        //       autocomplete: true
-        //     },
-        //   ],
-        // }
+        {
+          type: ApplicationCommandOptionType.Subcommand,
+          name: "list",
+          description: "list the players matching search",
+          options: [
+            {
+              type: ApplicationCommandOptionType.String,
+              name: "players",
+              description:
+                "players to search for",
+              required: true,
+              autocomplete: true
+            },
+          ],
+        }
       ],
       type: 1,
     }
@@ -1503,64 +1770,98 @@ export default {
   async choices(command: Autocomplete) {
     const { guild_id } = command
     if (!command.data.options) {
-      throw new Error("logger command not defined properly")
+      throw new Error("player command not defined properly")
     }
     const options = command.data.options
     const playerCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
     const subCommand = playerCommand.name
-    const view = await discordLeagueView.createView(guild_id)
-    const leagueId = view?.leagueId
-    if (leagueId && (playerCommand?.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.focused && playerCommand?.options?.[0]?.value) {
-      const playerSearchPhrase = playerCommand.options[0].value as string
-      const results = await searchPlayerForRosterId(playerSearchPhrase, leagueId)
-      return results.map(r => ({ name: `${r.teamAbbr} ${r.position.toUpperCase()} ${r.firstName} ${r.lastName}`, value: `${r.rosterId}` }))
+    if (subCommand === "get") {
+      const view = await discordLeagueView.createView(guild_id)
+      const leagueId = view?.leagueId
+      if (leagueId && (playerCommand?.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.focused && playerCommand?.options?.[0]?.value) {
+        const playerSearchPhrase = playerCommand.options[0].value as string
+        const results = await searchPlayerForRosterId(playerSearchPhrase, leagueId)
+        return results.map(r => ({ name: `${r.teamAbbr} ${r.position.toUpperCase()} ${r.firstName} ${r.lastName}`, value: `${r.rosterId}` }))
+      }
+    } else if (subCommand === "list") {
+      const view = await discordLeagueView.createView(guild_id)
+      const leagueId = view?.leagueId
+      if (leagueId && (playerCommand?.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.focused && playerCommand?.options?.[0]?.value) {
+        const playerListSearchPhrase = playerCommand.options[0].value as string
+        const results = await searchPlayerListForQuery(playerListSearchPhrase, leagueId)
+        return results.map(r => {
+          const { teamId, rookie, position } = r
+          return { name: formatQuery(r), value: JSON.stringify({ teamId: teamId, rookie: !!rookie, position: position }) }
+        })
+      }
     }
+
     return []
   },
   async handleInteraction(interaction: MessageComponentInteraction, client: DiscordClient) {
-    const data = interaction.data as APIMessageStringSelectInteractionData
-    if (data.values.length !== 1) {
-      throw new Error("Somehow did not receive just one selection from player card " + data.values)
-    }
-    const { rosterId, selected } = JSON.parse(data.values[0]) as Selection
-    try {
-      if (selected === PlayerSelection.PLAYER_OVERVIEW) {
-        showPlayerCard(`${rosterId}`, client, interaction.token, interaction.guild_id)
-      } else if (selected === PlayerSelection.PLAYER_FULL_RATINGS) {
-        showPlayerFullRatings(rosterId, client, interaction.token, interaction.guild_id)
-      } else if (selected === PlayerSelection.PLAYER_WEEKLY_STATS) {
-        showPlayerWeeklyStats(rosterId, client, interaction.token, interaction.guild_id)
-      } else if (selected === PlayerSelection.PLAYER_SEASON_STATS) {
-        showPlayerYearlyStats(rosterId, client, interaction.token, interaction.guild_id)
-      } else {
-        console.error("should not have gotten here")
+    const customId = interaction.custom_id
+    if (customId === "player_card") {
+      const data = interaction.data as APIMessageStringSelectInteractionData
+      if (data.values.length !== 1) {
+        throw new Error("Somehow did not receive just one selection from player card " + data.values)
       }
-    } catch (e) {
-      await client.editOriginalInteraction(interaction.token, {
-        flags: 32768,
-        components: [
-          {
-            type: ComponentType.TextDisplay,
-            content: `Could not show player card Error: ${e}`
-          },
-          {
-            type: ComponentType.Separator,
-            divider: true,
-            spacing: SeparatorSpacingSize.Large
-          },
-          {
-            type: ComponentType.ActionRow,
-            components: [
-              {
-                type: ComponentType.StringSelect,
-                custom_id: "player_card",
-                placeholder: formatPlaceholder(PlayerSelection.PLAYER_OVERVIEW),
-                options: generatePlayerOptions(rosterId)
-              }
-            ]
-          }
-        ]
-      })
+      console.log(data.values[0])
+      const { r: rosterId, s: selected, q: pagination } = JSON.parse(data.values[0]) as Selection
+      try {
+        if (selected === PlayerSelection.PLAYER_OVERVIEW) {
+          showPlayerCard(`${rosterId}`, client, interaction.token, interaction.guild_id, pagination)
+        } else if (selected === PlayerSelection.PLAYER_FULL_RATINGS) {
+          showPlayerFullRatings(rosterId, client, interaction.token, interaction.guild_id, pagination)
+        } else if (selected === PlayerSelection.PLAYER_WEEKLY_STATS) {
+          showPlayerWeeklyStats(rosterId, client, interaction.token, interaction.guild_id, pagination)
+        } else if (selected === PlayerSelection.PLAYER_SEASON_STATS) {
+          showPlayerYearlyStats(rosterId, client, interaction.token, interaction.guild_id, pagination)
+        } else {
+          console.error("should not have gotten here")
+        }
+      } catch (e) {
+        console.error(e)
+        await client.editOriginalInteraction(interaction.token, {
+          flags: 32768,
+          components: [
+            {
+              type: ComponentType.TextDisplay,
+              content: `Could not show player card Error: ${e}`
+            },
+            {
+              type: ComponentType.Separator,
+              divider: true,
+              spacing: SeparatorSpacingSize.Large
+            },
+            {
+              type: ComponentType.ActionRow,
+              components: [
+                {
+                  type: ComponentType.StringSelect,
+                  custom_id: "player_card",
+                  placeholder: formatPlaceholder(PlayerSelection.PLAYER_OVERVIEW),
+                  options: generatePlayerOptions(rosterId)
+                }
+              ]
+            }
+          ]
+        })
+      }
+    } else {
+      try {
+        const { q: query, s: next, b: prev } = JSON.parse(customId) as PlayerPagination
+        showPlayerList(JSON.stringify(fromShortQuery(query)), client, interaction.token, interaction.guild_id, next, prev)
+      } catch (e) {
+        await client.editOriginalInteraction(interaction.token, {
+          flags: 32768,
+          components: [
+            {
+              type: ComponentType.TextDisplay,
+              content: `Could not list players Error: ${e}`
+            }
+          ]
+        })
+      }
     }
   }
 } as CommandHandler & AutocompleteHandler & MessageComponentHandler
