@@ -295,7 +295,7 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
     const previousPagination = paginatedPlayers.length === 0 ? [] : paginatedPlayers.splice(-1)
     const newQuery: PlayerListQuery = {}
 
-    if (query.teamId) newQuery.teamId = query.teamId
+    if (query.teamId && query.teamId !== -1) newQuery.teamId = query.teamId
     if (query.rookie) newQuery.rookie = query.rookie
     if (query.position) newQuery.position = query.position
     console.log(`${JSON.stringify({ q: newQuery, l: nextPagination, league: leagueId })}`)
@@ -315,7 +315,7 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
               style: ButtonStyle.Secondary,
               label: "Back",
               disabled: backDisabled,
-              custom_id: `${JSON.stringify({ q: newQuery, l: paginatedPlayers, league: leagueId })} `
+              custom_id: `${JSON.stringify({ q: newQuery, l: previousPagination, league: leagueId })} `
             },
             {
               type: ComponentType.Button,

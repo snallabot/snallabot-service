@@ -382,7 +382,7 @@ const MaddenDB: MaddenDB = {
   getPlayers: async function(leagueId: string, query: PlayerListQuery, limit, lastPlayer?: Player) {
     let playersQuery = db.collection("league_data").doc(leagueId).collection("MADDEN_PLAYER").orderBy("playerBestOvr", "desc").orderBy("rosterId").limit(limit)
 
-    if (query.teamId !== -1) {
+    if (query.teamId && query.teamId !== -1) {
       playersQuery = playersQuery.where("teamId", "==", query.teamId);
     }
 
