@@ -270,7 +270,7 @@ function toShortQuery(q: PlayerListQuery) {
 
 function fromShortQuery(q: ShortPlayerListQuery) {
   const query: PlayerListQuery = {}
-  if (q.t && q.t === -1) query.teamId = q.t
+  if (q.t && q.t !== -1) query.teamId = q.t
   if (q.p) query.position = q.p
   if (q.r) query.rookie = q.r
   return query
