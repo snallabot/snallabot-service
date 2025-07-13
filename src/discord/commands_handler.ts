@@ -145,9 +145,7 @@ export async function handleMessageComponent(interaction: MessageComponentIntera
           type: InteractionResponseType.DeferredMessageUpdate,
         }
       } else {
-        const error = e as Error
         ctx.status = 500
-        console.error(error)
       }
     } catch (e) {
       ctx.status = 500
