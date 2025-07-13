@@ -1,7 +1,7 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command, AutocompleteHandler, Autocomplete, MessageComponentHandler, MessageComponentInteraction } from "../commands_handler"
 import { respond, createMessageResponse, DiscordClient, deferMessage } from "../discord_utils"
-import { APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ComponentType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
+import { APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ButtonStyle, ComponentType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
 import { playerSearchIndex, discordLeagueView, teamSearchView } from "../../db/view"
 import fuzzysort from "fuzzysort"
@@ -255,7 +255,9 @@ async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, to
   })
 }
 
-async function showPlayerList(playerSearch: string, client: DiscordClient, token: string, guild_id: string) {
+type PlayerPagination = { q: PlayerListQuery, l: number, league: string }
+
+async function showPlayerList(playerSearch: string, client: DiscordClient, token: string, guild_id: string, lastPlayer?: Player) {
   try {
     const discordLeague = await discordLeagueView.createView(guild_id)
     const leagueId = discordLeague?.leagueId
@@ -272,7 +274,7 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
       }
       query = results[0]
     }
-    const players = await MaddenDB.getPlayers(leagueId, query)
+    const players = await MaddenDB.getPlayers(leagueId, query, lastPlayer)
     const teamView = await teamSearchView.createView(leagueId)
     if (!teamView) {
       throw new Error("Missing teams?? Maybe try the command again")
@@ -283,19 +285,41 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
     }))
     // 0 team id means the player is a free agent
     teamsDisplayNames["0"] = "FA"
-
+    const message = players.length === 0 ? `# No results` : formatPlayerList(players, teamsDisplayNames)
+    const backDisabled = lastPlayer ? false : true
+    const nextDisabled = players.length === 0 ? true : false
+    const nextLastPlayer = players.length === 0 ? lastPlayer?.rosterId : players[players.length - 1].rosterId
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
         {
           type: ComponentType.TextDisplay,
-          content: formatPlayerList(players, teamsDisplayNames)
+          content: message
         },
-        // {
-        //   type: ComponentType.Separator,
-        //   divider: true,
-        //   spacing: SeparatorSpacingSize.Large
-        // },
+        {
+          type: ComponentType.ActionRow,
+          components: [
+            {
+              type: ComponentType.Button,
+              style: ButtonStyle.Secondary,
+              label: "Back",
+              disabled: backDisabled,
+              custom_id: `${JSON.stringify({ q: query, l: lastPlayer?.rosterId, league: leagueId })}`
+            },
+            {
+              type: ComponentType.Button,
+              style: ButtonStyle.Secondary,
+              label: "Next",
+              custom_id: `${JSON.stringify({ q: query, l: nextLastPlayer, league: leagueId })}`,
+              disabled: nextDisabled
+            }
+          ]
+        },
+        {
+          type: ComponentType.Separator,
+          divider: true,
+          spacing: SeparatorSpacingSize.Large
+        },
         // {
         //   type: ComponentType.ActionRow,
         //   components: [
@@ -1645,49 +1669,60 @@ export default {
     return []
   },
   async handleInteraction(interaction: MessageComponentInteraction, client: DiscordClient) {
-    const data = interaction.data as APIMessageStringSelectInteractionData
-    if (data.values.length !== 1) {
-      throw new Error("Somehow did not receive just one selection from player card " + data.values)
-    }
-    const { rosterId, selected } = JSON.parse(data.values[0]) as Selection
-    try {
-      if (selected === PlayerSelection.PLAYER_OVERVIEW) {
-        showPlayerCard(`${rosterId}`, client, interaction.token, interaction.guild_id)
-      } else if (selected === PlayerSelection.PLAYER_FULL_RATINGS) {
-        showPlayerFullRatings(rosterId, client, interaction.token, interaction.guild_id)
-      } else if (selected === PlayerSelection.PLAYER_WEEKLY_STATS) {
-        showPlayerWeeklyStats(rosterId, client, interaction.token, interaction.guild_id)
-      } else if (selected === PlayerSelection.PLAYER_SEASON_STATS) {
-        showPlayerYearlyStats(rosterId, client, interaction.token, interaction.guild_id)
-      } else {
-        console.error("should not have gotten here")
+    const customId = interaction.custom_id
+    if (customId === "player_card") {
+      const data = interaction.data as APIMessageStringSelectInteractionData
+      if (data.values.length !== 1) {
+        throw new Error("Somehow did not receive just one selection from player card " + data.values)
       }
-    } catch (e) {
-      await client.editOriginalInteraction(interaction.token, {
-        flags: 32768,
-        components: [
-          {
-            type: ComponentType.TextDisplay,
-            content: `Could not show player card Error: ${e}`
-          },
-          {
-            type: ComponentType.Separator,
-            divider: true,
-            spacing: SeparatorSpacingSize.Large
-          },
-          {
-            type: ComponentType.ActionRow,
-            components: [
-              {
-                type: ComponentType.StringSelect,
-                custom_id: "player_card",
-                placeholder: formatPlaceholder(PlayerSelection.PLAYER_OVERVIEW),
-                options: generatePlayerOptions(rosterId)
-              }
-            ]
-          }
-        ]
-      })
+      const { rosterId, selected } = JSON.parse(data.values[0]) as Selection
+      try {
+        if (selected === PlayerSelection.PLAYER_OVERVIEW) {
+          showPlayerCard(`${rosterId}`, client, interaction.token, interaction.guild_id)
+        } else if (selected === PlayerSelection.PLAYER_FULL_RATINGS) {
+          showPlayerFullRatings(rosterId, client, interaction.token, interaction.guild_id)
+        } else if (selected === PlayerSelection.PLAYER_WEEKLY_STATS) {
+          showPlayerWeeklyStats(rosterId, client, interaction.token, interaction.guild_id)
+        } else if (selected === PlayerSelection.PLAYER_SEASON_STATS) {
+          showPlayerYearlyStats(rosterId, client, interaction.token, interaction.guild_id)
+        } else {
+          console.error("should not have gotten here")
+        }
+      } catch (e) {
+        await client.editOriginalInteraction(interaction.token, {
+          flags: 32768,
+          components: [
+            {
+              type: ComponentType.TextDisplay,
+              content: `Could not show player card Error: ${e}`
+            },
+            {
+              type: ComponentType.Separator,
+              divider: true,
+              spacing: SeparatorSpacingSize.Large
+            },
+            {
+              type: ComponentType.ActionRow,
+              components: [
+                {
+                  type: ComponentType.StringSelect,
+                  custom_id: "player_card",
+                  placeholder: formatPlaceholder(PlayerSelection.PLAYER_OVERVIEW),
+                  options: generatePlayerOptions(rosterId)
+                }
+              ]
+            }
+          ]
+        })
+      }
+    } else {
+      const { q: query, l: rosterId, league } = JSON.parse(customId) as PlayerPagination
+      if (rosterId) {
+        const player = await MaddenDB.getPlayer(league, `${rosterId}`)
+        showPlayerList(JSON.stringify(query), client, interaction.token, interaction.guild_id, player)
+      } else {
+        showPlayerList(JSON.stringify(query), client, interaction.token, interaction.guild_id)
+      }
     }
   }
 } as CommandHandler & AutocompleteHandler & MessageComponentHandler

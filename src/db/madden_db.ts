@@ -1,8 +1,8 @@
 import { randomUUID } from "crypto"
-import { Timestamp, Filter } from "firebase-admin/firestore"
+import { Timestamp } from "firebase-admin/firestore"
 import db from "./firebase"
 import EventDB, { EventNotifier, SnallabotEvent, StoredEvent, notifiers } from "./events_db"
-import { DefensiveStats, KickingStats, MADDEN_SEASON, MaddenGame, POSITION_GROUP, PassingStats, Player, PuntingStats, ReceivingStats, RushingStats, Standing, Team, dLinePositions, dbPositoins, oLinePositions } from "../export/madden_league_types"
+import { DefensiveStats, KickingStats, MADDEN_SEASON, MaddenGame, POSITION_GROUP, PassingStats, Player, PuntingStats, ReceivingStats, RushingStats, Standing, Team, dLinePositions, dbPositions, oLinePositions } from "../export/madden_league_types"
 import { TeamAssignments } from "../discord/settings_db"
 
 type HistoryUpdate<ValueType> = { oldValue: ValueType, newValue: ValueType }
@@ -393,7 +393,7 @@ const MaddenDB: MaddenDB = {
         } else if (query.position === "DL") {
           playersQuery = playersQuery.where("position", "in", dLinePositions)
         } else if (query.position === "DB") {
-          playersQuery = playersQuery.where("position", "in", dbPositoins)
+          playersQuery = playersQuery.where("position", "in", dbPositions)
         }
       } else {
         playersQuery = playersQuery.where("position", "==", query.position);
