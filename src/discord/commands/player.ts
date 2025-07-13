@@ -1796,6 +1796,7 @@ export default {
           console.error("should not have gotten here")
         }
       } catch (e) {
+        console.error(e)
         await client.editOriginalInteraction(interaction.token, {
           flags: 32768,
           components: [
