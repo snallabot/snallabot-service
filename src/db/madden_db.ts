@@ -380,8 +380,12 @@ const MaddenDB: MaddenDB = {
     return await Promise.all(scheduleIds.map(s => this.getGameForSchedule(leagueId, s.id, s.week, s.season)))
   },
   getPlayers: async function(leagueId: string, query: PlayerListQuery, limit, startAfter?: Player, endBefore?: Player) {
-
-    let playersQuery = db.collection("league_data").doc(leagueId).collection("MADDEN_PLAYER").orderBy("playerBestOvr", "desc").orderBy("rosterId").limit(limit)
+    let playersQuery;
+    if (endBefore) {
+      playersQuery = db.collection("league_data").doc(leagueId).collection("MADDEN_PLAYER").orderBy("playerBestOvr", "asc").orderBy("rosterId").limit(limit)
+    } else {
+      playersQuery = db.collection("league_data").doc(leagueId).collection("MADDEN_PLAYER").orderBy("playerBestOvr", "desc").orderBy("rosterId").limit(limit)
+    }
 
     if (query.teamId && query.teamId !== -1) {
       playersQuery = playersQuery.where("teamId", "==", query.teamId);
@@ -410,12 +414,17 @@ const MaddenDB: MaddenDB = {
     }
 
     if (endBefore) {
-      playersQuery = playersQuery.endBefore(endBefore.playerBestOvr, endBefore.rosterId);
+      playersQuery = playersQuery.startAfter(endBefore.playerBestOvr, endBefore.rosterId);
     }
 
     const snapshot = await playersQuery.get();
 
-    return snapshot.docs.map(d => d.data() as Player)
+    const players = snapshot.docs.map(d => d.data() as Player)
+    if (endBefore) {
+      return players.reverse()
+    } else {
+      return players
+    }
 
   }
 }
