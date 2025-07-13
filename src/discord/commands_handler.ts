@@ -135,7 +135,24 @@ export async function handleMessageComponent(interaction: MessageComponentIntera
       console.error(error)
     }
   } else {
-    ctx.status = 500
+    try {
+      const parsedCustomId = JSON.parse(custom_id)
+      if (parsedCustomId.q) {
+        await playerHandler.handleInteraction(interaction, client)
+        ctx.status = 200
+        ctx.set("Content-Type", "application/json")
+        ctx.body = {
+          type: InteractionResponseType.DeferredMessageUpdate,
+        }
+      } else {
+        const error = e as Error
+        ctx.status = 500
+        console.error(error)
+      }
+    } catch (e) {
+      ctx.status = 500
+      console.error(e)
+    }
   }
 }
 
