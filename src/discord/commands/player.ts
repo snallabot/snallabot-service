@@ -677,9 +677,9 @@ function getSeasonFormatting(yearsPro: number) {
   if (yearsPro === 0) {
     return "Rookie"
   }
-  const rule = rules.select(yearsPro)
+  const rule = rules.select(yearsPro + 1)
   const suffix = suffixes.get(rule)
-  return `${yearsPro}${suffix} Season`
+  return `${yearsPro + 1}${suffix} Season`
 }
 
 function formatPlayerCard(player: Player, teams: { [key: string]: string }) {
