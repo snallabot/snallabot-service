@@ -89,36 +89,18 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, token
     teamsDisplayNames["0"] = "FA"
     const backToSearch = pagination ? [
       {
-        type: ComponentType.Button,
-        style: ButtonStyle.Secondary,
-        label: "Back to List",
-        custom_id: `${JSON.stringify(pagination)}`
-      }
-    ] : []
-    console.log([
-      {
-        type: ComponentType.TextDisplay,
-        content: "test"
-        // content: formatPlayerCard(player, teamsDisplayNames)
-      },
-      {
-        type: ComponentType.Separator,
-        divider: true,
-        spacing: SeparatorSpacingSize.Large
-      },
-      {
         type: ComponentType.ActionRow,
         components: [
           {
-            type: ComponentType.StringSelect,
-            custom_id: "player_card",
-            placeholder: formatPlaceholder(PlayerSelection.PLAYER_OVERVIEW),
-            options: generatePlayerOptions(searchRosterId, pagination)
+            type: ComponentType.Button,
+            style: ButtonStyle.Secondary,
+            label: "Back to List",
+            custom_id: `${JSON.stringify(pagination)}`
           }
         ]
-      },
-      ...backToSearch
-    ])
+      }
+
+    ] : []
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
