@@ -89,6 +89,11 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, token
     teamsDisplayNames["0"] = "FA"
     const backToSearch = pagination ? [
       {
+        type: ComponentType.Separator,
+        divider: true,
+        spacing: SeparatorSpacingSize.Small
+      },
+      {
         type: ComponentType.ActionRow,
         components: [
           {
@@ -165,11 +170,17 @@ async function showPlayerFullRatings(rosterId: number, client: DiscordClient, to
       spacing: SeparatorSpacingSize.Small
     },
     {
-      type: ComponentType.Button,
-      style: ButtonStyle.Secondary,
-      label: "Back to List",
-      custom_id: `${JSON.stringify(pagination)}`
+      type: ComponentType.ActionRow,
+      components: [
+        {
+          type: ComponentType.Button,
+          style: ButtonStyle.Secondary,
+          label: "Back to List",
+          custom_id: `${JSON.stringify(pagination)}`
+        }
+      ]
     }
+
   ] : []
   await client.editOriginalInteraction(token, {
     flags: 32768,
@@ -227,11 +238,17 @@ async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, to
       spacing: SeparatorSpacingSize.Small
     },
     {
-      type: ComponentType.Button,
-      style: ButtonStyle.Secondary,
-      label: "Back to List",
-      custom_id: `${JSON.stringify(pagination)}`
+      type: ComponentType.ActionRow,
+      components: [
+        {
+          type: ComponentType.Button,
+          style: ButtonStyle.Secondary,
+          label: "Back to List",
+          custom_id: `${JSON.stringify(pagination)}`
+        }
+      ]
     }
+
   ] : []
   await client.editOriginalInteraction(token, {
     flags: 32768,
@@ -287,11 +304,17 @@ async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, to
       spacing: SeparatorSpacingSize.Small
     },
     {
-      type: ComponentType.Button,
-      style: ButtonStyle.Secondary,
-      label: "Back to List",
-      custom_id: `${JSON.stringify(pagination)}`
+      type: ComponentType.ActionRow,
+      components: [
+        {
+          type: ComponentType.Button,
+          style: ButtonStyle.Secondary,
+          label: "Back to List",
+          custom_id: `${JSON.stringify(pagination)}`
+        }
+      ]
     }
+
   ] : []
   await client.editOriginalInteraction(token, {
     flags: 32768,
