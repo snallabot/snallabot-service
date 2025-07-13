@@ -262,7 +262,7 @@ async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, to
 type ShortPlayerListQuery = { t?: number, p?: string, r?: boolean }
 function toShortQuery(q: PlayerListQuery) {
   const query: ShortPlayerListQuery = {}
-  if (q.teamId && q.teamId === -1) query.t = q.teamId
+  if (q.teamId && q.teamId !== -1) query.t = q.teamId
   if (q.position) query.p = q.position
   if (q.rookie) query.r = q.rookie
   return query
