@@ -289,6 +289,8 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
     const backDisabled = lastPlayer ? false : true
     const nextDisabled = players.length === 0 ? true : false
     const nextLastPlayer = players.length === 0 ? lastPlayer?.rosterId : players[players.length - 1].rosterId
+    console.log(`${JSON.stringify({ q: query, l: nextLastPlayer, league: leagueId })}`)
+    console.log(`${JSON.stringify({ q: query, l: nextLastPlayer, league: leagueId }).length}`)
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
@@ -304,13 +306,13 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
               style: ButtonStyle.Secondary,
               label: "Back",
               disabled: backDisabled,
-              custom_id: `${JSON.stringify({ q: query, l: lastPlayer?.rosterId, league: leagueId })}`
+              custom_id: `${JSON.stringify({ q: query, l: lastPlayer?.rosterId, league: leagueId })} `
             },
             {
               type: ComponentType.Button,
               style: ButtonStyle.Secondary,
               label: "Next",
-              custom_id: `${JSON.stringify({ q: query, l: nextLastPlayer, league: leagueId })}`,
+              custom_id: `${JSON.stringify({ q: query, l: nextLastPlayer, league: leagueId })} `,
               disabled: nextDisabled
             }
           ]
@@ -339,7 +341,7 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
       components: [
         {
           type: ComponentType.TextDisplay,
-          content: `Could not list players  Error: ${e}`
+          content: `Could not list players  Error: ${e} `
         }
       ]
     })
@@ -611,9 +613,9 @@ function getPositionalTraits(player: Player) {
   }
 
   const yesNoTraits = yesNoAttributes.filter(trait => trait.value === YesNoTrait.YES)
-    .map(attr => `> **${attr.name}:** ${formatYesNoTrait(attr.value)}`).join('\n')
-  const customAttributes = attributes.map(attr => `> **${attr.name}:** ${attr.value}`).join('\n')
-  return `${yesNoTraits}\n${customAttributes}`
+    .map(attr => `> ** ${attr.name}:** ${formatYesNoTrait(attr.value)} `).join('\n')
+  const customAttributes = attributes.map(attr => `> ** ${attr.name}:** ${attr.value} `).join('\n')
+  return `${yesNoTraits} \n${customAttributes} `
 
 }
 
@@ -708,11 +710,11 @@ function getSeasonFormatting(yearsPro: number) {
 
 function formatPlayerCard(player: Player, teams: { [key: string]: string }) {
 
-  const teamAbbr = teams[`${player.teamId}`]
+  const teamAbbr = teams[`${player.teamId} `]
 
   const heightFeet = Math.floor(player.height / 12)
   const heightInches = player.height % 12
-  const formattedHeight = `${heightFeet}'${heightInches}"`
+  const formattedHeight = `${heightFeet} '${heightInches}"`
 
   let age = player.age
 
@@ -1670,7 +1672,6 @@ export default {
   },
   async handleInteraction(interaction: MessageComponentInteraction, client: DiscordClient) {
     const customId = interaction.custom_id
-    console.log(customId)
     if (customId === "player_card") {
       const data = interaction.data as APIMessageStringSelectInteractionData
       if (data.values.length !== 1) {
