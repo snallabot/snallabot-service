@@ -54,7 +54,7 @@ function generatePlayerOptions(rosterId: number) {
 function generatePlayerZoomOptions(players: Player[], currentPagination: PlayerPagination) {
   players.map(p => ({ label: `${p.position} ${p.firstName} ${p.lastName}`, value: { rosterId: p.rosterId, selected: PlayerSelection.PLAYER_OVERVIEW, query: currentPagination } }))
     .map(option => ({ ...option, value: JSON.stringify(option.value) }))
-    .map(o => o.value.length).forEach(console.log)
+    .map(o => o.value).forEach(console.log)
   return players.map(p => ({ label: `${p.position} ${p.firstName} ${p.lastName}`, value: { rosterId: p.rosterId, selected: PlayerSelection.PLAYER_OVERVIEW, query: currentPagination } }))
     .map(option => ({ ...option, value: JSON.stringify(option.value) }))
 }
