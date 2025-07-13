@@ -315,10 +315,6 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
     const nextDisabled = players.length < PAGINATION_LIMIT ? true : false
     const nextPagination = players.length === 0 ? startAfterPlayer : players[players.length - 1].rosterId
     const previousPagination = players.length === 0 ? endBeforePlayer : players[0].rosterId
-    console.log(`${JSON.stringify({ q: query, l: nextPagination })}`)
-    console.log(`${JSON.stringify({ q: query, l: nextPagination }).length}`)
-    console.log(JSON.stringify({ q: query, l: previousPagination }))
-    console.log(JSON.stringify({ q: query, l: previousPagination }).length)
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [

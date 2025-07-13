@@ -381,12 +381,13 @@ const MaddenDB: MaddenDB = {
   },
   getPlayers: async function(leagueId: string, query: PlayerListQuery, limit, startAfter?: Player, endBefore?: Player) {
     let playersQuery;
+    // flip the query for going backwards by ordering opposite and using start after
     if (endBefore) {
       playersQuery = db.collection("league_data").doc(leagueId).collection("MADDEN_PLAYER").orderBy("playerBestOvr", "asc").orderBy("rosterId", "desc").limit(limit)
     } else {
       playersQuery = db.collection("league_data").doc(leagueId).collection("MADDEN_PLAYER").orderBy("playerBestOvr", "desc").orderBy("rosterId").limit(limit)
     }
-
+    console.log(query)
     if (query.teamId && query.teamId !== -1) {
       playersQuery = playersQuery.where("teamId", "==", query.teamId);
     }
