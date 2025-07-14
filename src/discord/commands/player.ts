@@ -836,6 +836,14 @@ function getSeasonFormatting(yearsPro: number) {
   return `${yearsPro + 1}${suffix} Season`
 }
 
+function formatMoney(m: number) {
+  if (m >= 1000000) {
+    return `${(m / 1000000).toFixed(2)}M`
+  } else {
+    return `${(m / 100000).toFixed(2)}M`
+  }
+}
+
 function formatPlayerCard(player: Player, teams: { [key: string]: string }) {
 
   const teamAbbr = teams[`${player.teamId}`]
@@ -847,7 +855,7 @@ function formatPlayerCard(player: Player, teams: { [key: string]: string }) {
   let age = player.age
 
   const contractStatus = player.isFreeAgent ? "Free Agent" :
-    `> **Length**: ${player.contractYearsLeft}/${player.contractLength} yrs\n> **Salary**: $${(player.contractSalary / 1000000).toFixed(2)}M\n> **Cap Hit**: $${(player.capHit / 1000000).toFixed(2)}M\n> **Bonus**: $${(player.contractBonus / 10000000).toFixed(2)}M\n> **Savings**: $${(player.capReleaseNetSavings / 10000000).toFixed(2)}M\n> **Penalty**: $${(player.capReleasePenalty / 10000000).toFixed(2)}M`
+    `> **Length**: ${player.contractYearsLeft}/${player.contractLength} yrs\n> **Salary**: $${formatMoney(player.contractSalary)}\n> **Cap Hit**: $${formatMoney(player.capHit)}\n> **Bonus**: $${formatMoney(player.contractBonus)}\n> **Savings**: $${formatMoney(player.capReleaseNetSavings)}\n> **Penalty**: $${formatMoney(player.capReleasePenalty)}`
 
   const topAttributes = getTopAttributesByPosition(player)
 
