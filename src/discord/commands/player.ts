@@ -840,7 +840,7 @@ function formatMoney(m: number) {
   if (m >= 1000000) {
     return `${(m / 1000000).toFixed(2)}M`
   } else {
-    return `${m / 100000}K`
+    return `${m / 1000}K`
   }
 }
 
