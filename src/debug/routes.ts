@@ -1,6 +1,6 @@
 import Router from "@koa/router"
 import { getViewCacheStats } from "../db/view"
-import { getMaddenCacheStats } from "../export/exporter"
+import { getMaddenCacheStats } from "../db/madden_hash_storage"
 const router = new Router({ prefix: "/debug" })
 
 

@@ -1,8 +1,6 @@
 import { SnallabotEvent } from "./../db/events_db"
 import MaddenDB from "../db/madden_db"
-import NodeCache from "node-cache"
-import { Storage } from "@google-cloud/storage";
-import { readFileSync } from "fs"
+import MaddenHash, { createTwoLayer, findDifferences } from "../db/madden_hash_storage"
 import { DefensiveExport, KickingExport, PassingExport, PuntingExport, ReceivingExport, RosterExport, RushingExport, SchedulesExport, StandingExport, TeamExport, TeamStatsExport } from "./madden_league_types";
 import { Stage } from "../dashboard/ea_client";
 
@@ -182,102 +180,7 @@ export function createDestination(url: string) {
     return MaddenUrlDestination(url)
   }
 }
-
-let serviceAccount;
-if (process.env.SERVICE_ACCOUNT_FILE) {
-  serviceAccount = JSON.parse(readFileSync(process.env.SERVICE_ACCOUNT_FILE, 'utf8'))
-} else if (process.env.SERVICE_ACCOUNT) {
-  serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT)
-} else {
-  throw new Error("no SA")
-}
-
-const storage = new Storage({
-  projectId: "snallabot",
-  credentials: serviceAccount
-})
-
-const bucket = storage.bucket("league_hashes")
-function filePath(leagueId: string, event_type: string, request_type: string) {
-  return `${leagueId}/${event_type}/${request_type}.json`
-}
-
 const hash: (a: any) => string = require("object-hash")
-
-const treeCache = new NodeCache({ maxKeys: 100000 })
-const CACHE_TTL = 3600 * 48 // 2 days in seconds
-export function getMaddenCacheStats() {
-  return treeCache.getStats()
-}
-
-type Node = {
-  hash: string,
-  children: Array<Node>
-}
-
-type MerkleTree = {
-  headNode: Node
-}
-
-function flatten(tree: MerkleTree): Array<Node> {
-  return tree.headNode.children.concat(tree.headNode.children.flatMap(n => flatten({ headNode: n })))
-}
-
-function findDifferences(incoming: MerkleTree, old: MerkleTree): Array<string> {
-  if (incoming.headNode.hash === old.headNode.hash) {
-    return []
-  } else {
-    const oldHashes = Object.fromEntries(old.headNode.children.map(h => [h.hash, h]))
-    return incoming.headNode.children.flatMap(c => {
-      if (oldHashes[c.hash]) {
-        return []
-      }
-      return [c.hash].concat(flatten({ headNode: c }).map(n => n.hash))
-    })
-  }
-}
-
-function createTwoLayer(nodes: Array<Node>): MerkleTree {
-  const topHash = hash(nodes.map(c => c.hash))
-  return { headNode: { hash: topHash, children: nodes } }
-}
-
-function createCacheKey(league: string, request_type: string): string {
-  return `${league}|${request_type}`
-}
-
-async function retrieveTree(league: string, request_type: string, event_type: string): Promise<MerkleTree> {
-  const cachedTree = treeCache.get(createCacheKey(league, request_type)) as MerkleTree
-  if (cachedTree) {
-    return cachedTree
-  } else {
-    try {
-      const data = await bucket.file(filePath(league, event_type, request_type)).download()
-      const tree = JSON.parse(data.toString()) as MerkleTree
-      try {
-        treeCache.set(createCacheKey(league, request_type), tree, CACHE_TTL)
-      } catch (e) {
-      }
-      return tree
-    } catch (e) {
-      return { headNode: { children: [], hash: hash("") } }
-    }
-  }
-}
-
-
-async function writeTree(league: string, request_type: string, event_type: string, tree: MerkleTree): Promise<void> {
-  try {
-    treeCache.set(createCacheKey(league, request_type), tree, CACHE_TTL)
-  } catch (e) {
-  }
-  try {
-    await bucket.file(filePath(league, event_type, request_type)).save(JSON.stringify(tree), { contentType: "application/json" })
-  } catch (e) {
-  }
-}
-
-
 export async function sendEvents<T>(league: string, request_type: string, events: Array<SnallabotEvent<T>>, identifier: (e: T) => number): Promise<void> {
   if (events.length == 0) {
     return
@@ -286,7 +189,7 @@ export async function sendEvents<T>(league: string, request_type: string, events
   if (!eventType) {
     throw new Error("No Event Type found for " + request_type)
   }
-  const oldTree = await retrieveTree(league, request_type, eventType)
+  const oldTree = await MaddenHash.readTree(league, request_type, eventType)
   const hashToEvent = new Map(events.map(e => [hash(e), e]))
   const newNodes = events.sort(e => identifier(e)).map(e => ({ hash: hash(e), children: [] }))
 
@@ -298,7 +201,7 @@ export async function sendEvents<T>(league: string, request_type: string, events
     // }
     const finalEvents = hashDifferences.map(h => hashToEvent.get(h)).filter(e => e) as SnallabotEvent<T>[]
     await MaddenDB.appendEvents(finalEvents, (e: T) => `${identifier(e)}`)
-    await writeTree(league, request_type, eventType, newTree)
+    await MaddenHash.writeTree(league, request_type, eventType, newTree)
   }
   // else {
   //     console.debug("skipped writing!")
