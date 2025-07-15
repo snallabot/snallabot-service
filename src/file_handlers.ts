@@ -94,6 +94,5 @@ if (process.env.SERVICE_ACCOUNT_FILE) {
 } else if (process.env.SERVICE_ACCOUNT) {
   serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT)
 }
-serviceAccount ? console.log("Using GCS storage") : console.log("Using file storage")
 const fileHandler = serviceAccount ? new GCSFileHandler(serviceAccount) : new LocalFileHandler
 export default fileHandler
