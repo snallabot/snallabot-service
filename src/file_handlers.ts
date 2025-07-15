@@ -92,7 +92,7 @@ let serviceAccount;
 if (process.env.SERVICE_ACCOUNT_FILE) {
   serviceAccount = readFileSync(process.env.SERVICE_ACCOUNT_FILE, 'utf8')
 } else if (process.env.SERVICE_ACCOUNT) {
-  serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT)
+  serviceAccount = process.env.SERVICE_ACCOUNT
 }
 const fileHandler = serviceAccount ? new GCSFileHandler(serviceAccount) : new LocalFileHandler
 export default fileHandler
