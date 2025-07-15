@@ -3,6 +3,7 @@ import MaddenDB from "../db/madden_db"
 import MaddenHash, { createTwoLayer, findDifferences } from "../db/madden_hash_storage"
 import { DefensiveExport, KickingExport, PassingExport, PuntingExport, ReceivingExport, RosterExport, RushingExport, SchedulesExport, StandingExport, TeamExport, TeamStatsExport } from "./madden_league_types";
 import { Stage } from "../dashboard/ea_client";
+import { DEPLOYMENT_URL } from "../config";
 
 export enum ExportResult {
   SUCCESS = 0,
@@ -170,11 +171,8 @@ export const SnallabotExportDestination: MaddenExportDestination = {
   }
 }
 
-const SNALLABOT = "snallabot.me"
-export const SNALLABOT_EXPORT = `https://${SNALLABOT}`
-
 export function createDestination(url: string) {
-  if (url.includes("snallabot.me")) {
+  if (url.includes(DEPLOYMENT_URL)) {
     return SnallabotExportDestination
   } else {
     return MaddenUrlDestination(url)

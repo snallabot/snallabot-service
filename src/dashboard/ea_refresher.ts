@@ -1,7 +1,7 @@
 import db from "../db/firebase"
 import NodeCache from "node-cache"
 import { storedTokenClient } from "./ea_client"
-import { Stage } from "./ea_constants"
+import { DEPLOYMENT_URL } from "../config"
 
 const changeCache = new NodeCache()
 const hash: (a: any) => string = require("object-hash")
@@ -37,7 +37,7 @@ async function checkLeague(leagueId: string) {
   const newHash = hash(leagueHash)
   if (newHash !== changeCache.get(leagueId)) {
     console.log(`Detected change in ${leagueId}`)
-    await fetch(`https://snallabot.me/dashboard/league/${leagueId}/export`,
+    await fetch(`https://${DEPLOYMENT_URL}/dashboard/league/${leagueId}/export`,
       {
         method: 'POST',
         headers: {
