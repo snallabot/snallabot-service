@@ -1,6 +1,6 @@
 # snallabot-service
 
-Entire code base for Snallabot App
+Entire code base for Snallabot
 
 ```
 Live Deployment: https://snallabot.me
@@ -17,6 +17,6 @@ npm install
 PUBLIC_KEY=??? DISCORD_TOKEN=??? APP_ID=??? npm run dev
 ```
 
-Fill in the env files with the ones from your Discord application. This will setup a firebase emulator, use local file storage, and make a local version of snallabot availaible at `localhost:3000`
+Fill in the env variables with the ones from your Discord application. This will setup a firebase emulator, use local file storage, and make a local version of snallabot availaible at `localhost:3000`
 
 
