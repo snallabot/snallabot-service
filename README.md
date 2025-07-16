@@ -16,7 +16,7 @@ Snallabot welcomes contributions! To run a local version of the bot, you need th
 
 ```sh
 npm install
-PUBLIC_KEY=??? DISCORD_TOKEN=??? APP_ID=??? npm run dev
+PUBLIC_KEY=??? DISCORD_TOKEN=??? APP_ID=??? DEPLOYMENT_URL=localhost:3000 npm run dev
 ```
 
 Fill in the env variables with the ones from your Discord application. This will setup a firebase emulator, use local file storage, and make a local version of snallabot availaible at `localhost:3000`
