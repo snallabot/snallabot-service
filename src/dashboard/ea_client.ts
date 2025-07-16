@@ -5,7 +5,8 @@ import { constants, randomBytes, createHash } from "crypto"
 import { Buffer } from "buffer"
 import { TeamExport, StandingExport, SchedulesExport, RushingExport, TeamStatsExport, PuntingExport, ReceivingExport, DefensiveExport, KickingExport, PassingExport, RosterExport } from "../export/madden_league_types"
 import db from "../db/firebase"
-import { SNALLABOT_EXPORT, createDestination } from "../export/exporter";
+import { createDestination } from "../export/exporter";
+import { DEPLOYMENT_URL } from "../config";
 
 
 export enum LeagueData {
@@ -336,13 +337,13 @@ type StoredTokenInformation = {
   session?: SessionInformation
 }
 export type ExportDestination = { autoUpdate: boolean, leagueInfo: boolean, rosters: boolean, weeklyStats: boolean, url: string, lastExportAttempt?: Date, lastSuccessfulExport?: Date, editable: boolean }
-
+const DEFAULT_EXPORT = `https://${DEPLOYMENT_URL}`
 export async function storeToken(token: TokenInformation, leagueId: number) {
   const leagueConnection: StoredMaddenConnection = {
     blazeId: token.blazeId,
     leagueId: leagueId,
     destinations: {
-      [SNALLABOT_EXPORT]: { autoUpdate: true, leagueInfo: true, rosters: true, weeklyStats: true, url: SNALLABOT_EXPORT, editable: false }
+      [DEFAULT_EXPORT]: { autoUpdate: true, leagueInfo: true, rosters: true, weeklyStats: true, url: DEFAULT_EXPORT, editable: false }
     }
   }
   await db.collection("league_data").doc(`${leagueId}`).set(leagueConnection)
