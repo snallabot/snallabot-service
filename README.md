@@ -27,7 +27,7 @@ There are 3 other runnable components in Snallabot: EA token refresher, youtube 
 
 #### EA Token Refresher
 
-There are two EA tokens: access_token and refresh_token. The access_token expires after 4 hours, and then to retrieve a new one you use the refresh_token. This will give you a new access_token and refresh_token. Seemingly, both tokens will eventually expire after around 10 days of usage. Snallabot keeps all dashboards refreshed, and exports data with ea_refresher.ts file. This is an example of a way to keep data fresh
+There are two EA tokens: access_token and refresh_token. The access_token expires after 4 hours, and then to retrieve a new one you use the refresh_token. This will give you a new access_token and refresh_token. Seemingly, both tokens will eventually expire after around 10 days of usage. Snallabot keeps all dashboards refreshed, and exports data with [ea_refresher.ts](https://github.com/snallabot/snallabot-service/blob/main/src/dashboard/ea_refresher.ts) file. This is an example of a way to keep data fresh. I recommend using it as reference and writing your own.
 
 #### Youtube Notifier
 
