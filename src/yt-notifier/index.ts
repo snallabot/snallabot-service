@@ -22,7 +22,7 @@ function extractVideo(html: string) {
 }
 
 function isStreaming(html: string) {
-  return (html.match(/"isLive":true/g) || []).length == 1 && !html.includes("Scheduled for")
+  return (html.match(/"isLive":true/g) || []).length >= 1 && !html.includes("Scheduled for")
 }
 
 type YoutubeNotifierStored = {
@@ -40,12 +40,10 @@ interface YoutubeNotifierStateManager {
 async function createYoutubeNotifierStateManager(): Promise<YoutubeNotifierStateManager> {
   const collection = db.collection("youtube_notifiers")
   const snapshot = await collection.get();
-  const channelUrls: Record<string, string>[] = []
   let state: YoutubeNotifier[] = snapshot.docs.map(doc => ({ channel_id: doc.id, ...doc.data() as YoutubeNotifierStored }))
   collection.onSnapshot(q => {
     state = q.docs.map(doc => ({ channel_id: doc.id, ...doc.data() as YoutubeNotifierStored }))
   })
-
   return {
     getCurrentState: function() {
       return state
@@ -81,7 +79,7 @@ EventDB.on<MaddenBroadcastEvent>("MADDEN_BROADCAST", async (events) => {
       try {
         await prodClient.createMessage(channel, `${role} ${broadcastEvent.title}\n\n${broadcastEvent.video}`, ["roles"])
       } catch (e) {
-
+        console.error(e)
       }
     }
   })
@@ -97,7 +95,8 @@ async function notifyYoutubeBroadcasts() {
   while (true) {
     const channelToServers = youtubeState.getCurrentState()
     const currentChannels = [...new Set(channelToServers.map(m => m.channel_id))]
-    const currentServers = [...new Set(channelToServers.flatMap(c => Object.entries(c.servers).filter(e => { const [_, enabled] = e; return e }).map(e => e[0])))]
+    console.log(`checking ${currentChannels}`)
+    const currentServers = [...new Set(channelToServers.flatMap(c => Object.entries(c.servers).filter(e => { const [_, enabled] = e; return enabled }).map(e => e[0])))]
     const channels = await Promise.all(currentChannels
       .map(channel_id =>
         fetch(`https://www.youtube.com/channel/${channel_id}/live`)
@@ -117,19 +116,18 @@ async function notifyYoutubeBroadcasts() {
     }))
     const serverTitleMap: { [key: string]: string } = Object.fromEntries(serverTitleKeywords.flat())
     const currentlyLiveStreaming = channels.flat()
-
+    console.log(`Currently Live Streaming: ${currentlyLiveStreaming.map(m => m.title)}`)
     const newBroadcasts = currentlyLiveStreaming.filter(c => !(currentlyBroadcasting.get(c.channel_id) as string | undefined)?.includes(c.video))
     currentlyLiveStreaming.forEach(c => {
       currentlyBroadcasting.set(c.channel_id, c.video, ONE_DAY_TTL)
     })
     console.log(`broadcasts that are new: ${JSON.stringify(newBroadcasts)}`)
     const channelTitleMap: { [key: string]: { title: string, video: string } } = Object.fromEntries(newBroadcasts.map(c => [[c.channel_id], { title: c.title, video: c.video }]))
-    console.log(channelTitleMap)
     await Promise.all(channelToServers.flatMap(c => {
-      const title = channelTitleMap[c.channel_id].title
+      const title = channelTitleMap[c.channel_id]?.title
       return Object.entries(c.servers).flatMap(e => {
         const [discord_server, enabled] = e
-        if (enabled && title.toLowerCase().includes(serverTitleMap[discord_server].toLowerCase())) {
+        if (title && enabled && title.toLowerCase().includes(serverTitleMap[discord_server].toLowerCase())) {
           return [{ discord_server: discord_server, title: title, video: channelTitleMap[c.channel_id].video }]
         } else {
           return []
