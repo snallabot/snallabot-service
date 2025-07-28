@@ -68,7 +68,7 @@ export const youtubeNotifierHandler: YoutubeNotifierHandler = {
         if (!servers[discordServer]) {
           throw new Error('YouTube channel not configured for this Discord server');
         }
-
+        delete servers[discordServer]
         // If no servers left, delete the entire document
         if (Object.keys(servers).length === 0) {
           transaction.delete(docRef);
