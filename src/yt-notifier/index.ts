@@ -93,52 +93,56 @@ const ONE_DAY_TTL = 3600 * 24 // 1 days in seconds
 async function notifyYoutubeBroadcasts() {
   const youtubeState = await createYoutubeNotifierStateManager()
   while (true) {
-    const channelToServers = youtubeState.getCurrentState()
-    const currentChannels = [...new Set(channelToServers.map(m => m.channel_id))]
-    console.log(`checking ${currentChannels}`)
-    const currentServers = [...new Set(channelToServers.flatMap(c => Object.entries(c.servers).filter(e => { const [_, enabled] = e; return enabled }).map(e => e[0])))]
-    const channels = await Promise.all(currentChannels
-      .map(channel_id =>
-        fetch(`https://www.youtube.com/channel/${channel_id}/live`)
-          .then(res => res.text())
-          .then(t => isStreaming(t) ? [{ channel_id, title: extractTitle(t), video: extractVideo(t) }] : [])
-      ))
-    const serverTitleKeywords = await Promise.all(currentServers.map(async server => {
-      const doc = await db.collection("league_settings").doc(server).get()
-      const leagueSettings = doc.exists ? doc.data() as LeagueSettings : {} as LeagueSettings
-      const configuration = leagueSettings.commands?.broadcast
-      if (!configuration) {
-        console.error(`${server} is not configured for Broadcasts`)
-        return []
-      } else {
-        return [[server, configuration.title_keyword]]
-      }
-    }))
-    const serverTitleMap: { [key: string]: string } = Object.fromEntries(serverTitleKeywords.flat())
-    const currentlyLiveStreaming = channels.flat()
-    console.log(`Currently Live Streaming: ${currentlyLiveStreaming.map(m => m.title)}`)
-    const newBroadcasts = currentlyLiveStreaming.filter(c => !(currentlyBroadcasting.get(c.channel_id) as string | undefined)?.includes(c.video))
-    currentlyLiveStreaming.forEach(c => {
-      currentlyBroadcasting.set(c.channel_id, c.video, ONE_DAY_TTL)
-    })
-    console.log(`broadcasts that are new: ${JSON.stringify(newBroadcasts)}`)
-    const channelTitleMap: { [key: string]: { title: string, video: string } } = Object.fromEntries(newBroadcasts.map(c => [[c.channel_id], { title: c.title, video: c.video }]))
-    await Promise.all(channelToServers.flatMap(c => {
-      const title = channelTitleMap[c.channel_id]?.title
-      return Object.entries(c.servers).flatMap(e => {
-        const [discord_server, enabled] = e
-        if (title && enabled && title.toLowerCase().includes(serverTitleMap[discord_server].toLowerCase())) {
-          return [{ discord_server: discord_server, title: title, video: channelTitleMap[c.channel_id].video }]
-        } else {
+    try {
+      const channelToServers = youtubeState.getCurrentState()
+      const currentChannels = [...new Set(channelToServers.map(m => m.channel_id))]
+      console.log(`checking ${currentChannels}`)
+      const currentServers = [...new Set(channelToServers.flatMap(c => Object.entries(c.servers).filter(e => { const [_, enabled] = e; return enabled }).map(e => e[0])))]
+      const channels = await Promise.all(currentChannels
+        .map(channel_id =>
+          fetch(`https://www.youtube.com/channel/${channel_id}/live`)
+            .then(res => res.text())
+            .then(t => isStreaming(t) ? [{ channel_id, title: extractTitle(t), video: extractVideo(t) }] : [])
+        ))
+      const serverTitleKeywords = await Promise.all(currentServers.map(async server => {
+        const doc = await db.collection("league_settings").doc(server).get()
+        const leagueSettings = doc.exists ? doc.data() as LeagueSettings : {} as LeagueSettings
+        const configuration = leagueSettings.commands?.broadcast
+        if (!configuration) {
+          console.error(`${server} is not configured for Broadcasts`)
           return []
+        } else {
+          return [[server, configuration.title_keyword]]
         }
+      }))
+      const serverTitleMap: { [key: string]: string } = Object.fromEntries(serverTitleKeywords.flat())
+      const currentlyLiveStreaming = channels.flat()
+      console.log(`Currently Live Streaming: ${currentlyLiveStreaming.map(m => m.title)}`)
+      const newBroadcasts = currentlyLiveStreaming.filter(c => !(currentlyBroadcasting.get(c.channel_id) as string | undefined)?.includes(c.video))
+      currentlyLiveStreaming.forEach(c => {
+        currentlyBroadcasting.set(c.channel_id, c.video, ONE_DAY_TTL)
       })
-    }).map(async c => {
-      return await EventDB.appendEvents<MaddenBroadcastEvent>([{ key: c.discord_server, event_type: "MADDEN_BROADCAST", title: c.title, video: c.video }], EventDelivery.EVENT_SOURCE)
-    }))
-    console.log("Check complete, sleeping for 5 minutes...\n")
-    await fetch("https://hc-ping.com/59c94914-bacc-42e1-8ae5-fde17d2e8dcc")
-    await sleep(5 * 60 * 1000)
+      console.log(`broadcasts that are new: ${JSON.stringify(newBroadcasts)}`)
+      const channelTitleMap: { [key: string]: { title: string, video: string } } = Object.fromEntries(newBroadcasts.map(c => [[c.channel_id], { title: c.title, video: c.video }]))
+      await Promise.all(channelToServers.flatMap(c => {
+        const title = channelTitleMap[c.channel_id]?.title
+        return Object.entries(c.servers).flatMap(e => {
+          const [discord_server, enabled] = e
+          if (title && enabled && title.toLowerCase().includes(serverTitleMap[discord_server].toLowerCase())) {
+            return [{ discord_server: discord_server, title: title, video: channelTitleMap[c.channel_id].video }]
+          } else {
+            return []
+          }
+        })
+      }).map(async c => {
+        return await EventDB.appendEvents<MaddenBroadcastEvent>([{ key: c.discord_server, event_type: "MADDEN_BROADCAST", title: c.title, video: c.video }], EventDelivery.EVENT_SOURCE)
+      }))
+      console.log("Check complete, sleeping for 5 minutes...\n")
+      await fetch("https://hc-ping.com/59c94914-bacc-42e1-8ae5-fde17d2e8dcc")
+      await sleep(5 * 60 * 1000)
+    } catch (e) {
+      console.error(e)
+    }
   }
 }
 
