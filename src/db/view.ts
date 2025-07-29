@@ -5,6 +5,7 @@ import { Player, Team } from "../export/madden_league_types"
 import db from "./firebase"
 import { LeagueSettings } from "../discord/settings_db"
 import { DiscordLeagueConnectionEvent } from "./events"
+import FileHandler from "../file_handlers"
 
 const TTL = 0
 
@@ -59,6 +60,65 @@ abstract class CachedUpdatingView<T> extends View<T> {
     })
   }
 }
+
+abstract class StorageBackedCachedView<T> extends View<T> {
+  view: View<T>
+
+  constructor(view: View<T>) {
+    super(view.id)
+    this.view = view
+  }
+
+  createCacheKey(key: string) {
+    return key + "|" + this.id
+  }
+
+  createStorageDirectory(key: string) {
+    return `madden_views/${key}/${this.id}`
+  }
+
+  async createView(key: string) {
+    const cachedView = viewCache.get(this.createCacheKey(key)) as T | undefined
+    if (cachedView) {
+      return cachedView
+    }
+    const viewFile = this.createStorageDirectory(key)
+    try {
+      const storedView = await FileHandler.readFile<T>(viewFile)
+      viewCache.set(this.createCacheKey(key), storedView, TTL)
+      return storedView
+    } catch (e) {
+      console.log("doing a full recompute on a stored view")
+      const view = await this.view.createView(key)
+      if (view) {
+        viewCache.set(this.createCacheKey(key), view, TTL)
+        try {
+          await FileHandler.writeFile<T>(view, viewFile)
+        }
+        catch (e2) {
+        }
+      }
+      return view
+    }
+  }
+
+  abstract update(event: { [key: string]: any[] }, currentView: T): T
+
+  listen(...event_types: string[]) {
+    event_types.forEach(event_type => {
+      EventDB.on(event_type, async events => {
+        const key = events.map(e => e.key)[0]
+        const currentView = await this.createView(key)
+        if (currentView) {
+          const newView = this.update({ [event_type]: events }, currentView)
+          viewCache.set(this.createCacheKey(key), newView, TTL)
+          await FileHandler.writeFile<T>(newView, this.createStorageDirectory(key))
+        }
+      })
+    })
+  }
+}
+
 type TeamSearch = {
   [key: string]: {
     cityName: string,
@@ -146,7 +206,7 @@ class PlayerSearchIndex extends View<PlayerSearch> {
   }
 }
 
-class CacheablePlayerSearchIndex extends CachedUpdatingView<PlayerSearch> {
+class CacheablePlayerSearchIndex extends StorageBackedCachedView<PlayerSearch> {
   constructor() {
     super(new PlayerSearchIndex())
   }
