@@ -74,7 +74,7 @@ abstract class StorageBackedCachedView<T> extends View<T> {
   }
 
   createStorageDirectory(key: string) {
-    return `views/${key}/${this.id}`
+    return `madden_views/${key}/${this.id}`
   }
 
   async createView(key: string) {
