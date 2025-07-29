@@ -112,6 +112,7 @@ abstract class StorageBackedCachedView<T> extends View<T> {
         if (currentView) {
           const newView = this.update({ [event_type]: events }, currentView)
           viewCache.set(this.createCacheKey(key), newView, TTL)
+          await FileHandler.writeFile<T>(newView, this.createStorageDirectory(key))
         }
       })
     })
