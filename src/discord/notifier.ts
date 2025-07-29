@@ -1,12 +1,11 @@
 import EventDB, { EventDelivery, SnallabotEvent } from "../db/events_db"
-import { DiscordClient, SNALLABOT_TEST_USER, SNALLABOT_USER, formatTeamMessageName, createWeekKey, SnallabotReactions } from "./discord_utils"
-import { ChannelId, DiscordIdType, GameChannel, GameChannelState, LeagueSettings, MessageId, TeamAssignments, UserId } from "./settings_db"
+import { DiscordClient, formatTeamMessageName, createWeekKey, SnallabotReactions } from "./discord_utils"
+import { ChannelId, GameChannel, GameChannelState, LeagueSettings, MessageId, TeamAssignments, UserId } from "./settings_db"
 import createLogger from "./logging"
 import MaddenDB from "../db/madden_db"
-import { APIGuildMember, APIUser } from "discord-api-types/v10"
 import db from "../db/firebase"
 import { FieldValue } from "firebase-admin/firestore"
-import { ConfirmedSim, SimResult } from "../db/events"
+import { ConfirmedSimV2, SimResult } from "../db/events"
 import { ExportContext, exporterForLeague } from "../dashboard/ea_client"
 import { GameResult } from "../export/madden_league_types"
 
@@ -68,7 +67,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
     const homeTeamId = teams.getTeamForId(game.homeTeamId).teamId
     const awayUser = latestAssignents[awayTeamId]?.discord_user
     const homeUser = latestAssignents[homeTeamId]?.discord_user
-    const event: SnallabotEvent<ConfirmedSim> = { key: guildId, event_type: "CONFIRMED_SIM", result: result, scheduleId: gameChannel.scheduleId, requestedUsers: requestedUsers, confirmedUsers: confirmedUsers, week: week, seasonIndex: season, leagueId: leagueId }
+    const event: SnallabotEvent<ConfirmedSimV2> = { key: leagueId, event_type: "CONFIRMED_SIM", result: result, scheduleId: gameChannel.scheduleId, requestedUsers: requestedUsers, confirmedUsers: confirmedUsers, week: week, seasonIndex: season }
     if (awayUser) {
       event.awayUser = awayUser
     }
