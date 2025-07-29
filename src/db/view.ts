@@ -88,6 +88,7 @@ abstract class StorageBackedCachedView<T> extends View<T> {
       viewCache.set(this.createCacheKey(key), storedView, TTL)
       return storedView
     } catch (e) {
+      console.log("doing a full recompute on a stored view")
       const view = await this.view.createView(key)
       if (view) {
         viewCache.set(this.createCacheKey(key), view, TTL)
@@ -95,7 +96,6 @@ abstract class StorageBackedCachedView<T> extends View<T> {
           await FileHandler.writeFile<T>(view, viewFile)
         }
         catch (e2) {
-          console.error(e2)
         }
       }
       return view
