@@ -84,7 +84,7 @@ abstract class StorageBackedCachedView<T> extends View<T> {
     }
     const viewFile = this.createStorageDirectory(key)
     try {
-      const storedView = FileHandler.readFile<T>(viewFile)
+      const storedView = await FileHandler.readFile<T>(viewFile)
       viewCache.set(this.createCacheKey(key), storedView, TTL)
       return storedView
     } catch (e) {
@@ -94,8 +94,8 @@ abstract class StorageBackedCachedView<T> extends View<T> {
         try {
           await FileHandler.writeFile<T>(view, viewFile)
         }
-        catch (e) {
-          console.error(e)
+        catch (e2) {
+          console.error(e2)
         }
       }
       return view
