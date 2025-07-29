@@ -29,6 +29,10 @@ export type PlayerStats = {
 
 export type PlayerListQuery = { teamId?: number, position?: string, rookie?: boolean }
 
+export function idWeeklyEvents(e: { seasonIndex: number, weekIndex: number }, id: number) {
+  return `season${e.seasonIndex}-week${e.weekIndex}-${id}`
+}
+
 interface MaddenDB {
   appendEvents<Event>(event: SnallabotEvent<Event>[], idFn: (event: Event) => string): Promise<void>
   on<Event>(event_type: string, notifier: EventNotifier<Event>): void,
@@ -132,27 +136,9 @@ function createTeamList(teams: StoredEvent<Team>[]): TeamList {
 }
 
 async function getStats<T extends { rosterId: number, stageIndex: number }>(leagueId: string, rosterId: number, collection: string): Promise<SnallabotEvent<T>[]> {
-  const stats = await db.collection("league_data").doc(leagueId).collection(collection).where("rosterId", "==", rosterId).get()
+  const stats = await db.collection("madden_data26").doc(leagueId).collection(collection).where("rosterId", "==", rosterId).get()
   const playerStats = stats.docs.map(d => d.data() as StoredEvent<T>).filter(d => d.stageIndex > 0)
-  try {
-    const historyDocs = await db.collectionGroup("history").where("rosterId.oldValue", "==", rosterId).get()
-    const fromhistory = await Promise.all(historyDocs.docs.filter(d => {
-      return d.ref.parent.parent?.parent.id === collection
-    }).flatMap(d => d.ref.parent.parent?.id ? [d.ref.parent.parent.id] : [])
-      .map(async docId => {
-        const ogDoc = await db.collection("league_data").doc(leagueId).collection(collection).doc(docId).get()
-        const data = ogDoc.data() as StoredEvent<T>
-        const histories = await db.collection("league_data").doc(leagueId).collection(collection).doc(docId).collection("history").get()
-        const changes = histories.docs.map(d => convertDate(d.data() as StoredHistory))
-        const historyStats = reconstructFromHistory<T>(changes, data)
-        historyStats.push(data)
-        return historyStats.filter(d => d.rosterId === rosterId && d.stageIndex > 0)
-      }))
-    return playerStats.concat(fromhistory.flat())
-  }
-  catch (e) {
-    return playerStats
-  }
+  return playerStats
 }
 
 
@@ -190,14 +176,14 @@ const MaddenDB: MaddenDB = {
       const batch = db.batch()
       await Promise.all(batchEvents.map(async event => {
         const eventId = idFn(event)
-        const doc = db.collection("league_data").doc(event.key).collection(event.event_type).doc(eventId)
+        const doc = db.collection("madden_data26").doc(event.key).collection(event.event_type).doc(eventId)
         const fetchedDoc = await doc.get()
         if (fetchedDoc.exists) {
           const { timestamp: oldTimestamp, id, ...oldEvent } = fetchedDoc.data() as StoredEvent<Event>
           const change = createEventHistoryUpdate(event, oldEvent)
           if (Object.keys(change).length > 0) {
             const changeId = randomUUID()
-            const historyDoc = db.collection("league_data").doc(event.key).collection(event.event_type).doc(eventId).collection("history").doc(changeId)
+            const historyDoc = db.collection("madden_data26").doc(event.key).collection(event.event_type).doc(eventId).collection("history").doc(changeId)
             batch.set(historyDoc, { ...change, timestamp: timestamp })
           }
         }
@@ -235,11 +221,11 @@ const MaddenDB: MaddenDB = {
     EventDB.on(event_type, notifier)
   },
   getLatestTeams: async function(leagueId: string): Promise<TeamList> {
-    const teamDocs = await db.collection("league_data").doc(leagueId).collection("MADDEN_TEAM").get()
+    const teamDocs = await db.collection("madden_data26").doc(leagueId).collection("MADDEN_TEAM").get()
     return createTeamList(teamDocs.docs.filter(d => d.id !== "leagueteams").map(d => d.data() as StoredEvent<Team>))
   },
   getLatestWeekSchedule: async function(leagueId: string, week: number) {
-    const weekDocs = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").where("weekIndex", "==", week - 1)
+    const weekDocs = await db.collection("madden_data26").doc(leagueId).collection("MADDEN_SCHEDULE").where("weekIndex", "==", week - 1)
       .where("stageIndex", "==", 1).get()
     const maddenSchedule = weekDocs.docs.filter(d => !d.id.startsWith("schedules")).map(d => d.data() as SnallabotEvent<MaddenGame>)
       .filter(game => game.awayTeamId != 0 && game.homeTeamId != 0)
@@ -255,77 +241,45 @@ const MaddenDB: MaddenDB = {
     throw new Error("Missing schedule for week " + week)
   },
   getWeekScheduleForSeason: async function(leagueId: string, week: number, season: number) {
-    const weekDocs = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").where("weekIndex", "==", week - 1).where("seasonIndex", "==", season)
+    const weekDocs = await db.collection("madden_data26").doc(leagueId).collection("MADDEN_SCHEDULE").where("weekIndex", "==", week - 1).where("seasonIndex", "==", season)
       .where("stageIndex", "==", 1).get()
-    const maddenSchedule = weekDocs.docs.filter(d => !d.id.startsWith("schedules")).map(d => d.data() as SnallabotEvent<MaddenGame>)
+    const maddenSchedule = weekDocs.docs.map(d => d.data() as SnallabotEvent<MaddenGame>)
       .filter(game => game.awayTeamId != 0 && game.homeTeamId != 0)
     if (maddenSchedule.length !== 0) {
       return maddenSchedule
     }
-    const allDocs = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").get()
-    const allGameChanges = await Promise.all(allDocs.docs.map(async (doc) => {
-      if (doc.id.startsWith("schedules")) {
-        return []
-      }
-      const data = doc.data() as StoredEvent<MaddenGame>
-      const changesSnapshot = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").doc(doc.id).collection("history").get()
-      const changes = changesSnapshot.docs.map(d => convertDate(d.data() as StoredHistory))
-      return reconstructFromHistory(changes, data)
-    }))
-    const allGames = Object.entries(Object.groupBy(allGameChanges.flat(), g => `${g.id}|${g.weekIndex}|${g.seasonIndex}`))
-      .flatMap(entry => {
-        const [_, gamesInWeek] = entry
-        if (gamesInWeek && gamesInWeek.length > 0) {
-          return [gamesInWeek.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())[0]]
-        }
-        return []
-      }).filter(g => g.weekIndex === week - 1 && g.seasonIndex === season && g.stageIndex > 0)
-    if (allGames.length === 0) {
-      throw new Error(`Missing schedule for week ${week} and season ${MADDEN_SEASON + season}`)
-    }
-    return allGames
+    throw new Error(`Missing schedule for week ${week} and season ${MADDEN_SEASON + season}`)
   },
   getGameForSchedule: async function(leagueId: string, scheduleId: number, week: number, season: number) {
-    const schedule = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").doc(`${scheduleId}`).get()
+    const docId = idWeeklyEvents({ seasonIndex: season, weekIndex: week - 1 }, scheduleId)
+    const schedule = await db.collection("madden_data26").doc(leagueId).collection("MADDEN_SCHEDULE").doc(docId).get()
     if (!schedule.exists) {
-      throw new Error("Schedule document not found for id " + scheduleId)
+      throw new Error("Schedule document not found for id" + docId)
     }
     const game = schedule.data() as MaddenGame
-    if (game.weekIndex === week - 1 && season === game.seasonIndex) {
-      return game
-    }
-    const history = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").doc(`${scheduleId}`).collection("history").get()
-    const changes: StoredHistory[] = history.docs
-      .map(doc => convertDate(doc.data() as StoredHistory))
-    const allGames = reconstructFromHistory(changes, game)
-    const correctGame = allGames.filter(g => g.weekIndex === week - 1 && g.seasonIndex === season && g.stageIndex > 0)
-      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-    if (correctGame.length === 0) {
-      throw new Error("Schedule not found for id " + scheduleId + ` ${week} and ${season}`)
-    }
-    return correctGame[0]
+    return game
   },
   getStandingForTeam: async function(leagueId: string, teamId: number) {
-    const standing = await db.collection("league_data").doc(leagueId).collection("MADDEN_STANDING").doc(`${teamId}`).get()
+    const standing = await db.collection("madden_data26").doc(leagueId).collection("MADDEN_STANDING").doc(`${teamId}`).get()
     if (!standing.exists) {
       throw new Error("standing not found for id " + teamId)
     }
     return standing.data() as Standing
   },
   getLatestStandings: async function(leagueId: string) {
-    const standingSnapshot = await db.collection("league_data").doc(leagueId).collection("MADDEN_STANDING").get()
+    const standingSnapshot = await db.collection("madden_data26").doc(leagueId).collection("MADDEN_STANDING").get()
     return standingSnapshot.docs.filter(d => d.id !== "standings").map(doc => {
       return doc.data() as SnallabotEvent<Standing>
     })
   },
   getLatestPlayers: async function(leagueId: string) {
-    const playerSnapshot = await db.collection("league_data").doc(leagueId).collection("MADDEN_PLAYER").select("rosterId", "firstName", "lastName", "teamId", "position").get()
+    const playerSnapshot = await db.collection("madden_data26").doc(leagueId).collection("MADDEN_PLAYER").select("rosterId", "firstName", "lastName", "teamId", "position").get()
     return playerSnapshot.docs.filter(d => !d.id.startsWith("roster")).map(doc => {
       return doc.data() as SnallabotEvent<Player>
     })
   },
   getPlayer: async function(leagueId: string, rosterId: string) {
-    const playerDoc = await db.collection("league_data").doc(leagueId).collection("MADDEN_PLAYER").doc(rosterId).get()
+    const playerDoc = await db.collection("madden_data26").doc(leagueId).collection("MADDEN_PLAYER").doc(rosterId).get()
     if (playerDoc.exists) {
       return playerDoc.data() as Player
     }
@@ -383,9 +337,9 @@ const MaddenDB: MaddenDB = {
     let playersQuery;
     // flip the query for going backwards by ordering opposite and using start after
     if (endBefore) {
-      playersQuery = db.collection("league_data").doc(leagueId).collection("MADDEN_PLAYER").orderBy("playerBestOvr", "asc").orderBy("rosterId", "desc").limit(limit)
+      playersQuery = db.collection("madden_data26").doc(leagueId).collection("MADDEN_PLAYER").orderBy("playerBestOvr", "asc").orderBy("rosterId", "desc").limit(limit)
     } else {
-      playersQuery = db.collection("league_data").doc(leagueId).collection("MADDEN_PLAYER").orderBy("playerBestOvr", "desc").orderBy("rosterId").limit(limit)
+      playersQuery = db.collection("madden_data26").doc(leagueId).collection("MADDEN_PLAYER").orderBy("playerBestOvr", "desc").orderBy("rosterId").limit(limit)
     }
     if ((query.teamId && query.teamId !== -1) || query.teamId === 0) {
       playersQuery = playersQuery.where("teamId", "==", query.teamId);
