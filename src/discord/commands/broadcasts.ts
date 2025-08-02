@@ -1,12 +1,11 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command, MessageComponentInteraction, MessageComponentHandler } from "../commands_handler"
 import { respond, createMessageResponse, DiscordClient } from "../discord_utils"
-import { APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandGroupOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ApplicationCommandType, ButtonStyle, ChannelType, ComponentType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
+import { APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandGroupOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ApplicationCommandType, ButtonStyle, ChannelType, ComponentType, RESTPostAPIApplicationCommandsJSONBody, InteractionResponseType } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
 import { BroadcastConfiguration, DiscordIdType } from "../settings_db"
 import { twitchNotifierHandler } from "../../twitch-notifier/routes"
 import { youtubeNotifierHandler } from "../../yt-notifier/routes"
-import { InteractionResponseType } from "discord-interactions"
 
 type BroadcastChannel = { name: string, url: string }
 enum BroadcastType {
@@ -53,7 +52,7 @@ function listBroadcasts(broadcasts: BroadcastChannel[], broadcastType: Broadcast
         }
       ]
     }
-  }
+  })
 }
 
 
