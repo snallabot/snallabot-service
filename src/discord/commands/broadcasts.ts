@@ -14,12 +14,16 @@ enum BroadcastType {
 }
 type ComponentId = { t: BroadcastType, p: number }
 const LIMIT = 10
-function listBroadcasts(broadcasts: BroadcastChannel[], broadcastType: BroadcastType, paginatedIndex?: number) {
+enum ResponseType {
+  COMMAND,
+  INTERACTION
+}
+function listBroadcasts(broadcasts: BroadcastChannel[], broadcastType: BroadcastType, responseType: ResponseType, paginatedIndex?: number) {
   const startIndex = paginatedIndex ? paginatedIndex : 0
   const endIndex = Math.min(broadcasts.length, startIndex + LIMIT)
   const formatted = broadcasts.map(y => `[${y.name}](${y.url})`).filter((_, idx) => idx >= startIndex && idx < endIndex)
   return {
-    type: InteractionResponseType.ChannelMessageWithSource,
+    type: responseType === ResponseType.COMMAND ? InteractionResponseType.ChannelMessageWithSource : InteractionResponseType.UpdateMessage,
     data: {
       flags: 32768,
       components: [
@@ -95,7 +99,7 @@ export default {
       if (groupCommandName === "list") {
         const youtubeUrls = await youtubeNotifierHandler.listYoutubeChannels(guild_id)
 
-        respond(ctx, listBroadcasts(youtubeUrls.map(y => ({ name: y.channelName, url: y.channelUri })), BroadcastType.YOUTUBE))
+        respond(ctx, listBroadcasts(youtubeUrls.map(y => ({ name: y.channelName, url: y.channelUri })), BroadcastType.YOUTUBE), ResponseType.COMMAND)
       } else if (groupCommandName === "add") {
         if (!groupCommand.options || !groupCommand.options[0]) {
           throw new Error(`broadcast youtube ${groupCommandName} misconfigured`)
@@ -123,7 +127,7 @@ export default {
       const groupCommandName = groupCommand.name
       if (groupCommandName === "list") {
         const twitchUrls = await twitchNotifierHandler.listTwitchChannels(guild_id)
-        respond(ctx, listBroadcasts(twitchUrls.map(t => ({ name: t.name, url: t.url })), BroadcastType.TWITCH))
+        respond(ctx, listBroadcasts(twitchUrls.map(t => ({ name: t.name, url: t.url })), BroadcastType.TWITCH), ResponseType.COMMAND)
       } else if (groupCommandName === "add") {
         if (!groupCommand.options || !groupCommand.options[0]) {
           throw new Error(`broadcast twitch ${groupCommandName} misconfigured`)
@@ -151,10 +155,10 @@ export default {
     const listComponent = JSON.parse(customId) as ComponentId
     if (listComponent.t === BroadcastType.TWITCH) {
       const twitchList = await twitchNotifierHandler.listTwitchChannels(interaction.guild_id)
-      return listBroadcasts(twitchList, BroadcastType.TWITCH, listComponent.p)
+      return listBroadcasts(twitchList, BroadcastType.TWITCH, ResponseType.INTERACTION, listComponent.p)
     } else if (listComponent.t === BroadcastType.YOUTUBE) {
       const ytList = await youtubeNotifierHandler.listYoutubeChannels(interaction.guild_id)
-      return listBroadcasts(ytList.map(y => ({ name: y.channelName, url: y.channelUri })), BroadcastType.YOUTUBE, listComponent.p)
+      return listBroadcasts(ytList.map(y => ({ name: y.channelName, url: y.channelUri })), BroadcastType.YOUTUBE, ResponseType.INTERACTION, listComponent.p)
     } else {
       throw new Error(`invalid broadcast type ${listComponent.t}`)
     }
