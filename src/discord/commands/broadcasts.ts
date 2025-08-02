@@ -123,7 +123,7 @@ export default {
       const groupCommandName = groupCommand.name
       if (groupCommandName === "list") {
         const twitchUrls = await twitchNotifierHandler.listTwitchChannels(guild_id)
-        respond(ctx, respond(ctx, listBroadcasts(twitchUrls.map(t => ({ name: t.name, url: t.url })), BroadcastType.TWITCH)))
+        respond(ctx, listBroadcasts(twitchUrls.map(t => ({ name: t.name, url: t.url })), BroadcastType.TWITCH))
       } else if (groupCommandName === "add") {
         if (!groupCommand.options || !groupCommand.options[0]) {
           throw new Error(`broadcast twitch ${groupCommandName} misconfigured`)
