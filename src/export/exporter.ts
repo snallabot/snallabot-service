@@ -1,5 +1,5 @@
 import { SnallabotEvent } from "./../db/events_db"
-import MaddenDB from "../db/madden_db"
+import MaddenDB, { MaddenEvents } from "../db/madden_db"
 import MaddenHash, { createTwoLayer, findDifferences } from "../db/madden_hash_storage"
 import { DefensiveExport, KickingExport, PassingExport, PuntingExport, ReceivingExport, RosterExport, RushingExport, SchedulesExport, StandingExport, TeamExport, TeamStatsExport } from "./madden_league_types";
 import { Stage } from "../dashboard/ea_client";
@@ -108,65 +108,84 @@ export function MaddenUrlDestination(baseUrl: string): MaddenExportDestination {
 export const SnallabotExportDestination: MaddenExportDestination = {
   leagueTeams: async function(platform: string, leagueId: string, data: TeamExport): Promise<ExportResult> {
     const events = data.leagueTeamInfoList.map(team => (
-      { key: leagueId, platform: platform, event_type: "MADDEN_TEAM", ...team }
+      { key: leagueId, platform: platform, event_type: MaddenEvents.MADDEN_TEAM, ...team }
     ))
     await sendEvents(leagueId, "leagueteams", events, e => e.teamId)
+    await MaddenDB.updateLeagueExportStatus(leagueId, MaddenEvents.MADDEN_TEAM)
     return ExportResult.SUCCESS
   },
   standings: async function(platform: string, leagueId: string, data: StandingExport): Promise<ExportResult> {
-    const events = data.teamStandingInfoList.map(standing => ({ key: leagueId, platform: platform, event_type: "MADDEN_STANDING", ...standing }))
+    const events = data.teamStandingInfoList.map(standing => ({ key: leagueId, platform: platform, event_type: MaddenEvents.MADDEN_STANDING, ...standing }))
     await sendEvents(leagueId, "standings", events, e => e.teamId)
+    await MaddenDB.updateLeagueExportStatus(leagueId, MaddenEvents.MADDEN_STANDING)
     return ExportResult.SUCCESS
   },
   schedules: async function(platform: string, leagueId: string, week: number, stage: Stage, data: SchedulesExport): Promise<ExportResult> {
-    const events = data.gameScheduleInfoList.map(game => ({ key: leagueId, platform: platform, event_type: "MADDEN_SCHEDULE", ...game }))
+    const events = data.gameScheduleInfoList.map(game => ({ key: leagueId, platform: platform, event_type: MaddenEvents.MADDEN_SCHEDULE, ...game }))
     await sendEvents(leagueId, `schedules${stage}-${week}`, events, e => e.scheduleId)
+    const season = Math.max(...events.map(e => e.seasonIndex))
+    await MaddenDB.updateWeeklyExportStatus(leagueId, MaddenEvents.MADDEN_SCHEDULE, week, season)
     return ExportResult.SUCCESS
   },
   punting: async function(platform: string, leagueId: string, week: number, stage: Stage, data: PuntingExport): Promise<ExportResult> {
-    const events = data.playerPuntingStatInfoList.map(stat => ({ key: leagueId, platform: platform, event_type: "MADDEN_PUNTING_STAT", ...stat }))
+    const events = data.playerPuntingStatInfoList.map(stat => ({ key: leagueId, platform: platform, event_type: MaddenEvents.MADDEN_PUNTING_STAT, ...stat }))
     await sendEvents(leagueId, `punting${stage}-${week}`, events, e => e.statId)
+    const season = Math.max(...events.map(e => e.seasonIndex))
+    await MaddenDB.updateWeeklyExportStatus(leagueId, MaddenEvents.MADDEN_PUNTING_STAT, week, season)
     return ExportResult.SUCCESS
   },
   teamStats: async function(platform: string, leagueId: string, week: number, stage: Stage, data: TeamStatsExport): Promise<ExportResult> {
-    const events = data.teamStatInfoList.map(stat => ({ key: leagueId, platform: platform, event_type: "MADDEN_TEAM_STAT", ...stat }))
+    const events = data.teamStatInfoList.map(stat => ({ key: leagueId, platform: platform, event_type: MaddenEvents.MADDEN_TEAM_STAT, ...stat }))
     await sendEvents(leagueId, `teamstats${stage}-${week}`, events, e => e.statId)
+    const season = Math.max(...events.map(e => e.seasonIndex))
+    await MaddenDB.updateWeeklyExportStatus(leagueId, MaddenEvents.MADDEN_TEAM_STAT, week, season)
     return ExportResult.SUCCESS
   },
   passing: async function(platform: string, leagueId: string, week: number, stage: Stage, data: PassingExport): Promise<ExportResult> {
-    const events = data.playerPassingStatInfoList.map(stat => ({ key: leagueId, platform: platform, event_type: "MADDEN_PASSING_STAT", ...stat }))
+    const events = data.playerPassingStatInfoList.map(stat => ({ key: leagueId, platform: platform, event_type: MaddenEvents.MADDEN_PASSING_STAT, ...stat }))
     await sendEvents(leagueId, `passing${stage}-${week}`, events, e => e.statId)
+    const season = Math.max(...events.map(e => e.seasonIndex))
+    await MaddenDB.updateWeeklyExportStatus(leagueId, MaddenEvents.MADDEN_PASSING_STAT, week, season)
     return ExportResult.SUCCESS
   },
   kicking: async function(platform: string, leagueId: string, week: number, stage: Stage, data: KickingExport): Promise<ExportResult> {
-    const events = data.playerKickingStatInfoList.map(stat => ({ key: leagueId, platform: platform, event_type: "MADDEN_KICKING_STAT", ...stat }))
+    const events = data.playerKickingStatInfoList.map(stat => ({ key: leagueId, platform: platform, event_type: MaddenEvents.MADDEN_KICKING_STAT, ...stat }))
     await sendEvents(leagueId, `kicking${stage}-${week}`, events, e => e.statId)
+    const season = Math.max(...events.map(e => e.seasonIndex))
+    await MaddenDB.updateWeeklyExportStatus(leagueId, MaddenEvents.MADDEN_KICKING_STAT, week, season)
     return ExportResult.SUCCESS
   },
   rushing: async function(platform: string, leagueId: string, week: number, stage: Stage, data: RushingExport): Promise<ExportResult> {
-    const events = data.playerRushingStatInfoList.map(stat => ({ key: leagueId, platform: platform, event_type: "MADDEN_RUSHING_STAT", ...stat }))
+    const events = data.playerRushingStatInfoList.map(stat => ({ key: leagueId, platform: platform, event_type: MaddenEvents.MADDEN_RUSHING_STAT, ...stat }))
     await sendEvents(leagueId, `rushing${stage}-${week}`, events, e => e.statId)
+    const season = Math.max(...events.map(e => e.seasonIndex))
+    await MaddenDB.updateWeeklyExportStatus(leagueId, MaddenEvents.MADDEN_RUSHING_STAT, week, season)
     return ExportResult.SUCCESS
   },
   defense: async function(platform: string, leagueId: string, week: number, stage: Stage, data: DefensiveExport): Promise<ExportResult> {
-    const events = data.playerDefensiveStatInfoList.map(stat => ({ key: leagueId, platform: platform, event_type: "MADDEN_DEFENSIVE_STAT", ...stat }))
+    const events = data.playerDefensiveStatInfoList.map(stat => ({ key: leagueId, platform: platform, event_type: MaddenEvents.MADDEN_DEFENSIVE_STAT, ...stat }))
     await sendEvents(leagueId, `defense${stage}-${week}`, events, e => e.statId)
-
+    const season = Math.max(...events.map(e => e.seasonIndex))
+    await MaddenDB.updateWeeklyExportStatus(leagueId, MaddenEvents.MADDEN_DEFENSIVE_STAT, week, season)
     return ExportResult.SUCCESS
   },
   receiving: async function(platform: string, leagueId: string, week: number, stage: Stage, data: ReceivingExport): Promise<ExportResult> {
-    const events = data.playerReceivingStatInfoList.map(stat => ({ key: leagueId, platform: platform, event_type: "MADDEN_RECEIVING_STAT", ...stat }))
+    const events = data.playerReceivingStatInfoList.map(stat => ({ key: leagueId, platform: platform, event_type: MaddenEvents.MADDEN_RECEIVING_STAT, ...stat }))
     await sendEvents(leagueId, `receiving${stage}-${week}`, events, e => e.statId)
+    const season = Math.max(...events.map(e => e.seasonIndex))
+    await MaddenDB.updateWeeklyExportStatus(leagueId, MaddenEvents.MADDEN_RECEIVING_STAT, week, season)
     return ExportResult.SUCCESS
   },
   freeagents: async function(platform: string, leagueId: string, data: RosterExport): Promise<ExportResult> {
-    const events = data.rosterInfoList.map(player => ({ key: leagueId, platform: platform, event_type: "MADDEN_PLAYER", ...player }))
+    const events = data.rosterInfoList.map(player => ({ key: leagueId, platform: platform, event_type: MaddenEvents.MADDEN_PLAYER, ...player }))
     await sendEvents(leagueId, `rosterfreeagents`, events, e => e.rosterId)
+    await MaddenDB.updateRosterExportStatus(leagueId, MaddenEvents.MADDEN_PLAYER, "0")
     return ExportResult.SUCCESS
   },
   teamRoster: async function(platform: string, leagueId: string, teamId: string, data: RosterExport): Promise<ExportResult> {
-    const events = data.rosterInfoList.map(player => ({ key: leagueId, platform: platform, event_type: "MADDEN_PLAYER", team: teamId, ...player }))
+    const events = data.rosterInfoList.map(player => ({ key: leagueId, platform: platform, event_type: MaddenEvents.MADDEN_PLAYER, team: teamId, ...player }))
     await sendEvents(leagueId, `roster${teamId}`, events, e => e.rosterId)
+    await MaddenDB.updateRosterExportStatus(leagueId, MaddenEvents.MADDEN_PLAYER, teamId)
     return ExportResult.SUCCESS
   }
 }

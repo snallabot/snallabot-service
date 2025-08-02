@@ -27,10 +27,46 @@ export type PlayerStats = {
   [PlayerStatType.PASSING]?: PassingStats[]
 }
 
+export enum MaddenEvents {
+  MADDEN_TEAM = "MADDEN_TEAM",
+  MADDEN_STANDING = "MADDEN_STANDING",
+  MADDEN_SCHEDULE = "MADDEN_SCHEDULE",
+  MADDEN_PUNTING_STAT = "MADDEN_PUNTING_STAT",
+  MADDEN_TEAM_STAT = "MADDEN_TEAM_STAT",
+  MADDEN_PASSING_STAT = "MADDEN_PASSING_STAT",
+  MADDEN_KICKING_STAT = "MADDEN_KICKING_STAT",
+  MADDEN_RUSHING_STAT = "MADDEN_RUSHING_STAT",
+  MADDEN_DEFENSIVE_STAT = "MADDEN_DEFENSIVE_STAT",
+  MADDEN_RECEIVING_STAT = "MADDEN_RECEIVING_STAT",
+  MADDEN_PLAYER = "MADDEN_PLAYER"
+}
+
 export type PlayerListQuery = { teamId?: number, position?: string, rookie?: boolean }
+type IndividualStatus = { lastExported: Date }
+export type ExportStatus = {
+  [MaddenEvents.MADDEN_TEAM]?: IndividualStatus,
+  [MaddenEvents.MADDEN_STANDING]?: IndividualStatus
+  weeklyStatus: {
+    [key: string]: {
+      [MaddenEvents.MADDEN_SCHEDULE]?: IndividualStatus,
+      [MaddenEvents.MADDEN_PUNTING_STAT]?: IndividualStatus,
+      [MaddenEvents.MADDEN_TEAM_STAT]?: IndividualStatus,
+      [MaddenEvents.MADDEN_PASSING_STAT]?: IndividualStatus,
+      [MaddenEvents.MADDEN_KICKING_STAT]?: IndividualStatus,
+      [MaddenEvents.MADDEN_RUSHING_STAT]?: IndividualStatus,
+      [MaddenEvents.MADDEN_DEFENSIVE_STAT]?: IndividualStatus,
+      [MaddenEvents.MADDEN_RECEIVING_STAT]?: IndividualStatus,
+    }
+  },
+  rosterStatus: {
+    [key: string]: {
+      [MaddenEvents.MADDEN_PLAYER]?: IndividualStatus
+    }
+  }
+}
 
 interface MaddenDB {
-  appendEvents<Event>(event: SnallabotEvent<Event>[], idFn: (event: Event) => string): Promise<void>
+  appendEvents<Event>(event: SnallabotEvent<Event>[], idFn: (event: Event) => string): Promise<void>,
   on<Event>(event_type: string, notifier: EventNotifier<Event>): void,
   getLatestTeams(leagueId: string): Promise<TeamList>,
   getLatestWeekSchedule(leagueId: string, week: number): Promise<MaddenGame[]>,
@@ -42,7 +78,10 @@ interface MaddenDB {
   getPlayer(leagueId: string, rosterId: string): Promise<Player>,
   getPlayerStats(leagueId: string, player: Player): Promise<PlayerStats>,
   getGamesForSchedule(leagueId: string, scheduleIds: Iterable<{ id: number, week: number, season: number }>): Promise<MaddenGame[]>,
-  getPlayers(leagueId: string, query: PlayerListQuery, limit: number, startAfter?: Player, endBefore?: Player): Promise<Player[]>
+  getPlayers(leagueId: string, query: PlayerListQuery, limit: number, startAfter?: Player, endBefore?: Player): Promise<Player[]>,
+  updateLeagueExportStatus(leagueId: string, eventType: MaddenEvents): Promise<void>,
+  updateWeeklyExportStatus(leagueId: string, eventType: MaddenEvents, week: number, season: number): Promise<void>,
+  updateRosterExportStatus(leagueId: string, eventType: MaddenEvents.MADDEN_PLAYER, teamId: string): Promise<void>
 }
 
 function convertDate(firebaseObject: any) {
@@ -235,11 +274,11 @@ const MaddenDB: MaddenDB = {
     EventDB.on(event_type, notifier)
   },
   getLatestTeams: async function(leagueId: string): Promise<TeamList> {
-    const teamDocs = await db.collection("league_data").doc(leagueId).collection("MADDEN_TEAM").get()
+    const teamDocs = await db.collection("league_data").doc(leagueId).collection(MaddenEvents.MADDEN_TEAM).get()
     return createTeamList(teamDocs.docs.filter(d => d.id !== "leagueteams").map(d => d.data() as StoredEvent<Team>))
   },
   getLatestWeekSchedule: async function(leagueId: string, week: number) {
-    const weekDocs = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").where("weekIndex", "==", week - 1)
+    const weekDocs = await db.collection("league_data").doc(leagueId).collection(MaddenEvents.MADDEN_SCHEDULE).where("weekIndex", "==", week - 1)
       .where("stageIndex", "==", 1).get()
     const maddenSchedule = weekDocs.docs.filter(d => !d.id.startsWith("schedules")).map(d => d.data() as SnallabotEvent<MaddenGame>)
       .filter(game => game.awayTeamId != 0 && game.homeTeamId != 0)
@@ -255,20 +294,20 @@ const MaddenDB: MaddenDB = {
     throw new Error("Missing schedule for week " + week)
   },
   getWeekScheduleForSeason: async function(leagueId: string, week: number, season: number) {
-    const weekDocs = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").where("weekIndex", "==", week - 1).where("seasonIndex", "==", season)
+    const weekDocs = await db.collection("league_data").doc(leagueId).collection(MaddenEvents.MADDEN_SCHEDULE).where("weekIndex", "==", week - 1).where("seasonIndex", "==", season)
       .where("stageIndex", "==", 1).get()
     const maddenSchedule = weekDocs.docs.filter(d => !d.id.startsWith("schedules")).map(d => d.data() as SnallabotEvent<MaddenGame>)
       .filter(game => game.awayTeamId != 0 && game.homeTeamId != 0)
     if (maddenSchedule.length !== 0) {
       return maddenSchedule
     }
-    const allDocs = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").get()
+    const allDocs = await db.collection("league_data").doc(leagueId).collection(MaddenEvents.MADDEN_SCHEDULE).get()
     const allGameChanges = await Promise.all(allDocs.docs.map(async (doc) => {
       if (doc.id.startsWith("schedules")) {
         return []
       }
       const data = doc.data() as StoredEvent<MaddenGame>
-      const changesSnapshot = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").doc(doc.id).collection("history").get()
+      const changesSnapshot = await db.collection("league_data").doc(leagueId).collection(MaddenEvents.MADDEN_SCHEDULE).doc(doc.id).collection("history").get()
       const changes = changesSnapshot.docs.map(d => convertDate(d.data() as StoredHistory))
       return reconstructFromHistory(changes, data)
     }))
@@ -286,7 +325,7 @@ const MaddenDB: MaddenDB = {
     return allGames
   },
   getGameForSchedule: async function(leagueId: string, scheduleId: number, week: number, season: number) {
-    const schedule = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").doc(`${scheduleId}`).get()
+    const schedule = await db.collection("league_data").doc(leagueId).collection(MaddenEvents.MADDEN_SCHEDULE).doc(`${scheduleId}`).get()
     if (!schedule.exists) {
       throw new Error("Schedule document not found for id " + scheduleId)
     }
@@ -294,7 +333,7 @@ const MaddenDB: MaddenDB = {
     if (game.weekIndex === week - 1 && season === game.seasonIndex) {
       return game
     }
-    const history = await db.collection("league_data").doc(leagueId).collection("MADDEN_SCHEDULE").doc(`${scheduleId}`).collection("history").get()
+    const history = await db.collection("league_data").doc(leagueId).collection(MaddenEvents.MADDEN_SCHEDULE).doc(`${scheduleId}`).collection("history").get()
     const changes: StoredHistory[] = history.docs
       .map(doc => convertDate(doc.data() as StoredHistory))
     const allGames = reconstructFromHistory(changes, game)
@@ -306,26 +345,26 @@ const MaddenDB: MaddenDB = {
     return correctGame[0]
   },
   getStandingForTeam: async function(leagueId: string, teamId: number) {
-    const standing = await db.collection("league_data").doc(leagueId).collection("MADDEN_STANDING").doc(`${teamId}`).get()
+    const standing = await db.collection("league_data").doc(leagueId).collection(MaddenEvents.MADDEN_STANDING).doc(`${teamId}`).get()
     if (!standing.exists) {
       throw new Error("standing not found for id " + teamId)
     }
     return standing.data() as Standing
   },
   getLatestStandings: async function(leagueId: string) {
-    const standingSnapshot = await db.collection("league_data").doc(leagueId).collection("MADDEN_STANDING").get()
+    const standingSnapshot = await db.collection("league_data").doc(leagueId).collection(MaddenEvents.MADDEN_STANDING).get()
     return standingSnapshot.docs.filter(d => d.id !== "standings").map(doc => {
       return doc.data() as SnallabotEvent<Standing>
     })
   },
   getLatestPlayers: async function(leagueId: string) {
-    const playerSnapshot = await db.collection("league_data").doc(leagueId).collection("MADDEN_PLAYER").select("rosterId", "firstName", "lastName", "teamId", "position").get()
+    const playerSnapshot = await db.collection("league_data").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).select("rosterId", "firstName", "lastName", "teamId", "position").get()
     return playerSnapshot.docs.filter(d => !d.id.startsWith("roster")).map(doc => {
       return doc.data() as SnallabotEvent<Player>
     })
   },
   getPlayer: async function(leagueId: string, rosterId: string) {
-    const playerDoc = await db.collection("league_data").doc(leagueId).collection("MADDEN_PLAYER").doc(rosterId).get()
+    const playerDoc = await db.collection("league_data").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).doc(rosterId).get()
     if (playerDoc.exists) {
       return playerDoc.data() as Player
     }
@@ -335,7 +374,7 @@ const MaddenDB: MaddenDB = {
     const rosterId = player.rosterId
     switch (player.position) {
       case "QB":
-        const [passingStats, rushingStats] = await Promise.all([getStats<PassingStats>(leagueId, rosterId, "MADDEN_PASSING_STAT"), getStats<RushingStats>(leagueId, rosterId, "MADDEN_RUSHING_STAT")])
+        const [passingStats, rushingStats] = await Promise.all([getStats<PassingStats>(leagueId, rosterId, MaddenEvents.MADDEN_PASSING_STAT), getStats<RushingStats>(leagueId, rosterId, MaddenEvents.MADDEN_RUSHING_STAT)])
         return {
           [PlayerStatType.PASSING]: passingStats,
           [PlayerStatType.RUSHING]: rushingStats,
@@ -344,18 +383,18 @@ const MaddenDB: MaddenDB = {
       case "FB":
       case "WR":
       case "TE":
-        const [rushing, receivingStats] = await Promise.all([getStats<RushingStats>(leagueId, rosterId, "MADDEN_RUSHING_STAT"), getStats<ReceivingStats>(leagueId, rosterId, "MADDEN_RECEIVING_STAT")])
+        const [rushing, receivingStats] = await Promise.all([getStats<RushingStats>(leagueId, rosterId, MaddenEvents.MADDEN_RUSHING_STAT), getStats<ReceivingStats>(leagueId, rosterId, MaddenEvents.MADDEN_RECEIVING_STAT)])
         return {
           [PlayerStatType.RUSHING]: rushing,
           [PlayerStatType.RECEIVING]: receivingStats
         }
       case "K":
-        const kickingStats = await getStats<KickingStats>(leagueId, rosterId, "MADDEN_KICKING_STAT")
+        const kickingStats = await getStats<KickingStats>(leagueId, rosterId, MaddenEvents.MADDEN_KICKING_STAT)
         return {
           [PlayerStatType.KICKING]: kickingStats
         }
       case "P":
-        const puntingStats = await getStats<PuntingStats>(leagueId, rosterId, "MADDEN_PUNTING_STAT")
+        const puntingStats = await getStats<PuntingStats>(leagueId, rosterId, MaddenEvents.MADDEN_PUNTING_STAT)
         return {
           [PlayerStatType.PUNTING]: puntingStats
         }
@@ -368,7 +407,7 @@ const MaddenDB: MaddenDB = {
       case "CB":
       case "FS":
       case "SS":
-        const defenseStats = await getStats<DefensiveStats>(leagueId, rosterId, "MADDEN_DEFENSIVE_STAT")
+        const defenseStats = await getStats<DefensiveStats>(leagueId, rosterId, MaddenEvents.MADDEN_DEFENSIVE_STAT)
         return {
           [PlayerStatType.DEFENSE]: defenseStats
         }
@@ -383,9 +422,9 @@ const MaddenDB: MaddenDB = {
     let playersQuery;
     // flip the query for going backwards by ordering opposite and using start after
     if (endBefore) {
-      playersQuery = db.collection("league_data").doc(leagueId).collection("MADDEN_PLAYER").orderBy("playerBestOvr", "asc").orderBy("rosterId", "desc").limit(limit)
+      playersQuery = db.collection("league_data").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).orderBy("playerBestOvr", "asc").orderBy("rosterId", "desc").limit(limit)
     } else {
-      playersQuery = db.collection("league_data").doc(leagueId).collection("MADDEN_PLAYER").orderBy("playerBestOvr", "desc").orderBy("rosterId").limit(limit)
+      playersQuery = db.collection("league_data").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).orderBy("playerBestOvr", "desc").orderBy("rosterId").limit(limit)
     }
     if ((query.teamId && query.teamId !== -1) || query.teamId === 0) {
       playersQuery = playersQuery.where("teamId", "==", query.teamId);
@@ -426,6 +465,36 @@ const MaddenDB: MaddenDB = {
       return players
     }
 
+  },
+  updateLeagueExportStatus: async function(leagueId: string, eventType: MaddenEvents) {
+    await db.collection("league_data").doc(leagueId).set({
+      exportStatus: {
+        [eventType]: { lastExported: new Date() }
+      }
+    }, { merge: true })
+  },
+  updateWeeklyExportStatus: async function(leagueId: string, eventType: MaddenEvents, week: number, season: number) {
+    const weekKey = `season${String(season).padStart(2, '0')}_week${String(week).padStart(2, '0')}`
+    await db.collection("league_data").doc(leagueId).set({
+      exportStatue: {
+        weeklyStatus: {
+          [weekKey]: {
+            [eventType]: { lastExported: new Date() }
+          }
+        }
+      }
+    }, { merge: true })
+  },
+  updateRosterExportStatus: async function(leagueId: string, eventType: MaddenEvents.MADDEN_PLAYER, teamId: string) {
+    await db.collection("league_data").doc(leagueId).set({
+      exportStatue: {
+        rosterStatus: {
+          [teamId]: {
+            [eventType]: { lastExported: new Date() }
+          }
+        }
+      }
+    }, { merge: true })
   }
 }
 
