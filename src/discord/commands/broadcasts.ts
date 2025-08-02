@@ -47,6 +47,8 @@ export default {
       if (groupCommandName === "list") {
         const youtubeUrls = await youtubeNotifierHandler.listYoutubeChannels(guild_id)
         const formatted = youtubeUrls.map(y => `[${y.channelName}](${y.channelUri})`)
+	console.log(formatted)
+	console.log(formatted.length)
         respond(ctx, createMessageResponse(`Here are your currently configured youtube channels:\n\n${formatted.join("\n")}`))
       } else if (groupCommandName === "add") {
         if (!groupCommand.options || !groupCommand.options[0]) {
