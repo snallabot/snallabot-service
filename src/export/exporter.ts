@@ -122,7 +122,9 @@ export const SnallabotExportDestination: MaddenExportDestination = {
     return ExportResult.SUCCESS
   },
   schedules: async function(platform: string, leagueId: string, week: number, stage: Stage, data: SchedulesExport): Promise<ExportResult> {
-    const events = data.gameScheduleInfoList.map(game => ({ key: leagueId, platform: platform, event_type: "MADDEN_SCHEDULE", ...game }))
+    const events = data.gameScheduleInfoList.map(game => ({
+      key: leagueId, platform: platform, event_type: MaddenEvents.MADDEN_SCHEDULE, ...game
+    }))
     await sendEvents(leagueId, `schedules${stage}-${week}`, events, e => idWeeklyEvents(e, e.scheduleId))
     if (events.length > 0) {
       const season = Math.max(...events.map(e => e.seasonIndex))
@@ -131,7 +133,9 @@ export const SnallabotExportDestination: MaddenExportDestination = {
     return ExportResult.SUCCESS
   },
   punting: async function(platform: string, leagueId: string, week: number, stage: Stage, data: PuntingExport): Promise<ExportResult> {
-    const events = data.playerPuntingStatInfoList.map(stat => ({ key: leagueId, platform: platform, event_type: "MADDEN_PUNTING_STAT", ...stat }))
+    const events = data.playerPuntingStatInfoList.map(stat => ({
+      key: leagueId, platform: platform, event_type: MaddenEvents.MADDEN_PUNTING_STAT, ...stat
+    }))
     await sendEvents(leagueId, `punting${stage}-${week}`, events, e => idWeeklyEvents(e, e.statId))
     if (events.length > 0) {
       const season = Math.max(...events.map(e => e.seasonIndex))
@@ -140,7 +144,9 @@ export const SnallabotExportDestination: MaddenExportDestination = {
     return ExportResult.SUCCESS
   },
   teamStats: async function(platform: string, leagueId: string, week: number, stage: Stage, data: TeamStatsExport): Promise<ExportResult> {
-    const events = data.teamStatInfoList.map(stat => ({ key: leagueId, platform: platform, event_type: "MADDEN_TEAM_STAT", ...stat }))
+    const events = data.teamStatInfoList.map(stat => ({
+      key: leagueId, platform: platform, event_type: MaddenEvents.MADDEN_TEAM_STAT, ...stat
+    }))
     await sendEvents(leagueId, `teamstats${stage}-${week}`, events, e => idWeeklyEvents(e, e.statId))
     if (events.length > 0) {
       const season = Math.max(...events.map(e => e.seasonIndex))
@@ -149,7 +155,9 @@ export const SnallabotExportDestination: MaddenExportDestination = {
     return ExportResult.SUCCESS
   },
   passing: async function(platform: string, leagueId: string, week: number, stage: Stage, data: PassingExport): Promise<ExportResult> {
-    const events = data.playerPassingStatInfoList.map(stat => ({ key: leagueId, platform: platform, event_type: "MADDEN_PASSING_STAT", ...stat }))
+    const events = data.playerPassingStatInfoList.map(stat => ({
+      key: leagueId, platform: platform, event_type: MaddenEvents.MADDEN_PASSING_STAT, ...stat
+    }))
     await sendEvents(leagueId, `passing${stage}-${week}`, events, e => idWeeklyEvents(e, e.statId))
     if (events.length > 0) {
       const season = Math.max(...events.map(e => e.seasonIndex))
@@ -158,7 +166,9 @@ export const SnallabotExportDestination: MaddenExportDestination = {
     return ExportResult.SUCCESS
   },
   kicking: async function(platform: string, leagueId: string, week: number, stage: Stage, data: KickingExport): Promise<ExportResult> {
-    const events = data.playerKickingStatInfoList.map(stat => ({ key: leagueId, platform: platform, event_type: "MADDEN_KICKING_STAT", ...stat }))
+    const events = data.playerKickingStatInfoList.map(stat => ({
+      key: leagueId, platform: platform, event_type: MaddenEvents.MADDEN_KICKING_STAT, ...stat
+    }))
     await sendEvents(leagueId, `kicking${stage}-${week}`, events, e => idWeeklyEvents(e, e.statId))
     if (events.length > 0) {
       const season = Math.max(...events.map(e => e.seasonIndex))
@@ -167,7 +177,9 @@ export const SnallabotExportDestination: MaddenExportDestination = {
     return ExportResult.SUCCESS
   },
   rushing: async function(platform: string, leagueId: string, week: number, stage: Stage, data: RushingExport): Promise<ExportResult> {
-    const events = data.playerRushingStatInfoList.map(stat => ({ key: leagueId, platform: platform, event_type: "MADDEN_RUSHING_STAT", ...stat }))
+    const events = data.playerRushingStatInfoList.map(stat => ({
+      key: leagueId, platform: platform, event_type: MaddenEvents.MADDEN_RUSHING_STAT, ...stat
+    }))
     await sendEvents(leagueId, `rushing${stage}-${week}`, events, e => idWeeklyEvents(e, e.statId))
     if (events.length > 0) {
       const season = Math.max(...events.map(e => e.seasonIndex))
@@ -176,7 +188,9 @@ export const SnallabotExportDestination: MaddenExportDestination = {
     return ExportResult.SUCCESS
   },
   defense: async function(platform: string, leagueId: string, week: number, stage: Stage, data: DefensiveExport): Promise<ExportResult> {
-    const events = data.playerDefensiveStatInfoList.map(stat => ({ key: leagueId, platform: platform, event_type: "MADDEN_DEFENSIVE_STAT", ...stat }))
+    const events = data.playerDefensiveStatInfoList.map(stat => ({
+      key: leagueId, platform: platform, event_type: MaddenEvents.MADDEN_DEFENSIVE_STAT, ...stat
+    }))
     await sendEvents(leagueId, `defense${stage}-${week}`, events, e => idWeeklyEvents(e, e.statId))
     if (events.length > 0) {
       const season = Math.max(...events.map(e => e.seasonIndex))
@@ -185,7 +199,9 @@ export const SnallabotExportDestination: MaddenExportDestination = {
     return ExportResult.SUCCESS
   },
   receiving: async function(platform: string, leagueId: string, week: number, stage: Stage, data: ReceivingExport): Promise<ExportResult> {
-    const events = data.playerReceivingStatInfoList.map(stat => ({ key: leagueId, platform: platform, event_type: "MADDEN_RECEIVING_STAT", ...stat }))
+    const events = data.playerReceivingStatInfoList.map(stat => ({
+      key: leagueId, platform: platform, event_type: MaddenEvents.MADDEN_RECEIVING_STAT, ...stat
+    }))
     await sendEvents(leagueId, `receiving${stage}-${week}`, events, e => idWeeklyEvents(e, e.statId))
     if (events.length > 0) {
       const season = Math.max(...events.map(e => e.seasonIndex))
