@@ -83,8 +83,8 @@ export const youtubeNotifierHandler: YoutubeNotifierHandler = {
         } else {
           // Document doesn't exist, create it
           transaction.set(docRef, {
+            channelName: channelName,
             servers: {
-              channelName: channelName,
               [discordServer]: { enabled: true }
             }
           });
