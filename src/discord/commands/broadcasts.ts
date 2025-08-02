@@ -34,7 +34,7 @@ function listBroadcasts(broadcasts: BroadcastChannel[], broadcastType: Broadcast
             style: ButtonStyle.Secondary,
             label: "Back",
             custom_id: `${JSON.stringify({
-              t: broadcastType, p: startIndex - LIMIT
+              t: broadcastType, p: Math.max(startIndex - LIMIT, 0)
             })}`,
             disabled: startIndex === 0
           },
@@ -43,7 +43,7 @@ function listBroadcasts(broadcasts: BroadcastChannel[], broadcastType: Broadcast
             style: ButtonStyle.Secondary,
             label: "Next",
             custom_id: `${JSON.stringify({
-              t: broadcastType, p: startIndex + LIMIT
+              t: broadcastType, p: Math.min(startIndex + LIMIT, broadcasts.length)
             })
               }`,
             disabled: endIndex === broadcasts.length
