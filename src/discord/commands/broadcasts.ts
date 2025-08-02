@@ -1,11 +1,12 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command } from "../commands_handler"
 import { respond, createMessageResponse, DiscordClient } from "../discord_utils"
-import { APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandGroupOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ApplicationCommandType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
+import { APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandGroupOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ApplicationCommandType, ButtonStyle, ChannelType, ComponentType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
 import { BroadcastConfiguration, DiscordIdType } from "../settings_db"
 import { twitchNotifierHandler } from "../../twitch-notifier/routes"
 import { youtubeNotifierHandler } from "../../yt-notifier/routes"
+import { InteractionResponseType } from "discord-interactions"
 
 
 export default {
@@ -49,6 +50,24 @@ export default {
         const formatted = youtubeUrls.map(y => `[${y.channelName}](${y.channelUri})`)
         console.log(formatted)
         console.log(`Here are your currently configured youtube channels:\n\n${formatted.join("\n")}`.length)
+        respond(ctx, createMessageResponse(`Here are your currently configured youtube channels:\n\n${formatted.join("\n")}`, {
+          components: [
+            {
+              type: ComponentType.Button,
+              style: ButtonStyle.Secondary,
+              label: "Back",
+              custom_id: `yt_back_${guild_id}_${currentPage - 1}`,
+              disabled: currentPage === 0
+            },
+            {
+              type: ComponentType.Button,
+              style: ButtonStyle.Secondary,
+              label: "Next",
+              custom_id: `yt_next_${guild_id}_${currentPage + 1}`,
+              disabled: currentPage === totalPages - 1
+            }
+          ]
+        }))
         respond(ctx, createMessageResponse(`Here are your currently configured youtube channels:\n\n${formatted.join("\n")}`))
       } else if (groupCommandName === "add") {
         if (!groupCommand.options || !groupCommand.options[0]) {
