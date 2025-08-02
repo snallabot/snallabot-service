@@ -20,37 +20,39 @@ function listBroadcasts(broadcasts: BroadcastChannel[], broadcastType: Broadcast
   const endIndex = Math.min(broadcasts.length, startIndex + LIMIT)
   const formatted = broadcasts.map(y => `[${y.name}](${y.url})`).filter((_, idx) => idx >= startIndex && idx < endIndex)
   return {
-    "flags": 32768,
-    components: [
-      {
-        type: ComponentType.TextDisplay,
-        content: `Here are your currently configured youtube channels:\n\n${formatted.join("\n")}`
-      },
-      {
-        type: ComponentType.ActionRow,
-        components: [
-          {
-            type: ComponentType.Button,
-            style: ButtonStyle.Secondary,
-            label: "Back",
-            custom_id: `${JSON.stringify({
-              t: broadcastType, p: Math.max(startIndex - LIMIT, 0)
-            })}`,
-            disabled: startIndex === 0
-          },
-          {
-            type: ComponentType.Button,
-            style: ButtonStyle.Secondary,
-            label: "Next",
-            custom_id: `${JSON.stringify({
-              t: broadcastType, p: Math.min(startIndex + LIMIT, broadcasts.length)
-            })
-              }`,
-            disabled: endIndex === broadcasts.length
-          }
-        ]
-      }
-    ]
+    type: InteractionResponseType.ChannelMessageWithSource,
+    data: {
+      flags: 32768,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: `Here are your currently configured youtube channels:\n\n${formatted.join("\n")}`
+        },
+        {
+          type: ComponentType.ActionRow,
+          components: [
+            {
+              type: ComponentType.Button,
+              style: ButtonStyle.Secondary,
+              label: "Back",
+              custom_id: `${JSON.stringify({
+                t: broadcastType, p: Math.max(startIndex - LIMIT, 0)
+              })}`,
+              disabled: startIndex === 0
+            },
+            {
+              type: ComponentType.Button,
+              style: ButtonStyle.Secondary,
+              label: "Next",
+              custom_id: `${JSON.stringify({
+                t: broadcastType, p: Math.min(startIndex + LIMIT, broadcasts.length)
+              })}`,
+              disabled: endIndex === broadcasts.length
+            }
+          ]
+        }
+      ]
+    }
   }
 }
 
