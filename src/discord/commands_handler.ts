@@ -30,7 +30,7 @@ export interface AutocompleteHandler {
   choices(query: Autocomplete): Promise<{ name: string, value: string }[]>
 }
 export interface MessageComponentHandler {
-  handleInteraction(interaction: MessageComponentInteraction, client: DiscordClient): Promise<void>
+  handleInteraction(interaction: MessageComponentInteraction, client: DiscordClient): Promise<any>
 }
 
 export type CommandsHandler = { [key: string]: CommandHandler | undefined }
@@ -123,12 +123,10 @@ export async function handleMessageComponent(interaction: MessageComponentIntera
   const handler = MessageComponents[custom_id]
   if (handler) {
     try {
-      await handler.handleInteraction(interaction, client)
+      const body = await handler.handleInteraction(interaction, client)
       ctx.status = 200
       ctx.set("Content-Type", "application/json")
-      ctx.body = {
-        type: InteractionResponseType.DeferredMessageUpdate,
-      }
+      ctx.body = body
     } catch (e) {
       const error = e as Error
       ctx.status = 500
@@ -138,13 +136,17 @@ export async function handleMessageComponent(interaction: MessageComponentIntera
     try {
       const parsedCustomId = JSON.parse(custom_id)
       if (parsedCustomId.q) {
-        await playerHandler.handleInteraction(interaction, client)
+        const body = await playerHandler.handleInteraction(interaction, client)
         ctx.status = 200
         ctx.set("Content-Type", "application/json")
-        ctx.body = {
-          type: InteractionResponseType.DeferredMessageUpdate,
-        }
-      } else {
+        ctx.body = body
+      } else if (parsedCustomId.t) {
+        const body = await broadcastsHandler.handleInteraction(interaction, client)
+        ctx.status = 200
+        ctx.set("Content-Type", "application/json")
+        ctx.body = body
+      }
+      else {
         ctx.status = 500
       }
     } catch (e) {
