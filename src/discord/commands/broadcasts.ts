@@ -27,23 +27,28 @@ function listBroadcasts(broadcasts: BroadcastChannel[], broadcastType: Broadcast
         content: `Here are your currently configured youtube channels:\n\n${formatted.join("\n")}`
       },
       {
-        type: ComponentType.Button,
-        style: ButtonStyle.Secondary,
-        label: "Back",
-        custom_id: `${JSON.stringify({
-          t: broadcastType, p: startIndex - LIMIT
-        })}`,
-        disabled: startIndex === 0
-      },
-      {
-        type: ComponentType.Button,
-        style: ButtonStyle.Secondary,
-        label: "Next",
-        custom_id: `${JSON.stringify({
-          t: broadcastType, p: startIndex + LIMIT
-        })
-          }`,
-        disabled: endIndex === broadcasts.length
+        type: ComponentType.ActionRow,
+        components: [
+          {
+            type: ComponentType.Button,
+            style: ButtonStyle.Secondary,
+            label: "Back",
+            custom_id: `${JSON.stringify({
+              t: broadcastType, p: startIndex - LIMIT
+            })}`,
+            disabled: startIndex === 0
+          },
+          {
+            type: ComponentType.Button,
+            style: ButtonStyle.Secondary,
+            label: "Next",
+            custom_id: `${JSON.stringify({
+              t: broadcastType, p: startIndex + LIMIT
+            })
+              }`,
+            disabled: endIndex === broadcasts.length
+          }
+        ]
       }
     ]
   }
