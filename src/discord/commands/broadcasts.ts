@@ -3,7 +3,7 @@ import { CommandHandler, Command } from "../commands_handler"
 import { respond, createMessageResponse, DiscordClient } from "../discord_utils"
 import { APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandGroupOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ApplicationCommandType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
-import { LeagueSettings, BroadcastConfiguration, DiscordIdType } from "../settings_db"
+import { BroadcastConfiguration, DiscordIdType } from "../settings_db"
 import { twitchNotifierHandler } from "../../twitch-notifier/routes"
 import { youtubeNotifierHandler } from "../../yt-notifier/routes"
 
@@ -46,7 +46,8 @@ export default {
       const groupCommandName = groupCommand.name
       if (groupCommandName === "list") {
         const youtubeUrls = await youtubeNotifierHandler.listYoutubeChannels(guild_id)
-        respond(ctx, createMessageResponse(`Here are your currently configured youtube channels:\n\n${youtubeUrls.join("\n")}`))
+        const formatted = youtubeUrls.map(y => `[${y.channelName}](${y.channelUri})`)
+        respond(ctx, createMessageResponse(`Here are your currently configured youtube channels:\n\n${formatted.join("\n")}`))
       } else if (groupCommandName === "add") {
         if (!groupCommand.options || !groupCommand.options[0]) {
           throw new Error(`broadcast youtube ${groupCommandName} misconfigured`)
