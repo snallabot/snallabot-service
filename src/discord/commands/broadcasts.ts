@@ -12,6 +12,16 @@ enum BroadcastType {
   TWITCH = "t",
   YOUTUBE = "y"
 }
+
+function formatBroadcastType(t: BroadcastType) {
+  switch (t) {
+    case BroadcastType.TWITCH:
+      return "Twitch"
+    case BroadcastType.YOUTUBE:
+      return "Youtube"
+  }
+
+}
 type ComponentId = { t: BroadcastType, p: number }
 const LIMIT = 10
 enum ResponseType {
@@ -29,7 +39,7 @@ function listBroadcasts(broadcasts: BroadcastChannel[], broadcastType: Broadcast
       components: [
         {
           type: ComponentType.TextDisplay,
-          content: `Here are your currently configured youtube channels:\n\n${formatted.join("\n")}`
+          content: `Here are your currently configured ${formatBroadcastType(broadcastType)} broadcasts:\n\n${formatted.join("\n")}`
         },
         {
           type: ComponentType.ActionRow,
