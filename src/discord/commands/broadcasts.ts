@@ -93,7 +93,7 @@ export default {
       const groupCommand = subCommandGroup.options[0] as APIApplicationCommandInteractionDataSubcommandOption
       const groupCommandName = groupCommand.name
       if (groupCommandName === "list") {
-        const youtubeUrls = await youtubeNotifierHandler.listYoutubeChannels("449254639783903253")
+        const youtubeUrls = await youtubeNotifierHandler.listYoutubeChannels(guild_id)
 
         respond(ctx, listBroadcasts(youtubeUrls.map(y => ({ name: y.channelName, url: y.channelUri })), BroadcastType.YOUTUBE))
       } else if (groupCommandName === "add") {
@@ -153,7 +153,7 @@ export default {
       const twitchList = await twitchNotifierHandler.listTwitchChannels(interaction.guild_id)
       return listBroadcasts(twitchList, BroadcastType.TWITCH, listComponent.p)
     } else if (listComponent.t === BroadcastType.YOUTUBE) {
-      const ytList = await youtubeNotifierHandler.listYoutubeChannels("449254639783903253")
+      const ytList = await youtubeNotifierHandler.listYoutubeChannels(interaction.guild_id)
       return listBroadcasts(ytList.map(y => ({ name: y.channelName, url: y.channelUri })), BroadcastType.YOUTUBE, listComponent.p)
     } else {
       throw new Error(`invalid broadcast type ${listComponent.t}`)
