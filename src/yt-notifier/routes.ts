@@ -52,7 +52,7 @@ function createTestYoutubeAPIHandler(): YoutubeAPIHandler {
   }
 }
 
-function createHandler(): YoutubeAPIHandler {
+export function createHandler(): YoutubeAPIHandler {
   if (!process.env.YOUTUBE_API_KEY) {
     return createTestYoutubeAPIHandler()
   } else {
