@@ -99,7 +99,7 @@ export default {
       if (groupCommandName === "list") {
         const youtubeUrls = await youtubeNotifierHandler.listYoutubeChannels(guild_id)
 
-        respond(ctx, listBroadcasts(youtubeUrls.map(y => ({ name: y.channelName, url: y.channelUri })), BroadcastType.YOUTUBE), ResponseType.COMMAND)
+        respond(ctx, listBroadcasts(youtubeUrls.map(y => ({ name: y.channelName, url: y.channelUri })), BroadcastType.YOUTUBE, ResponseType.COMMAND))
       } else if (groupCommandName === "add") {
         if (!groupCommand.options || !groupCommand.options[0]) {
           throw new Error(`broadcast youtube ${groupCommandName} misconfigured`)
@@ -127,7 +127,7 @@ export default {
       const groupCommandName = groupCommand.name
       if (groupCommandName === "list") {
         const twitchUrls = await twitchNotifierHandler.listTwitchChannels(guild_id)
-        respond(ctx, listBroadcasts(twitchUrls.map(t => ({ name: t.name, url: t.url })), BroadcastType.TWITCH), ResponseType.COMMAND)
+        respond(ctx, listBroadcasts(twitchUrls.map(t => ({ name: t.name, url: t.url })), BroadcastType.TWITCH, ResponseType.COMMAND))
       } else if (groupCommandName === "add") {
         if (!groupCommand.options || !groupCommand.options[0]) {
           throw new Error(`broadcast twitch ${groupCommandName} misconfigured`)
