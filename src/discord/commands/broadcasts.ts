@@ -52,7 +52,7 @@ function listBroadcasts(broadcasts: BroadcastChannel[], broadcastType: Broadcast
         }
       ]
     }
-  })
+  }
 }
 
 
