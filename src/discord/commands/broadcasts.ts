@@ -19,8 +19,13 @@ function listBroadcasts(broadcasts: BroadcastChannel[], broadcastType: Broadcast
   const startIndex = paginatedIndex ? paginatedIndex : 0
   const endIndex = Math.min(broadcasts.length, startIndex + LIMIT)
   const formatted = broadcasts.map(y => `[${y.name}](${y.url})`).filter((_, idx) => idx >= startIndex && idx < endIndex)
-  createMessageResponse(`Here are your currently configured youtube channels:\n\n${formatted.join("\n")}`, {
+  return {
+    "flags": 32768,
     components: [
+      {
+        type: ComponentType.TextDisplay,
+        content: `Here are your currently configured youtube channels:\n\n${formatted.join("\n")}`
+      },
       {
         type: ComponentType.Button,
         style: ButtonStyle.Secondary,
@@ -41,7 +46,7 @@ function listBroadcasts(broadcasts: BroadcastChannel[], broadcastType: Broadcast
         disabled: endIndex === broadcasts.length
       }
     ]
-  })
+  }
 }
 
 
