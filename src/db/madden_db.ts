@@ -476,7 +476,7 @@ const MaddenDB: MaddenDB = {
   updateWeeklyExportStatus: async function(leagueId: string, eventType: MaddenEvents, week: number, season: number) {
     const weekKey = `season${String(season).padStart(2, '0')}_week${String(week).padStart(2, '0')}`
     await db.collection("league_data").doc(leagueId).set({
-      exportStatue: {
+      exportStatus: {
         weeklyStatus: {
           [weekKey]: {
             [eventType]: { lastExported: new Date() }
@@ -487,7 +487,7 @@ const MaddenDB: MaddenDB = {
   },
   updateRosterExportStatus: async function(leagueId: string, eventType: MaddenEvents.MADDEN_PLAYER, teamId: string) {
     await db.collection("league_data").doc(leagueId).set({
-      exportStatue: {
+      exportStatus: {
         rosterStatus: {
           [teamId]: {
             [eventType]: { lastExported: new Date() }
