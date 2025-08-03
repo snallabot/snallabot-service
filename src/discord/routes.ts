@@ -1,14 +1,13 @@
 import { ParameterizedContext } from "koa"
 import Router from "@koa/router"
-import { CommandMode, DiscordClient, SNALLABOT_TEST_USER, SNALLABOT_USER, createClient, createWeekKey } from "./discord_utils"
+import { CommandMode, DiscordClient, SNALLABOT_TEST_USER, SNALLABOT_USER, createClient } from "./discord_utils"
 import { APIInteraction, InteractionType, InteractionResponseType, APIChatInputApplicationCommandGuildInteraction, APIApplicationCommandAutocompleteInteraction, APIMessageComponentInteraction } from "discord-api-types/payloads"
 import db from "../db/firebase"
 import EventDB from "../db/events_db"
 import { handleCommand, commandsInstaller, handleAutocomplete, handleMessageComponent } from "./commands_handler"
 import { ConfirmedSim, MaddenBroadcastEvent } from "../db/events"
 import { Client } from "oceanic.js"
-import { DiscordIdType, LeagueSettings, TeamAssignments } from "./settings_db"
-import { FieldValue } from "firebase-admin/firestore"
+import LeagueSettingsDB, { DiscordIdType, LeagueSettings, TeamAssignments, createWeekKey } from "./settings_db"
 import { fetchTeamsMessage } from "./commands/teams"
 import createNotifier from "./notifier"
 import MaddenClient from "../db/madden_db"
@@ -83,8 +82,7 @@ router.post("/slashCommand", async (ctx) => {
 EventDB.on<MaddenBroadcastEvent>("MADDEN_BROADCAST", async (events) => {
   events.map(async broadcastEvent => {
     const discordServer = broadcastEvent.key
-    const doc = await db.collection("league_settings").doc(discordServer).get()
-    const leagueSettings = doc.exists ? doc.data() as LeagueSettings : {} as LeagueSettings
+    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(discordServer)
     const configuration = leagueSettings.commands?.broadcast
     if (!configuration) {
       console.error(`${discordServer} is not configured for Broadcasts`)
@@ -127,8 +125,7 @@ async function updateScoreboard(leagueSettings: LeagueSettings, guildId: string,
 EventDB.on<ConfirmedSim>("CONFIRMED_SIM", async (events) => {
   await Promise.all(events.map(async sim => {
     const guild_id = sim.key
-    const doc = await db.collection("league_settings").doc(guild_id).get()
-    const leagueSettings = doc.exists ? doc.data() as LeagueSettings : {} as LeagueSettings
+    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
     await updateScoreboard(leagueSettings, guild_id, sim.seasonIndex, sim.week)
   }))
 })
@@ -139,10 +136,9 @@ MaddenDB.on<MaddenGame>("MADDEN_SCHEDULE", async (events) => {
     const games = groupedGames || []
     const finishedGames = games.filter(g => g.status !== GameResult.NOT_PLAYED)
     const finishedGame = finishedGames[0]
-    const querySnapshot = await db.collection("league_settings").where("commands.madden_league.league_id", "==", leagueId).get()
-    await Promise.all(querySnapshot.docs.map(async leagueSettingsDoc => {
-      const settings = leagueSettingsDoc.data() as LeagueSettings
-      const guild_id = leagueSettingsDoc.id
+    const allSettingsForLeague = await LeagueSettingsDB.getLeagueSettingsForLeagueId(leagueId)
+    await Promise.all(allSettingsForLeague.map(async settings => {
+      const guild_id = settings.guildId
       if (finishedGame) {
         const season = finishedGame.seasonIndex
         const week = finishedGame.weekIndex + 1
@@ -178,19 +174,13 @@ discordClient.on("error", (error) => {
 
 discordClient.on("guildMemberRemove", async (user, guild) => {
   const guildId = guild.id
-  const doc = await db.collection("league_settings").doc(guildId).get()
-  if (!doc.exists) {
-    return
-  }
-  const leagueSettings = doc.data() as LeagueSettings
+  const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guildId)
   if (leagueSettings.commands.teams) {
     const assignments = leagueSettings.commands.teams?.assignments || {} as TeamAssignments
     await Promise.all(Object.entries(assignments).map(async entry => {
       const [teamId, assignment] = entry
       if (assignment.discord_user?.id === user.id) {
-        await db.collection("league_settings").doc(guildId).update({
-          [`commands.teams.assignments.${teamId}.discord_user`]: FieldValue.delete()
-        })
+        await LeagueSettingsDB.removeAssignment(guildId, teamId)
         delete assignments[teamId].discord_user
       }
     }))
@@ -204,11 +194,7 @@ discordClient.on("guildMemberRemove", async (user, guild) => {
 
 discordClient.on("guildMemberUpdate", async (member, old) => {
   const guildId = member.guildID
-  const doc = await db.collection("league_settings").doc(guildId).get()
-  if (!doc.exists) {
-    return
-  }
-  const leagueSettings = doc.data() as LeagueSettings
+  const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guildId)
   if (leagueSettings.commands.teams?.useRoleUpdates) {
     const users = await prodClient.getUsers(guildId)
     const userWithRoles = users.map((u) => ({ id: u.user.id, roles: u.roles }))
@@ -218,18 +204,11 @@ discordClient.on("guildMemberUpdate", async (member, old) => {
       if (assignment.discord_role?.id) {
         const userInTeam = userWithRoles.filter(u => u.roles.includes(assignment.discord_role?.id || ""))
         if (userInTeam.length === 0) {
-          await db.collection("league_settings").doc(guildId).update({
-            [`commands.teams.assignments.${teamId}.discord_user`]: FieldValue.delete()
-          })
+          await LeagueSettingsDB.removeAssignment(guildId, teamId)
           delete assignments[teamId].discord_user
-
         } else if (userInTeam.length === 1) {
-          await db.collection("league_settings").doc(guildId).update({
-            [`commands.teams.assignments.${teamId}.discord_user`]: { id: userInTeam[0].id, id_type: DiscordIdType.USER }
-          })
+          await LeagueSettingsDB.updateAssignmentUser(guildId, teamId, { id: userInTeam[0].id, id_type: DiscordIdType.USER })
           assignments[teamId].discord_user = { id: userInTeam[0].id, id_type: DiscordIdType.USER }
-        } else {
-
         }
       }
     }))
@@ -263,11 +242,7 @@ discordClient.on("messageReactionAdd", async (msg, reactor, reaction) => {
   }
   const reactionChannel = msg.channelID
   const reactionMessage = msg.id
-  const doc = await db.collection("league_settings").doc(guild).get()
-  if (!doc.exists) {
-    return
-  }
-  const leagueSettings = doc.data() as LeagueSettings
+  const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild)
   const weeklyStates = leagueSettings.commands?.game_channel?.weekly_states || {}
   await Promise.all(Object.values(weeklyStates).map(async weeklyState => {
     await Promise.all(Object.entries(weeklyState.channel_states).map(async channelEntry => {

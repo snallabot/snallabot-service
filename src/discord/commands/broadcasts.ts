@@ -3,7 +3,7 @@ import { CommandHandler, Command, MessageComponentInteraction, MessageComponentH
 import { respond, createMessageResponse, DiscordClient } from "../discord_utils"
 import { APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandGroupOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ApplicationCommandType, ButtonStyle, ChannelType, ComponentType, RESTPostAPIApplicationCommandsJSONBody, InteractionResponseType } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
-import { BroadcastConfiguration, DiscordIdType } from "../settings_db"
+import LeagueSettingsDB, { BroadcastConfiguration, DiscordIdType } from "../settings_db"
 import { twitchNotifierHandler } from "../../twitch-notifier/routes"
 import { youtubeNotifierHandler } from "../../yt-notifier/routes"
 
@@ -93,11 +93,7 @@ export default {
       if (role) {
         conf.role = { id: role, id_type: DiscordIdType.ROLE }
       }
-      await db.collection("league_settings").doc(guild_id).set({
-        commands: {
-          broadcast: conf
-        }
-      }, { merge: true })
+      await LeagueSettingsDB.configureBroadcast(guild_id, conf)
       respond(ctx, createMessageResponse("Broadcast is configured!"))
     } else if (subCommandName === "youtube") {
       const subCommandGroup = subCommand as APIApplicationCommandInteractionDataSubcommandGroupOption

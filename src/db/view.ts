@@ -3,7 +3,7 @@ import EventDB, { SnallabotEvent } from "./events_db"
 import MaddenDB, { MaddenEvents } from "./madden_db"
 import { Player, Team } from "../export/madden_league_types"
 import db from "./firebase"
-import { LeagueSettings } from "../discord/settings_db"
+import LeagueSettingsDB, { LeagueSettings } from "../discord/settings_db"
 import { DiscordLeagueConnectionEvent } from "./events"
 import FileHandler from "../file_handlers"
 
@@ -163,8 +163,7 @@ class DiscordLeagueConnection extends View<DiscordLeagueConnectionEvent> {
     super("discord_league_connection")
   }
   async createView(key: string) {
-    const doc = await db.collection("league_settings").doc(key).get()
-    const leagueSettings = doc.exists ? doc.data() as LeagueSettings : {} as LeagueSettings
+    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(key)
     const leagueId = leagueSettings?.commands?.madden_league?.league_id
     if (leagueId) {
       return { guildId: key, leagueId: leagueId }
