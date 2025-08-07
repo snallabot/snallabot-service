@@ -129,7 +129,7 @@ const LeagueSettingsDB: LeagueSettingsDB = {
   async deleteGameChannels(guildId: string, week: number, season: number): Promise<void> {
     const seasonWeekKey = createWeekKey(season, week)
     await db.collection('league_settings').doc(guildId).update({
-      [`commands.game_channel.weekly_states.${seasonWeekKey}`]: FieldValue.delete()
+      [`commands.game_channel.weekly_states.${seasonWeekKey}.channel_states`]: FieldValue.delete()
     })
   },
 
