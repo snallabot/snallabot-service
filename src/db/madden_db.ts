@@ -306,24 +306,14 @@ const MaddenDB: MaddenDB = {
     return standing.data() as Standing
   },
   getLatestStandings: async function(leagueId: string) {
-<<<<<<< HEAD
-    const standingSnapshot = await db.collection("madden_data26").doc(leagueId).collection("MADDEN_STANDING").get()
-    return standingSnapshot.docs.map(doc => {
-=======
     const standingSnapshot = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_STANDING).get()
-    return standingSnapshot.docs.filter(d => d.id !== "standings").map(doc => {
->>>>>>> 8735feadc5f046d0e40cd4d8d9cf13c0a80e49aa
+    return standingSnapshot.docs.map(doc => {
       return doc.data() as SnallabotEvent<Standing>
     })
   },
   getLatestPlayers: async function(leagueId: string) {
-<<<<<<< HEAD
-    const playerSnapshot = await db.collection("madden_data26").doc(leagueId).collection("MADDEN_PLAYER").select("rosterId", "firstName", "lastName", "teamId", "position").get()
-    return playerSnapshot.docs.map(doc => {
-=======
     const playerSnapshot = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).select("rosterId", "firstName", "lastName", "teamId", "position").get()
     return playerSnapshot.docs.filter(d => !d.id.startsWith("roster")).map(doc => {
->>>>>>> 8735feadc5f046d0e40cd4d8d9cf13c0a80e49aa
       return doc.data() as SnallabotEvent<Player>
     })
   },
