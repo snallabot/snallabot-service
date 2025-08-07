@@ -6,7 +6,7 @@ export const MACHINE_KEY = "444d362e8e067fe2"
 export const EA_LOGIN_URL = `https://accounts.ea.com/connect/auth?hide_create=true&release_type=prod&response_type=code&redirect_uri=${REDIRECT_URL}&client_id=${CLIENT_ID}&machineProfileKey=${MACHINE_KEY}&authentication_source=${AUTH_SOURCE}`
 
 
-export const TWO_DIGIT_YEAR = "26"
+export const TWO_DIGIT_YEAR = "25"
 export const YEAR = "2026"
 
 export const VALID_ENTITLEMENTS = ((a: string) => ({
