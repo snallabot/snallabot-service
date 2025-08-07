@@ -1,11 +1,73 @@
 import { ParameterizedContext } from "koa"
-import { CommandHandler, Command } from "../commands_handler"
+import { CommandHandler, Command, MessageComponentInteraction, MessageComponentHandler } from "../commands_handler"
 import { respond, createMessageResponse, DiscordClient } from "../discord_utils"
-import { APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandGroupOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ApplicationCommandType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
+import { APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandGroupOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ApplicationCommandType, ButtonStyle, ChannelType, ComponentType, RESTPostAPIApplicationCommandsJSONBody, InteractionResponseType } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
-import { LeagueSettings, BroadcastConfiguration, DiscordIdType } from "../settings_db"
+import { BroadcastConfiguration, DiscordIdType } from "../settings_db"
 import { twitchNotifierHandler } from "../../twitch-notifier/routes"
 import { youtubeNotifierHandler } from "../../yt-notifier/routes"
+
+type BroadcastChannel = { name: string, url: string }
+enum BroadcastType {
+  TWITCH = "t",
+  YOUTUBE = "y"
+}
+
+function formatBroadcastType(t: BroadcastType) {
+  switch (t) {
+    case BroadcastType.TWITCH:
+      return "Twitch"
+    case BroadcastType.YOUTUBE:
+      return "Youtube"
+  }
+
+}
+type ComponentId = { t: BroadcastType, p: number }
+const LIMIT = 10
+enum ResponseType {
+  COMMAND,
+  INTERACTION
+}
+function listBroadcasts(broadcasts: BroadcastChannel[], broadcastType: BroadcastType, responseType: ResponseType, paginatedIndex?: number) {
+  const startIndex = paginatedIndex ? paginatedIndex : 0
+  const endIndex = Math.min(broadcasts.length, startIndex + LIMIT)
+  const formatted = broadcasts.map(y => `[${y.name}](${y.url})`).filter((_, idx) => idx >= startIndex && idx < endIndex)
+  return {
+    type: responseType === ResponseType.COMMAND ? InteractionResponseType.ChannelMessageWithSource : InteractionResponseType.UpdateMessage,
+    data: {
+      flags: 32768,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: `Here are your currently configured ${formatBroadcastType(broadcastType)} broadcasts:\n\n${formatted.join("\n")}`
+        },
+        {
+          type: ComponentType.ActionRow,
+          components: [
+            {
+              type: ComponentType.Button,
+              style: ButtonStyle.Secondary,
+              label: "Back",
+              custom_id: `${JSON.stringify({
+                t: broadcastType, p: Math.max(startIndex - LIMIT, 0)
+              })}`,
+              disabled: startIndex === 0
+            },
+            {
+              type: ComponentType.Button,
+              style: ButtonStyle.Secondary,
+              label: "Next",
+              custom_id: `${JSON.stringify({
+                t: broadcastType, p: Math.min(startIndex + LIMIT, broadcasts.length)
+              })}`,
+              disabled: endIndex === broadcasts.length
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
 
 
 export default {
@@ -46,7 +108,8 @@ export default {
       const groupCommandName = groupCommand.name
       if (groupCommandName === "list") {
         const youtubeUrls = await youtubeNotifierHandler.listYoutubeChannels(guild_id)
-        respond(ctx, createMessageResponse(`Here are your currently configured youtube channels:\n\n${youtubeUrls.join("\n")}`))
+
+        respond(ctx, listBroadcasts(youtubeUrls.map(y => ({ name: y.channelName, url: y.channelUri })), BroadcastType.YOUTUBE, ResponseType.COMMAND))
       } else if (groupCommandName === "add") {
         if (!groupCommand.options || !groupCommand.options[0]) {
           throw new Error(`broadcast youtube ${groupCommandName} misconfigured`)
@@ -74,7 +137,7 @@ export default {
       const groupCommandName = groupCommand.name
       if (groupCommandName === "list") {
         const twitchUrls = await twitchNotifierHandler.listTwitchChannels(guild_id)
-        respond(ctx, createMessageResponse(`Here are your currently configured twitch channels:\n\n${twitchUrls.join("\n")}`))
+        respond(ctx, listBroadcasts(twitchUrls.map(t => ({ name: t.name, url: t.url })), BroadcastType.TWITCH, ResponseType.COMMAND))
       } else if (groupCommandName === "add") {
         if (!groupCommand.options || !groupCommand.options[0]) {
           throw new Error(`broadcast twitch ${groupCommandName} misconfigured`)
@@ -95,6 +158,19 @@ export default {
       }
     } else {
       throw new Error(`Broadcast SubCommand ${subCommandName} misconfigured`)
+    }
+  },
+  async handleInteraction(interaction: MessageComponentInteraction, client: DiscordClient) {
+    const customId = interaction.custom_id
+    const listComponent = JSON.parse(customId) as ComponentId
+    if (listComponent.t === BroadcastType.TWITCH) {
+      const twitchList = await twitchNotifierHandler.listTwitchChannels(interaction.guild_id)
+      return listBroadcasts(twitchList, BroadcastType.TWITCH, ResponseType.INTERACTION, listComponent.p)
+    } else if (listComponent.t === BroadcastType.YOUTUBE) {
+      const ytList = await youtubeNotifierHandler.listYoutubeChannels(interaction.guild_id)
+      return listBroadcasts(ytList.map(y => ({ name: y.channelName, url: y.channelUri })), BroadcastType.YOUTUBE, ResponseType.INTERACTION, listComponent.p)
+    } else {
+      throw new Error(`invalid broadcast type ${listComponent.t}`)
     }
   },
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
@@ -211,4 +287,4 @@ export default {
       ]
     }
   }
-} as CommandHandler
+} as CommandHandler & MessageComponentHandler
