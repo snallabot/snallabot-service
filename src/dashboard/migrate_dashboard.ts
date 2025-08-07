@@ -58,7 +58,6 @@
 //           newDestinations[SNALLABOT_EXPORT] = { autoUpdate: true, leagueInfo: true, rosters: true, weeklyStats: true, url: SNALLABOT_EXPORT, editable: false }
 //           console.log(`Migrated Server ${d.id} to League ${leagueId}`)
 //           await storeToken(token, leagueId)
-//           await db.collection("league_data").doc(`${leagueId}`).set({
 //             destinations: newDestinations
 //           }, { merge: true })
 //         } catch (e) {
