@@ -3,7 +3,7 @@ import { CommandHandler, Command } from "../commands_handler"
 import { respond, createMessageResponse, DiscordClient } from "../discord_utils"
 import { APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataSubcommandOption, APIApplicationCommandInteractionDataUserOption, ApplicationCommandOptionType, ApplicationCommandType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
-import { DiscordIdType, LeagueSettings, WaitlistConfiguration, UserId } from "../settings_db"
+import LeagueSettingsDB, { DiscordIdType, LeagueSettings, WaitlistConfiguration, UserId } from "../settings_db"
 
 function createWaitlistMessage(waitlist: UserId[]) {
   return (
@@ -23,8 +23,7 @@ function respondWithWaitlist(ctx: ParameterizedContext, waitlist: UserId[]) {
 export default {
   async handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext) {
     const { guild_id } = command
-    const doc = await db.collection("league_settings").doc(guild_id).get()
-    const leagueSettings = doc.exists ? doc.data() as LeagueSettings : {} as LeagueSettings
+    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
     if (!command.data.options) {
       throw new Error("misconfigured waitlist")
     }
@@ -48,11 +47,7 @@ export default {
           current_waitlist: waitlist
 
         }
-        await db.collection("league_settings").doc(guild_id).set({
-          commands: {
-            waitlist: conf
-          }
-        }, { merge: true })
+        await LeagueSettingsDB.configureWaitlist(guild_id, conf)
         respondWithWaitlist(ctx, waitlist)
       }
     } else if (subCommandName === "remove") {
@@ -66,11 +61,7 @@ export default {
         current_waitlist: newWaitlist
 
       }
-      await db.collection("league_settings").doc(guild_id).set({
-        commands: {
-          waitlist: conf
-        }
-      }, { merge: true })
+      await LeagueSettingsDB.configureWaitlist(guild_id, conf)
       respondWithWaitlist(ctx, newWaitlist)
     } else if (subCommandName === "pop") {
       if (!subCommand.options) {
@@ -83,11 +74,7 @@ export default {
         current_waitlist: newWaitlist
 
       }
-      await db.collection("league_settings").doc(guild_id).set({
-        commands: {
-          waitlist: conf
-        }
-      }, { merge: true })
+      await LeagueSettingsDB.configureWaitlist(guild_id, conf)
       respondWithWaitlist(ctx, newWaitlist)
     } else {
       respond(ctx, createMessageResponse(`waitlist ${subCommandName} not found`))

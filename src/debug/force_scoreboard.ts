@@ -1,7 +1,7 @@
-import { LeagueSettings, } from "../discord/settings_db"
+import LeagueSettingsDB, { LeagueSettings, createWeekKey, } from "../discord/settings_db"
 import MaddenClient from "../db/madden_db"
 import { formatScoreboard } from "../discord/commands/game_channels"
-import { createClient, createWeekKey } from "../discord/discord_utils"
+import { createClient } from "../discord/discord_utils"
 import EventDB from "../db/events_db"
 import { ConfirmedSim } from "../db/events"
 import db from "../db/firebase"
@@ -22,8 +22,7 @@ const prodSettings = { publicKey: process.env.PUBLIC_KEY, botToken: process.env.
 const prodClient = createClient(prodSettings)
 
 async function updateScoreboard(guildId: string, seasonIndex: number, week: number) {
-  const doc = await db.collection("league_settings").doc(guildId).get()
-  const leagueSettings = doc.exists ? doc.data() as LeagueSettings : {} as LeagueSettings
+  const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guildId)
   const leagueId = leagueSettings.commands.madden_league?.league_id
   if (!leagueId) {
     return

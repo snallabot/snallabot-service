@@ -1,7 +1,7 @@
 import db from "../db/firebase"
 import { createClient } from "./discord_utils"
 import createNotifier from "./notifier"
-import { LeagueSettings } from "./settings_db"
+import LeagueSettingsDB, { LeagueSettings } from "./settings_db"
 
 if (!process.env.PUBLIC_KEY) {
   throw new Error("No Public Key passed for interaction verification")
@@ -22,11 +22,10 @@ function getRandomInt(max: number) {
 }
 
 async function updateEachLeagueNotifier() {
-  const querySnapshot = await db.collection("league_settings").get()
-  for (const leagueSettingsDoc of querySnapshot.docs) {
-    const leagueSettings = leagueSettingsDoc.data() as LeagueSettings
+  const allLeagueSettings = await LeagueSettingsDB.getAllLeagueSettings()
+  for (const leagueSettings of allLeagueSettings) {
     try {
-      const notifier = createNotifier(prodClient, leagueSettingsDoc.id, leagueSettings)
+      const notifier = createNotifier(prodClient, leagueSettings.guildId, leagueSettings)
       const weeklyStates = leagueSettings.commands?.game_channel?.weekly_states || {}
       const jitter = getRandomInt(3)
       await new Promise((r) => setTimeout(r, 1000 + jitter * 1000));

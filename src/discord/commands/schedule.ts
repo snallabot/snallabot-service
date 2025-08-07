@@ -5,7 +5,7 @@ import { APIApplicationCommandInteractionDataIntegerOption, ApplicationCommandOp
 import { Firestore } from "firebase-admin/firestore"
 import { GameResult, MADDEN_SEASON, MaddenGame, Team, getMessageForWeek } from "../../export/madden_league_types"
 import MaddenClient from "../../db/madden_db"
-import { LeagueSettings } from "../settings_db"
+import LeagueSettingsDB, { LeagueSettings } from "../settings_db"
 
 function format(schedule: MaddenGame[], teams: Team[], week: number) {
   const teamMap = new Map<Number, Team>()
@@ -48,8 +48,7 @@ export default {
     if (!command.data.options) {
       throw new Error("schedule command not defined properly")
     }
-    const doc = await db.collection("league_settings").doc(guild_id).get()
-    const leagueSettings = doc.exists ? doc.data() as LeagueSettings : {} as LeagueSettings
+    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
     if (!leagueSettings.commands.madden_league?.league_id) {
       throw new Error("Could not find a linked Madden league, link a league first")
     }

@@ -1,9 +1,9 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command } from "../commands_handler"
-import { respond, createMessageResponse, DiscordClient, deferMessage, formatTeamMessageName, createWeekKey, SnallabotReactions, SnallabotDiscordError } from "../discord_utils"
-import { APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataSubcommandOption, APIChannel, APIMessage, ApplicationCommandOptionType, ApplicationCommandType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
+import { respond, createMessageResponse, DiscordClient, deferMessage, formatTeamMessageName, SnallabotReactions, SnallabotDiscordError } from "../discord_utils"
+import { APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ApplicationCommandType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
-import { CategoryId, ChannelId, DiscordIdType, GameChannel, GameChannelState, LeagueSettings, MaddenLeagueConfiguration, MessageId, RoleId, UserId, WeekState } from "../settings_db"
+import LeagueSettingsDB, { CategoryId, ChannelId, DiscordIdType, GameChannel, GameChannelConfiguration, GameChannelState, LeagueSettings, MaddenLeagueConfiguration, MessageId, RoleId, UserId, WeekState } from "../settings_db"
 import MaddenClient, { TeamList } from "../../db/madden_db"
 import { formatRecord, getMessageForWeek, MaddenGame } from "../../export/madden_league_types"
 import createLogger from "../logging"
@@ -194,7 +194,6 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
     const scoreboardMessage = formatScoreboard(week, season, weekSchedule, teams, [], leagueId)
     const scoreboardMessageId = await client.createMessage(settings.commands.game_channel?.scoreboard_channel, scoreboardMessage, [])
     const weeklyState: WeekState = { week: week, seasonIndex: season, scoreboard: scoreboardMessageId, channel_states: channelsMap }
-    const weekKey = createWeekKey(season, week)
     await client.editOriginalInteraction(token, {
       content: `Creating Game Channels:
 - ${exportEmoji} Exporting
@@ -219,9 +218,7 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
 ${errorMessage}
 `
     })
-    await db.collection("league_settings").doc(guild_id).update({
-      [`commands.game_channel.weekly_states.${weekKey}`]: weeklyState
-    })
+    await LeagueSettingsDB.updateGameWeekState(guild_id, week, season, weeklyState)
   } catch (e) {
     if (e instanceof SnallabotDiscordError) {
       await client.editOriginalInteraction(token, { content: `Game Channels Create Failed with Error: ${e} Guidance: ${e.guidance}` })
@@ -241,10 +238,8 @@ async function clearGameChannels(client: DiscordClient, db: Firestore, token: st
     }).map(channelStates => {
       return channelStates.channel
     })
-    await Promise.all(Object.keys(weekStates).map(async weekKey => {
-      db.collection("league_settings").doc(guild_id).update({
-        [`commands.game_channel.weekly_states.${weekKey}.channel_states`]: []
-      })
+    await Promise.all(Object.values(weekStates).map(async weekState => {
+      await LeagueSettingsDB.deleteGameChannels(guild_id, weekState.week, weekState.seasonIndex)
     }))
     if (settings.commands.logger?.channel) {
       await client.editOriginalInteraction(token, { content: `Logging Game Channels...` })
@@ -301,8 +296,7 @@ export default {
     const options = command.data.options
     const gameChannelsCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
     const subCommand = gameChannelsCommand.name
-    const doc = await db.collection("league_settings").doc(guild_id).get()
-    const leagueSettings = doc.exists ? doc.data() as LeagueSettings : {} as LeagueSettings
+    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
     if (subCommand === "configure") {
       if (!gameChannelsCommand.options || !gameChannelsCommand.options[0] || !gameChannelsCommand.options[1] || !gameChannelsCommand.options[2] || !gameChannelsCommand.options[3]) {
         throw new Error("game_channels configure command misconfigured")
@@ -311,17 +305,14 @@ export default {
       const scoreboardChannel = (gameChannelsCommand.options[1] as APIApplicationCommandInteractionDataChannelOption).value
       const waitPing = (gameChannelsCommand.options[2] as APIApplicationCommandInteractionDataIntegerOption).value
       const adminRole = (gameChannelsCommand.options[3] as APIApplicationCommandInteractionDataRoleOption).value
-      await db.collection("league_settings").doc(guild_id).set({
-        commands: {
-          game_channel: {
-            admin: { id: adminRole, id_type: DiscordIdType.ROLE },
-            default_category: { id: gameChannelCategory, id_type: DiscordIdType.CATEGORY },
-            scoreboard_channel: { id: scoreboardChannel, id_type: DiscordIdType.CHANNEL },
-            wait_ping: waitPing,
-            weekly_states: leagueSettings?.commands?.game_channel?.weekly_states || {}
-          }
-        }
-      }, { merge: true })
+      const conf: GameChannelConfiguration = {
+        admin: { id: adminRole, id_type: DiscordIdType.ROLE },
+        default_category: { id: gameChannelCategory, id_type: DiscordIdType.CATEGORY },
+        scoreboard_channel: { id: scoreboardChannel, id_type: DiscordIdType.CHANNEL },
+        wait_ping: Number.parseInt(`${waitPing}`),
+        weekly_states: leagueSettings?.commands?.game_channel?.weekly_states || {}
+      }
+      await LeagueSettingsDB.configureGameChannel(guild_id, conf)
       respond(ctx, createMessageResponse(`game channels commands are configured! Configuration:
 
 - Admin Role: <@&${adminRole}>

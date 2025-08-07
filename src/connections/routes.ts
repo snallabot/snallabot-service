@@ -1,21 +1,16 @@
 import Router from "@koa/router"
-import db from "../db/firebase"
 import EventDB, { EventDelivery } from "../db/events_db"
 import { DiscordLeagueConnectionEvent } from "../db/events"
-import { FieldValue } from "firebase-admin/firestore"
+import LeagueSettingsDB from "../discord/settings_db"
 
 const router = new Router({ prefix: "/connect" })
 
 export async function setLeague(guild: string, league: string) {
-  await db.collection("league_settings").doc(guild).set(
-    { commands: { madden_league: { league_id: league } } }, { merge: true }
-  )
+  await LeagueSettingsDB.connectMaddenLeagueId(guild, league)
   await EventDB.appendEvents<DiscordLeagueConnectionEvent>([{ key: guild, event_type: "DISCORD_LEAGUE_CONNECTION", guildId: guild, leagueId: league }], EventDelivery.EVENT_TRIGGER)
 }
 export async function removeLeague(guild: string) {
-  await db.collection("league_settings").doc(guild).update(
-    { ["commands.madden_league"]: FieldValue.delete() }
-  )
+  await LeagueSettingsDB.disconnectMaddenLeagueId(guild)
   //TODO(snallapa) new event?
   await EventDB.appendEvents<DiscordLeagueConnectionEvent>([{ key: guild, event_type: "DISCORD_LEAGUE_CONNECTION", guildId: guild, leagueId: "" }], EventDelivery.EVENT_TRIGGER)
 }
