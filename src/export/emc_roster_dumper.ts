@@ -17,9 +17,9 @@ async function queryPlayerHistory(players: { firstName: string, lastName: string
     for (const player of players) {
       const { firstName, lastName } = player;
 
-      // Query players matching firstName and lastName /league_data/3418359/MADDEN_PLAYER/551029616/history/285facce-919d-4d41-8771-4a9405d669e1
+      // Query players matching firstName and lastName /madden_data26/3418359/MADDEN_PLAYER/551029616/history/285facce-919d-4d41-8771-4a9405d669e1
       const playerQuery = await db
-        .collection('league_data').doc("3418359").collection("MADDEN_PLAYER")
+        .collection('madden_data26').doc("3418359").collection("MADDEN_PLAYER")
         .where('firstName', '==', firstName)
         .where('lastName', '==', lastName)
         .get();
@@ -33,7 +33,7 @@ async function queryPlayerHistory(players: { firstName: string, lastName: string
       for (const doc of playerQuery.docs) {
         const playerData = doc.data() as Player
         // Get the history subcollection
-        const historyRef = db.collection(`league_data/3418359/MADDEN_PLAYER/${doc.id}/history`);
+        const historyRef = db.collection(`madden_data26/3418359/MADDEN_PLAYER/${doc.id}/history`);
         const historyQuery = await historyRef
           .where('timestamp', '>=', oneDayAgo)
           .orderBy('timestamp', 'desc')

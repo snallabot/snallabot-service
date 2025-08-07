@@ -3,7 +3,7 @@ import { DiscordClient, formatTeamMessageName, SnallabotReactions } from "./disc
 import LeagueSettingsDB, { ChannelId, GameChannel, GameChannelState, LeagueSettings, MessageId, TeamAssignments, UserId } from "./settings_db"
 import createLogger from "./logging"
 import MaddenDB from "../db/madden_db"
-import { ConfirmedSim, SimResult } from "../db/events"
+import { ConfirmedSimV2, SimResult } from "../db/events"
 import { ExportContext, exporterForLeague } from "../dashboard/ea_client"
 import { GameResult } from "../export/madden_league_types"
 
@@ -12,7 +12,6 @@ interface SnallabotNotifier {
   deleteGameChannel(currentState: GameChannel, season: number, week: number, origin: UserId[]): Promise<void>
   ping(currentState: GameChannel, season: number, week: number): Promise<void>
 }
-
 
 
 function decideResult(homeUsers: UserId[], awayUsers: UserId[]) {
@@ -65,7 +64,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
     const homeTeamId = teams.getTeamForId(game.homeTeamId).teamId
     const awayUser = latestAssignents[awayTeamId]?.discord_user
     const homeUser = latestAssignents[homeTeamId]?.discord_user
-    const event: SnallabotEvent<ConfirmedSim> = { key: guildId, event_type: "CONFIRMED_SIM", result: result, scheduleId: gameChannel.scheduleId, requestedUsers: requestedUsers, confirmedUsers: confirmedUsers, week: week, seasonIndex: season, leagueId: leagueId }
+    const event: SnallabotEvent<ConfirmedSimV2> = { key: leagueId, event_type: "CONFIRMED_SIM", result: result, scheduleId: gameChannel.scheduleId, requestedUsers: requestedUsers, confirmedUsers: confirmedUsers, week: week, seasonIndex: season }
     if (awayUser) {
       event.awayUser = awayUser
     }

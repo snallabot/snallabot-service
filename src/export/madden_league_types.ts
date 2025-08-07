@@ -1,4 +1,4 @@
-export const MADDEN_SEASON = 2024
+export const MADDEN_SEASON = 2025
 
 export function getMessageForWeek(week: number) {
   if (week < 1 || week > 23 || week === 22) {

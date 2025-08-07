@@ -346,7 +346,7 @@ export async function storeToken(token: TokenInformation, leagueId: number) {
       [DEFAULT_EXPORT]: { autoUpdate: true, leagueInfo: true, rosters: true, weeklyStats: true, url: DEFAULT_EXPORT, editable: false }
     }
   }
-  await db.collection("league_data").doc(`${leagueId}`).set(leagueConnection)
+  await db.collection("madden_data26").doc(`${leagueId}`).set(leagueConnection)
   const tokenInformation: StoredTokenInformation = {
     token: token
   }
@@ -359,11 +359,11 @@ interface StoredEAClient extends EAClient {
   removeExport(url: string): Promise<void>
 }
 export async function deleteLeague(leagueId: number): Promise<void> {
-  await db.collection("league_data").doc(`${leagueId}`).delete()
+  await db.collection("madden_data26").doc(`${leagueId}`).delete()
 }
 
 export async function storedTokenClient(leagueId: number): Promise<StoredEAClient> {
-  const doc = await db.collection("league_data").doc(`${leagueId}`).get()
+  const doc = await db.collection("madden_data26").doc(`${leagueId}`).get()
   if (!doc.exists) {
     throw new Error(`League ${leagueId} not connected to snallabot`)
   }
@@ -385,7 +385,7 @@ export async function storedTokenClient(leagueId: number): Promise<StoredEAClien
       return leagueConnection.destinations
     },
     async updateExport(destination: ExportDestination) {
-      await db.collection("league_data").doc(`${leagueId}`).set({
+      await db.collection("madden_data26").doc(`${leagueId}`).set({
         destinations: {
           [destination.url]: destination
         }
@@ -393,7 +393,7 @@ export async function storedTokenClient(leagueId: number): Promise<StoredEAClien
     },
     async removeExport(url: string) {
       delete leagueConnection.destinations[url]
-      await db.collection("league_data").doc(`${leagueId}`).set(leagueConnection)
+      await db.collection("madden_data26").doc(`${leagueId}`).set(leagueConnection)
     },
     ...eaClient
   }
