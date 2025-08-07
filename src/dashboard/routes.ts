@@ -7,6 +7,7 @@ import { BlazeError, ExportContext, ExportDestination, deleteLeague, ephemeralCl
 import { removeLeague, setLeague } from "../connections/routes"
 import db from "../db/firebase"
 import { discordLeagueView } from "../db/view"
+import LeagueSettingsDB from "../discord/settings_db"
 
 const startRender = Pug.compileFile(path.join(__dirname, "/templates/start.pug"))
 const errorRender = Pug.compileFile(path.join(__dirname, "/templates/error.pug"))
@@ -281,9 +282,9 @@ router.get("/", async (ctx) => {
   const { leagueId: rawLeagueId } = ctx.params
   const leagueId = Number(rawLeagueId)
   await deleteLeague(leagueId)
-  const querySnapshot = await db.collection("league_settings").where("commands.madden_league.league_id", "==", `${leagueId}`).get()
-  await Promise.all(querySnapshot.docs.map(async d => {
-    await removeLeague(d.id)
+  const leagueSettings = await LeagueSettingsDB.getLeagueSettingsForLeagueId(rawLeagueId)
+  await Promise.all(leagueSettings.map(async d => {
+    await removeLeague(d.guildId)
   }))
   ctx.status = 200
 })

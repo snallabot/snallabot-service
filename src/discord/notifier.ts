@@ -1,10 +1,8 @@
 import EventDB, { EventDelivery, SnallabotEvent } from "../db/events_db"
-import { DiscordClient, formatTeamMessageName, createWeekKey, SnallabotReactions } from "./discord_utils"
-import { ChannelId, GameChannel, GameChannelState, LeagueSettings, MessageId, TeamAssignments, UserId } from "./settings_db"
+import { DiscordClient, formatTeamMessageName, SnallabotReactions } from "./discord_utils"
+import LeagueSettingsDB, { ChannelId, GameChannel, GameChannelState, LeagueSettings, MessageId, TeamAssignments, UserId } from "./settings_db"
 import createLogger from "./logging"
 import MaddenDB from "../db/madden_db"
-import db from "../db/firebase"
-import { FieldValue } from "firebase-admin/firestore"
 import { ConfirmedSimV2, SimResult } from "../db/events"
 import { ExportContext, exporterForLeague } from "../dashboard/ea_client"
 import { GameResult } from "../export/madden_league_types"
@@ -14,7 +12,6 @@ interface SnallabotNotifier {
   deleteGameChannel(currentState: GameChannel, season: number, week: number, origin: UserId[]): Promise<void>
   ping(currentState: GameChannel, season: number, week: number): Promise<void>
 }
-
 
 
 function decideResult(homeUsers: UserId[], awayUsers: UserId[]) {
@@ -87,10 +84,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
   }
   async function deleteTracking(currentState: GameChannel, season: number, week: number) {
     const channelId = currentState.channel
-    const weekKey = createWeekKey(season, week)
-    await db.collection("league_settings").doc(guildId).update({
-      [`commands.game_channel.weekly_states.${weekKey}.channel_states.${channelId.id}`]: FieldValue.delete()
-    })
+    await LeagueSettingsDB.deleteGameChannel(guildId, week, season, channelId)
   }
   return {
     deleteGameChannel: async function(currentState: GameChannel, season: number, week: number, originators: UserId[]) {
@@ -104,10 +98,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
       const homeTeam = game.homeTeamId
       const awayTag = formatTeamMessageName(settings.commands.teams?.assignments?.[`${awayTeam}`]?.discord_user?.id, teams.getTeamForId(awayTeam).userName)
       const homeTag = formatTeamMessageName(settings.commands.teams?.assignments?.[`${homeTeam}`]?.discord_user?.id, teams.getTeamForId(homeTeam).userName)
-      const weekKey = createWeekKey(season, week)
-      await db.collection("league_settings").doc(guildId).update({
-        [`commands.game_channel.weekly_states.${weekKey}.channel_states.${gameChannel.channel.id}.notifiedTime`]: new Date().getTime()
-      })
+      await LeagueSettingsDB.updateGameChannelPingTime(guildId, week, season, gameChannel.channel)
       try {
         await client.createMessage(gameChannel.channel, `${awayTag} ${homeTag} is your game scheduled? Schedule it! or react to my first message to set it as scheduled! Hit the trophy if its done already`, ["users"])
       } catch (e) {
@@ -121,7 +112,6 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
         await deleteTracking(currentState, season, week)
         return
       }
-      const weekKey = createWeekKey(season, week)
       const ggUsers = await getReactedUsers(channelId, messageId, SnallabotReactions.GG)
       const scheduledUsers = await getReactedUsers(channelId, messageId, SnallabotReactions.SCHEDULE)
       const homeUsers = await getReactedUsers(channelId, messageId, SnallabotReactions.HOME)
@@ -158,9 +148,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
         } else if (currentState.state !== GameChannelState.FORCE_WIN_REQUESTED) {
           const adminRole = settings.commands.game_channel?.admin.id || ""
           const message = `Sim requested <@&${adminRole}> by ${joinUsers(fwUsers)}`
-          await db.collection("league_settings").doc(guildId).update({
-            [`commands.game_channel.weekly_states.${weekKey}.channel_states.${channelId.id}.state`]: GameChannelState.FORCE_WIN_REQUESTED
-          })
+          await LeagueSettingsDB.updateGameChannelState(guildId, week, season, channelId, GameChannelState.FORCE_WIN_REQUESTED)
           await client.createMessage(channelId, message, ["roles"])
         }
       } else if (scheduledUsers.length === 0 && currentState.state !== GameChannelState.FORCE_WIN_REQUESTED) {

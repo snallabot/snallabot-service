@@ -3,7 +3,7 @@ import { CommandHandler, Command } from "../commands_handler"
 import { respond, createMessageResponse, DiscordClient, deferMessage } from "../discord_utils"
 import { APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataSubcommandOption, APIApplicationCommandInteractionDataUserOption, APIMessage, ApplicationCommandOptionType, ApplicationCommandType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
-import { ChannelId, DiscordIdType, LeagueSettings, MessageId, StreamCountConfiguration, UserStreamCount } from "../settings_db"
+import LeagueSettingsDB, { ChannelId, DiscordIdType, LeagueSettings, MessageId, StreamCountConfiguration, UserStreamCount } from "../settings_db"
 
 async function moveStreamCountMessage(client: DiscordClient, oldChannelId: ChannelId, oldMessageId: MessageId, newChannelId: ChannelId, counts: Array<UserStreamCount>): Promise<MessageId> {
   try {
@@ -55,8 +55,7 @@ export default {
     const options = command.data.options
     const streamsCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
     const subCommand = streamsCommand.name
-    const doc = await db.collection("league_settings").doc(guild_id).get()
-    const leagueSettings = doc.exists ? doc.data() as LeagueSettings : {} as LeagueSettings
+    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
     if (subCommand === "configure") {
       if (!streamsCommand.options || !streamsCommand.options[0]) {
         throw new Error("streams configure misconfigured")

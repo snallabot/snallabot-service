@@ -3,7 +3,7 @@ import { CommandHandler, Command } from "../commands_handler"
 import { respond, DiscordClient, deferMessage } from "../discord_utils"
 import { APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ApplicationCommandType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
-import { LeagueSettings } from "../settings_db"
+import LeagueSettingsDB, { LeagueSettings } from "../settings_db"
 import MaddenDB from "../../db/madden_db"
 import { Standing, formatRecord } from "../../export/madden_league_types"
 
@@ -64,8 +64,7 @@ export default {
     const options = command.data.options
     const standingsCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
     const subCommand = standingsCommand.name
-    const doc = await db.collection("league_settings").doc(guild_id).get()
-    const leagueSettings = doc.exists ? doc.data() as LeagueSettings : {} as LeagueSettings
+    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
     if (!leagueSettings?.commands?.madden_league?.league_id) {
       throw new Error("No madden league linked. Setup snallabot with your Madden league first")
     }

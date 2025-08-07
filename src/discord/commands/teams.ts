@@ -3,7 +3,7 @@ import { CommandHandler, Command, AutocompleteHandler, Autocomplete } from "../c
 import { respond, createMessageResponse, DiscordClient } from "../discord_utils"
 import { APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIApplicationCommandInteractionDataUserOption, ApplicationCommandOptionType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { FieldValue, Firestore } from "firebase-admin/firestore"
-import { ChannelId, DiscordIdType, LeagueSettings, MessageId, TeamAssignments } from "../settings_db"
+import LeagueSettingsDB, { ChannelId, DiscordIdType, LeagueSettings, MessageId, TeamAssignments } from "../settings_db"
 import MaddenClient from "../../db/madden_db"
 import { Team } from "../../export/madden_league_types"
 import { teamSearchView, discordLeagueView } from "../../db/view"
@@ -61,8 +61,7 @@ export default {
     const options = command.data.options
     const teamsCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
     const subCommand = teamsCommand.name
-    const doc = await db.collection("league_settings").doc(guild_id).get()
-    const leagueSettings = doc.exists ? doc.data() as LeagueSettings : {} as LeagueSettings
+    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
     if (subCommand === "configure") {
       if (!teamsCommand.options || !teamsCommand.options[0]) {
         throw new Error("teams configure misconfigured")
@@ -77,31 +76,25 @@ export default {
           await client.deleteMessage(oldChannelId, oldMessageId || { id: "", id_type: DiscordIdType.MESSAGE })
         } catch (e) { }
         const newMessageId = await client.createMessage(channel, message, [])
-        await db.collection("league_settings").doc(guild_id).set({
-          commands: {
-            teams: {
-              channel: channel,
-              messageId: newMessageId,
-              useRoleUpdates: useRoleUpdates,
-              assignments: leagueSettings?.commands?.teams?.assignments || {},
-            }
-          }
-        }, { merge: true })
+        await LeagueSettingsDB.updateTeamConfiguration(guild_id, {
+          channel: channel,
+          messageId: newMessageId,
+          useRoleUpdates: useRoleUpdates,
+          assignments: leagueSettings?.commands?.teams?.assignments || {},
+        })
+
         respond(ctx, createMessageResponse("Teams Configured"))
       } else {
         const oldMessageId = leagueSettings?.commands?.teams?.messageId
-        if (oldMessageId) {
+        if (leagueSettings.commands.teams && oldMessageId) {
           try {
             const messageExists = await client.checkMessageExists(channel, oldMessageId)
             if (messageExists) {
-              await db.collection("league_settings").doc(guild_id).set({
-                commands: {
-                  teams: {
-                    useRoleUpdates: useRoleUpdates,
-                    assignments: leagueSettings?.commands.teams?.assignments || {},
-                  }
-                }
-              }, { merge: true })
+              await LeagueSettingsDB.updateTeamConfiguration(guild_id, {
+                ...leagueSettings.commands.teams,
+                useRoleUpdates: useRoleUpdates,
+                assignments: leagueSettings?.commands.teams?.assignments || {},
+              })
               const message = await fetchTeamsMessage(leagueSettings)
               await client.editMessage(channel, oldMessageId, message, [])
               respond(ctx, createMessageResponse("Teams Configured"))
@@ -113,16 +106,12 @@ export default {
         }
         const message = await fetchTeamsMessage(leagueSettings)
         const messageId = await client.createMessage(channel, message, [])
-        await db.collection("league_settings").doc(guild_id).set({
-          commands: {
-            teams: {
-              channel: channel,
-              messageId: messageId,
-              useRoleUpdates: useRoleUpdates,
-              assignments: leagueSettings?.commands?.teams?.assignments || {},
-            }
-          }
-        }, { merge: true })
+        await LeagueSettingsDB.updateTeamConfiguration(guild_id, {
+          channel: channel,
+          messageId: messageId,
+          useRoleUpdates: useRoleUpdates,
+          assignments: leagueSettings?.commands?.teams?.assignments || {},
+        })
         respond(ctx, createMessageResponse("Teams Configured"))
       }
     } else if (subCommand === "assign") {
@@ -154,13 +143,7 @@ export default {
       const roleAssignment = role ? { discord_role: { id: role, id_type: DiscordIdType.ROLE } } : {}
       const assignments = { ...leagueSettings.commands.teams?.assignments, [teams.getTeamForId(assignedTeam.id).teamId]: { discord_user: { id: user, id_type: DiscordIdType.USER }, ...roleAssignment } }
       leagueSettings.commands.teams.assignments = assignments
-      await db.collection("league_settings").doc(guild_id).set({
-        commands: {
-          teams: {
-            assignments: assignments
-          }
-        }
-      }, { merge: true })
+      await LeagueSettingsDB.updateAssignment(guild_id, assignments)
       const message = createTeamsMessage(leagueSettings, teams.getLatestTeams())
       try {
         await client.editMessage(leagueSettings.commands.teams.channel, leagueSettings.commands.teams.messageId, message, [])
@@ -196,9 +179,7 @@ export default {
       const currentAssignments = { ...leagueSettings.commands.teams.assignments }
       delete currentAssignments[`${teamIdToDelete}`]
       leagueSettings.commands.teams.assignments = currentAssignments
-      await db.collection("league_settings").doc(guild_id).update({
-        [`commands.teams.assignments.${teamIdToDelete}`]: FieldValue.delete()
-      })
+      await LeagueSettingsDB.removeAssignment(guild_id, teamIdToDelete)
       const message = createTeamsMessage(leagueSettings, teams.getLatestTeams())
       try {
         await client.editMessage(leagueSettings.commands.teams.channel, leagueSettings.commands.teams.messageId, message, [])
@@ -210,9 +191,7 @@ export default {
       if (!leagueSettings.commands.teams?.channel.id) {
         throw new Error("Teams not configured, run /teams configure first")
       }
-      await db.collection("league_settings").doc(guild_id).update({
-        [`commands.teams.assignments`]: FieldValue.delete()
-      })
+      await LeagueSettingsDB.removeAllAssignments(guild_id)
       if (leagueSettings.commands.teams?.assignments) {
         leagueSettings.commands.teams.assignments = {}
       }

@@ -3,7 +3,7 @@ import { CommandHandler, Command } from "../commands_handler"
 import { respond, createMessageResponse, DiscordClient } from "../discord_utils"
 import { APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ApplicationCommandType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { FieldValue, Firestore } from "firebase-admin/firestore"
-import { DiscordIdType, LoggerConfiguration } from "../settings_db"
+import LeagueSettingsDB, { DiscordIdType, LoggerConfiguration } from "../settings_db"
 
 export default {
   async handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext) {
@@ -30,15 +30,9 @@ export default {
           id_type: DiscordIdType.CHANNEL
         },
       }
-      await db.collection("league_settings").doc(guild_id).set({
-        commands: {
-          logger: loggerConfig
-        }
-      }, { merge: true })
+      await LeagueSettingsDB.configureLogger(guild_id, loggerConfig)
     } else {
-      await db.collection("league_settings").doc(guild_id).update({
-        ["commands.logger"]: FieldValue.delete()
-      })
+      await LeagueSettingsDB.removeLogger(guild_id)
     }
     respond(ctx, createMessageResponse(`logger is ${on ? "on" : "off"}`))
   },

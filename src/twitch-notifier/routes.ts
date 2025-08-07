@@ -7,7 +7,7 @@ import NodeCache from "node-cache"
 import db from "../db/firebase"
 import EventDB, { EventDelivery } from "../db/events_db"
 import { MaddenBroadcastEvent } from "../db/events"
-import { LeagueSettings } from "../discord/settings_db"
+import LeagueSettingsDB, { LeagueSettings } from "../discord/settings_db"
 const router = new Router({ prefix: "/twitch" })
 
 
@@ -138,8 +138,7 @@ async function handleStreamEvent(twitchEvent: StreamUpEvent) {
   const subscription = subscriptionDoc.data() as SubscriptionDoc
   const subscribedServers = Object.entries(subscription.servers).filter(entry => entry[1].subscribed).map(entry => entry[0])
   await Promise.all(subscribedServers.map(async (server) => {
-    const doc = await db.collection("league_settings").doc(server).get()
-    const leagueSettings = doc.exists ? doc.data() as LeagueSettings : {} as LeagueSettings
+    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(server)
     const configuration = leagueSettings.commands?.broadcast
     if (!configuration) {
       console.error(`${server} is not configured for Broadcasts`)
