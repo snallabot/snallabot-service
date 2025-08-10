@@ -247,7 +247,8 @@ discordClient.on("messageReactionAdd", async (msg, reactor, reaction) => {
   const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild)
   const weeklyStates = leagueSettings.commands?.game_channel?.weekly_states || {}
   await Promise.all(Object.values(weeklyStates).map(async weeklyState => {
-    await Promise.all(Object.entries(weeklyState.channel_states).map(async channelEntry => {
+    const channelStates = weeklyState.channel_states || {}
+    await Promise.all(Object.entries(channelStates).map(async channelEntry => {
       const [channelId, channelState] = channelEntry
       if (channelId === reactionChannel && channelState?.message?.id === reactionMessage) {
         const notifier = createNotifier(prodClient, guild, leagueSettings)

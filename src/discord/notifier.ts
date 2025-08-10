@@ -149,7 +149,10 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
           const adminRole = settings.commands.game_channel?.admin.id || ""
           const message = `Sim requested <@&${adminRole}> by ${joinUsers(fwUsers)}`
           await LeagueSettingsDB.updateGameChannelState(guildId, week, season, channelId, GameChannelState.FORCE_WIN_REQUESTED)
-          await client.createMessage(channelId, message, ["roles"])
+          try {
+            await client.createMessage(channelId, message, ["roles"])
+          } catch (e) {
+          }
         }
       } else if (scheduledUsers.length === 0 && currentState.state !== GameChannelState.FORCE_WIN_REQUESTED) {
         const waitPing = settings.commands.game_channel?.wait_ping || 12
