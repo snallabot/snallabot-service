@@ -50,7 +50,11 @@ class GCSFileHandler implements FileHandler {
   constructor(serviceAccount: string) {
     this.storage = new Storage({
       projectId: "snallabot",
-      credentials: JSON.parse(serviceAccount)
+      credentials: JSON.parse(serviceAccount),
+      retryOptions: {
+        autoRetry: true,
+        retryDelayMultiplier: 5,
+      }
     })
   }
 
