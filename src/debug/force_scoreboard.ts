@@ -40,7 +40,11 @@ async function updateScoreboard(guildId: string, seasonIndex: number, week: numb
   const games = await MaddenClient.getWeekScheduleForSeason(leagueId, week, seasonIndex)
   const sims = await EventDB.queryEvents<ConfirmedSim>(guildId, "CONFIRMED_SIM", new Date(0), { week: week, seasonIndex: seasonIndex }, 30)
   const message = formatScoreboard(week, seasonIndex, games, teams, sims, leagueId)
+  const messages = await prodClient.getMessagesInChannel(scoreboard_channel)
+  console.log(messages.map(m => m.content))
   await prodClient.editMessage(scoreboard_channel, scoreboard, message, [])
 }
 
-updateScoreboard("1296207094344843264", 1, 12)
+
+
+updateScoreboard("1335694013373747343", 4, 8)

@@ -99,6 +99,7 @@ EventDB.on<MaddenBroadcastEvent>("MADDEN_BROADCAST", async (events) => {
 })
 
 async function updateScoreboard(leagueSettings: LeagueSettings, guildId: string, seasonIndex: number, week: number) {
+  console.log("updating scoreboard " + guildId)
   const leagueId = leagueSettings.commands.madden_league?.league_id
   if (!leagueId) {
     return
@@ -131,8 +132,10 @@ EventDB.on<ConfirmedSim>("CONFIRMED_SIM", async (events) => {
 })
 
 MaddenDB.on<MaddenGame>("MADDEN_SCHEDULE", async (events) => {
+
   Object.entries(Object.groupBy(events, e => e.key)).map(async entry => {
     const [leagueId, groupedGames] = entry
+    console.log("received events " + leagueId)
     const games = groupedGames || []
     const finishedGames = games.filter(g => g.status !== GameResult.NOT_PLAYED)
     const finishedGame = finishedGames[0]
@@ -142,6 +145,7 @@ MaddenDB.on<MaddenGame>("MADDEN_SCHEDULE", async (events) => {
       if (finishedGame) {
         const season = finishedGame.seasonIndex
         const week = finishedGame.weekIndex + 1
+        console.log("update scoreboard " + week + " " + season)
         await updateScoreboard(settings, guild_id, season, week)
         const notifier = createNotifier(prodClient, guild_id, settings)
         const gameIds = new Set(finishedGames.map(g => g.scheduleId))
