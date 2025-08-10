@@ -7,6 +7,7 @@ import { TeamExport, StandingExport, SchedulesExport, RushingExport, TeamStatsEx
 import db from "../db/firebase"
 import { createDestination } from "../export/exporter";
 import { DEPLOYMENT_URL } from "../config";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
 
 export enum LeagueData {
@@ -353,13 +354,56 @@ export async function storeToken(token: TokenInformation, leagueId: number) {
   await db.collection("blaze_tokens").doc(`${token.blazeId}`).set(tokenInformation)
 }
 
+function convertDate(firebaseObject: any) {
+  if (!firebaseObject) return null;
+
+  for (const [key, value] of Object.entries(firebaseObject)) {
+
+    // covert items inside array
+    if (value && Array.isArray(value))
+      firebaseObject[key] = value.map(item => convertDate(item));
+
+    // convert inner objects
+    if (value && typeof value === 'object') {
+      firebaseObject[key] = convertDate(value);
+    }
+
+    // convert simple properties
+    if (value && value.hasOwnProperty('_seconds'))
+      firebaseObject[key] = (value as Timestamp).toDate();
+  }
+  return firebaseObject;
+}
+
 interface StoredEAClient extends EAClient {
   getExports(): { [key: string]: ExportDestination },
   updateExport(destination: ExportDestination): Promise<void>,
   removeExport(url: string): Promise<void>
 }
-export async function deleteLeague(leagueId: number): Promise<void> {
-  await db.collection("league_data").doc(`${leagueId}`).delete()
+export async function unlinkLeague(leagueId: number): Promise<void> {
+  await db.collection("league_data").doc(`${leagueId}`).update(
+    {
+      blazeId: FieldValue.delete()
+    }
+  )
+}
+
+export async function deleteToken(blazeId: string): Promise<void> {
+  await db.collection("blaze_tokens").doc(blazeId).delete()
+  const connectedLeagues = await db.collection("league_data").where("blazeId", "==", blazeId).get()
+  await Promise.all(connectedLeagues.docs.map(async d => await unlinkLeague(Number(d.id))))
+}
+export async function getAllTokens(): Promise<StoredTokenInformation[]> {
+  const docs = await db.collection("blaze_tokens").get()
+  return docs.docs.map(d => convertDate(d.data()) as StoredTokenInformation)
+}
+export async function getTokenForLeague(blazeId: string): Promise<StoredTokenInformation> {
+  const tokenDoc = await db.collection("blaze_tokens").doc(`${blazeId}`).get()
+  if (!tokenDoc.exists) {
+    throw new Error(`Token missing for ${blazeId}`)
+  }
+  const token = convertDate(tokenDoc.data()) as StoredTokenInformation
+  return token
 }
 
 export async function storedTokenClient(leagueId: number): Promise<StoredEAClient> {
@@ -368,11 +412,12 @@ export async function storedTokenClient(leagueId: number): Promise<StoredEAClien
     throw new Error(`League ${leagueId} not connected to snallabot`)
   }
   const leagueConnection = doc.data() as StoredMaddenConnection
-  const tokenDoc = await db.collection("blaze_tokens").doc(`${leagueConnection.blazeId}`).get()
-  if (!doc.exists) {
+  let token: StoredTokenInformation
+  try {
+    token = await getTokenForLeague(leagueConnection.blazeId)
+  } catch (e) {
     throw new Error(`League ${leagueId} is connected, but its missing EA connection with id ${leagueConnection.blazeId}`)
   }
-  const token = tokenDoc.data() as StoredTokenInformation
   const newToken = await refreshToken(token.token)
   const session = token.session ? token.session : await retrieveBlazeSession(newToken)
   const newSession = await refreshBlazeSession(newToken, session)
