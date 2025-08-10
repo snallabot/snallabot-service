@@ -43,4 +43,6 @@ async function updateScoreboard(guildId: string, seasonIndex: number, week: numb
   await prodClient.editMessage(scoreboard_channel, scoreboard, message, [])
 }
 
-updateScoreboard("1296207094344843264", 1, 12)
+
+
+updateScoreboard("1335694013373747343", 4, 8)

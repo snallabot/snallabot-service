@@ -132,6 +132,7 @@ EventDB.on<ConfirmedSimV2>("CONFIRMED_SIM", async (events) => {
 })
 
 MaddenDB.on<MaddenGame>("MADDEN_SCHEDULE", async (events) => {
+
   Object.entries(Object.groupBy(events, e => e.key)).map(async entry => {
     const [leagueId, groupedGames] = entry
     const games = groupedGames || []

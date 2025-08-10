@@ -93,7 +93,7 @@ const LeagueSettingsDB: LeagueSettingsDB = {
         guildId
       }
     }
-    return doc.data() as LeagueSettings
+    return { guildId: doc.id, ...doc.data() } as LeagueSettings
   },
 
   async configureLogger(guildId: string, loggerSettings: LoggerConfiguration): Promise<void> {
@@ -236,7 +236,7 @@ const LeagueSettingsDB: LeagueSettingsDB = {
     const snapshot = await db.collection('league_settings')
       .where('commands.madden_league.league_id', '==', leagueId)
       .get()
-    return snapshot.docs.map(doc => doc.data() as LeagueSettings)
+    return snapshot.docs.map(doc => ({ guildId: doc.id, ...doc.data() }) as LeagueSettings)
   }
 }
 
