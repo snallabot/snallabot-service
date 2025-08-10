@@ -412,6 +412,10 @@ export async function storedTokenClient(leagueId: number): Promise<StoredEAClien
     throw new Error(`League ${leagueId} not connected to snallabot`)
   }
   const leagueConnection = doc.data() as StoredMaddenConnection
+  if (leagueConnection.blazeId) {
+  } else {
+    throw new Error(`League ${leagueId} not connected to snallabot dashboard. Try setting up the dashboard again`)
+  }
   let token: StoredTokenInformation
   try {
     token = await getTokenForLeague(leagueConnection.blazeId)
