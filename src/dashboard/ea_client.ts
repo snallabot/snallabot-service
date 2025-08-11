@@ -104,7 +104,7 @@ async function refreshToken(token: TokenInformation): Promise<TokenInformation> 
       throw new EAAccountError(`Error refreshing tokens, response from EA ${JSON.stringify(newToken)}`, "The only solution may to unlink the dashboard and set it up again")
     }
     const newExpiry = new Date(new Date().getTime() + newToken.expires_in * 1000)
-    return { accessToken: newToken.access_token, refreshToken: newToken.refresh_token, expiry: newExpiry, console: token.console, blazeId: token.blazeId }
+    return { accessToken: newToken.access_token, refreshToken: newToken.refresh_token, expiry: newExpiry, console: token.console, blazeId: `${token.blazeId}` }
   } else {
     return token
   }
@@ -342,7 +342,7 @@ const DEFAULT_EXPORT = `https://${DEPLOYMENT_URL}`
 
 export async function storeToken(token: TokenInformation, leagueId: number) {
   const leagueConnection: StoredMaddenConnection = {
-    blazeId: token.blazeId,
+    blazeId: `${token.blazeId}`,
     leagueId: leagueId,
     destinations: {
       [DEFAULT_EXPORT]: { autoUpdate: true, leagueInfo: true, rosters: true, weeklyStats: true, url: DEFAULT_EXPORT, editable: false }
@@ -391,8 +391,8 @@ export async function unlinkLeague(leagueId: number): Promise<void> {
 }
 
 export async function deleteToken(blazeId: string): Promise<void> {
-  await db.collection("blaze_tokens").doc(blazeId).delete()
-  const connectedLeagues = await db.collection("madden_data26").where("blazeId", "==", blazeId).get()
+  await db.collection("blaze_tokens").doc(`${blazeId}`).delete()
+  const connectedLeagues = await db.collection("madden_data26").where("blazeId", "==", `${blazeId}`).get()
   await Promise.all(connectedLeagues.docs.map(async d => await unlinkLeague(Number(d.id))))
 }
 export async function getAllTokens(): Promise<StoredTokenInformation[]> {
