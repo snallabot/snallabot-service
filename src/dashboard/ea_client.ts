@@ -390,7 +390,7 @@ export async function unlinkLeague(leagueId: number): Promise<void> {
 }
 
 export async function deleteToken(blazeId: string): Promise<void> {
-  await db.collection("blaze_tokens").doc(blazeId).delete()
+  await db.collection("blaze_tokens").doc(`${blazeId}`).delete()
   const connectedLeagues = await db.collection("league_data").where("blazeId", "==", blazeId).get()
   await Promise.all(connectedLeagues.docs.map(async d => await unlinkLeague(Number(d.id))))
 }
