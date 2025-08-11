@@ -3,9 +3,8 @@ import Pug from "pug"
 import path from "path"
 import { Next, ParameterizedContext } from "koa"
 import { EA_LOGIN_URL, AUTH_SOURCE, CLIENT_SECRET, REDIRECT_URL, CLIENT_ID, AccountToken, TokenInfo, Entitlements, VALID_ENTITLEMENTS, Persona, MACHINE_KEY, Personas, ENTITLEMENT_TO_VALID_NAMESPACE, NAMESPACES, ENTITLEMENT_TO_SYSTEM, SystemConsole, exportOptions, seasonType } from "./ea_constants"
-import { BlazeError, ExportContext, ExportDestination, deleteLeague, ephemeralClientFromToken, exporterForLeague, storeToken, storedTokenClient } from "./ea_client"
+import { BlazeError, ExportContext, ExportDestination, unlinkLeague, ephemeralClientFromToken, exporterForLeague, storeToken, storedTokenClient } from "./ea_client"
 import { removeLeague, setLeague } from "../connections/routes"
-import db from "../db/firebase"
 import { discordLeagueView } from "../db/view"
 import LeagueSettingsDB from "../discord/settings_db"
 
@@ -281,7 +280,7 @@ router.get("/", async (ctx) => {
 }).post("/league/:leagueId/unlink", async (ctx, next) => {
   const { leagueId: rawLeagueId } = ctx.params
   const leagueId = Number(rawLeagueId)
-  await deleteLeague(leagueId)
+  await unlinkLeague(leagueId)
   const leagueSettings = await LeagueSettingsDB.getLeagueSettingsForLeagueId(rawLeagueId)
   await Promise.all(leagueSettings.map(async d => {
     await removeLeague(d.guildId)
