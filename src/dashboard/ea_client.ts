@@ -339,6 +339,7 @@ type StoredTokenInformation = {
 }
 export type ExportDestination = { autoUpdate: boolean, leagueInfo: boolean, rosters: boolean, weeklyStats: boolean, url: string, lastExportAttempt?: Date, lastSuccessfulExport?: Date, editable: boolean }
 const DEFAULT_EXPORT = `https://${DEPLOYMENT_URL}`
+
 export async function storeToken(token: TokenInformation, leagueId: number) {
   const leagueConnection: StoredMaddenConnection = {
     blazeId: token.blazeId,
