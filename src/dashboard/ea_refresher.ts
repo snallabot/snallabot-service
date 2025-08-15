@@ -11,8 +11,7 @@ interface LatestLeagues {
 }
 
 async function getLatestLeagues(): Promise<LatestLeagues> {
-
-  const collection = db.collection("league_data").where("blazeId", "!=", null)
+  const collection = db.collection("madden_data26").where("blazeId", "!=", null)
   const docs = await collection.get()
   let leagues = docs.docs.map(d => d.id)
   collection.onSnapshot(querySnapshot => {

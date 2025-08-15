@@ -1,7 +1,7 @@
 import * as fs from 'fs/promises'
 import * as path from 'path'
 import * as os from 'os'
-import { Storage } from '@google-cloud/storage'
+import { ApiError, Storage } from '@google-cloud/storage'
 import { readFileSync } from 'fs'
 
 interface FileHandler {
@@ -43,6 +43,7 @@ class LocalFileHandler implements FileHandler {
   }
 }
 
+const MAX_TRIES = 5
 // Google Cloud Storage implementation
 class GCSFileHandler implements FileHandler {
   private storage: Storage
@@ -78,12 +79,32 @@ class GCSFileHandler implements FileHandler {
 
       const file = this.storage.bucket(bucketName).file(objectPath)
       const jsonContent = JSON.stringify(content)
+      let tries = 0
+      const maxRetries = 3
+      const baseDelay = 500 // .5 seconds
 
-      await file.save(jsonContent, {
-        metadata: {
-          contentType: 'application/json'
+      while (tries <= maxRetries) {
+        try {
+          await file.save(jsonContent, {
+            metadata: {
+              contentType: 'application/json'
+            }
+          })
+          break // Success, exit the loop
+        } catch (error) {
+          const e = error as ApiError
+          tries++
+          // Check if it's a 429 error (rate limiting)
+          if (e.code === 429 && tries <= maxRetries) {
+            const delay = baseDelay * Math.pow(2, tries - 1) // Exponential backoff
+            console.log(`Rate limited (429), retrying in ${delay}ms... (attempt ${tries}/${maxRetries})`)
+            await new Promise(resolve => setTimeout(resolve, delay))
+          } else {
+            // Either not a 429 error, or we've exceeded max retries
+            throw error
+          }
         }
-      })
+      }
 
       return filePath // Return the provided path
     } catch (error) {

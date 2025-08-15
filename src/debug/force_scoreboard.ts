@@ -3,7 +3,7 @@ import MaddenClient from "../db/madden_db"
 import { formatScoreboard } from "../discord/commands/game_channels"
 import { createClient } from "../discord/discord_utils"
 import EventDB from "../db/events_db"
-import { ConfirmedSim } from "../db/events"
+import { ConfirmedSimV2 } from "../db/events"
 import db from "../db/firebase"
 
 if (!process.env.PUBLIC_KEY) {
@@ -38,10 +38,8 @@ async function updateScoreboard(guildId: string, seasonIndex: number, week: numb
   }
   const teams = await MaddenClient.getLatestTeams(leagueId)
   const games = await MaddenClient.getWeekScheduleForSeason(leagueId, week, seasonIndex)
-  const sims = await EventDB.queryEvents<ConfirmedSim>(guildId, "CONFIRMED_SIM", new Date(0), { week: week, seasonIndex: seasonIndex }, 30)
-  const message = formatScoreboard(week, seasonIndex, games, teams, sims, leagueId)
-  const messages = await prodClient.getMessagesInChannel(scoreboard_channel)
-  console.log(messages.map(m => m.content))
+  const sims = await EventDB.queryEvents<ConfirmedSimV2>(leagueId, "CONFIRMED_SIM", new Date(0), { week: week, seasonIndex: seasonIndex }, 30)
+  const message = formatScoreboard(week, seasonIndex, games, teams, sims)
   await prodClient.editMessage(scoreboard_channel, scoreboard, message, [])
 }
 

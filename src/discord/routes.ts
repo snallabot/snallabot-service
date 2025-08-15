@@ -5,7 +5,7 @@ import { APIInteraction, InteractionType, InteractionResponseType, APIChatInputA
 import db from "../db/firebase"
 import EventDB from "../db/events_db"
 import { handleCommand, commandsInstaller, handleAutocomplete, handleMessageComponent } from "./commands_handler"
-import { ConfirmedSim, MaddenBroadcastEvent } from "../db/events"
+import { ConfirmedSimV2, MaddenBroadcastEvent } from "../db/events"
 import { Client } from "oceanic.js"
 import LeagueSettingsDB, { DiscordIdType, LeagueSettings, TeamAssignments, createWeekKey } from "./settings_db"
 import { fetchTeamsMessage } from "./commands/teams"
@@ -14,6 +14,7 @@ import MaddenClient from "../db/madden_db"
 import { formatScoreboard } from "./commands/game_channels"
 import MaddenDB from "../db/madden_db"
 import { GameResult, MaddenGame } from "../export/madden_league_types"
+import { discordLeagueView } from "../db/view"
 
 const router = new Router({ prefix: "/discord/webhook" })
 
@@ -115,14 +116,14 @@ async function updateScoreboard(leagueSettings: LeagueSettings, guildId: string,
   try {
     const teams = await MaddenClient.getLatestTeams(leagueId)
     const games = await MaddenClient.getWeekScheduleForSeason(leagueId, week, seasonIndex)
-    const sims = await EventDB.queryEvents<ConfirmedSim>(guildId, "CONFIRMED_SIM", new Date(0), { week: week, seasonIndex: seasonIndex }, 30)
-    const message = formatScoreboard(week, seasonIndex, games, teams, sims, leagueId)
+    const sims = await EventDB.queryEvents<ConfirmedSimV2>(leagueId, "CONFIRMED_SIM", new Date(0), { week: week, seasonIndex: seasonIndex }, 30)
+    const message = formatScoreboard(week, seasonIndex, games, teams, sims)
     await prodClient.editMessage(scoreboard_channel, scoreboard, message, [])
   } catch (e) {
   }
 }
 
-EventDB.on<ConfirmedSim>("CONFIRMED_SIM", async (events) => {
+EventDB.on<ConfirmedSimV2>("CONFIRMED_SIM", async (events) => {
   await Promise.all(events.map(async sim => {
     const guild_id = sim.key
     const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
