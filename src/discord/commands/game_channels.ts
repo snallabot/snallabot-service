@@ -5,7 +5,7 @@ import { APIApplicationCommandInteractionDataChannelOption, APIApplicationComman
 import { Firestore } from "firebase-admin/firestore"
 import LeagueSettingsDB, { CategoryId, ChannelId, DiscordIdType, GameChannel, GameChannelConfiguration, GameChannelState, LeagueSettings, MaddenLeagueConfiguration, MessageId, RoleId, UserId, WeekState } from "../settings_db"
 import MaddenClient, { TeamList } from "../../db/madden_db"
-import { formatRecord, getMessageForWeek, MaddenGame } from "../../export/madden_league_types"
+import { formatRecord, getMessageForWeek, MADDEN_SEASON, MaddenGame } from "../../export/madden_league_types"
 import createLogger from "../logging"
 import { ConfirmedSim, ConfirmedSimV2, SimResult } from "../../db/events"
 import createNotifier from "../notifier"
@@ -55,8 +55,7 @@ export function formatScoreboard(week: number, seasonIndex: number, games: Madde
         } ${homeTeam}${simMessage}`
     }
   }).join("\n")
-
-  return `# ${seasonIndex + 2024} Season ${getMessageForWeek(week)} Scoreboard\n${scoreboardGames}`
+  return `# ${seasonIndex + MADDEN_SEASON} Season ${getMessageForWeek(week)} Scoreboard\n${scoreboardGames}`
 }
 
 enum SnallabotCommandReactions {
