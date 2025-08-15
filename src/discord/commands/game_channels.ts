@@ -234,7 +234,7 @@ async function clearGameChannels(client: DiscordClient, db: Firestore, token: st
     console.log(settings)
     const channelsToClear = Object.entries(weekStates).flatMap(entry => {
       const weekState = entry[1]
-      return Object.values(weekState.channel_states)
+      return Object.values(weekState.channel_states || {})
     }).map(channelStates => {
       return channelStates.channel
     })
@@ -258,6 +258,7 @@ async function clearGameChannels(client: DiscordClient, db: Firestore, token: st
       }))
     }
     await Promise.all(Object.values(weekStates).map(async weekState => {
+      XF
       await LeagueSettingsDB.deleteGameChannels(guild_id, weekState.week, weekState.seasonIndex)
     }))
     await client.editOriginalInteraction(token, { content: `Game Channels Cleared` })
