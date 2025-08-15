@@ -237,9 +237,6 @@ async function clearGameChannels(client: DiscordClient, db: Firestore, token: st
     }).map(channelStates => {
       return channelStates.channel
     })
-    await Promise.all(Object.values(weekStates).map(async weekState => {
-      await LeagueSettingsDB.deleteGameChannels(guild_id, weekState.week, weekState.seasonIndex)
-    }))
     if (settings.commands.logger?.channel) {
       await client.editOriginalInteraction(token, { content: `Logging Game Channels...` })
       const logger = createLogger(settings.commands.logger)
@@ -259,6 +256,9 @@ async function clearGameChannels(client: DiscordClient, db: Firestore, token: st
         }
       }))
     }
+    await Promise.all(Object.values(weekStates).map(async weekState => {
+      await LeagueSettingsDB.deleteGameChannels(guild_id, weekState.week, weekState.seasonIndex)
+    }))
     await client.editOriginalInteraction(token, { content: `Game Channels Cleared` })
   } catch (e) {
     await client.editOriginalInteraction(token, { content: `Game Channels could not be cleared properly, if all game channels are deleted, this is safe to ignore. If you still have game channels, delete them manually. Error: ${e}` })
