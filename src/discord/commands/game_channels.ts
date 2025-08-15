@@ -248,7 +248,7 @@ async function clearGameChannels(client: DiscordClient, db: Firestore, token: st
     } else {
       await Promise.all(channelsToClear.map(async channel => {
         try {
-          await client.deleteChannel(channel)
+          return await client.deleteChannel(channel)
         } catch (e) {
           if (e instanceof SnallabotDiscordError) {
             if (e.isDeletedChannel()) {
@@ -257,7 +257,6 @@ async function clearGameChannels(client: DiscordClient, db: Firestore, token: st
           }
           throw e
         }
-        return await client.deleteChannel(channel)
       }))
     }
     await client.editOriginalInteraction(token, { content: `Game Channels Cleared` })
