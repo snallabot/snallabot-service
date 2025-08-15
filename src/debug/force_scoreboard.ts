@@ -45,4 +45,4 @@ async function updateScoreboard(guildId: string, seasonIndex: number, week: numb
 
 
 
-updateScoreboard("1335694013373747343", 4, 8)
+updateScoreboard("1198780271814770829", 0, 1)

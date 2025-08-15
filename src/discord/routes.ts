@@ -125,9 +125,12 @@ async function updateScoreboard(leagueSettings: LeagueSettings, guildId: string,
 
 EventDB.on<ConfirmedSimV2>("CONFIRMED_SIM", async (events) => {
   await Promise.all(events.map(async sim => {
-    const guild_id = sim.key
-    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
-    await updateScoreboard(leagueSettings, guild_id, sim.seasonIndex, sim.week)
+    const leagueId = sim.key
+    const settings = await LeagueSettingsDB.getLeagueSettingsForLeagueId(leagueId)
+    await Promise.all(settings.map(async s => {
+      await updateScoreboard(s, s.guildId, sim.seasonIndex, sim.week)
+    }))
+
   }))
 })
 
