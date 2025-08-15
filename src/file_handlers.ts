@@ -81,7 +81,7 @@ class GCSFileHandler implements FileHandler {
       const jsonContent = JSON.stringify(content)
       let tries = 0
       const maxRetries = 3
-      const baseDelay = 1000 // 1 second
+      const baseDelay = 500 // .5 seconds
 
       while (tries <= maxRetries) {
         try {
