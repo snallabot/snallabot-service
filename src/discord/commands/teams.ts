@@ -1,6 +1,6 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command, AutocompleteHandler, Autocomplete } from "../commands_handler"
-import { respond, createMessageResponse, DiscordClient } from "../discord_utils"
+import { respond, createMessageResponse, DiscordClient, SnallabotDiscordError } from "../discord_utils"
 import { APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIApplicationCommandInteractionDataUserOption, ApplicationCommandOptionType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { FieldValue, Firestore } from "firebase-admin/firestore"
 import LeagueSettingsDB, { ChannelId, DiscordIdType, LeagueSettings, MessageId, TeamAssignments } from "../settings_db"
@@ -149,7 +149,17 @@ export default {
         await client.editMessage(leagueSettings.commands.teams.channel, leagueSettings.commands.teams.messageId, message, [])
         respond(ctx, createMessageResponse("Team Assigned"))
       } catch (e) {
-        respond(ctx, createMessageResponse("Could not update teams message, this could be a permission issue. The assignment was saved, Error: " + e))
+        if (e instanceof SnallabotDiscordError) {
+          if (e.isDeletedChannel()) {
+            respond(ctx, createMessageResponse("The assignment was saved, but the channel the teams message was in got deleted. Do /teams configure again to pick a new one Error: " + e))
+          } else if (e.isDeletedMessage()) {
+            respond(ctx, createMessageResponse("The assignment was saved, but my original message was deleted. do /teams configure for me to resend it Error: " + e))
+          } else {
+            respond(ctx, createMessageResponse(`The assignment was saved, but I could not edit my message. Guidance: ${e.guidance} Error: ${e}`))
+          }
+        } else {
+          respond(ctx, createMessageResponse("Could not update teams message. The assignment was saved, Error: " + e))
+        }
       }
     } else if (subCommand === "free") {
       if (!teamsCommand.options || !teamsCommand.options[0]) {
@@ -185,7 +195,17 @@ export default {
         await client.editMessage(leagueSettings.commands.teams.channel, leagueSettings.commands.teams.messageId, message, [])
         respond(ctx, createMessageResponse("Team Freed"))
       } catch (e) {
-        respond(ctx, createMessageResponse("Could not update teams message, this could be a permission issue. The assignment was freed1, Error: " + e))
+        if (e instanceof SnallabotDiscordError) {
+          if (e.isDeletedChannel()) {
+            respond(ctx, createMessageResponse("The assignment was freed, but the channel the teams message was in got deleted. Do /teams configure again to pick a new one Error: " + e))
+          } else if (e.isDeletedMessage()) {
+            respond(ctx, createMessageResponse("The assignment was freed, but my original message was deleted. do /teams configure for me to resend it Error: " + e))
+          } else {
+            respond(ctx, createMessageResponse(`The assignment was freed, but I could not edit my message. Guidance: ${e.guidance} Error: ${e}`))
+          }
+        } else {
+          respond(ctx, createMessageResponse("Could not update teams message. The assignment was freed, Error: " + e))
+        }
       }
     } else if (subCommand === "reset") {
       if (!leagueSettings.commands.teams?.channel.id) {
@@ -200,7 +220,18 @@ export default {
         await client.editMessage(leagueSettings.commands.teams.channel, leagueSettings.commands.teams.messageId, message, [])
         respond(ctx, createMessageResponse("Team Assignments Reset"))
       } catch (e) {
-        respond(ctx, createMessageResponse("Could not update teams message, this could be a permission issue. The teams were still reset, Error: " + e))
+        if (e instanceof SnallabotDiscordError) {
+          if (e.isDeletedChannel()) {
+            respond(ctx, createMessageResponse("The assignment was reset, but the channel the teams message was in got deleted. Do /teams configure again to pick a new one Error: " + e))
+          } else if (e.isDeletedMessage()) {
+            respond(ctx, createMessageResponse("The assignment was reset, but my original message was deleted. do /teams configure for me to resend it Error: " + e))
+          } else {
+            respond(ctx, createMessageResponse(`The assignment was reset, but I could not edit my message. Guidance: ${e.guidance} Error: ${e}`))
+          }
+        } else {
+          respond(ctx, createMessageResponse("Could not update teams message. The assignment was reset, Error: " + e))
+        }
+
       }
     } else {
       throw new Error(`teams ${subCommand} misconfigured`)
