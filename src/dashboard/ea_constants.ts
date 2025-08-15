@@ -62,12 +62,12 @@ export const NAMESPACES = {
 }
 
 export const BLAZE_SERVICE = ((a: string) => ({
-  xone: `madden-${a}-xone-gen4`,
-  ps4: `madden-${a}-ps4-gen4`,
-  pc: `madden-${a}-pc-gen5`,
-  ps5: `madden-${a}-ps5-gen5`,
-  xbsx: `madden-${a}-xbsx-gen5`,
-  stadia: `madden-${a}-stadia-gen5`,
+  xone: `madden-${a}-xone`,
+  ps4: `madden-${a}-ps4`,
+  pc: `madden-${a}-pc`,
+  ps5: `madden-${a}-ps5`,
+  xbsx: `madden-${a}-xbsx`,
+  stadia: `madden-${a}-stadia`,
 }))(YEAR)
 
 export const BLAZE_SERVICE_TO_PATH = ((a: string) => ({
