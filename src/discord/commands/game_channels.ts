@@ -231,7 +231,6 @@ async function clearGameChannels(client: DiscordClient, db: Firestore, token: st
   try {
     await client.editOriginalInteraction(token, { content: `Clearing Game Channels...` })
     const weekStates = settings.commands.game_channel?.weekly_states || {}
-    console.log(settings)
     const channelsToClear = Object.entries(weekStates).flatMap(entry => {
       const weekState = entry[1]
       return Object.values(weekState?.channel_states || {})
@@ -262,7 +261,6 @@ async function clearGameChannels(client: DiscordClient, db: Firestore, token: st
     }))
     await client.editOriginalInteraction(token, { content: `Game Channels Cleared` })
   } catch (e) {
-    console.log(e)
     await client.editOriginalInteraction(token, { content: `Game Channels could not be cleared properly . Error: ${e}` })
   }
 }
