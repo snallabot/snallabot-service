@@ -66,6 +66,7 @@ enum SnallabotCommandReactions {
 }
 
 async function createGameChannels(client: DiscordClient, db: Firestore, token: string, guild_id: string, settings: LeagueSettings, week: number, category: CategoryId, author: UserId) {
+  let channelsToCleanup: ChannelId[] = []
   try {
     const leagueId = (settings.commands.madden_league as Required<MaddenLeagueConfiguration>).league_id
     await client.editOriginalInteraction(token, {
@@ -129,6 +130,7 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
       const channel = await client.createChannel(guild_id, `${awayTeam}-at-${homeTeam}`, category)
       return { game: game, scheduleId: game.scheduleId, channel: channel }
     }))
+    channelsToCleanup = gameChannels.map(c => c.channel)
     await client.editOriginalInteraction(token, {
       content: `Creating Game Channels:
 - ${exportEmoji} Exporting
@@ -219,6 +221,12 @@ ${errorMessage}
     })
     await LeagueSettingsDB.updateGameWeekState(guild_id, week, season, weeklyState)
   } catch (e) {
+    try {
+      await Promise.all(channelsToCleanup.map(async channel => {
+        await client.deleteChannel(channel)
+      }))
+    } catch (e) {
+    }
     if (e instanceof SnallabotDiscordError) {
       await client.editOriginalInteraction(token, { content: `Game Channels Create Failed with Error: ${e} Guidance: ${e.guidance}` })
     } else {
