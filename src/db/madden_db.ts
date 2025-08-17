@@ -167,8 +167,12 @@ function createTeamList(teams: StoredEvent<Team>[]): TeamList {
     getLatestTeamAssignments: function(assignments: TeamAssignments): TeamAssignments {
       return Object.fromEntries(Object.entries(assignments).map(entry => {
         const [teamId, assignment] = entry
-        const latestTeam = this.getTeamForId(Number(teamId))
-        return [latestTeam.teamId + "", assignment]
+        try {
+          const latestTeam = this.getTeamForId(Number(teamId))
+          return [latestTeam.teamId + "", assignment]
+        } catch (e) {
+          throw new Error(`Team assignment does not match with teams in Madden. This could be because the league has changed since teams were assigned last. To fix this, do /teams reset and reassign teams.`)
+        }
       }))
     }
   }
