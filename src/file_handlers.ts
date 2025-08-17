@@ -43,6 +43,8 @@ class LocalFileHandler implements FileHandler {
   }
 }
 
+type StorageError = { error: { code: number, message: string, errors: { message: string, domain: string, reason: string }[] } }
+
 const MAX_TRIES = 5
 // Google Cloud Storage implementation
 class GCSFileHandler implements FileHandler {
@@ -80,8 +82,8 @@ class GCSFileHandler implements FileHandler {
       const file = this.storage.bucket(bucketName).file(objectPath)
       const jsonContent = JSON.stringify(content)
       let tries = 0
-      const maxRetries = 3
-      const baseDelay = 500 // .5 seconds
+      const maxRetries = MAX_TRIES
+      const baseDelay = 1000
 
       while (tries <= maxRetries) {
         try {
@@ -91,21 +93,20 @@ class GCSFileHandler implements FileHandler {
             }
           })
           break // Success, exit the loop
-        } catch (error) {
-          const e = error as ApiError
+        } catch (saveError) {
+          const e = saveError as StorageError
           tries++
           // Check if it's a 429 error (rate limiting)
-          if (e.code === 429 && tries <= maxRetries) {
+          if (e.error.code === 429 && tries <= maxRetries) {
             const delay = baseDelay * Math.pow(2, tries - 1) // Exponential backoff
             console.log(`Rate limited (429), retrying in ${delay}ms... (attempt ${tries}/${maxRetries})`)
             await new Promise(resolve => setTimeout(resolve, delay))
           } else {
             // Either not a 429 error, or we've exceeded max retries
-            throw error
+            throw saveError
           }
         }
       }
-
       return filePath // Return the provided path
     } catch (error) {
       throw new Error(`Failed to write file ${filePath} to GCS: ${error}`)
