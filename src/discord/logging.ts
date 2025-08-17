@@ -65,7 +65,6 @@ export default (config: LoggerConfiguration) => ({
         if (e instanceof SnallabotDiscordError && e.isDeletedChannel()) {
           return
         }
-        console.log(e)
         throw e
       }
     })
