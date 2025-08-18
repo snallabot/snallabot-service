@@ -43,7 +43,7 @@ class LocalFileHandler implements FileHandler {
   }
 }
 
-type StorageError = { error: { code: number, message: string, errors: { message: string, domain: string, reason: string }[] } }
+type StorageError = { code: number, message: string, errors: { message: string, domain: string, reason: string }[] }
 
 const MAX_TRIES = 5
 // Google Cloud Storage implementation
@@ -94,10 +94,11 @@ class GCSFileHandler implements FileHandler {
           })
           break // Success, exit the loop
         } catch (saveError) {
+          console.log(saveError)
           const e = saveError as StorageError
           tries++
           // Check if it's a 429 error (rate limiting)
-          if (e.error.code === 429 && tries <= maxRetries) {
+          if (e.code === 429 && tries <= maxRetries) {
             const delay = baseDelay * Math.pow(2, tries - 1) // Exponential backoff
             console.log(`Rate limited (429), retrying in ${delay}ms... (attempt ${tries}/${maxRetries})`)
             await new Promise(resolve => setTimeout(resolve, delay))
