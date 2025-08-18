@@ -356,12 +356,12 @@ const MaddenDB: MaddenDB = {
         return {
           [PlayerStatType.PUNTING]: puntingStats
         }
-      case "LE":
-      case "RE":
+      case "LEDGE":
+      case "REDGE":
       case "DT":
-      case "LOLB":
-      case "ROLB":
-      case "MLB":
+      case "SAM":
+      case "MIKE":
+      case "WILL":
       case "CB":
       case "FS":
       case "SS":
