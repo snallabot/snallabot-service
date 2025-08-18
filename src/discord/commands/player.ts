@@ -570,6 +570,7 @@ function getTopAttributesByPosition(player: Player): Array<{ name: string, value
         { name: "Pass Block Finesse", value: player.passBlockFinesseRating },
         { name: "Lead Block", value: player.leadBlockRating },
         { name: "Impact Blocking", value: player.impactBlockRating },
+        { name: "Long Snap Rating", value: player.longSnapRating }
       )
       break
     case "LE":
@@ -998,6 +999,7 @@ __**Blocking Skills:**__
 **Pass Block Finesse:** ${player.passBlockFinesseRating}
 **Impact Block:** ${player.impactBlockRating}
 **Lead Block:** ${player.leadBlockRating}
+**Long Snap:** ${player.longSnapRating}
 
 __**Defensive Skills:**__
 **Tackle:** ${player.tackleRating}

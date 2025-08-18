@@ -573,7 +573,8 @@ export type Player = {
   contractYearsLeft: number,
   routeRunDeepRating: number,
   isActive: boolean,
-  cITRating: number
+  cITRating: number,
+  longSnapRating: number
 }
 
 export const POSITIONS = [
@@ -588,13 +589,14 @@ export const POSITIONS = [
   "C",    // Center
   "RG",   // Right Guard
   "RT",   // Right Tackle
+  "LS",   // Long Snapper
   // Defense
-  "LE",   // Left End
-  "RE",   // Right End
+  "LEDGE",   // Left Edge
+  "REDGE",   // Right Edge
   "DT",   // Defensive Tackle
-  "LOLB", // Left Outside Linebacker
-  "MLB",  // Middle Linebacker
-  "ROLB", // Right Outside Linebacker
+  "SAM",  // SAM linebacker
+  "WILL", // Will linebacker
+  "MIKE", // Mike linebacker
   "CB",   // Cornerback
   "FS",   // Free Safety
   "SS",   // Strong Safety
@@ -604,8 +606,8 @@ export const POSITIONS = [
 ]
 
 export const POSITION_GROUP = ["OL", "DL", "DB"]
-export const oLinePositions = ["LT", "LG", "C", "RG", "RT"];
-export const dLinePositions = ["LE", "RE", "DT", "LOLB", "ROLB"]
+export const oLinePositions = ["LT", "LG", "C", "RG", "RT", "LS"];
+export const dLinePositions = ["REDGE", "LEDGE", "DT"]
 export const dbPositions = ["CB", "FS", "SS"]
 
 export type RosterExport = {
