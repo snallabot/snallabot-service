@@ -94,7 +94,6 @@ class GCSFileHandler implements FileHandler {
           break // Success, exit the loop
         } catch (saveError) {
           const delay = baseDelay * Math.pow(2, tries - 1) // Exponential backoff
-          console.log(`Rate limited (429), retrying in ${delay}ms... (attempt ${tries}/${maxRetries})`)
           await new Promise(resolve => setTimeout(resolve, delay))
         }
       }
