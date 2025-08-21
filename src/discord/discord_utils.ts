@@ -419,3 +419,8 @@ export enum SnallabotReactions {
   AWAY = "%F0%9F%9B%AB",
   SIM = "%E2%8F%AD%EF%B8%8F",
 }
+
+export enum ResponseType {
+  COMMAND,
+  INTERACTION
+}

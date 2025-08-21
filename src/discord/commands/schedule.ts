@@ -1,13 +1,13 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command } from "../commands_handler"
-import { respond, createMessageResponse, DiscordClient } from "../discord_utils"
-import { APIApplicationCommandInteractionDataIntegerOption, ApplicationCommandOptionType, ApplicationCommandType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
+import { respond, createMessageResponse, DiscordClient, ResponseType } from "../discord_utils"
+import { APIApplicationCommandInteractionDataIntegerOption, ApplicationCommandOptionType, ApplicationCommandType, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
 import { GameResult, MADDEN_SEASON, MaddenGame, Team, getMessageForWeek } from "../../export/madden_league_types"
 import MaddenClient from "../../db/madden_db"
-import LeagueSettingsDB, { LeagueSettings } from "../settings_db"
+import LeagueSettingsDB from "../settings_db"
 
-function format(schedule: MaddenGame[], teams: Team[], week: number) {
+function format(schedule: MaddenGame[], teams: Team[], week: number, responseType: ResponseType) {
   const teamMap = new Map<Number, Team>()
   teams.forEach(t => teamMap.set(t.teamId, t))
   const schedulesMessage = schedule.sort((a, b) => a.scheduleId - b.scheduleId).filter(w => w.awayTeamId !== 0 && w.homeTeamId !== 0).map(game => {
@@ -26,7 +26,24 @@ function format(schedule: MaddenGame[], teams: Team[], week: number) {
     }
   }).join("\n")
   const season = schedule[0].seasonIndex
-  return `# ${MADDEN_SEASON + season} ${getMessageForWeek(week)} Schedule\n${schedulesMessage}`
+  const message = `# ${MADDEN_SEASON + season} ${getMessageForWeek(week)} Schedule\n${schedulesMessage}`
+  return {
+    type: responseType === ResponseType.COMMAND ? InteractionResponseType.ChannelMessageWithSource : InteractionResponseType.UpdateMessage,
+    data: {
+      flags: 32768,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: message
+        },
+        {
+          type: ComponentType.ActionRow,
+          components: [
+          ]
+        }
+      ]
+    }
+  }
 }
 
 async function getWeekSchedule(league: string, week: number, season?: number) {
