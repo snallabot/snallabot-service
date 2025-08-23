@@ -254,12 +254,11 @@ discordClient.on("messageReactionAdd", async (msg, reactor, reaction) => {
     await Promise.all(Object.entries(channelStates).map(async channelEntry => {
       const [channelId, channelState] = channelEntry
       if (channelId === reactionChannel && channelState?.message?.id === reactionMessage) {
-        const notifier = createNotifier(prodClient, guild, leagueSettings)
-        // wait for users to confirm/unconfirm
-        const jitter = getRandomInt(10)
-        await new Promise((r) => setTimeout(r, 5000 + jitter * 1000));
-
         try {
+          const notifier = createNotifier(prodClient, guild, leagueSettings)
+          // wait for users to confirm/unconfirm
+          const jitter = getRandomInt(10)
+          await new Promise((r) => setTimeout(r, 5000 + jitter * 1000));
           await notifier.update(channelState, weeklyState.seasonIndex, weeklyState.week)
         } catch (e) {
         }
