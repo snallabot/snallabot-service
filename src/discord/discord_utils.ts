@@ -1,6 +1,6 @@
 import { ParameterizedContext } from "koa"
 import { verifyKey } from "discord-interactions"
-import { APIApplicationCommand, APIChannel, APIGuildMember, APIMessage, APIThreadChannel, APIUser, ChannelType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
+import { APIApplicationCommand, APIChannel, APIGuild, APIGuildMember, APIMessage, APIThreadChannel, APIUser, ChannelType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { CategoryId, ChannelId, DiscordIdType, MessageId, UserId } from "./settings_db"
 
 export enum CommandMode {
@@ -61,7 +61,8 @@ export interface DiscordClient {
   getMessagesInChannel(channelId: ChannelId, before?: MessageId): Promise<APIMessage[]>,
   createThreadInChannel(channel: ChannelId, channelName: string): Promise<ChannelId>,
   checkMessageExists(channel: ChannelId, messageId: MessageId): Promise<boolean>,
-  getUsers(guild_id: string): Promise<APIGuildMember[]>
+  getUsers(guild_id: string): Promise<APIGuildMember[]>,
+  getGuildInformation(guild_id: String): Promise<APIGuild>
 }
 
 type DiscordSettings = { publicKey: string, botToken: string, appId: string }
@@ -364,6 +365,13 @@ export function createClient(settings: DiscordSettings): DiscordClient {
       })
       const channelInfo = (await channelInfoRes.json()) as APIChannel
       return channelInfo
+    },
+    getGuildInformation: async function(guildId: string) {
+      const guildInfoRes = await sendDiscordRequest(`guilds/${guildId}`, {
+        method: "GET",
+      })
+      const guildInfo = (await guildInfoRes.json()) as APIGuild
+      return guildInfo
     }
   }
 }
@@ -423,4 +431,19 @@ export enum SnallabotReactions {
 export enum ResponseType {
   COMMAND,
   INTERACTION
+}
+export function createProdClient() {
+  if (!process.env.PUBLIC_KEY) {
+    throw new Error("No Public Key passed for interaction verification")
+  }
+
+  if (!process.env.DISCORD_TOKEN) {
+    throw new Error("No Discord Token passed for interaction verification")
+  }
+  if (!process.env.APP_ID) {
+    throw new Error("No App Id passed for interaction verification")
+  }
+
+  const prodSettings = { publicKey: process.env.PUBLIC_KEY, botToken: process.env.DISCORD_TOKEN, appId: process.env.APP_ID }
+  return createClient(prodSettings)
 }

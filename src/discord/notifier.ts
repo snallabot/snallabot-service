@@ -75,11 +75,15 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
   }
 
   async function gameFinished(reactors: UserId[], gameChannel: GameChannel) {
-    if (settings?.commands?.logger) {
-      const logger = createLogger(settings.commands.logger)
-      await logger.logChannels([gameChannel.channel], reactors, client)
-    } else {
-      await client.deleteChannel(gameChannel.channel)
+    try {
+      if (settings?.commands?.logger) {
+        const logger = createLogger(settings.commands.logger)
+        await logger.logChannels([gameChannel.channel], reactors, client)
+      } else {
+        await client.deleteChannel(gameChannel.channel)
+      }
+    } catch (e) {
+      console.log(`Error deleting trophied channel ${e}`)
     }
   }
   async function deleteTracking(currentState: GameChannel, season: number, week: number) {
@@ -88,8 +92,8 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
   }
   return {
     deleteGameChannel: async function(currentState: GameChannel, season: number, week: number, originators: UserId[]) {
-      await deleteTracking(currentState, season, week)
       await gameFinished(originators, currentState)
+      await deleteTracking(currentState, season, week)
     },
     ping: async function(gameChannel: GameChannel, season: number, week: number) {
       const game = await MaddenDB.getGameForSchedule(leagueId, gameChannel.scheduleId, week, season)

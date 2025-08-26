@@ -87,7 +87,7 @@ export default {
           type: ApplicationCommandOptionType.Integer,
           name: "week",
           description: "The week to get the schedule for",
-          required: true
+          required: false
         },
         {
           type: ApplicationCommandOptionType.Integer,

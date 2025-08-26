@@ -2,7 +2,7 @@ import { randomUUID } from "crypto"
 import { Timestamp } from "firebase-admin/firestore"
 import db from "./firebase"
 import EventDB, { EventNotifier, SnallabotEvent, StoredEvent, notifiers } from "./events_db"
-import { DefensiveStats, KickingStats, MADDEN_SEASON, MaddenGame, POSITION_GROUP, PassingStats, Player, PuntingStats, ReceivingStats, RushingStats, Standing, Team, TeamStats, dLinePositions, dbPositions, oLinePositions } from "../export/madden_league_types"
+import { DefensiveStats, GameResult, KickingStats, MADDEN_SEASON, MaddenGame, POSITION_GROUP, PassingStats, Player, PuntingStats, ReceivingStats, RushingStats, Standing, Team, TeamStats, dLinePositions, dbPositions, oLinePositions } from "../export/madden_league_types"
 import { TeamAssignments } from "../discord/settings_db"
 
 type HistoryUpdate<ValueType> = { oldValue: ValueType, newValue: ValueType }
@@ -65,8 +65,27 @@ export type ExportStatus = {
   }
 }
 
+export type LeagueDoc = {
+  blazeId: string,
+  exportStatus?: ExportStatus
+}
+
 export function idWeeklyEvents(e: { seasonIndex: number, weekIndex: number }, id: number) {
   return `season${e.seasonIndex}-week${e.weekIndex}-${id}`
+}
+
+export function parseExportStatusWeekKey(weekKey: string) {
+  // Use regex to extract season and week numbers
+  const match = weekKey.match(/^season(\d+)_week(\d+)$/);
+
+  if (!match) {
+    throw new Error('Invalid week key format');
+  }
+
+  return {
+    season: parseInt(match[1], 10),
+    week: parseInt(match[2], 10)
+  }
 }
 
 interface MaddenDB {
@@ -74,6 +93,7 @@ interface MaddenDB {
   on<Event>(event_type: string, notifier: EventNotifier<Event>): void,
   getLatestTeams(leagueId: string): Promise<TeamList>,
   getLatestWeekSchedule(leagueId: string, week: number): Promise<MaddenGame[]>,
+  getLatestSchedule(leagueId): Promise<MaddenGame[]>,
   getWeekScheduleForSeason(leagueId: string, week: number, season: number): Promise<MaddenGame[]>
   getGameForSchedule(leagueId: string, scheduleId: number, week: number, season: number): Promise<MaddenGame>,
   getStandingForTeam(leagueId: string, teamId: number): Promise<Standing>,
@@ -86,7 +106,8 @@ interface MaddenDB {
   updateLeagueExportStatus(leagueId: string, eventType: MaddenEvents): Promise<void>,
   updateWeeklyExportStatus(leagueId: string, eventType: MaddenEvents, week: number, season: number): Promise<void>,
   updateRosterExportStatus(leagueId: string, eventType: MaddenEvents.MADDEN_PLAYER, teamId: string): Promise<void>,
-  getTeamStatsForGame(leagueId: string, teamId: string, week: number, season: number): Promise<TeamStats>
+  getTeamStatsForGame(leagueId: string, teamId: string, week: number, season: number): Promise<TeamStats>,
+  getExportStatus(leagueId: string): Promise<ExportStatus | undefined>
 }
 
 function convertDate(firebaseObject: any) {
@@ -284,6 +305,46 @@ const MaddenDB: MaddenDB = {
     }
     throw new Error("Missing schedule for week " + week)
   },
+  getLatestSchedule: async function(leagueId: string) {
+    const scheduleCollection = db.collection("madden_data26")
+      .doc(leagueId)
+      .collection(MaddenEvents.MADDEN_SCHEDULE);
+
+    // Query for unplayed games only
+    const unplayedSnapshot = await scheduleCollection
+      .where("status", "==", GameResult.NOT_PLAYED)
+      .get();
+
+    if (unplayedSnapshot.empty) {
+      // All games have been played - get games from the latest week of the latest season
+      const allGamesSnapshot = await scheduleCollection.get();
+
+      if (allGamesSnapshot.empty) {
+        throw new Error(`Missing schedule for league`)
+      }
+
+      const games: MaddenGame[] = allGamesSnapshot.docs.map(doc => doc.data() as MaddenGame);
+      const maxSeason = Math.max(...games.map(game => game.seasonIndex));
+      const gamesInLatestSeason = games.filter(game => game.seasonIndex === maxSeason);
+      const maxWeek = Math.max(...gamesInLatestSeason.map(game => game.weekIndex));
+
+      return games.filter(game => game.seasonIndex === maxSeason && game.weekIndex === maxWeek);
+    }
+
+    // Find the earliest season and week with unplayed games
+    const unplayedGames: MaddenGame[] = unplayedSnapshot.docs.map(doc => doc.data() as MaddenGame);
+    const currentSeason = Math.min(...unplayedGames.map(game => game.seasonIndex));
+    const gamesInCurrentSeason = unplayedGames.filter(game => game.seasonIndex === currentSeason);
+    const currentWeek = Math.min(...gamesInCurrentSeason.map(game => game.weekIndex));
+
+    // Return all games from the current season and week
+    const currentWeekGames = await scheduleCollection
+      .where("seasonIndex", "==", currentSeason)
+      .where("weekIndex", "==", currentWeek)
+      .get();
+
+    return currentWeekGames.docs.map(doc => doc.data() as MaddenGame);
+  },
   getWeekScheduleForSeason: async function(leagueId: string, week: number, season: number) {
     const weekDocs = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_SCHEDULE).where("weekIndex", "==", week - 1).where("seasonIndex", "==", season)
       .where("stageIndex", "==", 1).get()
@@ -464,6 +525,11 @@ const MaddenDB: MaddenDB = {
     } else {
       throw new Error(`Missing Team Stats for ${MADDEN_SEASON + seasonIndex} Week ${week} for ${teamId}. Try exporting this week again`)
     }
+  },
+  getExportStatus: async function(leagueId: string) {
+    const doc = await db.collection("madden_data26").doc(leagueId).get()
+    const leagueDoc = convertDate(doc.data()) as LeagueDoc
+    return leagueDoc.exportStatus
   }
 }
 
