@@ -7,6 +7,8 @@ import { BlazeError, ExportContext, ExportDestination, unlinkLeague, ephemeralCl
 import { removeLeague, setLeague } from "../connections/routes"
 import { discordLeagueView } from "../db/view"
 import LeagueSettingsDB from "../discord/settings_db"
+import MaddenDB, { ExportStatus, MaddenEvents, parseExportStatusWeekKey } from "../db/madden_db"
+import { MADDEN_SEASON } from "../export/madden_league_types"
 
 const startRender = Pug.compileFile(path.join(__dirname, "/templates/start.pug"))
 const errorRender = Pug.compileFile(path.join(__dirname, "/templates/error.pug"))
@@ -54,6 +56,7 @@ async function renderConnectedLeagueErrorsMiddleware(ctx: ParameterizedContext, 
   try {
     await next()
   } catch (e) {
+    console.error(e)
     if (e instanceof EAAccountError) {
       const error = `Error receieved from EA <br> Message: ${e.message} <br> Snallabot Guidance: ${e.troubleshoot}`
       ctx.body = errorRender({ error: error, canUnlink: true })
@@ -249,8 +252,38 @@ router.get("/", async (ctx) => {
     gameScheduleHubInfo,
     teamIdInfoList,
     careerHubInfo: { seasonInfo },
+    secsSinceLastAdvancedTime
   } = leagueInfo;
-  ctx.body = dashboardRender({ gameScheduleHubInfo: gameScheduleHubInfo, teamIdInfoList: teamIdInfoList, seasonInfo: seasonInfo, leagueName: leagueName, exports: exports, exportOptions: exportOptions, seasonWeekType: seasonType(seasonInfo) })
+  const exportStatus = await MaddenDB.getExportStatus(rawLeagueId)
+  const latestTeams = await MaddenDB.getLatestTeams(rawLeagueId)
+  const rosterStatus = Object.fromEntries(Object.entries(exportStatus?.rosterStatus || {}).map(e => {
+    const [teamId, status] = e
+    if (teamId === "0") {
+      return ["Free Agents", status]
+    }
+    try {
+      const team = latestTeams.getTeamForId(Number(teamId)).displayName
+      return [team, status]
+    } catch (e) {
+      console.error(e)
+      return ["Unknown Team", status]
+    }
+  }))
+  const weeklyStatus = Object.fromEntries(Object.entries(exportStatus?.weeklyStatus || {}).map(e => {
+    const [weekSeasonKey, status] = e
+    const weekSeason = parseExportStatusWeekKey(weekSeasonKey)
+    return [weekSeasonKey, { ...status, displayName: `Year ${weekSeason.season + MADDEN_SEASON}, Week ${weekSeason.week}` }]
+  }))
+  const lastAdvance = new Date(Date.now() - (secsSinceLastAdvancedTime * 1000));
+  const displayableExportStatus = exportStatus ? {
+    [MaddenEvents.MADDEN_STANDING]: exportStatus?.[MaddenEvents.MADDEN_STANDING],
+    [MaddenEvents.MADDEN_TEAM]: exportStatus?.[MaddenEvents.MADDEN_TEAM],
+    rosterStatus: rosterStatus,
+    weeklyStatus: weeklyStatus
+  } : exportStatus
+  ctx.body = dashboardRender({
+    gameScheduleHubInfo: gameScheduleHubInfo, teamIdInfoList: teamIdInfoList, seasonInfo: seasonInfo, leagueName: leagueName, exports: exports, exportOptions: exportOptions, seasonWeekType: seasonType(seasonInfo), lastAdvance, exportStatus: displayableExportStatus
+  })
 }).post("/league/:leagueId/updateExport", async (ctx, next) => {
   const { leagueId: rawLeagueId } = ctx.params
   const leagueId = Number(rawLeagueId)

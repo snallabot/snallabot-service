@@ -6,7 +6,7 @@ html
     link(rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/5.3.3/sandstone/bootstrap.min.css" crossorigin="anonymous" referrerpolicy="no-referrer")
     script(src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js" integrity="sha384-0pUGZvbkm6XF6gxjEnlmuGrJXVbNuzT9qBBavbLwCsOGabYfZo0T0to5eqruptLy" crossOrigin="anonymous")
 body
-  .div(class="container" style="padding: 16px 8px;")
+  .div(class="container-fluid" style="margin-top: 8px;")
     h4 #{leagueName} Snallabot Dashboard
     .row
       .col
@@ -14,6 +14,7 @@ body
           div
             div #{seasonWeekType}, Year #{seasonInfo.calendarYear}
             div Current Week: #{seasonInfo.weekTitle} #{seasonInfo.displayWeek > 0 ? seasonInfo.displayWeek : ''}
+            div Last Advance: #{lastAdvance.toDateString()}
       .col-lg-6
         div(style="margin-top: 16px; margin-bottom: 16px;")
           .input-group
@@ -51,6 +52,107 @@ body
                 td(style="text-align: center;")
                   if exportDestination.editable
                     button.btn.btn-outline-danger.btn-sm.remove-export-btn(type="button") Remove
+    div(class="accordion" id="export-status-accordion")
+      div(class="accordion-item")
+        h2(class="accordion-header")
+          button(class="accordion-button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne") Export Status
+        div(id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#export-status-accordion")
+          div(class="accordion-body")
+            if !exportStatus
+              h4 No Export Status Availaible. Hit Export All Weeks for the bot to retrieve your current season!
+            else
+              div(class="mb-4")
+                h5 Season-Level Status
+                div(class="row")
+                  if exportStatus["MADDEN_TEAM"]
+                    div(class="col-md-6")
+                      div(class="card mb-2")
+                        div(class="card-body p-2")
+                          h6(class="card-title mb-1") Teams
+                          span(class="badge bg-success") Exported
+                          small(class="text-muted d-block") Last: #{exportStatus["MADDEN_TEAM"].lastExported.toLocaleString()}
+
+                  if exportStatus["MADDEN_STANDING"]
+                    div(class="col-md-6")
+                      div(class="card mb-2")
+                        div(class="card-body p-2")
+                          h6(class="card-title mb-1") Standings
+                          span(class="badge bg-success") Exported
+                          small(class="text-muted d-block") Last: #{exportStatus["MADDEN_STANDING"].lastExported.toLocaleString()}
+
+              if exportStatus.weeklyStatus && Object.keys(exportStatus.weeklyStatus).length > 0
+                div(class="mb-4")
+                  h5 Weekly Status
+                  - var sortedWeeks = Object.keys(exportStatus.weeklyStatus).sort()
+                  each weekKey in sortedWeeks
+                    - var weekData = exportStatus.weeklyStatus[weekKey]
+                    div(class="card mb-3")
+                      div(class="card-header")
+                        h6(class="mb-0") #{weekData.displayName}
+                      div(class="card-body")
+                        div(class="row")
+                          if weekData["MADDEN_SCHEDULE"]
+                            div(class="col-lg-3 col-md-4 col-sm-6 mb-2")
+                              strong Schedule: 
+                              span(class="badge ms-1 bg-success") OK
+                              small(class="text-muted d-block") #{weekData["MADDEN_SCHEDULE"].lastExported.toLocaleString()}
+
+                          if weekData["MADDEN_TEAM_STAT"]
+                            div(class="col-lg-3 col-md-4 col-sm-6 mb-2")
+                              strong Team Stats: 
+                              span(class="badge ms-1 bg-success") OK
+                              small(class="text-muted d-block") #{weekData["MADDEN_TEAM_STAT"].lastExported.toLocaleString()}
+
+                          if weekData["MADDEN_PASSING_STAT"]
+                            div(class="col-lg-3 col-md-4 col-sm-6 mb-2")
+                              strong Passing: 
+                              span(class="badge ms-1 bg-success") OK
+                              small(class="text-muted d-block") #{weekData["MADDEN_PASSING_STAT"].lastExported.toLocaleString()}
+
+                          if weekData["MADDEN_RUSHING_STAT"]
+                            div(class="col-lg-3 col-md-4 col-sm-6 mb-2")
+                              strong Rushing: 
+                              span(class="badge ms-1 bg-success") OK
+                              small(class="text-muted d-block") #{weekData["MADDEN_RUSHING_STAT"].lastExported.toLocaleString()}
+
+                          if weekData["MADDEN_RECEIVING_STAT"]
+                            div(class="col-lg-3 col-md-4 col-sm-6 mb-2")
+                              strong Receiving: 
+                              span(class="badge ms-1 bg-success") OK
+                              small(class="text-muted d-block") #{weekData["MADDEN_RECEIVING_STAT"].lastExported.toLocaleString()}
+
+                          if weekData["MADDEN_DEFENSIVE_STAT"]
+                            div(class="col-lg-3 col-md-4 col-sm-6 mb-2")
+                              strong Defense: 
+                              span(class="badge ms-1 bg-success") OK
+                              small(class="text-muted d-block") #{weekData["MADDEN_DEFENSIVE_STAT"].lastExported.toLocaleString()}
+
+                          if weekData["MADDEN_KICKING_STAT"]
+                            div(class="col-lg-3 col-md-4 col-sm-6 mb-2")
+                              strong Kicking: 
+                              span(class="badge ms-1 bg-success") OK
+                              small(class="text-muted d-block") #{weekData["MADDEN_KICKING_STAT"].lastExported.toLocaleString()}
+
+                          if weekData["MADDEN_PUNTING_STAT"]
+                            div(class="col-lg-3 col-md-4 col-sm-6 mb-2")
+                              strong Punting: 
+                              span(class="badge ms-1 bg-success") OK
+                              small(class="text-muted d-block") #{weekData["MADDEN_PUNTING_STAT"].lastExported.toLocaleString()}
+
+              if exportStatus.rosterStatus && Object.keys(exportStatus.rosterStatus).length > 0
+                div(class="mb-4")
+                  h5 Roster Status
+                  - var sortedRosterKeys = Object.keys(exportStatus.rosterStatus).sort((a, b) => { if (a.toLowerCase().includes('free agent')) return 1; if (b.toLowerCase().includes('free agent')) return -1; return a.localeCompare(b); })
+                  each weekKey in sortedRosterKeys
+                    - var rosterData = exportStatus.rosterStatus[weekKey]
+                    div(class="card mb-2")
+                      div(class="card-header")
+                        h6(class="mb-0") #{weekKey.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} - Roster
+                      div(class="card-body p-2")
+                        if rosterData["MADDEN_PLAYER"]
+                          strong Roster: 
+                          span(class="badge ms-1 bg-success") OK
+                          small(class="text-muted d-block") Last: #{rosterData["MADDEN_PLAYER"].lastExported.toLocaleString()}
     .table-responsive
       table(class="table table-hover table-condensed caption-top" style="margin-top: 16px; margin-bottom: 16px;")
         caption Schedule for #{seasonInfo.weekTitle} #{seasonInfo.displayWeek > 0 ? seasonInfo.displayWeek : ''}
