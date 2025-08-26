@@ -55,8 +55,8 @@ body
     div(class="accordion" id="export-status-accordion")
       div(class="accordion-item")
         h2(class="accordion-header")
-          button(class="accordion-button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne") Export Status
-        div(id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#export-status-accordion")
+          button(class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne") Export Status
+        div(id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#export-status-accordion")
           div(class="accordion-body")
             if !exportStatus
               h4 No Export Status Availaible. Hit Export All Weeks for the bot to retrieve your current season!
