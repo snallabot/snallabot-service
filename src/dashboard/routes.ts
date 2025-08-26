@@ -281,12 +281,14 @@ router.get("/", async (ctx) => {
     rosterStatus: rosterStatus,
     weeklyStatus: weeklyStatus
   } : exportStatus
-  const discordSettings = await Promise.all(discordLeagues.map(async l => {
+  const settledSettings = await Promise.allSettled(discordLeagues.map(async l => {
     const g = await client.getGuildInformation(l.guildId)
     return { name: g.name, icon: g.icon, settings: l }
   }))
+  const discordSettings = settledSettings.flatMap(s => s.status === "fulfilled" ? [s.value] : [])
   ctx.body = dashboardRender({
     gameScheduleHubInfo: gameScheduleHubInfo, teamIdInfoList: teamIdInfoList, seasonInfo: seasonInfo, leagueName: leagueName, exports: exports, exportOptions: exportOptions, seasonWeekType: seasonType(seasonInfo), lastAdvance, exportStatus: displayableExportStatus, discordSettings
+
   })
 }).post("/league/:leagueId/updateExport", async (ctx, next) => {
   const { leagueId: rawLeagueId } = ctx.params
