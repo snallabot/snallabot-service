@@ -65,8 +65,27 @@ export type ExportStatus = {
   }
 }
 
+export type LeagueDoc = {
+  blazeId: string,
+  exportStatus?: ExportStatus
+}
+
 export function idWeeklyEvents(e: { seasonIndex: number, weekIndex: number }, id: number) {
   return `season${e.seasonIndex}-week${e.weekIndex}-${id}`
+}
+
+export function parseExportStatusWeekKey(weekKey: string) {
+  // Use regex to extract season and week numbers
+  const match = weekKey.match(/^season(\d+)_week(\d+)$/);
+
+  if (!match) {
+    throw new Error('Invalid week key format');
+  }
+
+  return {
+    season: parseInt(match[1], 10),
+    week: parseInt(match[2], 10)
+  }
 }
 
 interface MaddenDB {
@@ -85,7 +104,8 @@ interface MaddenDB {
   getPlayers(leagueId: string, query: PlayerListQuery, limit: number, startAfter?: Player, endBefore?: Player): Promise<Player[]>,
   updateLeagueExportStatus(leagueId: string, eventType: MaddenEvents): Promise<void>,
   updateWeeklyExportStatus(leagueId: string, eventType: MaddenEvents, week: number, season: number): Promise<void>,
-  updateRosterExportStatus(leagueId: string, eventType: MaddenEvents.MADDEN_PLAYER, teamId: string): Promise<void>
+  updateRosterExportStatus(leagueId: string, eventType: MaddenEvents.MADDEN_PLAYER, teamId: string): Promise<void>,
+  getExportStatus(leagueId: string): Promise<ExportStatus | undefined>
 }
 
 function convertDate(firebaseObject: any) {
@@ -453,6 +473,11 @@ const MaddenDB: MaddenDB = {
         }
       }
     }, { merge: true })
+  },
+  getExportStatus: async function(leagueId: string) {
+    const doc = await db.collection("madden_data26").doc(leagueId).get()
+    const leagueDoc = convertDate(doc.data()) as LeagueDoc
+    return leagueDoc.exportStatus
   }
 }
 
