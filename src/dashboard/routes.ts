@@ -86,6 +86,7 @@ router.get("/", async (ctx) => {
     throw new Error(`invalid code URL sent. Expected format is http://127.0.0.1/success?code=CODE Actual url sent ${rawCode}`)
   }
   const originalLocation = ctx.get("x-forwarded-for")
+  console.log(originalLocation)
   const response = await fetch("https://accounts.ea.com/connect/token", {
     method: "POST",
     headers: {
