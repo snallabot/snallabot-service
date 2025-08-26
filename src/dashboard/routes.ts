@@ -87,6 +87,7 @@ router.get("/", async (ctx) => {
   }
   const originalLocation = ctx.get("x-forwarded-for")
   console.log(originalLocation)
+  console.log(rawCode)
   const response = await fetch("https://accounts.ea.com/connect/token", {
     method: "POST",
     headers: {
