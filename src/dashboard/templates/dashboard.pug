@@ -8,23 +8,21 @@ html
 body
   .div(class="container-fluid" style="margin-top: 8px;")
     h4 #{leagueName} Snallabot Dashboard
-    .row
-      .col
-        div(style="display: flex; justify-content: space-between; align-items: center; width: 100%; min-width: 100%;")
-          div
-            div #{seasonWeekType}, Year #{seasonInfo.calendarYear}
-            div Current Week: #{seasonInfo.weekTitle} #{seasonInfo.displayWeek > 0 ? seasonInfo.displayWeek : ''}
-            div Last Advance: #{lastAdvance.toDateString()}
-      .col-lg-6
-        div(style="margin-top: 16px; margin-bottom: 16px;")
-          .input-group
-            select.form-select#exportSelect
-              each key in Object.keys(exportOptions)
-                option(value=key) #{key}
-            button.btn.btn-primary#exportBtn(type="button") Export
-          div#exportFeedback(style="margin-top: 8px")
-      .col.mt-lg-3
-        button.btn.btn-danger.float-end#unlinkBtn(type="button") Unlink League
+    .row.align-items-center
+     .col-auto
+       div
+         div #{seasonWeekType}, Year #{seasonInfo.calendarYear}
+         div Current Week: #{seasonInfo.weekTitle} #{seasonInfo.displayWeek > 0 ? seasonInfo.displayWeek : ''}
+         div Last Advance: #{lastAdvance.toDateString()}
+     .col.text-center
+       .input-group
+         select.form-select#exportSelect
+           each key in Object.keys(exportOptions)
+             option(value=key) #{key}
+         button.btn.btn-primary#exportBtn(type="button") Export
+       div#exportFeedback
+     .col-auto.text-center
+       button.btn.btn-danger#unlinkBtn(type="button") Unlink League
     .table-responsive
       table.table.table-hover.table-sm.caption-top
         caption List of Export Url's
