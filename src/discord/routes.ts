@@ -1,6 +1,6 @@
 import { ParameterizedContext } from "koa"
 import Router from "@koa/router"
-import { CommandMode, DiscordClient, SNALLABOT_TEST_USER, SNALLABOT_USER, createClient } from "./discord_utils"
+import { CommandMode, DiscordClient, SNALLABOT_TEST_USER, SNALLABOT_USER, createClient, createProdClient } from "./discord_utils"
 import { APIInteraction, InteractionType, InteractionResponseType, APIChatInputApplicationCommandGuildInteraction, APIApplicationCommandAutocompleteInteraction, APIMessageComponentInteraction } from "discord-api-types/payloads"
 import db from "../db/firebase"
 import EventDB from "../db/events_db"
@@ -14,24 +14,10 @@ import MaddenClient from "../db/madden_db"
 import { formatScoreboard } from "./commands/game_channels"
 import MaddenDB from "../db/madden_db"
 import { GameResult, MaddenGame } from "../export/madden_league_types"
-import { discordLeagueView } from "../db/view"
 
 const router = new Router({ prefix: "/discord/webhook" })
 
-if (!process.env.PUBLIC_KEY) {
-  throw new Error("No Public Key passed for interaction verification")
-}
-
-if (!process.env.DISCORD_TOKEN) {
-  throw new Error("No Discord Token passed for interaction verification")
-}
-if (!process.env.APP_ID) {
-  throw new Error("No App Id passed for interaction verification")
-}
-
-const prodSettings = { publicKey: process.env.PUBLIC_KEY, botToken: process.env.DISCORD_TOKEN, appId: process.env.APP_ID }
-
-const prodClient = createClient(prodSettings)
+const prodClient = createProdClient()
 
 async function handleInteraction(ctx: ParameterizedContext, client: DiscordClient) {
   const verified = await client.interactionVerifier(ctx)

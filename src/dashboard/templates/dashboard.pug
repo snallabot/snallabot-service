@@ -153,6 +153,79 @@ body
                           strong Roster: 
                           span(class="badge ms-1 bg-success") OK
                           small(class="text-muted d-block") Last: #{rosterData["MADDEN_PLAYER"].lastExported.toLocaleString()}
+    div(class="d-flex flex-column" style="margin-top: 16px")
+      div(class="flex-grow-1 mb-3")
+        each league in discordSettings
+          div(class="flex-grow-1 mb-3")
+            div(class="card h-100 shadow-sm w-100")
+              div(class="card-header d-flex align-items-center bg-primary text-white")
+                if league.icon
+                  img(src=`https://cdn.discordapp.com/icons/${league.settings.guildId}/${league.icon}.png?size=64` class="rounded-circle me-3" style="width: 48px; height: 48px;")
+                else
+                  div(class="bg-secondary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px;")
+                    i(class="fas fa-server text-white")
+                div
+                  h5(class="card-title mb-0") #{league.name}
+                  small(class="text-white-50") Guild ID: #{league.settings.guildId}
+
+              div(class="card-body")
+                h6(class="text-muted mb-3") Command Configurations
+                div(class="row g-2")
+                  div(class="col-6")
+                    div(class="d-flex justify-content-between align-items-center p-2 border rounded")
+                      span Logger
+                      if league.settings.commands.logger
+                        span(class="badge bg-success") ✓ Set
+                      else
+                        span(class="badge bg-secondary") Not Set
+
+                  div(class="col-6")
+                    div(class="d-flex justify-content-between align-items-center p-2 border rounded")
+                      span Game Channel
+                      if league.settings.commands.game_channel
+                        span(class="badge bg-success") ✓ Set
+                      else
+                        span(class="badge bg-secondary") Not Set
+
+                  div(class="col-6")
+                    div(class="d-flex justify-content-between align-items-center p-2 border rounded")
+                      span Stream Count
+                      if league.settings.commands.stream_count
+                        span(class="badge bg-success") ✓ Set
+                      else
+                        span(class="badge bg-secondary") Not Set
+
+                  div(class="col-6")
+                    div(class="d-flex justify-content-between align-items-center p-2 border rounded")
+                      span Broadcast
+                      if league.settings.commands.broadcast
+                        span(class="badge bg-success") ✓ Set
+                      else
+                        span(class="badge bg-secondary") Not Set
+
+                  div(class="col-6")
+                    div(class="d-flex justify-content-between align-items-center p-2 border rounded")
+                      span Teams
+                      if league.settings.commands.teams
+                        span(class="badge bg-success") ✓ Set
+                      else
+                        span(class="badge bg-secondary") Not Set
+
+                  div(class="col-6")
+                    div(class="d-flex justify-content-between align-items-center p-2 border rounded")
+                      span Waitlist
+                      if league.settings.commands.waitlist
+                        span(class="badge bg-success") ✓ Set
+                      else
+                        span(class="badge bg-secondary") Not Set
+
+                  div(class="col-12")
+                    div(class="d-flex justify-content-between align-items-center p-2 border rounded bg-light")
+                      span(class="fw-bold") Madden League
+                      if league.settings.commands.madden_league
+                        span(class="badge bg-success") ✓ Set
+                      else
+                        span(class="badge bg-secondary") Not Set
     .table-responsive
       table(class="table table-hover table-condensed caption-top" style="margin-top: 16px; margin-bottom: 16px;")
         caption Schedule for #{seasonInfo.weekTitle} #{seasonInfo.displayWeek > 0 ? seasonInfo.displayWeek : ''}

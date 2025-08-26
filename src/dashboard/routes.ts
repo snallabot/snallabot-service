@@ -7,8 +7,9 @@ import { BlazeError, ExportContext, ExportDestination, unlinkLeague, ephemeralCl
 import { removeLeague, setLeague } from "../connections/routes"
 import { discordLeagueView } from "../db/view"
 import LeagueSettingsDB from "../discord/settings_db"
-import MaddenDB, { ExportStatus, MaddenEvents, parseExportStatusWeekKey } from "../db/madden_db"
+import MaddenDB, { MaddenEvents, parseExportStatusWeekKey } from "../db/madden_db"
 import { MADDEN_SEASON } from "../export/madden_league_types"
+import { createProdClient } from "../discord/discord_utils"
 
 const startRender = Pug.compileFile(path.join(__dirname, "/templates/start.pug"))
 const errorRender = Pug.compileFile(path.join(__dirname, "/templates/error.pug"))
@@ -17,6 +18,8 @@ const selectLeagueRender = Pug.compileFile(path.join(__dirname, "/templates/choo
 const dashboardRender = Pug.compileFile(path.join(__dirname, "/templates/dashboard.pug"))
 
 const router = new Router({ prefix: "/dashboard" })
+
+const client = createProdClient()
 
 export class EAAccountError extends Error {
   troubleshoot: string
@@ -242,7 +245,8 @@ router.get("/", async (ctx) => {
     throw Error(`Invalid League ${leagueId}`)
   }
   const eaClient = await storedTokenClient(leagueId)
-  const [leagueInfo, allLeagues] = await Promise.all([eaClient.getLeagueInfo(leagueId), eaClient.getLeagues()])
+  // important that we do all requests together instead of sequentially so we can show the page as fast as possible
+  const [leagueInfo, allLeagues, exportStatus, latestTeams, discordLeagues] = await Promise.all([eaClient.getLeagueInfo(leagueId), eaClient.getLeagues(), MaddenDB.getExportStatus(rawLeagueId), MaddenDB.getLatestTeams(rawLeagueId), LeagueSettingsDB.getLeagueSettingsForLeagueId(rawLeagueId)])
   const leagueName = allLeagues.filter(l => l.leagueId === leagueId)
     .map(l => l.leagueName)[0]
   const exports = eaClient.getExports()
@@ -252,8 +256,6 @@ router.get("/", async (ctx) => {
     careerHubInfo: { seasonInfo },
     secsSinceLastAdvancedTime
   } = leagueInfo;
-  const exportStatus = await MaddenDB.getExportStatus(rawLeagueId)
-  const latestTeams = await MaddenDB.getLatestTeams(rawLeagueId)
   const rosterStatus = Object.fromEntries(Object.entries(exportStatus?.rosterStatus || {}).map(e => {
     const [teamId, status] = e
     if (teamId === "0") {
@@ -279,8 +281,12 @@ router.get("/", async (ctx) => {
     rosterStatus: rosterStatus,
     weeklyStatus: weeklyStatus
   } : exportStatus
+  const discordSettings = await Promise.all(discordLeagues.map(async l => {
+    const g = await client.getGuildInformation(l.guildId)
+    return { name: g.name, icon: g.icon, settings: l }
+  }))
   ctx.body = dashboardRender({
-    gameScheduleHubInfo: gameScheduleHubInfo, teamIdInfoList: teamIdInfoList, seasonInfo: seasonInfo, leagueName: leagueName, exports: exports, exportOptions: exportOptions, seasonWeekType: seasonType(seasonInfo), lastAdvance, exportStatus: displayableExportStatus
+    gameScheduleHubInfo: gameScheduleHubInfo, teamIdInfoList: teamIdInfoList, seasonInfo: seasonInfo, leagueName: leagueName, exports: exports, exportOptions: exportOptions, seasonWeekType: seasonType(seasonInfo), lastAdvance, exportStatus: displayableExportStatus, discordSettings
   })
 }).post("/league/:leagueId/updateExport", async (ctx, next) => {
   const { leagueId: rawLeagueId } = ctx.params
