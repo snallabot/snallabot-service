@@ -85,7 +85,7 @@ router.get("/", async (ctx) => {
   if (!code) {
     throw new Error(`invalid code URL sent. Expected format is http://127.0.0.1/success?code=CODE Actual url sent ${rawCode}`)
   }
-  console.log(ctx.get("x-forwarded-for"))
+  const originalLocation = ctx.get("x-forwarded-for")
   const response = await fetch("https://accounts.ea.com/connect/token", {
     method: "POST",
     headers: {
@@ -94,6 +94,7 @@ router.get("/", async (ctx) => {
         "Dalvik/2.1.0 (Linux; U; Android 13; sdk_gphone_x86_64 Build/TE1A.220922.031)",
       "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
       "Accept-Encoding": "gzip",
+      "X-Forwarded-For": `${originalLocation}`
     },
     body: `authentication_source=${AUTH_SOURCE}&client_secret=${CLIENT_SECRET}&grant_type=authorization_code&code=${code}&redirect_uri=${REDIRECT_URL}&release_type=prod&client_id=${CLIENT_ID}`
   })
