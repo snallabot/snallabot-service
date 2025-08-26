@@ -171,6 +171,8 @@ router.get("/", async (ctx) => {
 }).post("/selectLeague", renderErrorsMiddleware, async (ctx, next) => {
   const { selected_persona, access_token, discord } = ctx.request.body as LinkPersona
   const persona = JSON.parse(selected_persona) as RequestPersona
+  persona.maddenEntitlement = "MADDEN_25PC"
+  persona.namespaceName = "cem_ea_id"
   const locationUrlResponse = await fetch(`https://accounts.ea.com/connect/auth?hide_create=true&release_type=prod&response_type=code&redirect_uri=${REDIRECT_URL}&client_id=${CLIENT_ID}&machineProfileKey=${MACHINE_KEY}&authentication_source=${AUTH_SOURCE}&access_token=${access_token}&persona_id=${persona.personaId}&persona_namespace=${persona.namespaceName}`, {
     redirect: "manual", // this fetch resolves to localhost address with a code as a query string. if we follow the redirect, it won't be able to connect. Just take the location from the manual redirect
     headers: {
