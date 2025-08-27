@@ -150,7 +150,7 @@ export default {
     }
     const season = (command.data.options?.[1] as APIApplicationCommandInteractionDataIntegerOption)?.value
     showSchedule(command.token, client, league, week ? Number(week) : undefined, season ? Number(season) : undefined)
-    respond(ctx, deferMessage)
+    respond(ctx, deferMessage())
   },
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
     return {
