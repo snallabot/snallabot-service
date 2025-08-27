@@ -36,7 +36,7 @@ async function showSchedule(token: string, client: DiscordClient,
       return `${awayDisplay} vs ${homeDisplay}`;
     } else {
       if (game.awayScore > game.homeScore) {
-        return `**__${awayDisplay} ${game.awayScore}__** vs ${game.homeScore} ${homeDisplay}`;
+        return `**${awayDisplay} ${game.awayScore}** vs ${game.homeScore} ${homeDisplay}`;
       } else if (game.homeScore > game.awayScore) {
         return `${awayDisplay} ${game.awayScore} vs **${game.homeScore} ${homeDisplay}**`;
       }
