@@ -27,7 +27,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
     if (awayTeamStats) {
       content += `## ${formatTeamEmoji(awayTeam?.abbrName)} ${awayTeam?.displayName} Stats\n`;
       content += `Total Yards: ${awayTeamStats.offTotalYds} | Pass Yards: ${awayTeamStats.offPassYds} | Rush Yards: ${awayTeamStats.offRushYds}\n`;
-      content += `1st Downs: ${awayTeamStats.off1stDowns} | 3rd Down: ${awayTeamStats.off3rdDownConv}/${awayTeamStats.off3rdDownAtt} (${awayTeamStats.off3rdDownConvPct}%)\n`;
+      content += `1st Downs: ${awayTeamStats.off1stDowns} | 3rd Down: ${awayTeamStats.off3rdDownConv}/${awayTeamStats.off3rdDownAtt} (${awayTeamStats.off3rdDownConvPct.toFixed(1)}%)\n`;
       content += `Turnovers: ${awayTeamStats.tOGiveaways} | TO Diff: ${awayTeamStats.tODiff}\n`;
       content += `Penalties: ${awayTeamStats.penalties} for ${awayTeamStats.penaltyYds} yards\n\n`;
     }
@@ -35,7 +35,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
     if (homeTeamStats) {
       content += `## ${formatTeamEmoji(homeTeam?.abbrName)} ${homeTeam?.displayName} Stats\n`;
       content += `Total Yards: ${homeTeamStats.offTotalYds} | Pass Yards: ${homeTeamStats.offPassYds} | Rush Yards: ${homeTeamStats.offRushYds}\n`;
-      content += `1st Downs: ${homeTeamStats.off1stDowns} | 3rd Down: ${homeTeamStats.off3rdDownConv}/${homeTeamStats.off3rdDownAtt} (${homeTeamStats.off3rdDownConvPct}%)\n`;
+      content += `1st Downs: ${homeTeamStats.off1stDowns} | 3rd Down: ${homeTeamStats.off3rdDownConv}/${homeTeamStats.off3rdDownAtt} (${homeTeamStats.off3rdDownConvPct.toFixed(1)}%)\n`;
       content += `Turnovers: ${homeTeamStats.tOGiveaways} | TO Diff: ${homeTeamStats.tODiff}\n`;
       content += `Penalties: ${homeTeamStats.penalties} for ${homeTeamStats.penaltyYds} yards\n`;
     }
