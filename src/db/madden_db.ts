@@ -27,6 +27,11 @@ export type PlayerStats = {
   [PlayerStatType.PASSING]?: PassingStats[]
 }
 
+export type GameStats = {
+  teamStats: TeamStats[],
+  playerStats: PlayerStats
+}
+
 export enum MaddenEvents {
   MADDEN_TEAM = "MADDEN_TEAM",
   MADDEN_STANDING = "MADDEN_STANDING",
@@ -108,7 +113,8 @@ interface MaddenDB {
   updateWeeklyExportStatus(leagueId: string, eventType: MaddenEvents, week: number, season: number): Promise<void>,
   updateRosterExportStatus(leagueId: string, eventType: MaddenEvents.MADDEN_PLAYER, teamId: string): Promise<void>,
   getTeamStatsForGame(leagueId: string, teamId: string, week: number, season: number): Promise<TeamStats>,
-  getExportStatus(leagueId: string): Promise<ExportStatus | undefined>
+  getExportStatus(leagueId: string): Promise<ExportStatus | undefined>,
+  getStatsForGame(leagueId: string, season: number, week: number, scheduleId: number): Promise<GameStats>
 }
 
 function convertDate(firebaseObject: any) {
@@ -501,8 +507,8 @@ const MaddenDB: MaddenDB = {
       }
     }, { merge: true })
   },
-  updateWeeklyExportStatus: async function(leagueId: string, eventType: MaddenEvents, week: number, season: number) {
-    const weekKey = `season${String(season).padStart(2, '0')}_week${String(week).padStart(2, '0')}`
+  updateWeeklyExportStatus: async function(leagueId: string, eventType: MaddenEvents, weekIndex: number, season: number) {
+    const weekKey = `season${String(season).padStart(2, '0')}_week${String(weekIndex).padStart(2, '0')}`
     await db.collection("madden_data26").doc(leagueId).set({
       exportStatus: {
         weeklyStatus: {
@@ -538,6 +544,90 @@ const MaddenDB: MaddenDB = {
     const doc = await db.collection("madden_data26").doc(leagueId).get()
     const leagueDoc = convertDate(doc.data()) as LeagueDoc
     return leagueDoc.exportStatus
+  },
+  getStatsForGame: async function(leagueId: string, season: number, week: number, scheduleId: number) {
+    const leagueRef = db.collection("madden_data26").doc(leagueId);
+    const weekIndex = week - 1;
+
+    // Query all stat collections in parallel
+    const [
+      teamStatsSnapshot,
+      defensiveStatsSnapshot,
+      kickingStatsSnapshot,
+      puntingStatsSnapshot,
+      receivingStatsSnapshot,
+      rushingStatsSnapshot,
+      passingStatsSnapshot
+    ] = await Promise.all([
+      leagueRef.collection(MaddenEvents.MADDEN_TEAM_STAT)
+        .where("seasonIndex", "==", season)
+        .where("weekIndex", "==", weekIndex)
+        .where("scheduleId", "==", scheduleId)
+        .get(),
+      leagueRef.collection(MaddenEvents.MADDEN_DEFENSIVE_STAT)
+        .where("seasonIndex", "==", season)
+        .where("weekIndex", "==", weekIndex)
+        .where("scheduleId", "==", scheduleId)
+        .get(),
+      leagueRef.collection(MaddenEvents.MADDEN_KICKING_STAT)
+        .where("seasonIndex", "==", season)
+        .where("weekIndex", "==", weekIndex)
+        .where("scheduleId", "==", scheduleId)
+        .get(),
+      leagueRef.collection(MaddenEvents.MADDEN_PUNTING_STAT)
+        .where("seasonIndex", "==", season)
+        .where("weekIndex", "==", weekIndex)
+        .where("scheduleId", "==", scheduleId)
+        .get(),
+      leagueRef.collection(MaddenEvents.MADDEN_RECEIVING_STAT)
+        .where("seasonIndex", "==", season)
+        .where("weekIndex", "==", weekIndex)
+        .where("scheduleId", "==", scheduleId)
+        .get(),
+      leagueRef.collection(MaddenEvents.MADDEN_RUSHING_STAT)
+        .where("seasonIndex", "==", season)
+        .where("weekIndex", "==", weekIndex)
+        .where("scheduleId", "==", scheduleId)
+        .get(),
+      leagueRef.collection(MaddenEvents.MADDEN_PASSING_STAT)
+        .where("seasonIndex", "==", season)
+        .where("weekIndex", "==", weekIndex)
+        .where("scheduleId", "==", scheduleId)
+        .get()
+    ]);
+
+    // Build the response object
+    const gameStats: GameStats = {
+      teamStats: teamStatsSnapshot.docs.map(doc => doc.data() as TeamStats),
+      playerStats: {}
+    };
+
+    // Add player stats if they exist
+    if (!defensiveStatsSnapshot.empty) {
+      gameStats.playerStats[PlayerStatType.DEFENSE] = defensiveStatsSnapshot.docs.map(doc => doc.data() as DefensiveStats);
+    }
+
+    if (!kickingStatsSnapshot.empty) {
+      gameStats.playerStats[PlayerStatType.KICKING] = kickingStatsSnapshot.docs.map(doc => doc.data() as KickingStats);
+    }
+
+    if (!puntingStatsSnapshot.empty) {
+      gameStats.playerStats[PlayerStatType.PUNTING] = puntingStatsSnapshot.docs.map(doc => doc.data() as PuntingStats);
+    }
+
+    if (!receivingStatsSnapshot.empty) {
+      gameStats.playerStats[PlayerStatType.RECEIVING] = receivingStatsSnapshot.docs.map(doc => doc.data() as ReceivingStats);
+    }
+
+    if (!rushingStatsSnapshot.empty) {
+      gameStats.playerStats[PlayerStatType.RUSHING] = rushingStatsSnapshot.docs.map(doc => doc.data() as RushingStats);
+    }
+
+    if (!passingStatsSnapshot.empty) {
+      gameStats.playerStats[PlayerStatType.PASSING] = passingStatsSnapshot.docs.map(doc => doc.data() as PassingStats);
+    }
+
+    return gameStats;
   }
 }
 

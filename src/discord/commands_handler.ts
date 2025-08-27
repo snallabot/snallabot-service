@@ -16,6 +16,7 @@ import gameChannelHandler from "./commands/game_channels"
 import exportHandler from "./commands/export"
 import standingsHandler from "./commands/standings"
 import playerHandler from "./commands/player"
+import gameStatsHandler from "./commands/game_stats"
 import { APIMessageComponentInteractionData } from "discord-api-types/v9"
 
 export type Command = { command_name: string, token: string, guild_id: string, data: APIChatInputApplicationCommandInteractionData, member: APIInteractionGuildMember }
@@ -60,7 +61,8 @@ const AutocompleteCommands: AutocompleteHandlers = {
 const MessageComponents: MessageComponentHandlers = {
   "player_card": playerHandler,
   "week_selector": schedulesHandler,
-  "season_selector": schedulesHandler
+  "season_selector": schedulesHandler,
+  "game_stats": gameStatsHandler
 }
 
 export async function handleCommand(command: Command, ctx: ParameterizedContext, discordClient: DiscordClient, db: Firestore) {
@@ -144,6 +146,11 @@ export async function handleMessageComponent(interaction: MessageComponentIntera
         ctx.body = body
       } else if (parsedCustomId.t) {
         const body = await broadcastsHandler.handleInteraction(interaction, client)
+        ctx.status = 200
+        ctx.set("Content-Type", "application/json")
+        ctx.body = body
+      } else if (parsedCustomId.wi) {
+        const body = await schedulesHandler.handleInteraction(interaction, client)
         ctx.status = 200
         ctx.set("Content-Type", "application/json")
         ctx.body = body

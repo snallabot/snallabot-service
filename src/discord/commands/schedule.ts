@@ -1,19 +1,14 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command, AutocompleteHandler, Autocomplete, MessageComponentHandler, MessageComponentInteraction } from "../commands_handler"
-import { respond, createMessageResponse, DiscordClient, ResponseType, deferMessage, getTeamEmoji, SnallabotTeamEmojis } from "../discord_utils"
+import { respond, DiscordClient, deferMessage, formatTeamEmoji } from "../discord_utils"
 import { APIApplicationCommandInteractionDataIntegerOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ApplicationCommandType, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
-import { GameResult, MADDEN_SEASON, MaddenGame, Team, getMessageForWeek } from "../../export/madden_league_types"
+import { GameResult, MADDEN_SEASON, Team, getMessageForWeek } from "../../export/madden_league_types"
 import MaddenClient from "../../db/madden_db"
 import LeagueSettingsDB from "../settings_db"
 import { allLeagueWeeks, discordLeagueView } from "../../db/view"
+import { GameStatsOptions } from "./game_stats"
 
-function formatTeamEmoji(teamId?: string) {
-  if (teamId) {
-    return getTeamEmoji(teamId)
-  }
-  return SnallabotTeamEmojis.NFL
-}
 type WeekSelection = { wi: number, si: number }
 async function showSchedule(token: string, client: DiscordClient,
   league: string, requestedWeek?: number, requestedSeason?: number) {
@@ -49,7 +44,7 @@ async function showSchedule(token: string, client: DiscordClient,
   const message = `# ${MADDEN_SEASON + season} ${getMessageForWeek(week)} Schedule\n${schedulesMessage}`
   const gameOptions = sortedSchedule.filter(g => g.status !== GameResult.NOT_PLAYED).map(game => ({
     label: `${teamMap.get(game.awayTeamId)?.abbrName} ${game.awayScore} - ${game.homeScore} ${teamMap.get(game.homeTeamId)?.abbrName}`,
-    value: { w: game.weekIndex, s: game.seasonIndex, c: game.scheduleId }
+    value: { w: game.weekIndex, s: game.seasonIndex, c: game.scheduleId, o: GameStatsOptions.OVERVIEW, b: true }
   }))
     .map(option => ({ ...option, value: JSON.stringify(option.value) }))
   const gameSelector = gameOptions.length > 0 ? [
@@ -140,6 +135,23 @@ async function getWeekSchedule(league: string, week?: number, season?: number) {
   }
 }
 
+function getWeekSelection(interaction: MessageComponentInteraction) {
+  const customId = interaction.custom_id
+  if (customId === "week_selector" || customId === "season_selector") {
+    const data = interaction.data as APIMessageStringSelectInteractionData
+    if (data.values.length !== 1) {
+      throw new Error("Somehow did not receive just one selection from schedule selector " + data.values)
+    }
+    return JSON.parse(data.values[0]) as WeekSelection
+  } else {
+    try {
+      return JSON.parse(customId) as WeekSelection
+    } catch (e) {
+      throw e
+    }
+  }
+}
+
 export default {
   async handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext) {
     const { guild_id } = command
@@ -178,36 +190,28 @@ export default {
     }
   },
   async handleInteraction(interaction: MessageComponentInteraction, client: DiscordClient) {
-    const customId = interaction.custom_id
-    if (customId === "week_selector" || customId === "season_selector") {
-      const data = interaction.data as APIMessageStringSelectInteractionData
-      if (data.values.length !== 1) {
-        throw new Error("Somehow did not receive just one selection from schedule selector " + data.values)
+    try {
+      const { wi: weekIndex, si: seasonIndex } = getWeekSelection(interaction)
+      const guildId = interaction.guild_id
+      const discordLeague = await discordLeagueView.createView(guildId)
+      const leagueId = discordLeague?.leagueId
+      if (leagueId) {
+        showSchedule(interaction.token, client, leagueId, weekIndex + 1, seasonIndex)
       }
-      const { wi: weekIndex, si: seasonIndex } = JSON.parse(data.values[0]) as WeekSelection
-      try {
-        const guildId = interaction.guild_id
-        const discordLeague = await discordLeagueView.createView(guildId)
-        const leagueId = discordLeague?.leagueId
-        if (leagueId) {
-          showSchedule(interaction.token, client, leagueId, weekIndex + 1, seasonIndex)
-        }
-      } catch (e) {
-        await client.editOriginalInteraction(interaction.token, {
-          flags: 32768,
-          components: [
-            {
-              type: ComponentType.TextDisplay,
-              content: `Could not show schedule Error: ${e}`
-            },
+    } catch (e) {
+      await client.editOriginalInteraction(interaction.token, {
+        flags: 32768,
+        components: [
+          {
+            type: ComponentType.TextDisplay,
+            content: `Could not show schedule Error: ${e}`
+          },
 
-          ]
-        })
-      }
-      return {
-        type: InteractionResponseType.DeferredMessageUpdate,
-      }
+        ]
+      })
     }
-    throw new Error(`Invalid interaction on schedule`)
+    return {
+      type: InteractionResponseType.DeferredMessageUpdate,
+    }
   }
 } as CommandHandler & MessageComponentHandler
