@@ -108,7 +108,7 @@ async function showSchedule(token: string, client: DiscordClient,
           {
             type: ComponentType.StringSelect,
             custom_id: "season_selector",
-            placeholder: `Season ${season}`,
+            placeholder: `Season ${season + MADDEN_SEASON}`,
             options: seasonOptions
           }
         ]
@@ -136,9 +136,6 @@ export default {
   async handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext) {
     console.log("here")
     const { guild_id } = command
-    if (!command.data.options) {
-      throw new Error("schedule command not defined properly")
-    }
     const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
     if (!leagueSettings.commands.madden_league?.league_id) {
       throw new Error("Could not find a linked Madden league, link a league first")
