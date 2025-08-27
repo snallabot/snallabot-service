@@ -141,93 +141,90 @@ async function showSchedule(token: string, client: DiscordClient,
         },
       ]
     })
-  } catch (e) {
-    console.error(e)
   }
-}
 
 async function getWeekSchedule(league: string, week?: number, season?: number) {
-  if (season) {
-    if (week) {
-      const seasonIndex = season < 100 ? season : season - MADDEN_SEASON
-      return await MaddenClient.getWeekScheduleForSeason(league, week, seasonIndex)
+    if (season) {
+      if (week) {
+        const seasonIndex = season < 100 ? season : season - MADDEN_SEASON
+        return await MaddenClient.getWeekScheduleForSeason(league, week, seasonIndex)
+      }
+      throw new Error("If you specified Season please also specify the week")
+    } else if (week) {
+      return await MaddenClient.getLatestWeekSchedule(league, week)
+    } else {
+      return await MaddenClient.getLatestSchedule(league)
     }
-    throw new Error("If you specified Season please also specify the week")
-  } else if (week) {
-    return await MaddenClient.getLatestWeekSchedule(league, week)
-  } else {
-    return await MaddenClient.getLatestSchedule(league)
   }
-}
 
-export default {
-  async handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext) {
-    const { guild_id } = command
-    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
-    if (!leagueSettings.commands.madden_league?.league_id) {
-      throw new Error("Could not find a linked Madden league, link a league first")
-    }
-    const league = leagueSettings.commands.madden_league.league_id
-    const week = (command.data.options?.[0] as APIApplicationCommandInteractionDataIntegerOption)?.value
-    if (week && (Number(week) < 1 || Number(week) > 23 || week === 22)) {
-      throw new Error("Invalid week number. Valid weeks are week 1-18 and for playoffs: Wildcard = 19, Divisional = 20, Conference Championship = 21, Super Bowl = 23")
-    }
-    const season = (command.data.options?.[1] as APIApplicationCommandInteractionDataIntegerOption)?.value
-    showSchedule(command.token, client, league, week ? Number(week) : undefined, season ? Number(season) : undefined)
-    respond(ctx, deferMessage())
-  },
-  commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
-    return {
-      name: "schedule",
-      description: "Shows the schedule for the week and season",
-      options: [
-        {
-          type: ApplicationCommandOptionType.Integer,
-          name: "week",
-          description: "The week to get the schedule for",
-          required: false
-        },
-        {
-          type: ApplicationCommandOptionType.Integer,
-          name: "season",
-          description: "The season to get the schedule for",
-          required: false
-        }
-      ],
-      type: ApplicationCommandType.ChatInput,
-    }
-  },
-  async handleInteraction(interaction: MessageComponentInteraction, client: DiscordClient) {
-    const customId = interaction.custom_id
-    if (customId === "week_selector" || customId === "season_selector") {
-      const data = interaction.data as APIMessageStringSelectInteractionData
-      if (data.values.length !== 1) {
-        throw new Error("Somehow did not receive just one selection from schedule selector " + data.values)
+  export default {
+    async handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext) {
+      const { guild_id } = command
+      const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
+      if (!leagueSettings.commands.madden_league?.league_id) {
+        throw new Error("Could not find a linked Madden league, link a league first")
       }
-      const { wi: weekIndex, si: seasonIndex } = JSON.parse(data.values[0]) as WeekSelection
-      try {
-        const guildId = interaction.guild_id
-        const discordLeague = await discordLeagueView.createView(guildId)
-        const leagueId = discordLeague?.leagueId
-        if (leagueId) {
-          showSchedule(interaction.token, client, leagueId, weekIndex + 1, seasonIndex)
-        }
-      } catch (e) {
-        await client.editOriginalInteraction(interaction.token, {
-          flags: 32768,
-          components: [
-            {
-              type: ComponentType.TextDisplay,
-              content: `Could not show schedule Error: ${e}`
-            },
-
-          ]
-        })
+      const league = leagueSettings.commands.madden_league.league_id
+      const week = (command.data.options?.[0] as APIApplicationCommandInteractionDataIntegerOption)?.value
+      if (week && (Number(week) < 1 || Number(week) > 23 || week === 22)) {
+        throw new Error("Invalid week number. Valid weeks are week 1-18 and for playoffs: Wildcard = 19, Divisional = 20, Conference Championship = 21, Super Bowl = 23")
       }
+      const season = (command.data.options?.[1] as APIApplicationCommandInteractionDataIntegerOption)?.value
+      showSchedule(command.token, client, league, week ? Number(week) : undefined, season ? Number(season) : undefined)
+      respond(ctx, deferMessage())
+    },
+    commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
       return {
-        type: InteractionResponseType.DeferredMessageUpdate,
+        name: "schedule",
+        description: "Shows the schedule for the week and season",
+        options: [
+          {
+            type: ApplicationCommandOptionType.Integer,
+            name: "week",
+            description: "The week to get the schedule for",
+            required: false
+          },
+          {
+            type: ApplicationCommandOptionType.Integer,
+            name: "season",
+            description: "The season to get the schedule for",
+            required: false
+          }
+        ],
+        type: ApplicationCommandType.ChatInput,
       }
+    },
+    async handleInteraction(interaction: MessageComponentInteraction, client: DiscordClient) {
+      const customId = interaction.custom_id
+      if (customId === "week_selector" || customId === "season_selector") {
+        const data = interaction.data as APIMessageStringSelectInteractionData
+        if (data.values.length !== 1) {
+          throw new Error("Somehow did not receive just one selection from schedule selector " + data.values)
+        }
+        const { wi: weekIndex, si: seasonIndex } = JSON.parse(data.values[0]) as WeekSelection
+        try {
+          const guildId = interaction.guild_id
+          const discordLeague = await discordLeagueView.createView(guildId)
+          const leagueId = discordLeague?.leagueId
+          if (leagueId) {
+            showSchedule(interaction.token, client, leagueId, weekIndex + 1, seasonIndex)
+          }
+        } catch (e) {
+          await client.editOriginalInteraction(interaction.token, {
+            flags: 32768,
+            components: [
+              {
+                type: ComponentType.TextDisplay,
+                content: `Could not show schedule Error: ${e}`
+              },
+
+            ]
+          })
+        }
+        return {
+          type: InteractionResponseType.DeferredMessageUpdate,
+        }
+      }
+      throw new Error(`Invalid interaction on schedule`)
     }
-    throw new Error(`Invalid interaction on schedule`)
-  }
-} as CommandHandler & MessageComponentHandler
+  } as CommandHandler & MessageComponentHandler
