@@ -17,7 +17,12 @@ function formatTeamEmoji(teamId?: string) {
 type WeekSelection = { wi: number, si: number }
 async function showSchedule(token: string, client: DiscordClient,
   league: string, requestedWeek?: number, requestedSeason?: number) {
-  const [schedule, teams] = await Promise.all([getWeekSchedule(league, requestedWeek ? Number(requestedWeek) : undefined, requestedSeason ? Number(requestedSeason) : undefined), MaddenClient.getLatestTeams(league)])
+  const settledPromise = await Promise.allSettled([getWeekSchedule(league, requestedWeek ? Number(requestedWeek) : undefined, requestedSeason ? Number(requestedSeason) : undefined), MaddenClient.getLatestTeams(league)])
+  const schedule = settledPromise[0].status === "fulfilled" ? settledPromise[0].value : []
+  if (settledPromise[1].status !== "fulfilled") {
+    throw new Error("No Teams setup, setup the bot and export")
+  }
+  const teams = settledPromise[1].value
   const sortedSchedule = schedule.sort((a, b) => a.scheduleId - b.scheduleId)
   const teamMap = new Map<Number, Team>()
   teams.getLatestTeams().forEach(t => teamMap.set(t.teamId, t))
@@ -67,7 +72,7 @@ async function showSchedule(token: string, client: DiscordClient,
     .map(ws => ws.weekIndex)
     .sort((a, b) => a - b)
     .map(w => ({
-      label: `Week ${w + 1}`,
+      label: `${getMessageForWeek(w + 1)}`,
       value: { wi: w, si: season }
     }))
     .map(option => ({ ...option, value: JSON.stringify(option.value) }))
@@ -78,6 +83,7 @@ async function showSchedule(token: string, client: DiscordClient,
       value: { wi: Math.min(...view?.map(ws => ws.seasonIndex).filter(ws => ws === s) || [0]), si: s }
     }))
     .map(option => ({ ...option, value: JSON.stringify(option.value) }))
+
   await client.editOriginalInteraction(token, {
     flags: 32768,
     components: [
@@ -115,7 +121,6 @@ async function showSchedule(token: string, client: DiscordClient,
       },
     ]
   })
-
 }
 
 async function getWeekSchedule(league: string, week?: number, season?: number) {
