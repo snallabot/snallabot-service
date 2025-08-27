@@ -29,8 +29,8 @@ async function showSchedule(token: string, client: DiscordClient,
   const schedulesMessage = sortedSchedule.filter(w => w.awayTeamId !== 0 && w.homeTeamId !== 0).map(game => {
     const awayTeam = teamMap.get(game.awayTeamId);
     const homeTeam = teamMap.get(game.homeTeamId);
-    const awayDisplay = `${awayTeam?.abbrName} ${formatTeamEmoji(awayTeam?.abbrName)} ${awayTeam?.displayName}`;
-    const homeDisplay = `${homeTeam?.abbrName} ${formatTeamEmoji(homeTeam?.abbrName)} ${homeTeam?.displayName}`;
+    const awayDisplay = `${formatTeamEmoji(awayTeam?.abbrName)} ${awayTeam?.displayName}`;
+    const homeDisplay = `${formatTeamEmoji(homeTeam?.abbrName)} ${homeTeam?.displayName}`;
 
     if (game.status === GameResult.NOT_PLAYED) {
       return `${awayDisplay} vs ${homeDisplay}`;
