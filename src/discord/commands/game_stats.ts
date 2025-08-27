@@ -243,7 +243,7 @@ export default {
         const discordLeague = await discordLeagueView.createView(guildId)
         const leagueId = discordLeague?.leagueId
         if (leagueId) {
-          showGameStats(interaction.token, client, leagueId, weekIndex + 1, seasonIndex, scheduleId, selectedOption, showBack)
+          showGameStats(interaction.token, client, leagueId, weekIndex, seasonIndex, scheduleId, selectedOption, showBack)
         }
       } catch (e) {
         await client.editOriginalInteraction(interaction.token, {
