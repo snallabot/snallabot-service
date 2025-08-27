@@ -27,20 +27,22 @@ async function showSchedule(token: string, client: DiscordClient,
   const teamMap = new Map<Number, Team>()
   teams.getLatestTeams().forEach(t => teamMap.set(t.teamId, t))
   const schedulesMessage = sortedSchedule.filter(w => w.awayTeamId !== 0 && w.homeTeamId !== 0).map(game => {
+    const awayTeam = teamMap.get(game.awayTeamId);
+    const homeTeam = teamMap.get(game.homeTeamId);
+    const awayDisplay = `${awayTeam?.abbrName} ${formatTeamEmoji(awayTeam?.abbrName)} ${awayTeam?.displayName}`;
+    const homeDisplay = `${homeTeam?.abbrName} ${formatTeamEmoji(homeTeam?.abbrName)} ${homeTeam?.displayName}`;
+
     if (game.status === GameResult.NOT_PLAYED) {
-      return `${formatTeamEmoji(teamMap.get(game.awayTeamId)?.abbrName)} vs ${formatTeamEmoji(teamMap.get(game.homeTeamId)?.abbrName)}`
+      return `${awayDisplay} vs ${homeDisplay}`;
     } else {
       if (game.awayScore > game.homeScore) {
-        return `**__${formatTeamEmoji(teamMap.get(game.awayTeamId)?.abbrName)} ${game.awayScore
-          }__** vs ${game.homeScore} ${formatTeamEmoji(teamMap.get(game.homeTeamId)?.abbrName)}`
+        return `**__${awayDisplay} ${game.awayScore}__** vs ${game.homeScore} ${homeDisplay}`;
       } else if (game.homeScore > game.awayScore) {
-        return `${formatTeamEmoji(teamMap.get(game.awayTeamId)?.abbrName)} ${game.awayScore
-          } vs **__${game.homeScore} ${formatTeamEmoji(teamMap.get(game.homeTeamId)?.abbrName)}__**`
+        return `${awayDisplay} ${game.awayScore} vs **${game.homeScore} ${homeDisplay}**`;
       }
-      return `${formatTeamEmoji(teamMap.get(game.awayTeamId)?.abbrName)} ${game.awayScore} vs ${game.homeScore
-        } ${formatTeamEmoji(teamMap.get(game.homeTeamId)?.abbrName)}`
+      return `${awayDisplay} ${game.awayScore} vs ${game.homeScore} ${homeDisplay}`;
     }
-  }).join("\n")
+  }).join("\n");
   const season = schedule?.[0]?.seasonIndex || requestedSeason
   const week = schedule?.[0]?.weekIndex + 1 || requestedWeek
 
