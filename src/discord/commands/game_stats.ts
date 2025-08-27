@@ -17,7 +17,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
   const homeTeam = latestTeams.getTeamForId(gameResult.homeTeamId)
 
   let content = "";
-  content += `# ${formatTeamEmoji(awayTeam?.abbrName)} ${awayTeam?.displayName} ${gameResult.awayScore} vs ${gameResult.homeScore} ${homeTeam?.abbrName} ${homeTeam?.displayName}**`;
+  content += `# ${formatTeamEmoji(awayTeam?.abbrName)} ${awayTeam?.displayName} ${gameResult.awayScore} vs ${gameResult.homeScore} ${homeTeam?.abbrName} ${homeTeam?.displayName}**\n`;
   content += `**Season ${seasonIndex + MADDEN_SEASON}, Week ${weekIndex + 1}**\n\n`;
 
   if (selection === GameStatsOptions.OVERVIEW) {
@@ -25,7 +25,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
     const awayTeamStats = stats.teamStats.find(ts => ts.teamId === gameResult.awayTeamId);
     const homeTeamStats = stats.teamStats.find(ts => ts.teamId === gameResult.homeTeamId);
     if (awayTeamStats) {
-      content += `## ${formatTeamEmoji(awayTeam?.abbrName)}${awayTeam?.displayName} Team Stats\n`;
+      content += `## ${formatTeamEmoji(awayTeam?.abbrName)} ${awayTeam?.displayName} Team Stats\n`;
       content += `Total Yards: ${awayTeamStats.offTotalYds} | Pass Yards: ${awayTeamStats.offPassYds} | Rush Yards: ${awayTeamStats.offRushYds}\n`;
       content += `1st Downs: ${awayTeamStats.off1stDowns} | 3rd Down: ${awayTeamStats.off3rdDownConv}/${awayTeamStats.off3rdDownAtt} (${awayTeamStats.off3rdDownConvPct}%)\n`;
       content += `Turnovers: ${awayTeamStats.tOGiveaways} | TO Diff: ${awayTeamStats.tODiff}\n`;
@@ -33,7 +33,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
     }
 
     if (homeTeamStats) {
-      content += `## ${formatTeamEmoji(homeTeam?.abbrName)}${homeTeam?.displayName} Team Stats\n`;
+      content += `## ${formatTeamEmoji(homeTeam?.abbrName)} ${homeTeam?.displayName} Team Stats\n`;
       content += `Total Yards: ${homeTeamStats.offTotalYds} | Pass Yards: ${homeTeamStats.offPassYds} | Rush Yards: ${homeTeamStats.offRushYds}\n`;
       content += `1st Downs: ${homeTeamStats.off1stDowns} | 3rd Down: ${homeTeamStats.off3rdDownConv}/${homeTeamStats.off3rdDownAtt} (${homeTeamStats.off3rdDownConvPct}%)\n`;
       content += `Turnovers: ${homeTeamStats.tOGiveaways} | TO Diff: ${homeTeamStats.tODiff}\n`;
@@ -47,7 +47,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
     const awayPassing = stats.playerStats[PlayerStatType.PASSING]?.filter(p => p.teamId === gameResult.awayTeamId)
       .sort((a, b) => b.passAtt - a.passAtt);
     if (awayPassing?.length) {
-      content += `### Passing`;
+      content += `### Passing\n`;
       awayPassing.forEach(p => {
         const statParts = [];
         if (p.passAtt > 0) statParts.push(`${p.passComp}/${p.passAtt}`);
@@ -67,7 +67,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
     const awayRushing = stats.playerStats[PlayerStatType.RUSHING]?.filter(p => p.teamId === gameResult.awayTeamId)
       .sort((a, b) => b.rushAtt - a.rushAtt);
     if (awayRushing?.length) {
-      content += `### Rushing`;
+      content += `### Rushing\n`;
       awayRushing.forEach(p => {
         const statParts = [];
         if (p.rushAtt > 0) statParts.push(`${p.rushAtt} att`);
@@ -86,7 +86,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
     const awayReceiving = stats.playerStats[PlayerStatType.RECEIVING]?.filter(p => p.teamId === gameResult.awayTeamId)
       .sort((a, b) => b.recCatches - a.recCatches);
     if (awayReceiving?.length) {
-      content += `### Receiving`;
+      content += `### Receiving\n`;
       awayReceiving.forEach(p => {
         const statParts = [];
         if (p.recCatches > 0) statParts.push(`${p.recCatches} rec`);
@@ -105,7 +105,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
     const awayDefense = stats.playerStats[PlayerStatType.DEFENSE]?.filter(p => p.teamId === gameResult.awayTeamId)
       .sort((a, b) => b.defTotalTackles - a.defTotalTackles);
     if (awayDefense?.length) {
-      content += `### Defense`;
+      content += `### Defense\n`;
       awayDefense.forEach(p => {
         const statParts = [];
         if (p.defTotalTackles > 0) statParts.push(`${p.defTotalTackles} tkl`);
@@ -126,7 +126,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
     const awayKicking = stats.playerStats[PlayerStatType.KICKING]?.filter(p => p.teamId === gameResult.awayTeamId)
       .sort((a, b) => b.fGAtt - a.fGAtt);
     if (awayKicking?.length) {
-      content += `### Kicking`;
+      content += `### Kicking\n`;
       awayKicking.forEach(p => {
         const statParts = [];
         if (p.fGAtt > 0) statParts.push(`FG ${p.fGMade}/${p.fGAtt} (${p.fGCompPct}%)`);
@@ -144,7 +144,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
     const awayPunting = stats.playerStats[PlayerStatType.PUNTING]?.filter(p => p.teamId === gameResult.awayTeamId)
       .sort((a, b) => b.puntAtt - a.puntAtt);
     if (awayPunting?.length) {
-      content += `### Punting`;
+      content += `### Punting\n`;
       awayPunting.forEach(p => {
         const statParts = [];
         if (p.puntAtt > 0) statParts.push(`${p.puntAtt} punts`);
@@ -166,7 +166,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
     const homePassing = stats.playerStats[PlayerStatType.PASSING]?.filter(p => p.teamId === gameResult.homeTeamId)
       .sort((a, b) => b.passAtt - a.passAtt);
     if (homePassing?.length) {
-      content += `### Passing`;
+      content += `### Passing\n`;
       homePassing.forEach(p => {
         const statParts = [];
         if (p.passAtt > 0) statParts.push(`${p.passComp}/${p.passAtt}`);
@@ -186,7 +186,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
     const homeRushing = stats.playerStats[PlayerStatType.RUSHING]?.filter(p => p.teamId === gameResult.homeTeamId)
       .sort((a, b) => b.rushAtt - a.rushAtt);
     if (homeRushing?.length) {
-      content += `### Rushing`;
+      content += `### Rushing\n`;
       homeRushing.forEach(p => {
         const statParts = [];
         if (p.rushAtt > 0) statParts.push(`${p.rushAtt} att`);
@@ -205,7 +205,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
     const homeReceiving = stats.playerStats[PlayerStatType.RECEIVING]?.filter(p => p.teamId === gameResult.homeTeamId)
       .sort((a, b) => b.recCatches - a.recCatches);
     if (homeReceiving?.length) {
-      content += `### Receiving`;
+      content += `### Receiving\n`;
       homeReceiving.forEach(p => {
         const statParts = [];
         if (p.recCatches > 0) statParts.push(`${p.recCatches} rec`);
@@ -224,7 +224,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
     const homeDefense = stats.playerStats[PlayerStatType.DEFENSE]?.filter(p => p.teamId === gameResult.homeTeamId)
       .sort((a, b) => b.defTotalTackles - a.defTotalTackles);
     if (homeDefense?.length) {
-      content += `### Defense`;
+      content += `### Defense\n`;
       homeDefense.forEach(p => {
         const statParts = [];
         if (p.defTotalTackles > 0) statParts.push(`${p.defTotalTackles} tkl`);
@@ -244,7 +244,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
     const homeKicking = stats.playerStats[PlayerStatType.KICKING]?.filter(p => p.teamId === gameResult.homeTeamId)
       .sort((a, b) => b.fGAtt - a.fGAtt);
     if (homeKicking?.length) {
-      content += `### Kicking`;
+      content += `### Kicking\n`;
       homeKicking.forEach(p => {
         const statParts = [];
         if (p.fGAtt > 0) statParts.push(`FG ${p.fGMade}/${p.fGAtt} (${p.fGCompPct}%)`);
@@ -262,7 +262,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
     const homePunting = stats.playerStats[PlayerStatType.PUNTING]?.filter(p => p.teamId === gameResult.homeTeamId)
       .sort((a, b) => b.puntAtt - a.puntAtt);
     if (homePunting?.length) {
-      content += `### Punting`;
+      content += `### Punting\n`;
       homePunting.forEach(p => {
         const statParts = [];
         if (p.puntAtt > 0) statParts.push(`${p.puntAtt} punts`);
