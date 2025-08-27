@@ -43,10 +43,10 @@ async function showSchedule(token: string, client: DiscordClient,
       return `${awayDisplay} ${game.awayScore} vs ${game.homeScore} ${homeDisplay}`;
     }
   }).join("\n")
-  const season = schedule?.[0]?.seasonIndex >= 0 ? schedule[0].seasonIndex : requestedSeason
-  const week = schedule?.[0]?.weekIndex >= 0 ? schedule[0].weekIndex + 1 : requestedWeek
+  const season = schedule?.[0]?.seasonIndex >= 0 ? schedule[0].seasonIndex : requestedSeason != null ? requestedSeason : 0
+  const week = schedule?.[0]?.weekIndex >= 0 ? schedule[0].weekIndex + 1 : requestedWeek != null ? requestedWeek : 1
 
-  const message = typeof season === 'number' && typeof week === 'number' ? `# ${MADDEN_SEASON + season} ${getMessageForWeek(week)} Schedule\n${schedulesMessage}` : `No Schedule found`
+  const message = `# ${MADDEN_SEASON + season} ${getMessageForWeek(week)} Schedule\n${schedulesMessage}`
   const gameOptions = sortedSchedule.filter(g => g.status !== GameResult.NOT_PLAYED).map(game => ({
     label: `${teamMap.get(game.awayTeamId)?.abbrName} ${game.awayScore} - ${game.homeScore} ${teamMap.get(game.homeTeamId)?.abbrName}`,
     value: { w: game.weekIndex, s: game.seasonIndex, c: game.scheduleId }
@@ -106,7 +106,7 @@ async function showSchedule(token: string, client: DiscordClient,
           {
             type: ComponentType.StringSelect,
             custom_id: "week_selector",
-            placeholder: `Week ${week != undefined ? week : 1}`,
+            placeholder: `Week ${week}`,
             options: weekOptions
           }
         ]
@@ -117,7 +117,7 @@ async function showSchedule(token: string, client: DiscordClient,
           {
             type: ComponentType.StringSelect,
             custom_id: "season_selector",
-            placeholder: `Season ${(season != undefined ? season : 0) + MADDEN_SEASON}`,
+            placeholder: `Season ${(season) + MADDEN_SEASON}`,
             options: seasonOptions
           }
         ]
