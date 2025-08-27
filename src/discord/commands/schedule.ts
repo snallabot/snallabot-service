@@ -67,7 +67,7 @@ async function showSchedule(token: string, client: DiscordClient,
     .map(ws => ws.weekIndex)
     .sort((a, b) => a - b)
     .map(w => ({
-      label: `Week ${w}`,
+      label: `Week ${w + 1}`,
       value: { wi: w, si: season }
     }))
     .map(option => ({ ...option, value: JSON.stringify(option.value) }))
@@ -182,7 +182,7 @@ export default {
         const discordLeague = await discordLeagueView.createView(guildId)
         const leagueId = discordLeague?.leagueId
         if (leagueId) {
-          showSchedule(interaction.token, client, leagueId, weekIndex, seasonIndex)
+          showSchedule(interaction.token, client, leagueId, weekIndex + 1, seasonIndex)
         }
       } catch (e) {
         await client.editOriginalInteraction(interaction.token, {
