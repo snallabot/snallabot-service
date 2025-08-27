@@ -43,8 +43,8 @@ async function showSchedule(token: string, client: DiscordClient,
       return `${awayDisplay} ${game.awayScore} vs ${game.homeScore} ${homeDisplay}`;
     }
   }).join("\n")
-  const season = schedule?.[0]?.seasonIndex || requestedSeason
-  const week = schedule?.[0]?.weekIndex + 1 || requestedWeek
+  const season = schedule?.[0]?.seasonIndex >= 0 ? schedule[0].seasonIndex : requestedSeason
+  const week = schedule?.[0]?.weekIndex >= 0 ? schedule[0].weekIndex + 1 : requestedWeek
 
   const message = typeof season === 'number' && typeof week === 'number' ? `# ${MADDEN_SEASON + season} ${getMessageForWeek(week)} Schedule\n${schedulesMessage}` : `No Schedule found`
   const gameOptions = sortedSchedule.filter(g => g.status !== GameResult.NOT_PLAYED).map(game => ({
@@ -86,7 +86,7 @@ async function showSchedule(token: string, client: DiscordClient,
       value: { wi: Math.min(...view?.map(ws => ws.seasonIndex).filter(ws => ws === s) || [0]), si: s }
     }))
     .map(option => ({ ...option, value: JSON.stringify(option.value) }))
-
+  console.log()
   await client.editOriginalInteraction(token, {
     flags: 32768,
     components: [
