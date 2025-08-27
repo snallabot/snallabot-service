@@ -224,17 +224,6 @@ export async function showGameStats(token: string, client: DiscordClient, league
           }
         ]
       },
-      {
-        type: ComponentType.ActionRow,
-        components: [
-          {
-            type: ComponentType.StringSelect,
-            custom_id: "game_stats",
-            placeholder: `Select view`,
-            options: gameStatsOptions
-          }
-        ]
-      },
       ...backButton
     ]
   });
