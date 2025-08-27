@@ -104,7 +104,7 @@ async function showSchedule(token: string, client: DiscordClient,
           {
             type: ComponentType.StringSelect,
             custom_id: "week_selector",
-            placeholder: `Week ${week}`,
+            placeholder: `Week ${week || 1}`,
             options: weekOptions
           }
         ]
@@ -115,7 +115,7 @@ async function showSchedule(token: string, client: DiscordClient,
           {
             type: ComponentType.StringSelect,
             custom_id: "season_selector",
-            placeholder: `Season ${season + MADDEN_SEASON}`,
+            placeholder: `Season ${season || 0 + MADDEN_SEASON}`,
             options: seasonOptions
           }
         ]
