@@ -26,6 +26,21 @@ async function showSchedule(token: string, client: DiscordClient,
   const sortedSchedule = schedule.sort((a, b) => a.scheduleId - b.scheduleId)
   const teamMap = new Map<Number, Team>()
   teams.getLatestTeams().forEach(t => teamMap.set(t.teamId, t))
+  // const schedulesMessage = sortedSchedule.filter(w => w.awayTeamId !== 0 && w.homeTeamId !== 0).map(game => {
+  //   if (game.status === GameResult.NOT_PLAYED) {
+  //     return `${formatTeamEmoji(teamMap.get(game.awayTeamId)?.abbrName)} vs ${formatTeamEmoji(teamMap.get(game.homeTeamId)?.abbrName)}`
+  //   } else {
+  //     if (game.awayScore > game.homeScore) {
+  //       return `**__${formatTeamEmoji(teamMap.get(game.awayTeamId)?.abbrName)} ${game.awayScore
+  //         }__** vs ${game.homeScore} ${formatTeamEmoji(teamMap.get(game.homeTeamId)?.abbrName)}`
+  //     } else if (game.homeScore > game.awayScore) {
+  //       return `${formatTeamEmoji(teamMap.get(game.awayTeamId)?.abbrName)} ${game.awayScore
+  //         } vs **__${game.homeScore} ${formatTeamEmoji(teamMap.get(game.homeTeamId)?.abbrName)}__**`
+  //     }
+  //     return `${formatTeamEmoji(teamMap.get(game.awayTeamId)?.abbrName)} ${game.awayScore} vs ${game.homeScore
+  //       } ${formatTeamEmoji(teamMap.get(game.homeTeamId)?.abbrName)}`
+  //   }
+  // }).join("\n")
   const schedulesMessage = sortedSchedule.filter(w => w.awayTeamId !== 0 && w.homeTeamId !== 0).map(game => {
     const awayTeam = teamMap.get(game.awayTeamId);
     const homeTeam = teamMap.get(game.homeTeamId);
@@ -42,7 +57,8 @@ async function showSchedule(token: string, client: DiscordClient,
       }
       return `${awayDisplay} ${game.awayScore} vs ${game.homeScore} ${homeDisplay}`;
     }
-  }).join("\n");
+  }).join("\n")
+  console.log(schedulesMessage)
   const season = schedule?.[0]?.seasonIndex || requestedSeason
   const week = schedule?.[0]?.weekIndex + 1 || requestedWeek
 
