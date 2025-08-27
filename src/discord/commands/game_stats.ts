@@ -17,15 +17,15 @@ export async function showGameStats(token: string, client: DiscordClient, league
   const homeTeam = latestTeams.getTeamForId(gameResult.homeTeamId)
 
   let content = "";
-  content += `# ${formatTeamEmoji(awayTeam?.abbrName)} ${awayTeam?.displayName} ${gameResult.awayScore} vs ${gameResult.homeScore} ${homeTeam?.abbrName} ${homeTeam?.displayName}**\n`;
-  content += `**Season ${seasonIndex + MADDEN_SEASON}, Week ${weekIndex + 1}**\n\n`;
+  content += `# ${formatTeamEmoji(awayTeam?.abbrName)} ${awayTeam?.displayName} ${gameResult.awayScore} vs ${gameResult.homeScore} ${homeTeam?.abbrName} ${homeTeam?.displayName}\n`;
+  content += `**Season ${seasonIndex + MADDEN_SEASON}, Week ${weekIndex + 1}**\n`;
 
   if (selection === GameStatsOptions.OVERVIEW) {
     // Show team stats - away team first, then home team
     const awayTeamStats = stats.teamStats.find(ts => ts.teamId === gameResult.awayTeamId);
     const homeTeamStats = stats.teamStats.find(ts => ts.teamId === gameResult.homeTeamId);
     if (awayTeamStats) {
-      content += `## ${formatTeamEmoji(awayTeam?.abbrName)} ${awayTeam?.displayName} Team Stats\n`;
+      content += `## ${formatTeamEmoji(awayTeam?.abbrName)} ${awayTeam?.displayName} Stats\n`;
       content += `Total Yards: ${awayTeamStats.offTotalYds} | Pass Yards: ${awayTeamStats.offPassYds} | Rush Yards: ${awayTeamStats.offRushYds}\n`;
       content += `1st Downs: ${awayTeamStats.off1stDowns} | 3rd Down: ${awayTeamStats.off3rdDownConv}/${awayTeamStats.off3rdDownAtt} (${awayTeamStats.off3rdDownConvPct}%)\n`;
       content += `Turnovers: ${awayTeamStats.tOGiveaways} | TO Diff: ${awayTeamStats.tODiff}\n`;
@@ -33,7 +33,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
     }
 
     if (homeTeamStats) {
-      content += `## ${formatTeamEmoji(homeTeam?.abbrName)} ${homeTeam?.displayName} Team Stats\n`;
+      content += `## ${formatTeamEmoji(homeTeam?.abbrName)} ${homeTeam?.displayName} Stats\n`;
       content += `Total Yards: ${homeTeamStats.offTotalYds} | Pass Yards: ${homeTeamStats.offPassYds} | Rush Yards: ${homeTeamStats.offRushYds}\n`;
       content += `1st Downs: ${homeTeamStats.off1stDowns} | 3rd Down: ${homeTeamStats.off3rdDownConv}/${homeTeamStats.off3rdDownAtt} (${homeTeamStats.off3rdDownConvPct}%)\n`;
       content += `Turnovers: ${homeTeamStats.tOGiveaways} | TO Diff: ${homeTeamStats.tODiff}\n`;
