@@ -134,6 +134,7 @@ async function getWeekSchedule(league: string, week?: number, season?: number) {
 
 export default {
   async handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext) {
+    console.log("here")
     const { guild_id } = command
     if (!command.data.options) {
       throw new Error("schedule command not defined properly")
