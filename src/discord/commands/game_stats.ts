@@ -41,7 +41,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
     }
   }
   else if (selection === GameStatsOptions.AWAY_PLAYER_STATS) {
-    content += `**${formatTeamEmoji(awayTeam?.abbrName)}${awayTeam?.displayName} Player Stats**\n\n`;
+    content += `**${formatTeamEmoji(awayTeam?.abbrName)}${awayTeam?.displayName} Player Stats**\n`;
 
     // Passing stats
     const awayPassing = stats.playerStats[PlayerStatType.PASSING]?.filter(p => p.teamId === gameResult.awayTeamId)
@@ -160,7 +160,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
     }
   }
   else if (selection === GameStatsOptions.HOME_PLAYER_STATS) {
-    content += `**${formatTeamEmoji(homeTeam?.abbrName)}${homeTeam?.displayName} Player Stats**\n\n`;
+    content += `**${formatTeamEmoji(homeTeam?.abbrName)}${homeTeam?.displayName} Player Stats**\n`;
 
     // Passing stats
     const homePassing = stats.playerStats[PlayerStatType.PASSING]?.filter(p => p.teamId === gameResult.homeTeamId)
