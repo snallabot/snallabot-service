@@ -59,8 +59,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
         if (statParts.length > 0) {
           content += `${p.fullName}: ${statParts.join(', ')}\n`;
         }
-      });
-      content += `\n`;
+      })
     }
 
     // Rushing stats
@@ -79,7 +78,6 @@ export async function showGameStats(token: string, client: DiscordClient, league
           content += `${p.fullName}: ${statParts.join(', ')}\n`;
         }
       });
-      content += `\n`;
     }
 
     // Receiving stats
@@ -98,7 +96,6 @@ export async function showGameStats(token: string, client: DiscordClient, league
           content += `${p.fullName}: ${statParts.join(', ')}\n`;
         }
       });
-      content += `\n`;
     }
 
     // Defense stats
@@ -119,7 +116,6 @@ export async function showGameStats(token: string, client: DiscordClient, league
           content += `${p.fullName}: ${statParts.join(', ')}\n`;
         }
       });
-      content += `\n`;
     }
 
     // Kicking stats
@@ -137,7 +133,6 @@ export async function showGameStats(token: string, client: DiscordClient, league
           content += `${p.fullName}: ${statParts.join(', ')}\n`;
         }
       });
-      content += `\n`;
     }
 
     // Punting stats
@@ -179,7 +174,6 @@ export async function showGameStats(token: string, client: DiscordClient, league
           content += `${p.fullName}: ${statParts.join(', ')}\n`;
         }
       });
-      content += `\n`;
     }
 
     // Rushing stats
@@ -198,7 +192,6 @@ export async function showGameStats(token: string, client: DiscordClient, league
           content += `${p.fullName}: ${statParts.join(', ')}\n`;
         }
       });
-      content += `\n`;
     }
 
     // Receiving stats
@@ -217,7 +210,6 @@ export async function showGameStats(token: string, client: DiscordClient, league
           content += `${p.fullName}: ${statParts.join(', ')}\n`;
         }
       });
-      content += `\n`;
     }
 
     // Defense stats
@@ -255,7 +247,6 @@ export async function showGameStats(token: string, client: DiscordClient, league
           content += `${p.fullName}: ${statParts.join(', ')}\n`;
         }
       });
-      content += `\n`;
     }
 
     // Punting stats
