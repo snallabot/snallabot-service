@@ -294,7 +294,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
         type: ComponentType.Button,
         style: ButtonStyle.Secondary,
         custom_id: `${JSON.stringify({ wi: weekIndex, si: seasonIndex })}`,
-        label: "Back"
+        label: "Back to Schedule"
       }
     ]
   }] : []
