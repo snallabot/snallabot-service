@@ -41,9 +41,10 @@ async function showSchedule(token: string, client: DiscordClient,
         } ${formatTeamEmoji(teamMap.get(game.homeTeamId)?.abbrName)}`
     }
   }).join("\n")
-  const season = schedule[0].seasonIndex
-  const week = schedule[0].weekIndex + 1
-  const message = `# ${MADDEN_SEASON + season} ${getMessageForWeek(week)} Schedule\n${schedulesMessage}`
+  const season = schedule?.[0]?.seasonIndex || requestedSeason
+  const week = schedule?.[0]?.weekIndex + 1 || requestedWeek
+
+  const message = season && week ? `# ${MADDEN_SEASON + season} ${getMessageForWeek(week)} Schedule\n${schedulesMessage}` : `No Schedule found`
   const gameOptions = sortedSchedule.filter(g => g.status !== GameResult.NOT_PLAYED).map(game => ({
     label: `${teamMap.get(game.awayTeamId)?.abbrName} ${game.awayScore} - ${game.homeScore} ${teamMap.get(game.homeTeamId)?.abbrName}`,
     value: { w: game.weekIndex, s: game.seasonIndex, c: game.scheduleId }
