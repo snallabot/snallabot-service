@@ -58,7 +58,9 @@ const AutocompleteCommands: AutocompleteHandlers = {
 }
 
 const MessageComponents: MessageComponentHandlers = {
-  "player_card": playerHandler
+  "player_card": playerHandler,
+  "week_selector": schedulesHandler,
+  "season_selector": schedulesHandler
 }
 
 export async function handleCommand(command: Command, ctx: ParameterizedContext, discordClient: DiscordClient, db: Firestore) {

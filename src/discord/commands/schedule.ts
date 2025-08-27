@@ -1,12 +1,12 @@
 import { ParameterizedContext } from "koa"
-import { CommandHandler, Command } from "../commands_handler"
+import { CommandHandler, Command, AutocompleteHandler, Autocomplete, MessageComponentHandler, MessageComponentInteraction } from "../commands_handler"
 import { respond, createMessageResponse, DiscordClient, ResponseType, deferMessage, getTeamEmoji, SnallabotTeamEmojis } from "../discord_utils"
-import { APIApplicationCommandInteractionDataIntegerOption, ApplicationCommandOptionType, ApplicationCommandType, ComponentType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
+import { APIApplicationCommandInteractionDataIntegerOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ApplicationCommandType, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
 import { GameResult, MADDEN_SEASON, MaddenGame, Team, getMessageForWeek } from "../../export/madden_league_types"
 import MaddenClient from "../../db/madden_db"
 import LeagueSettingsDB from "../settings_db"
-import { allLeagueWeeks } from "../../db/view"
+import { allLeagueWeeks, discordLeagueView } from "../../db/view"
 
 function formatTeamEmoji(teamId?: string) {
   if (teamId) {
@@ -14,7 +14,7 @@ function formatTeamEmoji(teamId?: string) {
   }
   return SnallabotTeamEmojis.NFL
 }
-
+type WeekSelection = { wi: number, si: number }
 async function showSchedule(token: string, client: DiscordClient,
   league: string, requestedWeek?: number, requestedSeason?: number) {
   const [schedule, teams] = await Promise.all([getWeekSchedule(league, requestedWeek ? Number(requestedWeek) : undefined, requestedSeason ? Number(requestedSeason) : undefined), MaddenClient.getLatestTeams(league)])
@@ -134,7 +134,6 @@ async function getWeekSchedule(league: string, week?: number, season?: number) {
 
 export default {
   async handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext) {
-    console.log("here")
     const { guild_id } = command
     const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
     if (!leagueSettings.commands.madden_league?.league_id) {
@@ -169,5 +168,38 @@ export default {
       ],
       type: ApplicationCommandType.ChatInput,
     }
+  },
+  async handleInteraction(interaction: MessageComponentInteraction, client: DiscordClient) {
+    const customId = interaction.custom_id
+    if (customId === "week_selector" || customId === "season_selector") {
+      const data = interaction.data as APIMessageStringSelectInteractionData
+      if (data.values.length !== 1) {
+        throw new Error("Somehow did not receive just one selection from schedule selector " + data.values)
+      }
+      const { wi: weekIndex, si: seasonIndex } = JSON.parse(data.values[0]) as WeekSelection
+      try {
+        const guildId = interaction.guild_id
+        const discordLeague = await discordLeagueView.createView(guildId)
+        const leagueId = discordLeague?.leagueId
+        if (leagueId) {
+          showSchedule(interaction.token, client, leagueId, weekIndex, seasonIndex)
+        }
+      } catch (e) {
+        await client.editOriginalInteraction(interaction.token, {
+          flags: 32768,
+          components: [
+            {
+              type: ComponentType.TextDisplay,
+              content: `Could not show schedule Error: ${e}`
+            },
+
+          ]
+        })
+      }
+      return {
+        type: InteractionResponseType.DeferredMessageUpdate,
+      }
+    }
+    throw new Error(`Invalid interaction on schedule`)
   }
-} as CommandHandler
+} as CommandHandler & MessageComponentHandler
