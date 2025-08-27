@@ -93,7 +93,8 @@ interface MaddenDB {
   on<Event>(event_type: string, notifier: EventNotifier<Event>): void,
   getLatestTeams(leagueId: string): Promise<TeamList>,
   getLatestWeekSchedule(leagueId: string, week: number): Promise<MaddenGame[]>,
-  getLatestSchedule(leagueId): Promise<MaddenGame[]>,
+  getLatestSchedule(leagueId: string): Promise<MaddenGame[]>,
+  getAllWeeks(leagueId: string): Promise<MaddenGame[]>,
   getWeekScheduleForSeason(leagueId: string, week: number, season: number): Promise<MaddenGame[]>
   getGameForSchedule(leagueId: string, scheduleId: number, week: number, season: number): Promise<MaddenGame>,
   getStandingForTeam(leagueId: string, teamId: number): Promise<Standing>,
@@ -364,6 +365,13 @@ const MaddenDB: MaddenDB = {
     const game = schedule.data() as MaddenGame
     return game
   },
+  getAllWeeks: async function(leagueId: string) {
+    const schedules = await db.collection("madden_data26")
+      .doc(leagueId)
+      .collection(MaddenEvents.MADDEN_SCHEDULE).get()
+    return schedules.docs.map(d => d.data() as MaddenGame)
+  }
+  ,
   getStandingForTeam: async function(leagueId: string, teamId: number) {
     const standing = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_STANDING).doc(`${teamId}`).get()
     if (!standing.exists) {
