@@ -309,9 +309,8 @@ export default {
     }
     const options = command.data.options
     const scheduleCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
-    const week = (scheduleCommand.options?.[0] as APIApplicationCommandInteractionDataIntegerOption)?.value
     if (scheduleCommand.name === "weekly") {
-
+      const week = (scheduleCommand.options?.[0] as APIApplicationCommandInteractionDataIntegerOption)?.value
       if (week && (Number(week) < 1 || Number(week) > 23 || week === 22)) {
         throw new Error("Invalid week number. Valid weeks are week 1-18 and for playoffs: Wildcard = 19, Divisional = 20, Conference Championship = 21, Super Bowl = 23")
       }
@@ -327,6 +326,7 @@ export default {
         throw new Error("No Madden league linked, setup the bot with your madden league first.")
       }
       const leagueId = leagueSettings.commands.madden_league.league_id
+      const season = (scheduleCommand.options?.[1] as APIApplicationCommandInteractionDataIntegerOption)?.value
       const teams = await MaddenClient.getLatestTeams(leagueId)
       const teamsToSearch = await teamSearchView.createView(leagueId)
       if (!teamsToSearch) {
@@ -340,6 +340,8 @@ export default {
       }
       const foundTeam = results[0].obj
       const teamIdToShowSchedule = teams.getTeamForId(foundTeam.id).teamId
+      showTeamSchedule(command.token, client, leagueId, teamIdToShowSchedule, season ? Number(season) : undefined)
+      respond(ctx, deferMessage())
 
     }
   },
@@ -373,7 +375,7 @@ export default {
           description: "Shows team's season schedule",
           options: [
             {
-              type: ApplicationCommandOptionType.Integer,
+              type: ApplicationCommandOptionType.String,
               name: "team",
               description: "Ex: Buccaneers, TB, Tampa Bay, Bucs",
               required: true,
@@ -389,14 +391,12 @@ export default {
     try {
       const weekSelection = getWeekSelection(interaction)
       const teamSelection = getTeamSelection(interaction)
-      console.log("here")
       if (weekSelection) {
         const { wi: weekIndex, si: seasonIndex } = weekSelection
         const guildId = interaction.guild_id
         const discordLeague = await discordLeagueView.createView(guildId)
         const leagueId = discordLeague?.leagueId
         if (leagueId) {
-          console.log("here2")
           showSchedule(interaction.token, client, leagueId, weekIndex + 1, seasonIndex)
         }
       } else if (teamSelection) {
@@ -406,7 +406,6 @@ export default {
         const leagueId = discordLeague?.leagueId
         if (leagueId) {
           showTeamSchedule(interaction.token, client, leagueId, team, seasonIndex)
-
         }
       }
     } catch (e) {
@@ -435,14 +434,11 @@ export default {
     const scheduleCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
     const view = await discordLeagueView.createView(guild_id)
     const leagueId = view?.leagueId
-    console.log(scheduleCommand)
     if (leagueId && (scheduleCommand?.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.focused && scheduleCommand?.options?.[0]?.value) {
       const teamSearchPhrase = scheduleCommand.options[0].value as string
       const teamsToSearch = await teamSearchView.createView(leagueId)
-      console.log(teamSearchPhrase)
       if (teamsToSearch) {
         const results = fuzzysort.go(teamSearchPhrase, Object.values(teamsToSearch), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.4, limit: 25 })
-        console.log(results)
         return results.map(r => ({ name: r.obj.displayName, value: r.obj.displayName }))
       }
     }
