@@ -83,7 +83,6 @@ async function showSchedule(token: string, client: DiscordClient,
       value: { wi: Math.min(...view?.filter(ws => ws.seasonIndex === s).map(ws => ws.weekIndex) || [0]), si: s }
     }))
     .map(option => ({ ...option, value: JSON.stringify(option.value) }))
-  console.log(seasonOptions)
   await client.editOriginalInteraction(token, {
     flags: 32768,
     components: [
