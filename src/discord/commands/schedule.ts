@@ -412,7 +412,7 @@ export default {
         }
       }
     } catch (e) {
-      console.log("here3")
+      console.error(e)
       await client.editOriginalInteraction(interaction.token, {
         flags: 32768,
         components: [
