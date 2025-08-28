@@ -1,9 +1,8 @@
 import NodeCache from "node-cache"
 import EventDB, { SnallabotEvent } from "./events_db"
 import MaddenDB, { MaddenEvents } from "./madden_db"
-import { Player, Team } from "../export/madden_league_types"
-import db from "./firebase"
-import LeagueSettingsDB, { LeagueSettings } from "../discord/settings_db"
+import { MaddenGame, Player, Team } from "../export/madden_league_types"
+import LeagueSettingsDB from "../discord/settings_db"
 import { DiscordLeagueConnectionEvent } from "./events"
 import FileHandler from "../file_handlers"
 
@@ -221,3 +220,41 @@ class CacheablePlayerSearchIndex extends StorageBackedCachedView<PlayerSearch> {
 }
 export const playerSearchIndex = new CacheablePlayerSearchIndex()
 playerSearchIndex.listen(MaddenEvents.MADDEN_PLAYER)
+
+export type AllWeeks = { weekIndex: number, seasonIndex: number }[]
+class AllLeagueWeeks extends View<AllWeeks> {
+  constructor() {
+    super("league_all_weeks")
+  }
+  async createView(key: string): Promise<AllWeeks> {
+    const getAllGames = await MaddenDB.getAllWeeks(key)
+    return [...new Set(getAllGames.map(g => `${g.weekIndex}_${g.seasonIndex}`))]
+      .map(weekseason => {
+        const [week, season] = weekseason.split("_")
+        return { weekIndex: Number(week), seasonIndex: Number(season) }
+      })
+      .sort((a, b) => {
+        if (a.seasonIndex !== b.seasonIndex) {
+          return a.seasonIndex - b.seasonIndex;
+        }
+        return a.weekIndex - b.weekIndex;
+      })
+  }
+}
+
+// add back if necessary
+// class CachedAllLeagueWeeks extends CachedUpdatingView<AllWeeks> {
+//   constructor() {
+//     super(new AllLeagueWeeks())
+//   }
+//   update(events: { [key: string]: any[] }, currentView: AllWeeks): AllWeeks {
+//     if (events[MaddenEvents.MADDEN_SCHEDULE]) {
+//       const newWeek = events[MaddenEvents.MADDEN_SCHEDULE].map(e => (e as MaddenGame)).map(e => ({ weekIndex: e.weekIndex, seasonIndex: e.seasonIndex })).filter(ws => !currentView.some(curr => curr.seasonIndex === ws.seasonIndex && curr.weekIndex === ws.weekIndex))
+//       return [...currentView, ...newWeek]
+//     }
+//     return currentView
+//   }
+// }
+
+export const allLeagueWeeks = new AllLeagueWeeks()
+// allLeagueWeeks.listen(MaddenEvents.MADDEN_SCHEDULE)

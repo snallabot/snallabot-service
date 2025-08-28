@@ -16,6 +16,7 @@ import gameChannelHandler from "./commands/game_channels"
 import exportHandler from "./commands/export"
 import standingsHandler from "./commands/standings"
 import playerHandler from "./commands/player"
+import gameStatsHandler from "./commands/game_stats"
 import { APIMessageComponentInteractionData } from "discord-api-types/v9"
 
 export type Command = { command_name: string, token: string, guild_id: string, data: APIChatInputApplicationCommandInteractionData, member: APIInteractionGuildMember }
@@ -54,11 +55,16 @@ const SlashCommands: CommandsHandler = {
 
 const AutocompleteCommands: AutocompleteHandlers = {
   "teams": teamsHandler,
-  "player": playerHandler
+  "player": playerHandler,
+  "schedule": schedulesHandler
 }
 
 const MessageComponents: MessageComponentHandlers = {
-  "player_card": playerHandler
+  "player_card": playerHandler,
+  "week_selector": schedulesHandler,
+  "season_selector": schedulesHandler,
+  "team_season_selector": schedulesHandler,
+  "game_stats": gameStatsHandler
 }
 
 export async function handleCommand(command: Command, ctx: ParameterizedContext, discordClient: DiscordClient, db: Firestore) {
@@ -135,13 +141,18 @@ export async function handleMessageComponent(interaction: MessageComponentIntera
   } else {
     try {
       const parsedCustomId = JSON.parse(custom_id)
-      if (parsedCustomId.q) {
+      if (parsedCustomId.q != null) {
         const body = await playerHandler.handleInteraction(interaction, client)
         ctx.status = 200
         ctx.set("Content-Type", "application/json")
         ctx.body = body
-      } else if (parsedCustomId.t) {
+      } else if (parsedCustomId.t != null) {
         const body = await broadcastsHandler.handleInteraction(interaction, client)
+        ctx.status = 200
+        ctx.set("Content-Type", "application/json")
+        ctx.body = body
+      } else if (parsedCustomId.si != null) {
+        const body = await schedulesHandler.handleInteraction(interaction, client)
         ctx.status = 200
         ctx.set("Content-Type", "application/json")
         ctx.body = body

@@ -1,6 +1,6 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command, MessageComponentInteraction, MessageComponentHandler } from "../commands_handler"
-import { respond, createMessageResponse, DiscordClient } from "../discord_utils"
+import { respond, createMessageResponse, DiscordClient, ResponseType } from "../discord_utils"
 import { APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandGroupOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ApplicationCommandType, ButtonStyle, ChannelType, ComponentType, RESTPostAPIApplicationCommandsJSONBody, InteractionResponseType } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
 import LeagueSettingsDB, { BroadcastConfiguration, DiscordIdType } from "../settings_db"
@@ -24,10 +24,7 @@ function formatBroadcastType(t: BroadcastType) {
 }
 type ComponentId = { t: BroadcastType, p: number }
 const LIMIT = 10
-enum ResponseType {
-  COMMAND,
-  INTERACTION
-}
+
 function listBroadcasts(broadcasts: BroadcastChannel[], broadcastType: BroadcastType, responseType: ResponseType, paginatedIndex?: number) {
   const startIndex = paginatedIndex ? paginatedIndex : 0
   const endIndex = Math.min(broadcasts.length, startIndex + LIMIT)

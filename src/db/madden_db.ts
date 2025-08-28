@@ -2,7 +2,7 @@ import { randomUUID } from "crypto"
 import { Timestamp } from "firebase-admin/firestore"
 import db from "./firebase"
 import EventDB, { EventNotifier, SnallabotEvent, StoredEvent, notifiers } from "./events_db"
-import { DefensiveStats, KickingStats, MADDEN_SEASON, MaddenGame, POSITION_GROUP, PassingStats, Player, PuntingStats, ReceivingStats, RushingStats, Standing, Team, dLinePositions, dbPositions, oLinePositions } from "../export/madden_league_types"
+import { DefensiveStats, GameResult, KickingStats, MADDEN_SEASON, MaddenGame, POSITION_GROUP, PassingStats, Player, PuntingStats, ReceivingStats, RushingStats, Standing, Team, TeamStats, dLinePositions, dbPositions, oLinePositions } from "../export/madden_league_types"
 import { TeamAssignments } from "../discord/settings_db"
 
 type HistoryUpdate<ValueType> = { oldValue: ValueType, newValue: ValueType }
@@ -25,6 +25,11 @@ export type PlayerStats = {
   [PlayerStatType.RECEIVING]?: ReceivingStats[],
   [PlayerStatType.RUSHING]?: RushingStats[],
   [PlayerStatType.PASSING]?: PassingStats[]
+}
+
+export type GameStats = {
+  teamStats: TeamStats[],
+  playerStats: PlayerStats
 }
 
 export enum MaddenEvents {
@@ -93,6 +98,8 @@ interface MaddenDB {
   on<Event>(event_type: string, notifier: EventNotifier<Event>): void,
   getLatestTeams(leagueId: string): Promise<TeamList>,
   getLatestWeekSchedule(leagueId: string, week: number): Promise<MaddenGame[]>,
+  getLatestSchedule(leagueId: string): Promise<MaddenGame[]>,
+  getAllWeeks(leagueId: string): Promise<MaddenGame[]>,
   getWeekScheduleForSeason(leagueId: string, week: number, season: number): Promise<MaddenGame[]>
   getGameForSchedule(leagueId: string, scheduleId: number, week: number, season: number): Promise<MaddenGame>,
   getStandingForTeam(leagueId: string, teamId: number): Promise<Standing>,
@@ -105,7 +112,10 @@ interface MaddenDB {
   updateLeagueExportStatus(leagueId: string, eventType: MaddenEvents): Promise<void>,
   updateWeeklyExportStatus(leagueId: string, eventType: MaddenEvents, week: number, season: number): Promise<void>,
   updateRosterExportStatus(leagueId: string, eventType: MaddenEvents.MADDEN_PLAYER, teamId: string): Promise<void>,
-  getExportStatus(leagueId: string): Promise<ExportStatus | undefined>
+  getTeamStatsForGame(leagueId: string, teamId: string, week: number, season: number): Promise<TeamStats>,
+  getExportStatus(leagueId: string): Promise<ExportStatus | undefined>,
+  getStatsForGame(leagueId: string, season: number, week: number, scheduleId: number): Promise<GameStats>,
+  getTeamSchedule(leagueId: string, season?: number): Promise<MaddenGame[]>
 }
 
 function convertDate(firebaseObject: any) {
@@ -285,12 +295,12 @@ const MaddenDB: MaddenDB = {
   },
   getLatestTeams: async function(leagueId: string): Promise<TeamList> {
     const teamDocs = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_TEAM).get()
-    return createTeamList(teamDocs.docs.filter(d => d.id !== "leagueteams").map(d => d.data() as StoredEvent<Team>))
+    return createTeamList(teamDocs.docs.filter(d => d.id !== "leagueteams").map(d => convertDate(d.data()) as StoredEvent<Team>))
   },
   getLatestWeekSchedule: async function(leagueId: string, week: number) {
     const weekDocs = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_SCHEDULE).where("weekIndex", "==", week - 1)
       .where("stageIndex", "==", 1).orderBy("seasonIndex", "desc").limit(16).get()
-    const maddenSchedule = weekDocs.docs.filter(d => !d.id.startsWith("schedules")).map(d => d.data() as SnallabotEvent<MaddenGame>)
+    const maddenSchedule = weekDocs.docs.filter(d => !d.id.startsWith("schedules")).map(d => d.data() as MaddenGame)
       .filter(game => game.awayTeamId != 0 && game.homeTeamId != 0)
     if (maddenSchedule.length === 0) {
       throw new Error("Missing schedule for week " + week)
@@ -303,10 +313,52 @@ const MaddenDB: MaddenDB = {
     }
     throw new Error("Missing schedule for week " + week)
   },
+  getLatestSchedule: async function(leagueId: string) {
+    const scheduleCollection = db.collection("madden_data26")
+      .doc(leagueId)
+      .collection(MaddenEvents.MADDEN_SCHEDULE);
+
+    // Query for unplayed games only
+    const unplayedSnapshot = await scheduleCollection
+      .where("status", "==", GameResult.NOT_PLAYED)
+      .where("stageIndex", "==", 1)
+      .get();
+
+    if (unplayedSnapshot.empty) {
+      // All games have been played - get games from the latest week of the latest season
+      const allGamesSnapshot = await scheduleCollection.get();
+
+      if (allGamesSnapshot.empty) {
+        throw new Error(`Missing schedule for league`)
+      }
+
+      const games: MaddenGame[] = allGamesSnapshot.docs.map(doc => doc.data() as MaddenGame);
+      const maxSeason = Math.max(...games.map(game => game.seasonIndex));
+      const gamesInLatestSeason = games.filter(game => game.seasonIndex === maxSeason);
+      const maxWeek = Math.max(...gamesInLatestSeason.map(game => game.weekIndex));
+
+      return games.filter(game => game.seasonIndex === maxSeason && game.weekIndex === maxWeek);
+    }
+
+    // Find the earliest season and week with unplayed games
+    const unplayedGames: MaddenGame[] = unplayedSnapshot.docs.map(doc => doc.data() as MaddenGame);
+    const currentSeason = Math.min(...unplayedGames.map(game => game.seasonIndex));
+    const gamesInCurrentSeason = unplayedGames.filter(game => game.seasonIndex === currentSeason);
+    const currentWeek = Math.min(...gamesInCurrentSeason.map(game => game.weekIndex));
+
+    // Return all games from the current season and week
+    const currentWeekGames = await scheduleCollection
+      .where("seasonIndex", "==", currentSeason)
+      .where("weekIndex", "==", currentWeek)
+      .where("stageIndex", "==", 1)
+      .get();
+
+    return currentWeekGames.docs.map(doc => doc.data() as MaddenGame);
+  },
   getWeekScheduleForSeason: async function(leagueId: string, week: number, season: number) {
     const weekDocs = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_SCHEDULE).where("weekIndex", "==", week - 1).where("seasonIndex", "==", season)
       .where("stageIndex", "==", 1).get()
-    const maddenSchedule = weekDocs.docs.map(d => d.data() as SnallabotEvent<MaddenGame>)
+    const maddenSchedule = weekDocs.docs.map(d => d.data() as MaddenGame)
       .filter(game => game.awayTeamId != 0 && game.homeTeamId != 0)
     if (maddenSchedule.length !== 0) {
       return maddenSchedule
@@ -322,6 +374,13 @@ const MaddenDB: MaddenDB = {
     const game = schedule.data() as MaddenGame
     return game
   },
+  getAllWeeks: async function(leagueId: string) {
+    const schedules = await db.collection("madden_data26")
+      .doc(leagueId)
+      .collection(MaddenEvents.MADDEN_SCHEDULE).where("stageIndex", "==", 1).get()
+    return schedules.docs.map(d => d.data() as MaddenGame)
+  }
+  ,
   getStandingForTeam: async function(leagueId: string, teamId: number) {
     const standing = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_STANDING).doc(`${teamId}`).get()
     if (!standing.exists) {
@@ -332,13 +391,13 @@ const MaddenDB: MaddenDB = {
   getLatestStandings: async function(leagueId: string) {
     const standingSnapshot = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_STANDING).get()
     return standingSnapshot.docs.map(doc => {
-      return doc.data() as SnallabotEvent<Standing>
+      return doc.data() as Standing
     })
   },
   getLatestPlayers: async function(leagueId: string) {
     const playerSnapshot = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).select("rosterId", "firstName", "lastName", "teamId", "position").get()
     return playerSnapshot.docs.filter(d => !d.id.startsWith("roster")).map(doc => {
-      return doc.data() as SnallabotEvent<Player>
+      return doc.data() as Player
     })
   },
   getPlayer: async function(leagueId: string, rosterId: string) {
@@ -451,8 +510,8 @@ const MaddenDB: MaddenDB = {
       }
     }, { merge: true })
   },
-  updateWeeklyExportStatus: async function(leagueId: string, eventType: MaddenEvents, week: number, season: number) {
-    const weekKey = `season${String(season).padStart(2, '0')}_week${String(week).padStart(2, '0')}`
+  updateWeeklyExportStatus: async function(leagueId: string, eventType: MaddenEvents, weekIndex: number, season: number) {
+    const weekKey = `season${String(season).padStart(2, '0')}_week${String(weekIndex).padStart(2, '0')}`
     await db.collection("madden_data26").doc(leagueId).set({
       exportStatus: {
         weeklyStatus: {
@@ -474,10 +533,134 @@ const MaddenDB: MaddenDB = {
       }
     }, { merge: true })
   },
+  getTeamStatsForGame: async function(leagueId: string, teamId: string, week: number, seasonIndex: number) {
+    const teamStats = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_TEAM_STAT)
+      .where("week", "==", week - 1).where("seasonIndex", "==", seasonIndex).where("teamId", "==", teamId).limit(1).get()
+    const data = teamStats.docs?.[0]?.data() as TeamStats
+    if (data) {
+      return data
+    } else {
+      throw new Error(`Missing Team Stats for ${MADDEN_SEASON + seasonIndex} Week ${week} for ${teamId}. Try exporting this week again`)
+    }
+  },
   getExportStatus: async function(leagueId: string) {
     const doc = await db.collection("madden_data26").doc(leagueId).get()
     const leagueDoc = convertDate(doc.data()) as LeagueDoc
     return leagueDoc.exportStatus
+  },
+  getStatsForGame: async function(leagueId: string, season: number, week: number, scheduleId: number) {
+    const leagueRef = db.collection("madden_data26").doc(leagueId);
+    const weekIndex = week - 1;
+
+    // Query all stat collections in parallel
+    const [
+      teamStatsSnapshot,
+      defensiveStatsSnapshot,
+      kickingStatsSnapshot,
+      puntingStatsSnapshot,
+      receivingStatsSnapshot,
+      rushingStatsSnapshot,
+      passingStatsSnapshot
+    ] = await Promise.all([
+      leagueRef.collection(MaddenEvents.MADDEN_TEAM_STAT)
+        .where("seasonIndex", "==", season)
+        .where("weekIndex", "==", weekIndex)
+        .where("scheduleId", "==", scheduleId)
+        .get(),
+      leagueRef.collection(MaddenEvents.MADDEN_DEFENSIVE_STAT)
+        .where("seasonIndex", "==", season)
+        .where("weekIndex", "==", weekIndex)
+        .where("scheduleId", "==", scheduleId)
+        .get(),
+      leagueRef.collection(MaddenEvents.MADDEN_KICKING_STAT)
+        .where("seasonIndex", "==", season)
+        .where("weekIndex", "==", weekIndex)
+        .where("scheduleId", "==", scheduleId)
+        .get(),
+      leagueRef.collection(MaddenEvents.MADDEN_PUNTING_STAT)
+        .where("seasonIndex", "==", season)
+        .where("weekIndex", "==", weekIndex)
+        .where("scheduleId", "==", scheduleId)
+        .get(),
+      leagueRef.collection(MaddenEvents.MADDEN_RECEIVING_STAT)
+        .where("seasonIndex", "==", season)
+        .where("weekIndex", "==", weekIndex)
+        .where("scheduleId", "==", scheduleId)
+        .get(),
+      leagueRef.collection(MaddenEvents.MADDEN_RUSHING_STAT)
+        .where("seasonIndex", "==", season)
+        .where("weekIndex", "==", weekIndex)
+        .where("scheduleId", "==", scheduleId)
+        .get(),
+      leagueRef.collection(MaddenEvents.MADDEN_PASSING_STAT)
+        .where("seasonIndex", "==", season)
+        .where("weekIndex", "==", weekIndex)
+        .where("scheduleId", "==", scheduleId)
+        .get()
+    ]);
+
+    // Build the response object
+    const gameStats: GameStats = {
+      teamStats: teamStatsSnapshot.docs.map(doc => doc.data() as TeamStats),
+      playerStats: {}
+    };
+
+    // Add player stats if they exist
+    if (!defensiveStatsSnapshot.empty) {
+      gameStats.playerStats[PlayerStatType.DEFENSE] = defensiveStatsSnapshot.docs.map(doc => doc.data() as DefensiveStats);
+    }
+
+    if (!kickingStatsSnapshot.empty) {
+      gameStats.playerStats[PlayerStatType.KICKING] = kickingStatsSnapshot.docs.map(doc => doc.data() as KickingStats);
+    }
+
+    if (!puntingStatsSnapshot.empty) {
+      gameStats.playerStats[PlayerStatType.PUNTING] = puntingStatsSnapshot.docs.map(doc => doc.data() as PuntingStats);
+    }
+
+    if (!receivingStatsSnapshot.empty) {
+      gameStats.playerStats[PlayerStatType.RECEIVING] = receivingStatsSnapshot.docs.map(doc => doc.data() as ReceivingStats);
+    }
+
+    if (!rushingStatsSnapshot.empty) {
+      gameStats.playerStats[PlayerStatType.RUSHING] = rushingStatsSnapshot.docs.map(doc => doc.data() as RushingStats);
+    }
+
+    if (!passingStatsSnapshot.empty) {
+      gameStats.playerStats[PlayerStatType.PASSING] = passingStatsSnapshot.docs.map(doc => doc.data() as PassingStats);
+    }
+
+    return gameStats;
+  },
+  getTeamSchedule: async function(leagueId: string, season?: number) {
+    const scheduleCollection = db.collection("madden_data26")
+      .doc(leagueId)
+      .collection(MaddenEvents.MADDEN_SCHEDULE).where("stageIndex", "==", 1)
+
+    if (season !== undefined) {
+
+      const seasonGamesSnapshot = await scheduleCollection
+        .where("seasonIndex", "==", season)
+        .get();
+
+      const seasonGames: MaddenGame[] = seasonGamesSnapshot.docs.map(doc => doc.data() as MaddenGame);
+      return seasonGames.sort((a, b) => a.weekIndex - b.weekIndex);
+    } else {
+
+      const allGamesSnapshot = await scheduleCollection.get();
+
+      if (allGamesSnapshot.empty) {
+        return [];
+      }
+
+      const games: MaddenGame[] = allGamesSnapshot.docs.map(doc => doc.data() as MaddenGame);
+      const latestSeason = Math.max(...games.map(game => game.seasonIndex));
+
+
+      return games
+        .filter(game => game.seasonIndex === latestSeason)
+        .sort((a, b) => a.weekIndex - b.weekIndex);
+    }
   }
 }
 
