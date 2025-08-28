@@ -114,7 +114,8 @@ interface MaddenDB {
   updateRosterExportStatus(leagueId: string, eventType: MaddenEvents.MADDEN_PLAYER, teamId: string): Promise<void>,
   getTeamStatsForGame(leagueId: string, teamId: string, week: number, season: number): Promise<TeamStats>,
   getExportStatus(leagueId: string): Promise<ExportStatus | undefined>,
-  getStatsForGame(leagueId: string, season: number, week: number, scheduleId: number): Promise<GameStats>
+  getStatsForGame(leagueId: string, season: number, week: number, scheduleId: number): Promise<GameStats>,
+  getTeamSchedule(leagueId: string, season?: number): Promise<MaddenGame[]>
 }
 
 function convertDate(firebaseObject: any) {
@@ -628,6 +629,36 @@ const MaddenDB: MaddenDB = {
     }
 
     return gameStats;
+  },
+  getTeamSchedule: async function(leagueId: string, season?: number) {
+    const scheduleCollection = db.collection("madden_data26")
+      .doc(leagueId)
+      .collection(MaddenEvents.MADDEN_SCHEDULE);
+
+    if (season !== undefined) {
+
+      const seasonGamesSnapshot = await scheduleCollection
+        .where("seasonIndex", "==", season)
+        .get();
+
+      const seasonGames: MaddenGame[] = seasonGamesSnapshot.docs.map(doc => doc.data() as MaddenGame);
+      return seasonGames.sort((a, b) => a.weekIndex - b.weekIndex);
+    } else {
+
+      const allGamesSnapshot = await scheduleCollection.get();
+
+      if (allGamesSnapshot.empty) {
+        return [];
+      }
+
+      const games: MaddenGame[] = allGamesSnapshot.docs.map(doc => doc.data() as MaddenGame);
+      const latestSeason = Math.max(...games.map(game => game.seasonIndex));
+
+
+      return games
+        .filter(game => game.seasonIndex === latestSeason)
+        .sort((a, b) => a.weekIndex - b.weekIndex);
+    }
   }
 }
 

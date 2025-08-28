@@ -4,14 +4,15 @@ import { GameResult, MADDEN_SEASON } from "../../export/madden_league_types"
 import { MessageComponentHandler, MessageComponentInteraction } from "../commands_handler"
 import { DiscordClient, formatTeamEmoji } from "../discord_utils"
 import { APIMessageStringSelectInteractionData, ButtonStyle, ComponentType, InteractionResponseType, SeparatorSpacingSize } from "discord-api-types/v10"
+import { TeamSelection, WeekSelection } from "./schedule"
 export enum GameStatsOptions {
   OVERVIEW = "o",
   HOME_PLAYER_STATS = "h",
   AWAY_PLAYER_STATS = "a"
 }
-export type GameSelection = { w: number, s: number, c: number, o: GameStatsOptions, b?: boolean }
+export type GameSelection = { w: number, s: number, c: number, o: GameStatsOptions, b?: WeekSelection | TeamSelection }
 
-export async function showGameStats(token: string, client: DiscordClient, leagueId: string, weekIndex: number, seasonIndex: number, scheduleId: number, selection: GameStatsOptions, showBack?: boolean) {
+export async function showGameStats(token: string, client: DiscordClient, leagueId: string, weekIndex: number, seasonIndex: number, scheduleId: number, selection: GameStatsOptions, showBack?: WeekSelection | TeamSelection) {
   const [gameResult, stats, latestTeams] = await Promise.all([MaddenDB.getGameForSchedule(leagueId, scheduleId, weekIndex + 1, seasonIndex), MaddenDB.getStatsForGame(leagueId, seasonIndex, weekIndex + 1, scheduleId), MaddenDB.getLatestTeams(leagueId)])
   const awayTeam = latestTeams.getTeamForId(gameResult.awayTeamId)
   const homeTeam = latestTeams.getTeamForId(gameResult.homeTeamId)
@@ -69,10 +70,10 @@ export async function showGameStats(token: string, client: DiscordClient, league
       content += `### Rushing\n`;
       awayRushing.forEach(p => {
         const statParts = [];
-        if (p.rushAtt > 0) statParts.push(`${p.rushAtt} att`);
-        if (p.rushYds !== 0) statParts.push(`${p.rushYds} yds`); // Allow negative yards
+        if (p.rushAtt > 0) statParts.push(`${p.rushAtt} ATT`);
+        if (p.rushYds !== 0) statParts.push(`${p.rushYds} YDS`); // Allow negative yards
         if (p.rushTDs > 0) statParts.push(`${p.rushTDs} TD`);
-        if (p.rushYdsPerAtt !== 0) statParts.push(`${p.rushYdsPerAtt.toFixed(1)} avg`);
+        if (p.rushYdsPerAtt !== 0) statParts.push(`${p.rushYdsPerAtt.toFixed(1)} AVG`);
 
         if (statParts.length > 0) {
           content += `${p.fullName}: ${statParts.join(', ')}\n`;
@@ -87,10 +88,10 @@ export async function showGameStats(token: string, client: DiscordClient, league
       content += `### Receiving\n`;
       awayReceiving.forEach(p => {
         const statParts = [];
-        if (p.recCatches > 0) statParts.push(`${p.recCatches} rec`);
-        if (p.recYds !== 0) statParts.push(`${p.recYds} yds`); // Allow negative yards
+        if (p.recCatches > 0) statParts.push(`${p.recCatches} REC`);
+        if (p.recYds !== 0) statParts.push(`${p.recYds} YDS`); // Allow negative yards
         if (p.recTDs > 0) statParts.push(`${p.recTDs} TD`);
-        if (p.recYdsPerCatch !== 0 && p.recCatches > 0) statParts.push(`${p.recYdsPerCatch.toFixed(1)} avg`);
+        if (p.recYdsPerCatch !== 0 && p.recCatches > 0) statParts.push(`${p.recYdsPerCatch.toFixed(1)} AVG`);
 
         if (statParts.length > 0) {
           content += `${p.fullName}: ${statParts.join(', ')}\n`;
@@ -105,8 +106,8 @@ export async function showGameStats(token: string, client: DiscordClient, league
       content += `### Defense\n`;
       awayDefense.forEach(p => {
         const statParts = [];
-        if (p.defTotalTackles > 0) statParts.push(`${p.defTotalTackles} tkl`);
-        if (p.defSacks > 0) statParts.push(`${p.defSacks} sacks`);
+        if (p.defTotalTackles > 0) statParts.push(`${p.defTotalTackles} TKL`);
+        if (p.defSacks > 0) statParts.push(`${p.defSacks} `);
         if (p.defInts > 0) statParts.push(`${p.defInts} INT`);
         if (p.defFumRec > 0) statParts.push(`${p.defFumRec} FR`);
         if (p.defTDs > 0) statParts.push(`${p.defTDs} TD`);
@@ -165,7 +166,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
       homePassing.forEach(p => {
         const statParts = [];
         if (p.passAtt > 0) statParts.push(`${p.passComp}/${p.passAtt}`);
-        if (p.passYds > 0) statParts.push(`${p.passYds} yds`);
+        if (p.passYds > 0) statParts.push(`${p.passYds} YDS`);
         if (p.passTDs > 0) statParts.push(`${p.passTDs} TD`);
         if (p.passInts > 0) statParts.push(`${p.passInts} INT`);
         if (p.passerRating > 0) statParts.push(`${p.passerRating.toFixed(1)} Rating`);
@@ -183,10 +184,10 @@ export async function showGameStats(token: string, client: DiscordClient, league
       content += `### Rushing\n`;
       homeRushing.forEach(p => {
         const statParts = [];
-        if (p.rushAtt > 0) statParts.push(`${p.rushAtt} att`);
-        if (p.rushYds !== 0) statParts.push(`${p.rushYds} yds`); // Allow negative yards
+        if (p.rushAtt > 0) statParts.push(`${p.rushAtt} ATT`);
+        if (p.rushYds !== 0) statParts.push(`${p.rushYds} YDS`); // Allow negative yards
         if (p.rushTDs > 0) statParts.push(`${p.rushTDs} TD`);
-        if (p.rushYdsPerAtt !== 0) statParts.push(`${p.rushYdsPerAtt.toFixed(1)} avg`);
+        if (p.rushYdsPerAtt !== 0) statParts.push(`${p.rushYdsPerAtt.toFixed(1)} AVG`);
 
         if (statParts.length > 0) {
           content += `${p.fullName}: ${statParts.join(', ')}\n`;
@@ -201,10 +202,10 @@ export async function showGameStats(token: string, client: DiscordClient, league
       content += `### Receiving\n`;
       homeReceiving.forEach(p => {
         const statParts = [];
-        if (p.recCatches > 0) statParts.push(`${p.recCatches} rec`);
-        if (p.recYds !== 0) statParts.push(`${p.recYds} yds`); // Allow negative yards
+        if (p.recCatches > 0) statParts.push(`${p.recCatches} REC`);
+        if (p.recYds !== 0) statParts.push(`${p.recYds} YDS`); // Allow negative yards
         if (p.recTDs > 0) statParts.push(`${p.recTDs} TD`);
-        if (p.recYdsPerCatch !== 0 && p.recCatches > 0) statParts.push(`${p.recYdsPerCatch.toFixed(1)} avg`);
+        if (p.recYdsPerCatch !== 0 && p.recCatches > 0) statParts.push(`${p.recYdsPerCatch.toFixed(1)} AVG`);
 
         if (statParts.length > 0) {
           content += `${p.fullName}: ${statParts.join(', ')}\n`;
@@ -219,8 +220,8 @@ export async function showGameStats(token: string, client: DiscordClient, league
       content += `### Defense\n`;
       homeDefense.forEach(p => {
         const statParts = [];
-        if (p.defTotalTackles > 0) statParts.push(`${p.defTotalTackles} tkl`);
-        if (p.defSacks > 0) statParts.push(`${p.defSacks} sacks`);
+        if (p.defTotalTackles > 0) statParts.push(`${p.defTotalTackles} TKL`);
+        if (p.defSacks > 0) statParts.push(`${p.defSacks} SCK`);
         if (p.defInts > 0) statParts.push(`${p.defInts} INT`);
         if (p.defFumRec > 0) statParts.push(`${p.defFumRec} FR`);
         if (p.defTDs > 0) statParts.push(`${p.defTDs} TD`);
@@ -256,10 +257,10 @@ export async function showGameStats(token: string, client: DiscordClient, league
       content += `### Punting\n`;
       homePunting.forEach(p => {
         const statParts = [];
-        if (p.puntAtt > 0) statParts.push(`${p.puntAtt} punts`);
-        if (p.puntYds > 0) statParts.push(`${p.puntYds} yds`);
-        if (p.puntYdsPerAtt > 0) statParts.push(`${p.puntYdsPerAtt.toFixed(1)} avg`);
-        if (p.puntNetYdsPerAtt !== 0) statParts.push(`${p.puntNetYdsPerAtt.toFixed(1)} net`);
+        if (p.puntAtt > 0) statParts.push(`${p.puntAtt} PNT`);
+        if (p.puntYds > 0) statParts.push(`${p.puntYds} YDS`);
+        if (p.puntYdsPerAtt > 0) statParts.push(`${p.puntYdsPerAtt.toFixed(1)} AVG`);
+        if (p.puntNetYdsPerAtt !== 0) statParts.push(`${p.puntNetYdsPerAtt.toFixed(1)} NET`);
         if (p.puntLongest > 0) statParts.push(`Long ${p.puntLongest}`);
 
         if (statParts.length > 0) {
@@ -293,7 +294,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
       {
         type: ComponentType.Button,
         style: ButtonStyle.Secondary,
-        custom_id: `${JSON.stringify({ wi: weekIndex, si: seasonIndex })}`,
+        custom_id: JSON.stringify(showBack),
         label: "Back to Schedule"
       }
     ]

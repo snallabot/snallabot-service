@@ -62,6 +62,7 @@ const MessageComponents: MessageComponentHandlers = {
   "player_card": playerHandler,
   "week_selector": schedulesHandler,
   "season_selector": schedulesHandler,
+  "team_season_selector": schedulesHandler,
   "game_stats": gameStatsHandler
 }
 
@@ -149,7 +150,7 @@ export async function handleMessageComponent(interaction: MessageComponentIntera
         ctx.status = 200
         ctx.set("Content-Type", "application/json")
         ctx.body = body
-      } else if (parsedCustomId.wi) {
+      } else if (parsedCustomId.si) {
         const body = await schedulesHandler.handleInteraction(interaction, client)
         ctx.status = 200
         ctx.set("Content-Type", "application/json")
