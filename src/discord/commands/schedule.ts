@@ -16,7 +16,6 @@ async function showSchedule(token: string, client: DiscordClient,
   league: string, requestedWeek?: number, requestedSeason?: number) {
   const settledPromise = await Promise.allSettled([getWeekSchedule(league, requestedWeek ? Number(requestedWeek) : undefined, requestedSeason ? Number(requestedSeason) : undefined), MaddenClient.getLatestTeams(league)])
   const schedule = settledPromise[0].status === "fulfilled" ? settledPromise[0].value : []
-  console.log(schedule)
   if (settledPromise[1].status !== "fulfilled") {
     throw new Error("No Teams setup, setup the bot and export")
   }
@@ -84,7 +83,6 @@ async function showSchedule(token: string, client: DiscordClient,
       value: { wi: Math.min(...view?.map(ws => ws.seasonIndex).filter(ws => ws === s) || [0]), si: s }
     }))
     .map(option => ({ ...option, value: JSON.stringify(option.value) }))
-  console.log()
   await client.editOriginalInteraction(token, {
     flags: 32768,
     components: [
