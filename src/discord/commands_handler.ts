@@ -141,17 +141,17 @@ export async function handleMessageComponent(interaction: MessageComponentIntera
   } else {
     try {
       const parsedCustomId = JSON.parse(custom_id)
-      if (parsedCustomId.q) {
+      if (parsedCustomId.q != null) {
         const body = await playerHandler.handleInteraction(interaction, client)
         ctx.status = 200
         ctx.set("Content-Type", "application/json")
         ctx.body = body
-      } else if (parsedCustomId.t) {
+      } else if (parsedCustomId.t != null) {
         const body = await broadcastsHandler.handleInteraction(interaction, client)
         ctx.status = 200
         ctx.set("Content-Type", "application/json")
         ctx.body = body
-      } else if (parsedCustomId.si) {
+      } else if (parsedCustomId.si != null) {
         const body = await schedulesHandler.handleInteraction(interaction, client)
         ctx.status = 200
         ctx.set("Content-Type", "application/json")
