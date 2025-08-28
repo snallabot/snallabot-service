@@ -391,16 +391,15 @@ export default {
     try {
       const weekSelection = getWeekSelection(interaction)
       const teamSelection = getTeamSelection(interaction)
+      console.log("here")
       if (weekSelection) {
         const { wi: weekIndex, si: seasonIndex } = weekSelection
         const guildId = interaction.guild_id
         const discordLeague = await discordLeagueView.createView(guildId)
         const leagueId = discordLeague?.leagueId
         if (leagueId) {
+          console.log("here2")
           showSchedule(interaction.token, client, leagueId, weekIndex + 1, seasonIndex)
-          return {
-            type: InteractionResponseType.DeferredMessageUpdate,
-          }
         }
       } else if (teamSelection) {
         const { t: team, si: seasonIndex } = teamSelection
@@ -409,13 +408,11 @@ export default {
         const leagueId = discordLeague?.leagueId
         if (leagueId) {
           showTeamSchedule(interaction.token, client, leagueId, team, seasonIndex)
-          return {
-            type: InteractionResponseType.DeferredMessageUpdate,
-          }
+
         }
       }
-      throw new Error("should not have gotten here")
     } catch (e) {
+      console.log("here3")
       await client.editOriginalInteraction(interaction.token, {
         flags: 32768,
         components: [
@@ -426,6 +423,9 @@ export default {
 
         ]
       })
+    }
+    return {
+      type: InteractionResponseType.DeferredMessageUpdate,
     }
   },
   async choices(command: Autocomplete) {
