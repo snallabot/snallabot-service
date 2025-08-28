@@ -44,7 +44,7 @@ async function showSchedule(token: string, client: DiscordClient,
   const week = schedule?.[0]?.weekIndex >= 0 ? schedule[0].weekIndex + 1 : requestedWeek != null ? requestedWeek : 1
 
   const message = `# ${MADDEN_SEASON + season} ${getMessageForWeek(week)} Schedule\n${schedulesMessage}`
-  const gameOptions = sortedSchedule.filter(g => g.status !== GameResult.NOT_PLAYED).map(game => ({
+  const gameOptions = sortedSchedule.filter(g => g.status !== GameResult.NOT_PLAYED && g.stageIndex > 0).map(game => ({
     label: `${teamMap.get(game.awayTeamId)?.abbrName} ${game.awayScore} - ${game.homeScore} ${teamMap.get(game.homeTeamId)?.abbrName}`,
     value: { w: game.weekIndex, s: game.seasonIndex, c: game.scheduleId, o: GameStatsOptions.OVERVIEW, b: { wi: week - 1, si: season } }
   }))
@@ -103,7 +103,7 @@ async function showSchedule(token: string, client: DiscordClient,
           {
             type: ComponentType.StringSelect,
             custom_id: "week_selector",
-            placeholder: `Week ${week}`,
+            placeholder: `Week ${getMessageForWeek(week)}`,
             options: weekOptions
           }
         ]
