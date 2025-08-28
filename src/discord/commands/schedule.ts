@@ -271,7 +271,6 @@ function getWeekSelection(interaction: MessageComponentInteraction) {
         return parsedId as WeekSelection
       }
     } catch (e) {
-      throw e
     }
   }
 }
@@ -291,7 +290,6 @@ function getTeamSelection(interaction: MessageComponentInteraction) {
         return parsedId
       }
     } catch (e) {
-      throw e
     }
   }
 }
