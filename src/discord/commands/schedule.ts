@@ -398,6 +398,9 @@ export default {
         const leagueId = discordLeague?.leagueId
         if (leagueId) {
           showSchedule(interaction.token, client, leagueId, weekIndex + 1, seasonIndex)
+          return {
+            type: InteractionResponseType.DeferredMessageUpdate,
+          }
         }
       } else if (teamSelection) {
         const { t: team, si: seasonIndex } = teamSelection
@@ -406,10 +409,12 @@ export default {
         const leagueId = discordLeague?.leagueId
         if (leagueId) {
           showTeamSchedule(interaction.token, client, leagueId, team, seasonIndex)
+          return {
+            type: InteractionResponseType.DeferredMessageUpdate,
+          }
         }
-      } else {
-        throw new Error("has to be week or team")
       }
+      throw new Error("should not have gotten here")
     } catch (e) {
       await client.editOriginalInteraction(interaction.token, {
         flags: 32768,
@@ -421,9 +426,6 @@ export default {
 
         ]
       })
-    }
-    return {
-      type: InteractionResponseType.DeferredMessageUpdate,
     }
   },
   async choices(command: Autocomplete) {
