@@ -16,6 +16,7 @@ async function showSchedule(token: string, client: DiscordClient,
   league: string, requestedWeek?: number, requestedSeason?: number) {
   const settledPromise = await Promise.allSettled([getWeekSchedule(league, requestedWeek ? Number(requestedWeek) : undefined, requestedSeason ? Number(requestedSeason) : undefined), MaddenClient.getLatestTeams(league)])
   const schedule = settledPromise[0].status === "fulfilled" ? settledPromise[0].value : []
+  console.log(schedule)
   if (settledPromise[1].status !== "fulfilled") {
     throw new Error("No Teams setup, setup the bot and export")
   }
@@ -172,17 +173,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
       const opponentDisplay = `${formatTeamEmoji(opponent?.abbrName)} ${opponent?.displayName}`
       const teamDisplay = `${formatTeamEmoji(selectedTeam.abbrName)} ${selectedTeam.displayName}`
 
-      const getWeekLabel = (weekNum: number) => {
-        switch (weekNum) {
-          case 19: return "Wild Card"
-          case 20: return "Divisional"
-          case 21: return "Conference Championship"
-          case 23: return "Super Bowl"
-          default: return `Week ${weekNum}`
-        }
-      }
-
-      const weekLabel = getWeekLabel(week)
+      const weekLabel = getMessageForWeek(week)
 
       if (game.status === GameResult.NOT_PLAYED) {
         scheduleLines.push(`**${weekLabel}:** ${teamDisplay} ${isTeamAway ? '@' : 'vs'} ${opponentDisplay}`)

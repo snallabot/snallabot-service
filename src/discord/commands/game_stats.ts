@@ -1,6 +1,6 @@
 import MaddenDB, { PlayerStatType } from "../../db/madden_db"
 import { discordLeagueView } from "../../db/view"
-import { GameResult, MADDEN_SEASON } from "../../export/madden_league_types"
+import { GameResult, MADDEN_SEASON, getMessageForWeek } from "../../export/madden_league_types"
 import { MessageComponentHandler, MessageComponentInteraction } from "../commands_handler"
 import { DiscordClient, formatTeamEmoji } from "../discord_utils"
 import { APIMessageStringSelectInteractionData, ButtonStyle, ComponentType, InteractionResponseType, SeparatorSpacingSize } from "discord-api-types/v10"
@@ -19,7 +19,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
 
   let content = "";
   content += `# ${formatTeamEmoji(awayTeam?.abbrName)} ${awayTeam?.displayName} ${gameResult.awayScore} vs ${gameResult.homeScore} ${formatTeamEmoji(homeTeam?.abbrName)} ${homeTeam?.displayName}\n`;
-  content += `**Season ${seasonIndex + MADDEN_SEASON}, Week ${weekIndex + 1}**\n`;
+  content += `**Season ${seasonIndex + MADDEN_SEASON}, Week ${getMessageForWeek(weekIndex + 1)}**\n`;
 
   if (selection === GameStatsOptions.OVERVIEW) {
     // Show team stats - away team first, then home team
@@ -107,7 +107,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
       awayDefense.forEach(p => {
         const statParts = [];
         if (p.defTotalTackles > 0) statParts.push(`${p.defTotalTackles} TKL`);
-        if (p.defSacks > 0) statParts.push(`${p.defSacks} `);
+        if (p.defSacks > 0) statParts.push(`${p.defSacks} SCK`);
         if (p.defInts > 0) statParts.push(`${p.defInts} INT`);
         if (p.defFumRec > 0) statParts.push(`${p.defFumRec} FR`);
         if (p.defTDs > 0) statParts.push(`${p.defTDs} TD`);
