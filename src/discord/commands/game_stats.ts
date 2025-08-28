@@ -288,6 +288,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
       default: selection === GameStatsOptions.HOME_PLAYER_STATS
     }
   ];
+  console.log(showBack)
   const backButton = showBack ? [{
     type: ComponentType.ActionRow,
     components: [

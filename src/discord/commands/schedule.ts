@@ -11,7 +11,7 @@ import { GameStatsOptions } from "./game_stats"
 import fuzzysort from "fuzzysort"
 
 export type WeekSelection = { wi: number, si: number }
-export type TeamSelection = { t: number, si: number }
+export type TeamSelection = { ti: number, si: number }
 async function showSchedule(token: string, client: DiscordClient,
   league: string, requestedWeek?: number, requestedSeason?: number) {
   const settledPromise = await Promise.allSettled([getWeekSchedule(league, requestedWeek ? Number(requestedWeek) : undefined, requestedSeason ? Number(requestedSeason) : undefined), MaddenClient.getLatestTeams(league)])
@@ -180,7 +180,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
 
     return {
       label: `${selectedTeam.abbrName} ${teamScore} - ${opponentScore} ${opponent?.abbrName}`,
-      value: { w: game.weekIndex, s: game.seasonIndex, c: game.scheduleId, o: GameStatsOptions.OVERVIEW, b: { t: teamId, si: season } }
+      value: { w: game.weekIndex, s: game.seasonIndex, c: game.scheduleId, o: GameStatsOptions.OVERVIEW, b: { ti: teamId, si: season } }
     }
   })
     .map(option => ({ ...option, value: JSON.stringify(option.value) }))
@@ -209,7 +209,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
     .sort((a, b) => a - b)
     .map(s => ({
       label: `Season ${s + MADDEN_SEASON}`,
-      value: { si: s, t: teamId }
+      value: { si: s, ti: teamId }
     }))
     .map(option => ({ ...option, value: JSON.stringify(option.value) }))
 
@@ -286,7 +286,7 @@ function getTeamSelection(interaction: MessageComponentInteraction) {
   } else {
     try {
       const parsedId = JSON.parse(customId)
-      if (parsedId.t) {
+      if (parsedId.ti) {
         return parsedId
       }
     } catch (e) {
@@ -400,7 +400,7 @@ export default {
           showSchedule(interaction.token, client, leagueId, weekIndex + 1, seasonIndex)
         }
       } else if (teamSelection) {
-        const { t: team, si: seasonIndex } = teamSelection
+        const { ti: team, si: seasonIndex } = teamSelection
         const guildId = interaction.guild_id
         const discordLeague = await discordLeagueView.createView(guildId)
         const leagueId = discordLeague?.leagueId
