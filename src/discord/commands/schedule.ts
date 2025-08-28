@@ -102,7 +102,7 @@ async function showSchedule(token: string, client: DiscordClient,
           {
             type: ComponentType.StringSelect,
             custom_id: "week_selector",
-            placeholder: `Week ${getMessageForWeek(week)}`,
+            placeholder: `${getMessageForWeek(week)}`,
             options: weekOptions
           }
         ]
