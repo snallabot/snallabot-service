@@ -321,6 +321,7 @@ const MaddenDB: MaddenDB = {
     // Query for unplayed games only
     const unplayedSnapshot = await scheduleCollection
       .where("status", "==", GameResult.NOT_PLAYED)
+      .where("stageIndex", "==", 1)
       .get();
 
     if (unplayedSnapshot.empty) {
@@ -349,6 +350,7 @@ const MaddenDB: MaddenDB = {
     const currentWeekGames = await scheduleCollection
       .where("seasonIndex", "==", currentSeason)
       .where("weekIndex", "==", currentWeek)
+      .where("stageIndex", "==", 1)
       .get();
 
     return currentWeekGames.docs.map(doc => doc.data() as MaddenGame);
@@ -375,7 +377,7 @@ const MaddenDB: MaddenDB = {
   getAllWeeks: async function(leagueId: string) {
     const schedules = await db.collection("madden_data26")
       .doc(leagueId)
-      .collection(MaddenEvents.MADDEN_SCHEDULE).get()
+      .collection(MaddenEvents.MADDEN_SCHEDULE).where("stageIndex", "==", 1).get()
     return schedules.docs.map(d => d.data() as MaddenGame)
   }
   ,
@@ -633,7 +635,7 @@ const MaddenDB: MaddenDB = {
   getTeamSchedule: async function(leagueId: string, season?: number) {
     const scheduleCollection = db.collection("madden_data26")
       .doc(leagueId)
-      .collection(MaddenEvents.MADDEN_SCHEDULE);
+      .collection(MaddenEvents.MADDEN_SCHEDULE).where("stageIndex", "==", 1)
 
     if (season !== undefined) {
 
