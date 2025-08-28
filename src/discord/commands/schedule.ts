@@ -289,8 +289,8 @@ async function showTeamSchedule(token: string, client: DiscordClient,
 }
 
 async function getWeekSchedule(league: string, week?: number, season?: number) {
-  if (season) {
-    if (week) {
+  if (season != null) {
+    if (week != null) {
       const seasonIndex = season < 100 ? season : season - MADDEN_SEASON
       return await MaddenClient.getWeekScheduleForSeason(league, week, seasonIndex)
     }
