@@ -55,7 +55,8 @@ const SlashCommands: CommandsHandler = {
 
 const AutocompleteCommands: AutocompleteHandlers = {
   "teams": teamsHandler,
-  "player": playerHandler
+  "player": playerHandler,
+  "schedule": schedulesHandler
 }
 
 const MessageComponents: MessageComponentHandlers = {

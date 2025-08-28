@@ -446,4 +446,4 @@ export default {
     }
     return []
   }
-} as CommandHandler & MessageComponentHandler
+} as CommandHandler & MessageComponentHandler & AutocompleteHandler
