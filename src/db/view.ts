@@ -242,18 +242,19 @@ class AllLeagueWeeks extends View<AllWeeks> {
   }
 }
 
-class CachedAllLeagueWeeks extends CachedUpdatingView<AllWeeks> {
-  constructor() {
-    super(new AllLeagueWeeks())
-  }
-  update(events: { [key: string]: any[] }, currentView: AllWeeks): AllWeeks {
-    if (events[MaddenEvents.MADDEN_SCHEDULE]) {
-      const newWeek = events[MaddenEvents.MADDEN_SCHEDULE].map(e => (e as MaddenGame)).map(e => ({ weekIndex: e.weekIndex, seasonIndex: e.seasonIndex })).filter(ws => !currentView.some(curr => curr.seasonIndex === ws.seasonIndex && curr.weekIndex === ws.weekIndex))
-      return [...currentView, ...newWeek]
-    }
-    return currentView
-  }
-}
+// add back if necessary
+// class CachedAllLeagueWeeks extends CachedUpdatingView<AllWeeks> {
+//   constructor() {
+//     super(new AllLeagueWeeks())
+//   }
+//   update(events: { [key: string]: any[] }, currentView: AllWeeks): AllWeeks {
+//     if (events[MaddenEvents.MADDEN_SCHEDULE]) {
+//       const newWeek = events[MaddenEvents.MADDEN_SCHEDULE].map(e => (e as MaddenGame)).map(e => ({ weekIndex: e.weekIndex, seasonIndex: e.seasonIndex })).filter(ws => !currentView.some(curr => curr.seasonIndex === ws.seasonIndex && curr.weekIndex === ws.weekIndex))
+//       return [...currentView, ...newWeek]
+//     }
+//     return currentView
+//   }
+// }
 
-export const allLeagueWeeks = new CachedAllLeagueWeeks()
-allLeagueWeeks.listen(MaddenEvents.MADDEN_SCHEDULE)
+export const allLeagueWeeks = new AllLeagueWeeks()
+// allLeagueWeeks.listen(MaddenEvents.MADDEN_SCHEDULE)
