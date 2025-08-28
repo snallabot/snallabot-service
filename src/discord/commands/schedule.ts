@@ -313,7 +313,7 @@ function getWeekSelection(interaction: MessageComponentInteraction) {
   } else {
     try {
       const parsedId = JSON.parse(customId)
-      if (parsedId.wi) {
+      if (parsedId.wi != null) {
         return parsedId as WeekSelection
       }
     } catch (e) {
@@ -332,7 +332,7 @@ function getTeamSelection(interaction: MessageComponentInteraction) {
   } else {
     try {
       const parsedId = JSON.parse(customId)
-      if (parsedId.ti) {
+      if (parsedId.ti != null) {
         return parsedId
       }
     } catch (e) {
