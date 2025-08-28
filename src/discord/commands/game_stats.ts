@@ -19,7 +19,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
 
   let content = "";
   content += `# ${formatTeamEmoji(awayTeam?.abbrName)} ${awayTeam?.displayName} ${gameResult.awayScore} vs ${gameResult.homeScore} ${formatTeamEmoji(homeTeam?.abbrName)} ${homeTeam?.displayName}\n`;
-  content += `**Season ${seasonIndex + MADDEN_SEASON}, Week ${getMessageForWeek(weekIndex + 1)}**\n`;
+  content += `**Season ${seasonIndex + MADDEN_SEASON}, ${getMessageForWeek(weekIndex + 1)}**\n`;
 
   if (selection === GameStatsOptions.OVERVIEW) {
     // Show team stats - away team first, then home team
