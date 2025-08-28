@@ -193,8 +193,11 @@ async function showTeamSchedule(token: string, client: DiscordClient,
 
         if (teamWon) {
           scheduleLines.push(`**${weekLabel}:** **${teamDisplay} ${teamScore}** ${isTeamAway ? '@' : 'vs'} ${opponentScore} ${opponentDisplay}`)
-        } else {
+        } else if (teamScore < opponentScore) {
           scheduleLines.push(`**${weekLabel}:** ${teamDisplay} ${teamScore} ${isTeamAway ? '@' : 'vs'} **${opponentScore} ${opponentDisplay}**`)
+        } else {
+          // Tie game
+          scheduleLines.push(`**${weekLabel}:** ${teamDisplay} ${teamScore} ${isTeamAway ? '@' : 'vs'} ${opponentScore} ${opponentDisplay}`)
         }
       }
     }
@@ -202,7 +205,28 @@ async function showTeamSchedule(token: string, client: DiscordClient,
   const schedulesMessage = scheduleLines.join("\n")
   const season = teamSchedule?.[0]?.seasonIndex >= 0 ? teamSchedule[0].seasonIndex : requestedSeason != null ? requestedSeason : 0
 
-  const message = `# ${selectedTeam.displayName} ${MADDEN_SEASON + season} Season Schedule\n${schedulesMessage}`
+  const playedGames = teamSchedule.filter(game => game.status !== GameResult.NOT_PLAYED)
+  let wins = 0
+  let losses = 0
+  let ties = 0
+
+  playedGames.forEach(game => {
+    const isTeamAway = game.awayTeamId === teamId
+    const teamScore = isTeamAway ? game.awayScore : game.homeScore
+    const opponentScore = isTeamAway ? game.homeScore : game.awayScore
+
+    if (teamScore > opponentScore) {
+      wins++
+    } else if (teamScore < opponentScore) {
+      losses++
+    } else {
+      ties++
+    }
+  })
+
+  const recordText = playedGames.length > 0 ?
+    ties > 0 ? ` (${wins}-${losses}-${ties})` : ` (${wins}-${losses})` : ""
+  const message = `# ${selectedTeam.displayName} ${MADDEN_SEASON + season} Season Schedule${recordText}\n${schedulesMessage}`
 
   const gameOptions = teamSchedule.filter(g => g.status !== GameResult.NOT_PLAYED).map(game => {
     const isTeamAway = game.awayTeamId === teamId
