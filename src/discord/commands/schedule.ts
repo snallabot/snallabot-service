@@ -309,13 +309,13 @@ export default {
     }
     const options = command.data.options
     const scheduleCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
-    const week = (command.data.options?.[0] as APIApplicationCommandInteractionDataIntegerOption)?.value
+    const week = (scheduleCommand.options?.[0] as APIApplicationCommandInteractionDataIntegerOption)?.value
     if (scheduleCommand.name === "weekly") {
 
       if (week && (Number(week) < 1 || Number(week) > 23 || week === 22)) {
         throw new Error("Invalid week number. Valid weeks are week 1-18 and for playoffs: Wildcard = 19, Divisional = 20, Conference Championship = 21, Super Bowl = 23")
       }
-      const season = (command.data.options?.[1] as APIApplicationCommandInteractionDataIntegerOption)?.value
+      const season = (scheduleCommand.options?.[1] as APIApplicationCommandInteractionDataIntegerOption)?.value
       showSchedule(command.token, client, league, week ? Number(week) : undefined, season ? Number(season) : undefined)
       respond(ctx, deferMessage())
     } else if (scheduleCommand.name === "team") {
@@ -435,7 +435,7 @@ export default {
     const scheduleCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
     const view = await discordLeagueView.createView(guild_id)
     const leagueId = view?.leagueId
-
+    console.log(scheduleCommand)
     if (leagueId && (scheduleCommand?.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.focused && scheduleCommand?.options?.[0]?.value) {
       const teamSearchPhrase = scheduleCommand.options[0].value as string
       const teamsToSearch = await teamSearchView.createView(leagueId)
