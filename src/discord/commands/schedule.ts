@@ -439,8 +439,10 @@ export default {
     if (leagueId && (scheduleCommand?.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.focused && scheduleCommand?.options?.[0]?.value) {
       const teamSearchPhrase = scheduleCommand.options[0].value as string
       const teamsToSearch = await teamSearchView.createView(leagueId)
+      console.log(teamSearchPhrase)
       if (teamsToSearch) {
         const results = fuzzysort.go(teamSearchPhrase, Object.values(teamsToSearch), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.4, limit: 25 })
+        console.log(results)
         return results.map(r => ({ name: r.obj.displayName, value: r.obj.displayName }))
       }
     }
