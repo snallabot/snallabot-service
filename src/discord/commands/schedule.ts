@@ -268,7 +268,7 @@ function getWeekSelection(interaction: MessageComponentInteraction) {
     try {
       const parsedId = JSON.parse(customId)
       if (parsedId.wi) {
-        return JSON.parse(customId) as WeekSelection
+        return parsedId as WeekSelection
       }
     } catch (e) {
       throw e
@@ -288,7 +288,7 @@ function getTeamSelection(interaction: MessageComponentInteraction) {
     try {
       const parsedId = JSON.parse(customId)
       if (parsedId.t) {
-        return JSON.parse(customId) as TeamSelection
+        return parsedId
       }
     } catch (e) {
       throw e
@@ -407,6 +407,8 @@ export default {
         if (leagueId) {
           showTeamSchedule(interaction.token, client, leagueId, team, seasonIndex)
         }
+      } else {
+        throw new Error("has to be week or team")
       }
     } catch (e) {
       await client.editOriginalInteraction(interaction.token, {
