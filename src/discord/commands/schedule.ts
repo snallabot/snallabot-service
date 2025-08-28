@@ -147,27 +147,59 @@ async function showTeamSchedule(token: string, client: DiscordClient,
     throw new Error("Team not found")
   }
 
-  const schedulesMessage = teamSchedule.map(game => {
-    const isTeamAway = game.awayTeamId === teamId
-    const opponent = teams.getTeamForId(isTeamAway ? game.homeTeamId : game.awayTeamId)
-    const opponentDisplay = `${formatTeamEmoji(opponent?.abbrName)} ${opponent?.displayName}`
-    const teamDisplay = `${formatTeamEmoji(selectedTeam.abbrName)} ${selectedTeam.displayName}`
+  const weekToGameMap = new Map<number, any>()
+  teamSchedule.forEach(game => {
+    weekToGameMap.set(game.weekIndex + 1, game)
+  })
 
-    if (game.status === GameResult.NOT_PLAYED) {
-      return `${teamDisplay} ${isTeamAway ? '@' : 'vs'} ${opponentDisplay}`
+  // Determine all possible weeks (regular season + playoffs)
+  const regularSeasonWeeks = 18
+  const playoffWeeks = [19, 20, 21, 23] // Wild Card, Divisional, Conference Championship, Super Bowl
+  const allWeeks = [...Array(regularSeasonWeeks).keys()].map(i => i + 1).concat(playoffWeeks)
+  const scheduleLines = []
+
+  for (const week of allWeeks) {
+    const game = weekToGameMap.get(week)
+
+    if (!game) {
+      // Only show bye week for regular season weeks (1-18)
+      if (week <= 18) {
+        scheduleLines.push(`**Week ${week}:** BYE`)
+      }
     } else {
-      const teamScore = isTeamAway ? game.awayScore : game.homeScore
-      const opponentScore = isTeamAway ? game.homeScore : game.awayScore
-      const teamWon = teamScore > opponentScore
+      const isTeamAway = game.awayTeamId === teamId
+      const opponent = teams.getTeamForId(isTeamAway ? game.homeTeamId : game.awayTeamId)
+      const opponentDisplay = `${formatTeamEmoji(opponent?.abbrName)} ${opponent?.displayName}`
+      const teamDisplay = `${formatTeamEmoji(selectedTeam.abbrName)} ${selectedTeam.displayName}`
 
-      if (teamWon) {
-        return `**${teamDisplay} ${teamScore}** ${isTeamAway ? '@' : 'vs'} ${opponentScore} ${opponentDisplay}`
+      const getWeekLabel = (weekNum: number) => {
+        switch (weekNum) {
+          case 19: return "Wild Card"
+          case 20: return "Divisional"
+          case 21: return "Conference Championship"
+          case 23: return "Super Bowl"
+          default: return `Week ${weekNum}`
+        }
+      }
+
+      const weekLabel = getWeekLabel(week)
+
+      if (game.status === GameResult.NOT_PLAYED) {
+        scheduleLines.push(`**${weekLabel}:** ${teamDisplay} ${isTeamAway ? '@' : 'vs'} ${opponentDisplay}`)
       } else {
-        return `${teamDisplay} ${teamScore} ${isTeamAway ? '@' : 'vs'} **${opponentScore} ${opponentDisplay}**`
+        const teamScore = isTeamAway ? game.awayScore : game.homeScore
+        const opponentScore = isTeamAway ? game.homeScore : game.awayScore
+        const teamWon = teamScore > opponentScore
+
+        if (teamWon) {
+          scheduleLines.push(`**${weekLabel}:** **${teamDisplay} ${teamScore}** ${isTeamAway ? '@' : 'vs'} ${opponentScore} ${opponentDisplay}`)
+        } else {
+          scheduleLines.push(`**${weekLabel}:** ${teamDisplay} ${teamScore} ${isTeamAway ? '@' : 'vs'} **${opponentScore} ${opponentDisplay}**`)
+        }
       }
     }
-  }).join("\n")
-
+  }
+  const schedulesMessage = scheduleLines.join("\n")
   const season = teamSchedule?.[0]?.seasonIndex >= 0 ? teamSchedule[0].seasonIndex : requestedSeason != null ? requestedSeason : 0
 
   const message = `# ${selectedTeam.displayName} ${MADDEN_SEASON + season} Season Schedule\n${schedulesMessage}`
@@ -342,7 +374,6 @@ export default {
       const teamIdToShowSchedule = teams.getTeamForId(foundTeam.id).teamId
       showTeamSchedule(command.token, client, leagueId, teamIdToShowSchedule, season ? Number(season) : undefined)
       respond(ctx, deferMessage())
-
     }
   },
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
