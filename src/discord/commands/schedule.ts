@@ -218,7 +218,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
     ties > 0 ? ` (${wins}-${losses}-${ties})` : ` (${wins}-${losses})` : ""
   const message = `# ${selectedTeam.displayName} ${MADDEN_SEASON + season} Season Schedule${recordText}\n${schedulesMessage}`
 
-  const gameOptions = teamSchedule.filter(g => g.status !== GameResult.NOT_PLAYED).map(game => {
+  const gameOptions = teamSchedule.filter(g => g.status !== GameResult.NOT_PLAYED).sort((a, b) => a.weekIndex - b.weekIndex).map(game => {
     const isTeamAway = game.awayTeamId === teamId
     const opponent = teams.getTeamForId(isTeamAway ? game.homeTeamId : game.awayTeamId)
     const teamScore = isTeamAway ? game.awayScore : game.homeScore
