@@ -379,12 +379,11 @@ const MaddenDB: MaddenDB = {
   getAllWeeks: async function(leagueId: string) {
     const status = await this.getExportStatus(leagueId)
     if (status) {
-      Object.entries(status.weeklyStatus).flatMap(e => {
+      return Object.entries(status.weeklyStatus).flatMap(e => {
         const [weekKey, weekStatus] = e
         const weekSeason = parseExportStatusWeekKey(weekKey)
         return weekStatus[MaddenEvents.MADDEN_SCHEDULE]?.lastExported != null ? [weekSeason] : []
-      }
-      )
+      })
     }
     return []
   }
