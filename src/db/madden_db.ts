@@ -79,7 +79,7 @@ export function idWeeklyEvents(e: { seasonIndex: number, weekIndex: number }, id
   return `season${e.seasonIndex}-week${e.weekIndex}-${id}`
 }
 
-export function parseExportStatusWeekKey(weekKey: string) {
+export function parseExportStatusWeekKey(weekKey: string): SeasonWeek {
   // Use regex to extract season and week numbers
   const match = weekKey.match(/^season(\d+)_week(\d+)$/);
 
@@ -88,10 +88,12 @@ export function parseExportStatusWeekKey(weekKey: string) {
   }
 
   return {
-    season: parseInt(match[1], 10),
-    week: parseInt(match[2], 10)
+    seasonIndex: parseInt(match[1], 10),
+    weekIndex: parseInt(match[2], 10)
   }
 }
+
+export type SeasonWeek = { seasonIndex: number, weekIndex: number }
 
 interface MaddenDB {
   appendEvents<Event>(event: SnallabotEvent<Event>[], idFn: (event: Event) => string): Promise<void>,
@@ -99,7 +101,7 @@ interface MaddenDB {
   getLatestTeams(leagueId: string): Promise<TeamList>,
   getLatestWeekSchedule(leagueId: string, week: number): Promise<MaddenGame[]>,
   getLatestSchedule(leagueId: string): Promise<MaddenGame[]>,
-  getAllWeeks(leagueId: string): Promise<MaddenGame[]>,
+  getAllWeeks(leagueId: string): Promise<SeasonWeek[]>,
   getWeekScheduleForSeason(leagueId: string, week: number, season: number): Promise<MaddenGame[]>
   getGameForSchedule(leagueId: string, scheduleId: number, week: number, season: number): Promise<MaddenGame>,
   getStandingForTeam(leagueId: string, teamId: number): Promise<Standing>,
@@ -375,10 +377,16 @@ const MaddenDB: MaddenDB = {
     return game
   },
   getAllWeeks: async function(leagueId: string) {
-    const schedules = await db.collection("madden_data26")
-      .doc(leagueId)
-      .collection(MaddenEvents.MADDEN_SCHEDULE).where("stageIndex", "==", 1).get()
-    return schedules.docs.map(d => d.data() as MaddenGame)
+    const status = await this.getExportStatus(leagueId)
+    if (status) {
+      Object.entries(status.weeklyStatus).flatMap(e => {
+        const [weekKey, weekStatus] = e
+        const weekSeason = parseExportStatusWeekKey(weekKey)
+        return weekStatus[MaddenEvents.MADDEN_SCHEDULE]?.lastExported != null ? [weekSeason] : []
+      }
+      )
+    }
+    return []
   }
   ,
   getStandingForTeam: async function(leagueId: string, teamId: number) {
@@ -545,8 +553,12 @@ const MaddenDB: MaddenDB = {
   },
   getExportStatus: async function(leagueId: string) {
     const doc = await db.collection("madden_data26").doc(leagueId).get()
-    const leagueDoc = convertDate(doc.data()) as LeagueDoc
-    return leagueDoc.exportStatus
+    if (doc.exists) {
+
+      const leagueDoc = convertDate(doc.data()) as LeagueDoc
+      return leagueDoc.exportStatus
+    }
+    return undefined
   },
   getStatsForGame: async function(leagueId: string, season: number, week: number, scheduleId: number) {
     const leagueRef = db.collection("madden_data26").doc(leagueId);
