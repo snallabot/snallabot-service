@@ -386,11 +386,11 @@ export default {
     const scheduleCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
     if (scheduleCommand.name === "weekly") {
       const week = (scheduleCommand.options?.[0] as APIApplicationCommandInteractionDataIntegerOption)?.value
-      if (week && (Number(week) < 1 || Number(week) > 23 || week === 22)) {
+      if (week != null && (Number(week) < 1 || Number(week) > 23 || week === 22)) {
         throw new Error("Invalid week number. Valid weeks are week 1-18 and for playoffs: Wildcard = 19, Divisional = 20, Conference Championship = 21, Super Bowl = 23")
       }
       const season = (scheduleCommand.options?.[1] as APIApplicationCommandInteractionDataIntegerOption)?.value
-      showSchedule(command.token, client, league, week ? Number(week) : undefined, season ? Number(season) : undefined)
+      showSchedule(command.token, client, league, week != null ? Number(week) : undefined, season != null ? Number(season) : undefined)
       respond(ctx, deferMessage())
     } else if (scheduleCommand.name === "team") {
       if (!scheduleCommand.options || !scheduleCommand.options[0]) {
