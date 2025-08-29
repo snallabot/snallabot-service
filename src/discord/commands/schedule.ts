@@ -174,13 +174,10 @@ async function showTeamSchedule(token: string, client: DiscordClient,
     })
     const season = teamSchedule?.[0]?.seasonIndex >= 0 ? teamSchedule[0].seasonIndex : requestedSeason != null ? requestedSeason : 0
 
-    // Determine all possible weeks (regular season + playoffs)
-    const regularSeasonWeeks = 18
-    const playoffWeeks = [19, 20, 21, 23] // Wild Card, Divisional, Conference Championship, Super Bowl
-    const allWeeks = [...Array(regularSeasonWeeks).keys()].map(i => i + 1).concat(playoffWeeks)
     const scheduleLines = []
 
-    for (const week of allWeeks) {
+
+    for (const week of allWeeks.filter(ws => ws.seasonIndex === season).map(ws => ws.weekIndex + 1)) {
       const game = weekToGameMap.get(week)
 
       if (!game && allWeeks.find(ws => ws.weekIndex === week - 1 && ws.seasonIndex === season)) {
