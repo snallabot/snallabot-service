@@ -68,8 +68,11 @@ async function showSchedule(token: string, client: DiscordClient,
         spacing: SeparatorSpacingSize.Large
       },
     ] : []
-    const view = await MaddenClient.getAllWeeks(league)
-    const weekOptions = view.filter(ws => ws.seasonIndex === season)
+    const allWeeks = await MaddenClient.getAllWeeks(league)
+    if (allWeeks.length === 0) {
+      throw new Error(`No Weeks availaible. Try exporting from the dashboard`)
+    }
+    const weekOptions = allWeeks.filter(ws => ws.seasonIndex === season)
       .map(ws => ws.weekIndex)
       .sort((a, b) => a - b)
       .map(w => ({
@@ -77,11 +80,11 @@ async function showSchedule(token: string, client: DiscordClient,
         value: { wi: w, si: season }
       }))
       .map(option => ({ ...option, value: JSON.stringify(option.value) }))
-    const seasonOptions = [...new Set(view.map(ws => ws.seasonIndex))]
+    const seasonOptions = [...new Set(allWeeks.map(ws => ws.seasonIndex))]
       .sort((a, b) => a - b)
       .map(s => ({
         label: `Season ${s + MADDEN_SEASON}`,
-        value: { wi: Math.min(...view.filter(ws => ws.seasonIndex === s).map(ws => ws.weekIndex) || [0]), si: s }
+        value: { wi: Math.min(...allWeeks.filter(ws => ws.seasonIndex === s).map(ws => ws.weekIndex) || [0]), si: s }
       }))
       .map(option => ({ ...option, value: JSON.stringify(option.value) }))
     await client.editOriginalInteraction(token, {
@@ -152,7 +155,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
     if (settledPromise[2].status !== "fulfilled") {
       throw new Error("Failed to get all season weeks")
     }
-    const view = settledPromise[2].value
+    const allWeeks = settledPromise[2].value
 
     // Filter schedule to only include games for the specified team
     const teamSchedule = schedule.filter(game =>
@@ -180,7 +183,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
     for (const week of allWeeks) {
       const game = weekToGameMap.get(week)
 
-      if (!game && view.find(ws => ws.weekIndex === week - 1 && ws.seasonIndex === season)) {
+      if (!game && allWeeks.find(ws => ws.weekIndex === week - 1 && ws.seasonIndex === season)) {
         // Only show bye week for regular season weeks (1-18)
         // its only a bye week if that week exists. if it does not, then its just a missing exported week
         if (week <= 18) {
@@ -268,7 +271,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
         spacing: SeparatorSpacingSize.Large
       },
     ] : []
-    const seasonOptions = [...new Set(view.map(ws => ws.seasonIndex))]
+    const seasonOptions = [...new Set(allWeeks.map(ws => ws.seasonIndex))]
       .sort((a, b) => a - b)
       .map(s => ({
         label: `Season ${s + MADDEN_SEASON}`,
