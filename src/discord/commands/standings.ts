@@ -200,23 +200,13 @@ function getStandingsFilter(interaction: MessageComponentInteraction) {
 export default {
   async handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext) {
     const { guild_id, token } = command
-    if (!command.data.options) {
-      throw new Error("game channels command not defined properly")
-    }
-    const options = command.data.options
-    const standingsCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
-    const subCommand = standingsCommand.name
     const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
     if (!leagueSettings?.commands?.madden_league?.league_id) {
       throw new Error("No madden league linked. Setup snallabot with your Madden league first")
     }
     const league = leagueSettings.commands.madden_league.league_id
-    const top = Number(standingsCommand?.options?.[0] ? (standingsCommand.options[0] as APIApplicationCommandInteractionDataIntegerOption).value : 32)
-    if (standingsCommand?.options?.[0]) {
-
-    }
     respond(ctx, deferMessage())
-    handleCommand(client, token, league, subCommand, top)
+    handleCommand(client, token, league)
   },
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
     return {
