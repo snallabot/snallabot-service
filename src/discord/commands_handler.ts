@@ -64,7 +64,8 @@ const MessageComponents: MessageComponentHandlers = {
   "week_selector": schedulesHandler,
   "season_selector": schedulesHandler,
   "team_season_selector": schedulesHandler,
-  "game_stats": gameStatsHandler
+  "game_stats": gameStatsHandler,
+  "standings_filter": standingsHandler
 }
 
 export async function handleCommand(command: Command, ctx: ParameterizedContext, discordClient: DiscordClient, db: Firestore) {
@@ -153,6 +154,11 @@ export async function handleMessageComponent(interaction: MessageComponentIntera
         ctx.body = body
       } else if (parsedCustomId.si != null) {
         const body = await schedulesHandler.handleInteraction(interaction, client)
+        ctx.status = 200
+        ctx.set("Content-Type", "application/json")
+        ctx.body = body
+      } else if (parsedCustomId.f != null) {
+        const body = await standingsHandler.handleInteraction(interaction, client)
         ctx.status = 200
         ctx.set("Content-Type", "application/json")
         ctx.body = body
