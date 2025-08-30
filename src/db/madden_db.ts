@@ -361,13 +361,23 @@ const MaddenDB: MaddenDB = {
   getPlayoffSchedule: async function(leagueId: string) {
     const weeks = await this.getAllWeeks(leagueId)
     const currentSeason = weeks.length === 0 ? 0 : Math.max(...weeks.map(ws => ws.seasonIndex))
-    const playoffGames = await db.collection("madden_data26")
+    const scheduleRef = db.collection("madden_data26")
       .doc(leagueId)
       .collection(MaddenEvents.MADDEN_SCHEDULE)
       .where("seasonIndex", "==", currentSeason)
-      .where("weekIndex", ">", 17)
+    const playoffGames = await Promise.all([scheduleRef
+      .where("weekIndex", "==", 18)
+      .get(), scheduleRef
+        .where("weekIndex", "==", 19)
+        .get(),
+    scheduleRef
+      .where("weekIndex", "==", 20)
+      .get(),
+    scheduleRef
+      .where("weekIndex", "==", 22)
       .get()
-    return playoffGames.docs.map(d => d.data() as MaddenGame)
+    ])
+    return playoffGames.flatMap(p => p.docs.map(d => d.data() as MaddenGame))
   }
   ,
   getWeekScheduleForSeason: async function(leagueId: string, week: number, season: number) {
