@@ -1,7 +1,7 @@
 import { ParameterizedContext } from "koa"
 import { APIChatInputApplicationCommandInteractionData, APIInteractionGuildMember } from "discord-api-types/payloads"
 import { APIApplicationCommandOptionChoice, APIAutocompleteApplicationCommandInteractionData, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
-import { createMessageResponse, respond, DiscordClient, CommandMode, SnallabotDiscordError } from "./discord_utils"
+import { createMessageResponse, respond, DiscordClient, CommandMode, SnallabotDiscordError, NoConnectedLeagueError } from "./discord_utils"
 import { Firestore } from "firebase-admin/firestore"
 import leagueExportHandler from "./commands/league_export"
 import testHandler from "./commands/test"
@@ -79,7 +79,10 @@ export async function handleCommand(command: Command, ctx: ParameterizedContext,
       ctx.status = 200
       if (error instanceof SnallabotDiscordError) {
         respond(ctx, createMessageResponse(`Discord Error in ${commandName}: ${error.message} Guidance: ${error.guidance}`))
-      } else {
+      } else if (error instanceof NoConnectedLeagueError) {
+        respond(ctx, createMessageResponse(error.message))
+      }
+      else {
         respond(ctx, createMessageResponse(`Fatal Error in ${commandName}: ${error.message}`))
       }
     }

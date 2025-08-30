@@ -2,6 +2,7 @@ import { ParameterizedContext } from "koa"
 import { verifyKey } from "discord-interactions"
 import { APIApplicationCommand, APIChannel, APIGuild, APIGuildMember, APIMessage, APIThreadChannel, APIUser, ChannelType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { CategoryId, ChannelId, DiscordIdType, MessageId, UserId } from "./settings_db"
+import { createDashboard } from "./commands/dashboard"
 
 export enum CommandMode {
   INSTALL = "INSTALL",
@@ -21,6 +22,12 @@ export class DiscordRequestError extends Error {
 
   isPermissionError() {
     return this.code == 50013 || this.code == 50001
+  }
+}
+
+export class NoConnectedLeagueError extends Error {
+  constructor(guild_id: string) {
+    super(`There is no Madden league connected to this Discord server. To connect, setup the dashboard at this url: ${createDashboard(guild_id)}`)
   }
 }
 

@@ -1,23 +1,25 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command } from "../commands_handler"
-import { respond, createMessageResponse, DiscordClient } from "../discord_utils"
+import { respond, createMessageResponse, DiscordClient, NoConnectedLeagueError } from "../discord_utils"
 import { ApplicationCommandType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
-import { DEPLOYMENT_URL } from "../../config"
-
-export function createDashboard(guild_id: string) {
-  return `Snallabot Dashboard: https://${DEPLOYMENT_URL}/dashboard?discord_connection=${guild_id}`
-}
+import { discordLeagueView } from "../../db/view"
 
 export default {
   async handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext) {
     const { guild_id } = command
-    respond(ctx, createMessageResponse(createDashboard(guild_id)))
+    const view = await discordLeagueView.createView(guild_id)
+    if (view) {
+
+    } else {
+      throw new NoConnectedLeagueError(guild_id)
+    }
+    respond(ctx, createMessageResponse(`bot is working`))
   },
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
     return {
-      name: "dashboard",
-      description: "snallabot dashboard link",
+      name: "test",
+      description: "test the bot is responding",
       type: ApplicationCommandType.ChatInput,
     }
   }
