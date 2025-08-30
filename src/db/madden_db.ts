@@ -377,7 +377,7 @@ const MaddenDB: MaddenDB = {
       .where("weekIndex", "==", 22)
       .get()
     ])
-    return playoffGames.flatMap(p => p.docs.map(d => d.data() as MaddenGame))
+    return playoffGames.flatMap(p => p.docs.map(d => d.data() as MaddenGame)).filter(g => g.awayTeamId !== 0 && g.homeTeamId !== 0)
   }
   ,
   getWeekScheduleForSeason: async function(leagueId: string, week: number, season: number) {
