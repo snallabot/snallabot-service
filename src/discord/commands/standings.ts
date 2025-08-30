@@ -1,9 +1,9 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command, MessageComponentHandler, MessageComponentInteraction } from "../commands_handler"
 import { respond, DiscordClient, deferMessage } from "../discord_utils"
-import { APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandType, ButtonStyle, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
+import { APIMessageStringSelectInteractionData, ApplicationCommandType, ButtonStyle, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
-import LeagueSettingsDB, { LeagueSettings } from "../settings_db"
+import LeagueSettingsDB from "../settings_db"
 import MaddenDB from "../../db/madden_db"
 import { Standing, formatRecord } from "../../export/madden_league_types"
 import { discordLeagueView } from "../../db/view"
@@ -13,30 +13,13 @@ function formatStandings(standings: Standing[], page: number = 0, itemsPerPage: 
   const endIndex = startIndex + itemsPerPage;
   const pageStandings = standings.slice(startIndex, endIndex);
 
-  const standingsMessageFull = pageStandings.map(standing => {
+  const message = pageStandings.map(standing => {
     const record = formatRecord(standing)
-    const teamRank = `Net Points: ${standing.netPts}\nPoints For: ${standing.ptsFor} (${standing.ptsForRank})\nPoints Against: ${standing.ptsAgainst} (${standing.ptsAgainstRank})\nTurnover Diff: ${standing.tODiff}`
-    const offenseRank = `### Offense Rank\nTotal: ${standing.offTotalYds}yds (${standing.offTotalYdsRank})\nPassing: ${standing.offPassYds}yds (${standing.offPassYdsRank})\nRushing: ${standing.offRushYds}yds (${standing.offRushYdsRank})`
-    const defensiveRank = `### Defense Rank\nTotal: ${standing.defTotalYds}yds (${standing.defTotalYdsRank})\nPassing: ${standing.defPassYds}yds (${standing.defPassYdsRank})\nRushing: ${standing.defRushYds}yds (${standing.defRushYdsRank})`
-    return `### ${standing.rank}. ${standing.teamName} (${record})\n${teamRank}\n${offenseRank}\n${defensiveRank}`
-  }).join("\n")
-
-  const standingsMessageLight = pageStandings.map(standing => {
-    const record = formatRecord(standing)
-    const teamRank = `Net Points: ${standing.netPts}\nOffense Yards: ${standing.offTotalYds} (${standing.offTotalYdsRank})\nDefense: ${standing.defTotalYds} (${standing.defTotalYdsRank})\nTurnover Diff: ${standing.tODiff}`
-    return `### ${standing.rank}. ${standing.teamName} (${record})\n${teamRank}`
-  }).join("\n")
-
-  const standingsMessageBare = pageStandings.map(standing => {
-    const record = formatRecord(standing)
-    return `### ${standing.rank}. ${standing.teamName} (${record})`
+    return `### ${standing.rank}. ${standing.teamName} (${record})\nNet: ${standing.netPts} | PF: ${standing.ptsFor} (${standing.ptsForRank}) | PA: ${standing.ptsAgainst} (${standing.ptsAgainstRank}) | TO: ${standing.tODiff}\nOFF: ${standing.offTotalYds}yds (${standing.offTotalYdsRank}) | DEF: ${standing.defTotalYds}yds (${standing.defTotalYdsRank})`
   }).join("\n")
 
   const totalPages = Math.ceil(standings.length / itemsPerPage);
   const pageInfo = totalPages > 1 ? `\n\n**Page ${page + 1} of ${totalPages}**` : '';
-
-  const message = [standingsMessageFull, standingsMessageLight, standingsMessageBare]
-    .find(s => (s + pageInfo).length < 2000) || standingsMessageBare;
 
   return message + pageInfo;
 }
