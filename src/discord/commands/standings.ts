@@ -32,6 +32,7 @@ function getStandingsForFilter(standings: Standing[], filter: string): Standing[
     case "nfc":
       return sortedStandings.filter(s => s.conferenceName.toLowerCase() === "nfc");
     case "afc_north":
+      console.log(sortedStandings)
       return sortedStandings.filter(s =>
         s.conferenceName.toLowerCase() === "afc" && s.divisonName.toLowerCase().includes("north"));
     case "afc_south":
