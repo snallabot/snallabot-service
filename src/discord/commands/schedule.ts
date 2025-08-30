@@ -72,7 +72,6 @@ async function showSchedule(token: string, client: DiscordClient,
     if (allWeeks.length === 0) {
       throw new Error(`No Weeks availaible. Try exporting from the dashboard`)
     }
-    console.log(allWeeks)
     const weekOptions = allWeeks.filter(ws => ws.seasonIndex === season)
       .map(ws => ws.weekIndex)
       .sort((a, b) => a - b)

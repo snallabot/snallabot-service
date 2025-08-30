@@ -382,6 +382,7 @@ const MaddenDB: MaddenDB = {
       return Object.entries(status.weeklyStatus).flatMap(e => {
         const [weekKey, weekStatus] = e
         const weekSeason = parseExportStatusWeekKey(weekKey)
+        weekSeason.weekIndex = weekSeason.weekIndex - 1
         return weekStatus[MaddenEvents.MADDEN_SCHEDULE]?.lastExported != null ? [weekSeason] : []
       })
     }
