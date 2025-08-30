@@ -581,7 +581,6 @@ export async function exporterForLeague(leagueId: number, context: ExportContext
       const destinations = Object.values(contextualExports)
       const leagueData = { weeks: [] } as any
       const leagueInfoRequests = [] as Promise<any>[]
-      const dataRequests = [] as Promise<any>[]
       function toStage(stage: number): Stage {
         return stage === 0 ? Stage.PRESEASON : Stage.SEASON
       }
@@ -618,9 +617,6 @@ export async function exporterForLeague(leagueId: number, context: ExportContext
           await exportData(weeklyData as ExportData, contextualExports, `${leagueId}`, client.getSystemConsole())
         }
       }
-
-      // avoid using too much memory, process weekly data first then team rosters
-      await Promise.all(dataRequests.map(request => staggeringCall(request, 50)))
       if (destinations.some(e => e.rosters)) {
         let teamRequests = [] as Promise<any>[]
         let teamData: TeamData = { roster: {} }
