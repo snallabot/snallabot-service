@@ -472,8 +472,8 @@ type WeeklyExportData = {
   weekIndex: number, stage: Stage, passing: PassingExport, schedules: SchedulesExport, teamstats: TeamStatsExport, defense: DefensiveExport, punting: PuntingExport, receiving: ReceivingExport, kicking: KickingExport, rushing: RushingExport
 }
 type ExportData = {
-  leagueTeams: TeamExport,
-  standings: StandingExport,
+  leagueTeams?: TeamExport,
+  standings?: StandingExport,
   weeks: WeeklyExportData[],
 }
 type TeamData = {
@@ -490,8 +490,9 @@ async function exportData(data: ExportData, destinations: { [key: string]: Expor
   const leagueInfo = Object.values(destinations).filter(d => d.leagueInfo).map(d => createDestination(d.url))
   const weeklyStats = Object.values(destinations).filter(d => d.weeklyStats).map(d => createDestination(d.url))
   if (leagueInfo.length > 0) {
+
     await Promise.all(leagueInfo.flatMap(d => {
-      return [d.leagueTeams(platform, leagueId, data.leagueTeams), d.standings(platform, leagueId, data.standings)]
+      return [data.leagueTeams ? d.leagueTeams(platform, leagueId, data.leagueTeams) : Promise.resolve(), data.standings ? d.standings(platform, leagueId, data.standings) : Promise.resolve()]
     }))
   }
   if (weeklyStats.length > 0) {
@@ -578,34 +579,44 @@ export async function exporterForLeague(leagueId: number, context: ExportContext
     },
     exportSpecificWeeks: async function(weeks: { weekIndex: number, stage: number }[]) {
       const destinations = Object.values(contextualExports)
-      const data = { weeks: [], roster: {} } as any
-      const dataRequests = [] as Promise<any>[]
+      const leagueData = { weeks: [] } as any
+      const leagueInfoRequests = [] as Promise<any>[]
       function toStage(stage: number): Stage {
         return stage === 0 ? Stage.PRESEASON : Stage.SEASON
       }
       if (destinations.some(e => e.leagueInfo)) {
-        dataRequests.push(client.getTeams(leagueId).then(t => data.leagueTeams = t))
-        dataRequests.push(client.getStandings(leagueId).then(t => data.standings = t))
+        leagueInfoRequests.push(client.getTeams(leagueId).then(t => leagueData.leagueTeams = t))
+        leagueInfoRequests.push(client.getStandings(leagueId).then(t => leagueData.standings = t))
       }
+      await Promise.all(leagueInfoRequests)
+      await exportData(leagueData as ExportData, contextualExports, `${leagueId}`, client.getSystemConsole())
       if (destinations.some(e => e.weeklyStats)) {
-        weeks.forEach(week => {
-          const stage = toStage(week.stage)
-          const weekData = { weekIndex: week.weekIndex, stage: stage } as WeeklyExportData
-          dataRequests.push(client.getPassingStats(leagueId, stage, week.weekIndex).then(s => weekData.passing = s))
-          dataRequests.push(client.getSchedules(leagueId, stage, week.weekIndex).then(s => weekData.schedules = s))
-          dataRequests.push(client.getTeamStats(leagueId, stage, week.weekIndex).then(s => weekData.teamstats = s))
-          dataRequests.push(client.getDefensiveStats(leagueId, stage, week.weekIndex).then(s => weekData.defense = s))
-          dataRequests.push(client.getPuntingStats(leagueId, stage, week.weekIndex).then(s => weekData.punting = s))
-          dataRequests.push(client.getReceivingStats(leagueId, stage, week.weekIndex).then(s => weekData.receiving = s))
-          dataRequests.push(client.getKickingStats(leagueId, stage, week.weekIndex).then(s => weekData.kicking = s))
-          dataRequests.push(client.getRushingStats(leagueId, stage, week.weekIndex).then(s => weekData.rushing = s))
-          data.weeks.push(weekData)
-        })
-      }
+        // Process weeks in batches of 4 to reduce memory usage on big exports
+        const batchSize = 4;
+        for (let i = 0; i < weeks.length; i += batchSize) {
+          const weeklyData = { weeks: [] } as any
+          const weekBatch = weeks.slice(i, i + batchSize);
+          const batchDataRequests = [] as Promise<any>[]
 
-      // avoid using too much memory, process weekly data first then team rosters
-      await Promise.all(dataRequests.map(request => staggeringCall(request, 50)))
-      await exportData(data as ExportData, contextualExports, `${leagueId}`, client.getSystemConsole())
+          weekBatch.forEach(week => {
+            const stage = toStage(week.stage)
+            const weekData = { weekIndex: week.weekIndex, stage: stage } as WeeklyExportData
+            batchDataRequests.push(client.getPassingStats(leagueId, stage, week.weekIndex).then(s => weekData.passing = s))
+            batchDataRequests.push(client.getSchedules(leagueId, stage, week.weekIndex).then(s => weekData.schedules = s))
+            batchDataRequests.push(client.getTeamStats(leagueId, stage, week.weekIndex).then(s => weekData.teamstats = s))
+            batchDataRequests.push(client.getDefensiveStats(leagueId, stage, week.weekIndex).then(s => weekData.defense = s))
+            batchDataRequests.push(client.getPuntingStats(leagueId, stage, week.weekIndex).then(s => weekData.punting = s))
+            batchDataRequests.push(client.getReceivingStats(leagueId, stage, week.weekIndex).then(s => weekData.receiving = s))
+            batchDataRequests.push(client.getKickingStats(leagueId, stage, week.weekIndex).then(s => weekData.kicking = s))
+            batchDataRequests.push(client.getRushingStats(leagueId, stage, week.weekIndex).then(s => weekData.rushing = s))
+            weeklyData.weeks.push(weekData)
+          })
+
+          // Process this batch and wait for completion before moving to next batch
+          await Promise.all(batchDataRequests.map(request => staggeringCall(request, 50)))
+          await exportData(weeklyData as ExportData, contextualExports, `${leagueId}`, client.getSystemConsole())
+        }
+      }
       if (destinations.some(e => e.rosters)) {
         let teamRequests = [] as Promise<any>[]
         let teamData: TeamData = { roster: {} }
