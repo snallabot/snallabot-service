@@ -193,7 +193,6 @@ export default {
     } else {
       throw new NoConnectedLeagueError(guild_id)
     }
-    respond(ctx, createMessageResponse(`bot is working`))
   },
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
     return {
