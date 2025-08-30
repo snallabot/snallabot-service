@@ -15,13 +15,10 @@ function formatStandings(standings: Standing[], page: number = 0, itemsPerPage: 
 
   const message = pageStandings.map(standing => {
     const record = formatRecord(standing)
-    return `### ${standing.rank}. ${standing.teamName} (${record})\nNet: ${standing.netPts} | PF: ${standing.ptsFor} (${standing.ptsForRank}) | PA: ${standing.ptsAgainst} (${standing.ptsAgainstRank}) | TO: ${standing.tODiff}\nOFF: ${standing.offTotalYds}yds (${standing.offTotalYdsRank}) | DEF: ${standing.defTotalYds}yds (${standing.defTotalYdsRank})`
+    return `### ${standing.rank}. ${standing.teamName} (${record})\nNet: ${standing.netPts} | Pts For: ${standing.ptsFor} (${standing.ptsForRank}) | Pts Against: ${standing.ptsAgainst} (${standing.ptsAgainstRank}) | TO: ${standing.tODiff}\nOFF: ${standing.offTotalYds} YDS (${standing.offTotalYdsRank}) | DEF: ${standing.defTotalYds} YDS (${standing.defTotalYdsRank})`
   }).join("\n")
 
-  const totalPages = Math.ceil(standings.length / itemsPerPage);
-  const pageInfo = totalPages > 1 ? `\n\n**Page ${page + 1} of ${totalPages}**` : '';
-
-  return message + pageInfo;
+  return message;
 }
 
 function getStandingsForFilter(standings: Standing[], filter: string): Standing[] {
