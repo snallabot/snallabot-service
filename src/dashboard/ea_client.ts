@@ -597,7 +597,7 @@ export async function exporterForLeague(leagueId: number, context: ExportContext
         for (let i = 0; i < weeks.length; i += batchSize) {
           const weeklyData = { weeks: [] } as any
           const weekBatch = weeks.slice(i, i + batchSize);
-          console.log(`processing batch ${weekBatch}`)
+          console.log(`processing batch ${weekBatch.map(w => w.weekIndex)}`)
           const batchDataRequests = [] as Promise<any>[]
 
           weekBatch.forEach(week => {
