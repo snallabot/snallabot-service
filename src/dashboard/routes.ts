@@ -272,7 +272,7 @@ router.get("/", async (ctx) => {
   const weeklyStatus = Object.fromEntries(Object.entries(exportStatus?.weeklyStatus || {}).map(e => {
     const [weekSeasonKey, status] = e
     const weekSeason = parseExportStatusWeekKey(weekSeasonKey)
-    return [weekSeasonKey, { ...status, displayName: `Year ${weekSeason.season + MADDEN_SEASON}, Week ${weekSeason.week}` }]
+    return [weekSeasonKey, { ...status, displayName: `Year ${weekSeason.seasonIndex + MADDEN_SEASON}, Week ${weekSeason.weekIndex + 1}` }]
   }))
   const lastAdvance = new Date(Date.now() - (secsSinceLastAdvancedTime * 1000));
   const displayableExportStatus = exportStatus ? {

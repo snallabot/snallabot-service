@@ -6,7 +6,7 @@ import { Firestore } from "firebase-admin/firestore"
 import { GameResult, MADDEN_SEASON, Team, getMessageForWeek } from "../../export/madden_league_types"
 import MaddenClient from "../../db/madden_db"
 import LeagueSettingsDB from "../settings_db"
-import { allLeagueWeeks, discordLeagueView, teamSearchView } from "../../db/view"
+import { discordLeagueView, teamSearchView } from "../../db/view"
 import { GameStatsOptions } from "./game_stats"
 import fuzzysort from "fuzzysort"
 
@@ -14,276 +14,305 @@ export type WeekSelection = { wi: number, si: number }
 export type TeamSelection = { ti: number, si: number }
 async function showSchedule(token: string, client: DiscordClient,
   league: string, requestedWeek?: number, requestedSeason?: number) {
-  const settledPromise = await Promise.allSettled([getWeekSchedule(league, requestedWeek != null ? Number(requestedWeek) : undefined, requestedSeason != null ? Number(requestedSeason) : undefined), MaddenClient.getLatestTeams(league)])
-  const schedule = settledPromise[0].status === "fulfilled" ? settledPromise[0].value : []
-  if (settledPromise[1].status !== "fulfilled") {
-    throw new Error("No Teams setup, setup the bot and export")
-  }
-  const teams = settledPromise[1].value
-  const sortedSchedule = schedule.sort((a, b) => a.scheduleId - b.scheduleId)
-  const teamMap = new Map<Number, Team>()
-  teams.getLatestTeams().forEach(t => teamMap.set(t.teamId, t))
-  const schedulesMessage = sortedSchedule.filter(w => w.awayTeamId !== 0 && w.homeTeamId !== 0).map(game => {
-    const awayTeam = teamMap.get(game.awayTeamId);
-    const homeTeam = teamMap.get(game.homeTeamId);
-    const awayDisplay = `${formatTeamEmoji(awayTeam?.abbrName)} ${awayTeam?.displayName}`;
-    const homeDisplay = `${formatTeamEmoji(homeTeam?.abbrName)} ${homeTeam?.displayName}`;
-
-    if (game.status === GameResult.NOT_PLAYED) {
-      return `${awayDisplay} vs ${homeDisplay}`;
-    } else {
-      if (game.awayScore > game.homeScore) {
-        return `**${awayDisplay} ${game.awayScore}** vs ${game.homeScore} ${homeDisplay}`;
-      } else if (game.homeScore > game.awayScore) {
-        return `${awayDisplay} ${game.awayScore} vs **${game.homeScore} ${homeDisplay}**`;
-      }
-      return `${awayDisplay} ${game.awayScore} vs ${game.homeScore} ${homeDisplay}`;
+  try {
+    const settledPromise = await Promise.allSettled([getWeekSchedule(league, requestedWeek != null ? Number(requestedWeek) : undefined, requestedSeason != null ? Number(requestedSeason) : undefined), MaddenClient.getLatestTeams(league)])
+    const schedule = settledPromise[0].status === "fulfilled" ? settledPromise[0].value : []
+    if (settledPromise[1].status !== "fulfilled") {
+      throw new Error("No Teams setup, setup the bot and export")
     }
-  }).join("\n")
-  const season = schedule?.[0]?.seasonIndex >= 0 ? schedule[0].seasonIndex : requestedSeason != null ? requestedSeason : 0
-  const week = schedule?.[0]?.weekIndex >= 0 ? schedule[0].weekIndex + 1 : requestedWeek != null ? requestedWeek : 1
+    const teams = settledPromise[1].value
+    const sortedSchedule = schedule.sort((a, b) => a.scheduleId - b.scheduleId)
+    const teamMap = new Map<Number, Team>()
+    teams.getLatestTeams().forEach(t => teamMap.set(t.teamId, t))
+    const schedulesMessage = sortedSchedule.filter(w => w.awayTeamId !== 0 && w.homeTeamId !== 0).map(game => {
+      const awayTeam = teamMap.get(game.awayTeamId);
+      const homeTeam = teamMap.get(game.homeTeamId);
+      const awayDisplay = `${formatTeamEmoji(awayTeam?.abbrName)} ${awayTeam?.displayName}`;
+      const homeDisplay = `${formatTeamEmoji(homeTeam?.abbrName)} ${homeTeam?.displayName}`;
 
-  const message = `# ${MADDEN_SEASON + season} ${getMessageForWeek(week)} Schedule\n${schedulesMessage}`
-  const gameOptions = sortedSchedule.filter(g => g.status !== GameResult.NOT_PLAYED && g.stageIndex > 0).map(game => ({
-    label: `${teamMap.get(game.awayTeamId)?.abbrName} ${game.awayScore} - ${game.homeScore} ${teamMap.get(game.homeTeamId)?.abbrName}`,
-    value: { w: game.weekIndex, s: game.seasonIndex, c: game.scheduleId, o: GameStatsOptions.OVERVIEW, b: { wi: week - 1, si: season } }
-  }))
-    .map(option => ({ ...option, value: JSON.stringify(option.value) }))
-  const gameSelector = gameOptions.length > 0 ? [
-    {
-      type: ComponentType.ActionRow,
-      components: [
-        {
-          type: ComponentType.StringSelect,
-          custom_id: "game_stats",
-          placeholder: "View Game Stats",
-          options: gameOptions
+      if (game.status === GameResult.NOT_PLAYED) {
+        return `${awayDisplay} vs ${homeDisplay}`;
+      } else {
+        if (game.awayScore > game.homeScore) {
+          return `**${awayDisplay} ${game.awayScore}** vs ${game.homeScore} ${homeDisplay}`;
+        } else if (game.homeScore > game.awayScore) {
+          return `${awayDisplay} ${game.awayScore} vs **${game.homeScore} ${homeDisplay}**`;
         }
-      ]
-    },
-    {
-      type: ComponentType.Separator,
-      divider: true,
-      spacing: SeparatorSpacingSize.Large
-    },
-  ] : []
-  const view = await allLeagueWeeks.createView(league)
-  const weekOptions = view?.filter(ws => ws.seasonIndex === season)
-    .map(ws => ws.weekIndex)
-    .sort((a, b) => a - b)
-    .map(w => ({
-      label: `${getMessageForWeek(w + 1)}`,
-      value: { wi: w, si: season }
+        return `${awayDisplay} ${game.awayScore} vs ${game.homeScore} ${homeDisplay}`;
+      }
+    }).join("\n")
+    const season = schedule?.[0]?.seasonIndex >= 0 ? schedule[0].seasonIndex : requestedSeason != null ? requestedSeason : 0
+    const week = schedule?.[0]?.weekIndex >= 0 ? schedule[0].weekIndex + 1 : requestedWeek != null ? requestedWeek : 1
+
+    const message = `# ${MADDEN_SEASON + season} ${getMessageForWeek(week)} Schedule\n${schedulesMessage}`
+    const gameOptions = sortedSchedule.filter(g => g.status !== GameResult.NOT_PLAYED && g.stageIndex > 0).map(game => ({
+      label: `${teamMap.get(game.awayTeamId)?.abbrName} ${game.awayScore} - ${game.homeScore} ${teamMap.get(game.homeTeamId)?.abbrName}`,
+      value: { w: game.weekIndex, s: game.seasonIndex, c: game.scheduleId, o: GameStatsOptions.OVERVIEW, b: { wi: week - 1, si: season } }
     }))
-    .map(option => ({ ...option, value: JSON.stringify(option.value) }))
-  const seasonOptions = [...new Set(view?.map(ws => ws.seasonIndex))]
-    .sort((a, b) => a - b)
-    .map(s => ({
-      label: `Season ${s + MADDEN_SEASON}`,
-      value: { wi: Math.min(...view?.filter(ws => ws.seasonIndex === s).map(ws => ws.weekIndex) || [0]), si: s }
-    }))
-    .map(option => ({ ...option, value: JSON.stringify(option.value) }))
-  await client.editOriginalInteraction(token, {
-    flags: 32768,
-    components: [
+      .map(option => ({ ...option, value: JSON.stringify(option.value) }))
+    const gameSelector = gameOptions.length > 0 ? [
       {
-        type: ComponentType.TextDisplay,
-        content: message
+        type: ComponentType.ActionRow,
+        components: [
+          {
+            type: ComponentType.StringSelect,
+            custom_id: "game_stats",
+            placeholder: "View Game Stats",
+            options: gameOptions
+          }
+        ]
       },
       {
         type: ComponentType.Separator,
         divider: true,
-        spacing: SeparatorSpacingSize.Small
+        spacing: SeparatorSpacingSize.Large
       },
-      ...gameSelector,
-      {
-        type: ComponentType.ActionRow,
-        components: [
-          {
-            type: ComponentType.StringSelect,
-            custom_id: "week_selector",
-            placeholder: `${getMessageForWeek(week)}`,
-            options: weekOptions
-          }
-        ]
-      },
-      {
-        type: ComponentType.ActionRow,
-        components: [
-          {
-            type: ComponentType.StringSelect,
-            custom_id: "season_selector",
-            placeholder: `Season ${(season) + MADDEN_SEASON}`,
-            options: seasonOptions
-          }
-        ]
-      },
-    ]
-  })
+    ] : []
+    const allWeeks = await MaddenClient.getAllWeeks(league)
+    if (allWeeks.length === 0) {
+      throw new Error(`No Weeks availaible. Try exporting from the dashboard`)
+    }
+    const weekOptions = allWeeks.filter(ws => ws.seasonIndex === season)
+      .map(ws => ws.weekIndex)
+      .sort((a, b) => a - b)
+      .map(w => ({
+        label: `${getMessageForWeek(w + 1)}`,
+        value: { wi: w, si: season }
+      }))
+      .map(option => ({ ...option, value: JSON.stringify(option.value) }))
+    const seasonOptions = [...new Set(allWeeks.map(ws => ws.seasonIndex))]
+      .sort((a, b) => a - b)
+      .map(s => ({
+        label: `Season ${s + MADDEN_SEASON}`,
+        value: { wi: Math.min(...allWeeks.filter(ws => ws.seasonIndex === s).map(ws => ws.weekIndex) || [0]), si: s }
+      }))
+      .map(option => ({ ...option, value: JSON.stringify(option.value) }))
+    await client.editOriginalInteraction(token, {
+      flags: 32768,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: message
+        },
+        {
+          type: ComponentType.Separator,
+          divider: true,
+          spacing: SeparatorSpacingSize.Small
+        },
+        ...gameSelector,
+        {
+          type: ComponentType.ActionRow,
+          components: [
+            {
+              type: ComponentType.StringSelect,
+              custom_id: "week_selector",
+              placeholder: `${getMessageForWeek(week)}`,
+              options: weekOptions
+            }
+          ]
+        },
+        {
+          type: ComponentType.ActionRow,
+          components: [
+            {
+              type: ComponentType.StringSelect,
+              custom_id: "season_selector",
+              placeholder: `Season ${(season) + MADDEN_SEASON}`,
+              options: seasonOptions
+            }
+          ]
+        },
+      ]
+    })
+  } catch (e) {
+    console.error(e)
+    await client.editOriginalInteraction(token, {
+      flags: 32768,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: `Failed to show schedule, ${e}`
+        }
+      ]
+    })
+  }
 }
 
 async function showTeamSchedule(token: string, client: DiscordClient,
   league: string, teamId: number, requestedSeason?: number) {
-  const settledPromise = await Promise.allSettled([
-    MaddenClient.getTeamSchedule(league, requestedSeason),
-    MaddenClient.getLatestTeams(league)
-  ])
+  try {
+    const settledPromise = await Promise.allSettled([
+      MaddenClient.getTeamSchedule(league, requestedSeason),
+      MaddenClient.getLatestTeams(league),
+      MaddenClient.getAllWeeks(league)
+    ])
 
-  const schedule = settledPromise[0].status === "fulfilled" ? settledPromise[0].value : []
-  if (settledPromise[1].status !== "fulfilled") {
-    throw new Error("No Teams setup, setup the bot and export")
-  }
-  const teams = settledPromise[1].value
+    const schedule = settledPromise[0].status === "fulfilled" ? settledPromise[0].value : []
+    if (settledPromise[1].status !== "fulfilled") {
+      throw new Error("No Teams setup, setup the bot and export")
+    }
+    const teams = settledPromise[1].value
+    if (settledPromise[2].status !== "fulfilled") {
+      throw new Error("Failed to get all season weeks")
+    }
+    const allWeeks = settledPromise[2].value
 
-  // Filter schedule to only include games for the specified team
-  const teamSchedule = schedule.filter(game =>
-    game.awayTeamId === teamId || game.homeTeamId === teamId
-  ).sort((a, b) => a.scheduleId - b.scheduleId)
+    // Filter schedule to only include games for the specified team
+    const teamSchedule = schedule.filter(game =>
+      game.awayTeamId === teamId || game.homeTeamId === teamId
+    ).sort((a, b) => a.scheduleId - b.scheduleId)
 
 
-  const selectedTeam = teams.getTeamForId(teamId)
-  if (!selectedTeam) {
-    throw new Error("Team not found")
-  }
+    const selectedTeam = teams.getTeamForId(teamId)
+    if (!selectedTeam) {
+      throw new Error("Team not found")
+    }
 
-  const weekToGameMap = new Map<number, any>()
-  teamSchedule.forEach(game => {
-    weekToGameMap.set(game.weekIndex + 1, game)
-  })
+    const weekToGameMap = new Map<number, any>()
+    teamSchedule.forEach(game => {
+      weekToGameMap.set(game.weekIndex + 1, game)
+    })
+    const season = teamSchedule?.[0]?.seasonIndex >= 0 ? teamSchedule[0].seasonIndex : requestedSeason != null ? requestedSeason : 0
 
-  // Determine all possible weeks (regular season + playoffs)
-  const regularSeasonWeeks = 18
-  const playoffWeeks = [19, 20, 21, 23] // Wild Card, Divisional, Conference Championship, Super Bowl
-  const allWeeks = [...Array(regularSeasonWeeks).keys()].map(i => i + 1).concat(playoffWeeks)
-  const scheduleLines = []
+    const scheduleLines = []
+    const weeksToShow = allWeeks.filter(ws => ws.seasonIndex === season).map(ws => ws.weekIndex + 1).sort((a, b) => a - b)
+    for (const week of weeksToShow) {
+      const game = weekToGameMap.get(week)
 
-  for (const week of allWeeks) {
-    const game = weekToGameMap.get(week)
+      if (!game && allWeeks.find(ws => ws.weekIndex === week - 1 && ws.seasonIndex === season)) {
+        // Only show bye week for regular season weeks (1-18)
+        // its only a bye week if that week exists. if it does not, then its just a missing exported week
+        if (week <= 18) {
+          scheduleLines.push(`**Week ${week}:** BYE`)
+        }
+      } else {
+        const isTeamAway = game.awayTeamId === teamId
+        const opponent = teams.getTeamForId(isTeamAway ? game.homeTeamId : game.awayTeamId)
+        const opponentDisplay = `${formatTeamEmoji(opponent?.abbrName)} ${opponent?.displayName}`
+        const teamDisplay = `${formatTeamEmoji(selectedTeam.abbrName)} ${selectedTeam.displayName}`
 
-    if (!game) {
-      // Only show bye week for regular season weeks (1-18)
-      if (week <= 18) {
-        scheduleLines.push(`**Week ${week}:** BYE`)
+        const weekLabel = getMessageForWeek(week)
+
+        if (game.status === GameResult.NOT_PLAYED) {
+          scheduleLines.push(`**${weekLabel}:** ${teamDisplay} ${isTeamAway ? '@' : 'vs'} ${opponentDisplay}`)
+        } else {
+          const teamScore = isTeamAway ? game.awayScore : game.homeScore
+          const opponentScore = isTeamAway ? game.homeScore : game.awayScore
+          const teamWon = teamScore > opponentScore
+
+          if (teamWon) {
+            scheduleLines.push(`**${weekLabel}:** **${teamDisplay} ${teamScore}** ${isTeamAway ? '@' : 'vs'} ${opponentScore} ${opponentDisplay}`)
+          } else if (teamScore < opponentScore) {
+            scheduleLines.push(`**${weekLabel}:** ${teamDisplay} ${teamScore} ${isTeamAway ? '@' : 'vs'} **${opponentScore} ${opponentDisplay}**`)
+          } else {
+            // Tie game
+            scheduleLines.push(`**${weekLabel}:** ${teamDisplay} ${teamScore} ${isTeamAway ? '@' : 'vs'} ${opponentScore} ${opponentDisplay}`)
+          }
+        }
       }
-    } else {
+    }
+    const schedulesMessage = scheduleLines.join("\n")
+
+    const playedGames = teamSchedule.filter(game => game.status !== GameResult.NOT_PLAYED)
+    let wins = 0
+    let losses = 0
+    let ties = 0
+
+    playedGames.forEach(game => {
+      const isTeamAway = game.awayTeamId === teamId
+      const teamScore = isTeamAway ? game.awayScore : game.homeScore
+      const opponentScore = isTeamAway ? game.homeScore : game.awayScore
+
+      if (teamScore > opponentScore) {
+        wins++
+      } else if (teamScore < opponentScore) {
+        losses++
+      } else {
+        ties++
+      }
+    })
+
+    const recordText = playedGames.length > 0 ?
+      ties > 0 ? ` (${wins}-${losses}-${ties})` : ` (${wins}-${losses})` : ""
+    const message = `# ${selectedTeam.displayName} ${MADDEN_SEASON + season} Season Schedule${recordText}\n${schedulesMessage}`
+
+    const gameOptions = teamSchedule.filter(g => g.status !== GameResult.NOT_PLAYED).sort((a, b) => a.weekIndex - b.weekIndex).map(game => {
       const isTeamAway = game.awayTeamId === teamId
       const opponent = teams.getTeamForId(isTeamAway ? game.homeTeamId : game.awayTeamId)
-      const opponentDisplay = `${formatTeamEmoji(opponent?.abbrName)} ${opponent?.displayName}`
-      const teamDisplay = `${formatTeamEmoji(selectedTeam.abbrName)} ${selectedTeam.displayName}`
+      const teamScore = isTeamAway ? game.awayScore : game.homeScore
+      const opponentScore = isTeamAway ? game.homeScore : game.awayScore
 
-      const weekLabel = getMessageForWeek(week)
-
-      if (game.status === GameResult.NOT_PLAYED) {
-        scheduleLines.push(`**${weekLabel}:** ${teamDisplay} ${isTeamAway ? '@' : 'vs'} ${opponentDisplay}`)
-      } else {
-        const teamScore = isTeamAway ? game.awayScore : game.homeScore
-        const opponentScore = isTeamAway ? game.homeScore : game.awayScore
-        const teamWon = teamScore > opponentScore
-
-        if (teamWon) {
-          scheduleLines.push(`**${weekLabel}:** **${teamDisplay} ${teamScore}** ${isTeamAway ? '@' : 'vs'} ${opponentScore} ${opponentDisplay}`)
-        } else if (teamScore < opponentScore) {
-          scheduleLines.push(`**${weekLabel}:** ${teamDisplay} ${teamScore} ${isTeamAway ? '@' : 'vs'} **${opponentScore} ${opponentDisplay}**`)
-        } else {
-          // Tie game
-          scheduleLines.push(`**${weekLabel}:** ${teamDisplay} ${teamScore} ${isTeamAway ? '@' : 'vs'} ${opponentScore} ${opponentDisplay}`)
-        }
+      return {
+        label: `${selectedTeam.abbrName} ${teamScore} - ${opponentScore} ${opponent?.abbrName}`,
+        value: { w: game.weekIndex, s: game.seasonIndex, c: game.scheduleId, o: GameStatsOptions.OVERVIEW, b: { ti: teamId, si: season } }
       }
-    }
-  }
-  const schedulesMessage = scheduleLines.join("\n")
-  const season = teamSchedule?.[0]?.seasonIndex >= 0 ? teamSchedule[0].seasonIndex : requestedSeason != null ? requestedSeason : 0
+    })
+      .map(option => ({ ...option, value: JSON.stringify(option.value) }))
 
-  const playedGames = teamSchedule.filter(game => game.status !== GameResult.NOT_PLAYED)
-  let wins = 0
-  let losses = 0
-  let ties = 0
-
-  playedGames.forEach(game => {
-    const isTeamAway = game.awayTeamId === teamId
-    const teamScore = isTeamAway ? game.awayScore : game.homeScore
-    const opponentScore = isTeamAway ? game.homeScore : game.awayScore
-
-    if (teamScore > opponentScore) {
-      wins++
-    } else if (teamScore < opponentScore) {
-      losses++
-    } else {
-      ties++
-    }
-  })
-
-  const recordText = playedGames.length > 0 ?
-    ties > 0 ? ` (${wins}-${losses}-${ties})` : ` (${wins}-${losses})` : ""
-  const message = `# ${selectedTeam.displayName} ${MADDEN_SEASON + season} Season Schedule${recordText}\n${schedulesMessage}`
-
-  const gameOptions = teamSchedule.filter(g => g.status !== GameResult.NOT_PLAYED).sort((a, b) => a.weekIndex - b.weekIndex).map(game => {
-    const isTeamAway = game.awayTeamId === teamId
-    const opponent = teams.getTeamForId(isTeamAway ? game.homeTeamId : game.awayTeamId)
-    const teamScore = isTeamAway ? game.awayScore : game.homeScore
-    const opponentScore = isTeamAway ? game.homeScore : game.awayScore
-
-    return {
-      label: `${selectedTeam.abbrName} ${teamScore} - ${opponentScore} ${opponent?.abbrName}`,
-      value: { w: game.weekIndex, s: game.seasonIndex, c: game.scheduleId, o: GameStatsOptions.OVERVIEW, b: { ti: teamId, si: season } }
-    }
-  })
-    .map(option => ({ ...option, value: JSON.stringify(option.value) }))
-
-  const gameSelector = gameOptions.length > 0 ? [
-    {
-      type: ComponentType.ActionRow,
-      components: [
-        {
-          type: ComponentType.StringSelect,
-          custom_id: "game_stats",
-          placeholder: "View Game Stats",
-          options: gameOptions
-        }
-      ]
-    },
-    {
-      type: ComponentType.Separator,
-      divider: true,
-      spacing: SeparatorSpacingSize.Large
-    },
-  ] : []
-
-  const view = await allLeagueWeeks.createView(league)
-  const seasonOptions = [...new Set(view?.map(ws => ws.seasonIndex))]
-    .sort((a, b) => a - b)
-    .map(s => ({
-      label: `Season ${s + MADDEN_SEASON}`,
-      value: { si: s, ti: teamId }
-    }))
-    .map(option => ({ ...option, value: JSON.stringify(option.value) }))
-
-  await client.editOriginalInteraction(token, {
-    flags: 32768,
-    components: [
-      {
-        type: ComponentType.TextDisplay,
-        content: message
-      },
-      {
-        type: ComponentType.Separator,
-        divider: true,
-        spacing: SeparatorSpacingSize.Small
-      },
-      ...gameSelector,
+    const gameSelector = gameOptions.length > 0 ? [
       {
         type: ComponentType.ActionRow,
         components: [
           {
             type: ComponentType.StringSelect,
-            custom_id: "team_season_selector",
-            placeholder: `Season ${season + MADDEN_SEASON}`,
-            options: seasonOptions
+            custom_id: "game_stats",
+            placeholder: "View Game Stats",
+            options: gameOptions
           }
         ]
       },
-    ]
-  })
+      {
+        type: ComponentType.Separator,
+        divider: true,
+        spacing: SeparatorSpacingSize.Large
+      },
+    ] : []
+    const seasonOptions = [...new Set(allWeeks.map(ws => ws.seasonIndex))]
+      .sort((a, b) => a - b)
+      .map(s => ({
+        label: `Season ${s + MADDEN_SEASON}`,
+        value: { si: s, ti: teamId }
+      }))
+      .map(option => ({ ...option, value: JSON.stringify(option.value) }))
+
+    await client.editOriginalInteraction(token, {
+      flags: 32768,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: message
+        },
+        {
+          type: ComponentType.Separator,
+          divider: true,
+          spacing: SeparatorSpacingSize.Small
+        },
+        ...gameSelector,
+        {
+          type: ComponentType.ActionRow,
+          components: [
+            {
+              type: ComponentType.StringSelect,
+              custom_id: "team_season_selector",
+              placeholder: `Season ${season + MADDEN_SEASON}`,
+              options: seasonOptions
+            }
+          ]
+        },
+      ]
+    })
+  } catch (e) {
+    console.error(e)
+    await client.editOriginalInteraction(token, {
+      flags: 32768,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: `Failed to show schedule, ${e}`
+        }
+      ]
+    })
+  }
 
 }
 
@@ -356,11 +385,11 @@ export default {
     const scheduleCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
     if (scheduleCommand.name === "weekly") {
       const week = (scheduleCommand.options?.[0] as APIApplicationCommandInteractionDataIntegerOption)?.value
-      if (week && (Number(week) < 1 || Number(week) > 23 || week === 22)) {
+      if (week != null && (Number(week) < 1 || Number(week) > 23 || week === 22)) {
         throw new Error("Invalid week number. Valid weeks are week 1-18 and for playoffs: Wildcard = 19, Divisional = 20, Conference Championship = 21, Super Bowl = 23")
       }
       const season = (scheduleCommand.options?.[1] as APIApplicationCommandInteractionDataIntegerOption)?.value
-      showSchedule(command.token, client, league, week ? Number(week) : undefined, season ? Number(season) : undefined)
+      showSchedule(command.token, client, league, week != null ? Number(week) : undefined, season != null ? Number(season) : undefined)
       respond(ctx, deferMessage())
     } else if (scheduleCommand.name === "team") {
       if (!scheduleCommand.options || !scheduleCommand.options[0]) {
