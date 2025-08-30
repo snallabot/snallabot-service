@@ -592,12 +592,11 @@ export async function exporterForLeague(leagueId: number, context: ExportContext
       await Promise.all(leagueInfoRequests)
       await exportData(leagueData as ExportData, contextualExports, `${leagueId}`, client.getSystemConsole())
       if (destinations.some(e => e.weeklyStats)) {
-        // Process weeks in batches of 4
+        // Process weeks in batches of 4 to reduce memory usage on big exports
         const batchSize = 4;
         for (let i = 0; i < weeks.length; i += batchSize) {
           const weeklyData = { weeks: [] } as any
           const weekBatch = weeks.slice(i, i + batchSize);
-          console.log(`processing batch ${weekBatch.map(w => w.weekIndex)}`)
           const batchDataRequests = [] as Promise<any>[]
 
           weekBatch.forEach(week => {
@@ -619,7 +618,6 @@ export async function exporterForLeague(leagueId: number, context: ExportContext
           await exportData(weeklyData as ExportData, contextualExports, `${leagueId}`, client.getSystemConsole())
         }
       }
-
 
       // avoid using too much memory, process weekly data first then team rosters
       await Promise.all(dataRequests.map(request => staggeringCall(request, 50)))
