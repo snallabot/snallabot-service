@@ -11,6 +11,11 @@ function formatPlayoffBracket(standings: Standing[], playoffGames: MaddenGame[],
   // Filter teams that made playoffs (seed > 0)
   const playoffTeams = standings.filter(team => team.seed > 0 && team.seed <= 7);
 
+  // Filter teams still in the hunt (undecided and not in playoffs yet)
+  const inTheHuntTeams = standings.filter(team =>
+    team.playoffStatus === PlayoffStatus.UNDECIDED && (team.seed === 0 || team.seed > 7)
+  );
+
   if (playoffTeams.length === 0) {
     return "No playoff teams found. Playoffs may not have been set yet.";
   }
@@ -23,6 +28,14 @@ function formatPlayoffBracket(standings: Standing[], playoffGames: MaddenGame[],
   const nfcTeams = playoffTeams
     .filter(team => team.conferenceName.toLowerCase() === 'nfc')
     .sort((a, b) => a.seed - b.seed);
+
+  const afcHuntTeams = inTheHuntTeams
+    .filter(team => team.conferenceName.toLowerCase() === 'afc')
+    .sort((a, b) => b.winPct - a.winPct); // Sort by win percentage descending
+
+  const nfcHuntTeams = inTheHuntTeams
+    .filter(team => team.conferenceName.toLowerCase() === 'nfc')
+    .sort((a, b) => b.winPct - a.winPct); // Sort by win percentage descending
 
   // Group playoff games by week (18+ are playoff weeks)
   const wildCardGames = playoffGames.filter(game => game.weekIndex === 18); // Week 19 in 1-based
@@ -83,6 +96,28 @@ function formatPlayoffBracket(standings: Standing[], playoffGames: MaddenGame[],
     if (afcChampionship) {
       bracket += "### AFC Championship\n";
       bracket += formatGameResult(afcChampionship, teams, standings) + "\n\n";
+    }
+
+    // Teams still in the hunt
+    if (afcHuntTeams.length > 0) {
+      bracket += "### AFC In The Hunt\n";
+      afcHuntTeams.forEach(team => {
+        const record = formatRecord(team);
+        const playoffStatusIndicator = getPlayoffStatusIndicator(team.playoffStatus);
+        bracket += `${team.teamName} (${record})${playoffStatusIndicator}\n`;
+      });
+      bracket += "\n";
+    }
+
+    // Teams still in the hunt
+    if (nfcHuntTeams.length > 0) {
+      bracket += "### NFC In The Hunt\n";
+      nfcHuntTeams.forEach(team => {
+        const record = formatRecord(team);
+        const playoffStatusIndicator = getPlayoffStatusIndicator(team.playoffStatus);
+        bracket += `${team.teamName} (${record})${playoffStatusIndicator}\n`;
+      });
+      bracket += "\n";
     }
   }
 
