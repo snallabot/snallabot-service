@@ -365,7 +365,6 @@ const MaddenDB: MaddenDB = {
       .doc(leagueId)
       .collection(MaddenEvents.MADDEN_SCHEDULE)
       .where("seasonIndex", "==", currentSeason)
-      .where("stageIndex", "==", 1)
       .where("weekIndex", ">", 17)
       .get()
     return playoffGames.docs.map(d => d.data() as MaddenGame)

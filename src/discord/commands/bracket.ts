@@ -197,7 +197,7 @@ export default {
   },
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
     return {
-      name: "/playoffs",
+      name: "playoffs",
       description: "See the current playoff status",
       type: ApplicationCommandType.ChatInput,
     }
