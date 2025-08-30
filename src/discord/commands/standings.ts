@@ -32,30 +32,29 @@ function getStandingsForFilter(standings: Standing[], filter: string): Standing[
     case "nfc":
       return sortedStandings.filter(s => s.conferenceName.toLowerCase() === "nfc");
     case "afc_north":
-      console.log(sortedStandings.map(s => s.divisonName))
       return sortedStandings.filter(s =>
-        s.conferenceName.toLowerCase() === "afc" && s.divisonName.toLowerCase().includes("north"));
+        s.conferenceName.toLowerCase() === "afc" && s.divisionName.toLowerCase().includes("north"));
     case "afc_south":
       return sortedStandings.filter(s =>
-        s.conferenceName.toLowerCase() === "afc" && s.divisonName.toLowerCase().includes("south"));
+        s.conferenceName.toLowerCase() === "afc" && s.divisionName.toLowerCase().includes("south"));
     case "afc_east":
       return sortedStandings.filter(s =>
-        s.conferenceName.toLowerCase() === "afc" && s.divisonName.toLowerCase().includes("east"));
+        s.conferenceName.toLowerCase() === "afc" && s.divisionName.toLowerCase().includes("east"));
     case "afc_west":
       return sortedStandings.filter(s =>
-        s.conferenceName.toLowerCase() === "afc" && s.divisonName.toLowerCase().includes("west"));
+        s.conferenceName.toLowerCase() === "afc" && s.divisionName.toLowerCase().includes("west"));
     case "nfc_north":
       return sortedStandings.filter(s =>
-        s.conferenceName.toLowerCase() === "nfc" && s.divisonName.toLowerCase().includes("north"));
+        s.conferenceName.toLowerCase() === "nfc" && s.divisionName.toLowerCase().includes("north"));
     case "nfc_south":
       return sortedStandings.filter(s =>
-        s.conferenceName.toLowerCase() === "nfc" && s.divisonName.toLowerCase().includes("south"));
+        s.conferenceName.toLowerCase() === "nfc" && s.divisionName.toLowerCase().includes("south"));
     case "nfc_east":
       return sortedStandings.filter(s =>
-        s.conferenceName.toLowerCase() === "nfc" && s.divisonName.toLowerCase().includes("east"));
+        s.conferenceName.toLowerCase() === "nfc" && s.divisionName.toLowerCase().includes("east"));
     case "nfc_west":
       return sortedStandings.filter(s =>
-        s.conferenceName.toLowerCase() === "nfc" && s.divisonName.toLowerCase().includes("west"));
+        s.conferenceName.toLowerCase() === "nfc" && s.divisionName.toLowerCase().includes("west"));
     default:
       return sortedStandings;
   }

@@ -64,7 +64,7 @@ export type Standing = {
   teamOvr: number,
   capAvailable: number,
   winPct: number,
-  divisonName: string,
+  divisionName: string,
   ptsAgainst: number,
   divLosses: number,
   playoffStatus: number,
