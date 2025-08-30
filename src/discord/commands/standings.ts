@@ -132,7 +132,7 @@ async function handleCommand(client: DiscordClient, token: string, league: strin
             placeholder: filterOptions.find(opt => opt.value === filter)?.label || "NFL",
             options: filterOptions.map(option => ({
               ...option,
-              value: JSON.stringify({ filter: option.value, page: 0 })
+              value: JSON.stringify({ f: option.value, p: 0 })
             }))
           }
         ]
