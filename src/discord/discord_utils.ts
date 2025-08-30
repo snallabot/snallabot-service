@@ -509,9 +509,9 @@ export enum SnallabotTeamEmojis {
 export function getTeamEmoji(teamAbbr: string): SnallabotTeamEmojis {
   return SnallabotTeamEmojis[teamAbbr.toUpperCase() as keyof typeof SnallabotTeamEmojis] || SnallabotTeamEmojis.NFL
 }
-export function formatTeamEmoji(teamId?: string) {
-  if (teamId) {
-    return getTeamEmoji(teamId)
+export function formatTeamEmoji(teamAbbr?: string) {
+  if (teamAbbr) {
+    return getTeamEmoji(teamAbbr)
   }
   return SnallabotTeamEmojis.NFL
 }

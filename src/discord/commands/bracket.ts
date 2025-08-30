@@ -1,6 +1,6 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command } from "../commands_handler"
-import { respond, createMessageResponse, DiscordClient, NoConnectedLeagueError } from "../discord_utils"
+import { respond, createMessageResponse, DiscordClient, NoConnectedLeagueError, formatTeamEmoji } from "../discord_utils"
 import { ApplicationCommandType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
 import { discordLeagueView } from "../../db/view"
@@ -32,7 +32,7 @@ function formatPlayoffBracket(standings: Standing[], playoffGames: MaddenGame[],
   const conferenceGames = playoffGames.filter(game => game.weekIndex === 20); // Week 21
   const superBowlGames = playoffGames.filter(game => game.weekIndex === 22); // Week 23
 
-  let bracket = "# Current NFL Playoff Picture\n\n";
+  let bracket = "# Current Playoff Picture\n\n";
 
   // AFC Conference
   if (afcTeams.length > 0) {
@@ -47,7 +47,6 @@ function formatPlayoffBracket(standings: Standing[], playoffGames: MaddenGame[],
     // Wild Card Games
     const afcWildCardGames = wildCardGames.filter(game => {
       const awayTeam = teams.getTeamForId(game.awayTeamId);
-      const homeTeam = teams.getTeamForId(game.homeTeamId);
       const awayStanding = standings.find(s => s.teamId === awayTeam.teamId);
       return awayStanding?.conferenceName.toLowerCase() === 'afc';
     });
@@ -163,10 +162,8 @@ function formatGameResult(game: MaddenGame, teams: TeamList, standings: Standing
 
   const awaySeed = awayStanding?.seed || '';
   const homeSeed = homeStanding?.seed || '';
-
-  const awayDisplay = `(${awaySeed}) ${awayTeam.displayName}`;
-  const homeDisplay = `(${homeSeed}) ${homeTeam.displayName}`;
-
+  const awayDisplay = `(${awaySeed}) ${formatTeamEmoji(awayTeam.abbrName)} ${awayTeam.displayName}`;
+  const homeDisplay = `(${homeSeed}) ${formatTeamEmoji(homeTeam.abbrName)} ${homeTeam.displayName}`;
   if (game.status === GameResult.NOT_PLAYED) {
     return `${awayDisplay} @ ${homeDisplay}`;
   } else {
