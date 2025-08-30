@@ -5,9 +5,7 @@ import { ApplicationCommandType, RESTPostAPIApplicationCommandsJSONBody } from "
 import { Firestore } from "firebase-admin/firestore"
 import { discordLeagueView } from "../../db/view"
 import MaddenDB, { TeamList } from "../../db/madden_db"
-import { GameResult, MaddenGame, Standing, formatRecord } from "../../export/madden_league_types"
-
-
+import { GameResult, MaddenGame, PlayoffStatus, Standing, formatRecord } from "../../export/madden_league_types"
 
 function formatPlayoffBracket(standings: Standing[], playoffGames: MaddenGame[], teams: TeamList): string {
   // Filter teams that made playoffs (seed > 0)
@@ -40,7 +38,8 @@ function formatPlayoffBracket(standings: Standing[], playoffGames: MaddenGame[],
     afcTeams.forEach(team => {
       const record = formatRecord(team);
       const byeStatus = team.seed === 1 ? " **(BYE)**" : "";
-      bracket += `**${team.seed}.** ${team.teamName} (${record})${byeStatus}\n`;
+      const playoffStatusIndicator = getPlayoffStatusIndicator(team.playoffStatus);
+      bracket += `**${team.seed}.** ${team.teamName} (${record})${playoffStatusIndicator}${byeStatus}\n`;
     });
     bracket += "\n";
 
@@ -93,7 +92,8 @@ function formatPlayoffBracket(standings: Standing[], playoffGames: MaddenGame[],
     nfcTeams.forEach(team => {
       const record = formatRecord(team);
       const byeStatus = team.seed === 1 ? " **(BYE)**" : "";
-      bracket += `**${team.seed}.** ${team.teamName} (${record})${byeStatus}\n`;
+      const playoffStatusIndicator = getPlayoffStatusIndicator(team.playoffStatus);
+      bracket += `**${team.seed}.** ${team.teamName} (${record})${playoffStatusIndicator}${byeStatus}\n`;
     });
     bracket += "\n";
 
@@ -151,6 +151,24 @@ function formatPlayoffBracket(standings: Standing[], playoffGames: MaddenGame[],
 
   return bracket;
 }
+
+function getPlayoffStatusIndicator(status: PlayoffStatus): string {
+  switch (status) {
+    case PlayoffStatus.CLINCHED_TOP_SEED:
+      return " **z**";
+    case PlayoffStatus.CLINCHED_DIVISION:
+      return " **y**";
+    case PlayoffStatus.CLINCHED_PLAYOFF_BERTH:
+      return " **x**";
+    case PlayoffStatus.ELIMINATED:
+      return " **e**";
+    case PlayoffStatus.UNDECIDED:
+      return " **?**";
+    default:
+      return "";
+  }
+}
+
 
 function formatGameResult(game: MaddenGame, teams: TeamList, standings: Standing[]): string {
   const awayTeam = teams.getTeamForId(game.awayTeamId);

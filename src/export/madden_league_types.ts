@@ -41,12 +41,12 @@ export type TeamExport = {
   leagueTeamInfoList: Array<Team>
 }
 
-enum PlayoffStatus {
+export enum PlayoffStatus {
   ELIMINATED = 0,
-
-  CLINCHED_PLAYOFF_BERTH = 1, // x
-  CLINCHED_DIVISION = 2, // y
-  CLINCHED_
+  UNDECIDED = 1,
+  CLINCHED_PLAYOFF_BERTH = 2, // x
+  CLINCHED_DIVISION = 3, // y
+  CLINCHED_TOP_SEED = 4 // z
 }
 
 export type Standing = {
@@ -75,7 +75,7 @@ export type Standing = {
   divisionName: string,
   ptsAgainst: number,
   divLosses: number,
-  playoffStatus: number,
+  playoffStatus: PlayoffStatus,
   conferenceName: string,
   awayTies: number,
   confLosses: number,
