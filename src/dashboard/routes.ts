@@ -8,7 +8,7 @@ import { removeLeague, setLeague } from "../connections/routes"
 import { discordLeagueView } from "../db/view"
 import LeagueSettingsDB from "../discord/settings_db"
 import MaddenDB, { MaddenEvents, parseExportStatusWeekKey } from "../db/madden_db"
-import { MADDEN_SEASON } from "../export/madden_league_types"
+import { MADDEN_SEASON, getMessageForWeek } from "../export/madden_league_types"
 import { createProdClient } from "../discord/discord_utils"
 
 const startRender = Pug.compileFile(path.join(__dirname, "/templates/start.pug"))
@@ -272,7 +272,7 @@ router.get("/", async (ctx) => {
   const weeklyStatus = Object.fromEntries(Object.entries(exportStatus?.weeklyStatus || {}).map(e => {
     const [weekSeasonKey, status] = e
     const weekSeason = parseExportStatusWeekKey(weekSeasonKey)
-    return [weekSeasonKey, { ...status, displayName: `Year ${weekSeason.seasonIndex + MADDEN_SEASON}, Week ${weekSeason.weekIndex + 1}` }]
+    return [weekSeasonKey, { ...status, displayName: `Year ${weekSeason.seasonIndex + MADDEN_SEASON}, ${getMessageForWeek(weekSeason.weekIndex)}` }]
   }))
   const lastAdvance = new Date(Date.now() - (secsSinceLastAdvancedTime * 1000));
   const displayableExportStatus = exportStatus ? {
