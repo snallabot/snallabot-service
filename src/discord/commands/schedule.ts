@@ -177,7 +177,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
     const scheduleLines = []
 
 
-    for (const week of allWeeks.filter(ws => ws.seasonIndex === season).map(ws => ws.weekIndex + 1)) {
+    for (const week of allWeeks.filter(ws => ws.seasonIndex === season).map(ws => ws.weekIndex + 1).sort((a, b) => a - b)) {
       const game = weekToGameMap.get(week)
 
       if (!game && allWeeks.find(ws => ws.weekIndex === week - 1 && ws.seasonIndex === season)) {
