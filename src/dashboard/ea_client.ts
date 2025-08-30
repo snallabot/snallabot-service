@@ -579,7 +579,7 @@ export async function exporterForLeague(leagueId: number, context: ExportContext
     },
     exportSpecificWeeks: async function(weeks: { weekIndex: number, stage: number }[]) {
       const destinations = Object.values(contextualExports)
-      const leagueData = {} as any
+      const leagueData = { weeks: [] } as any
       const leagueInfoRequests = [] as Promise<any>[]
       const dataRequests = [] as Promise<any>[]
       function toStage(stage: number): Stage {
