@@ -88,7 +88,6 @@ export function createClient(settings: DiscordSettings): DiscordClient {
         } catch (e) {
           tries = tries + 1
           await new Promise((r) => setTimeout(r, 1000))
-          console.error(`could not send request to Discord, retrying: ${stringData}`)
         }
         if (data.retry_after) {
           tries = tries + 1
@@ -284,7 +283,7 @@ export function createClient(settings: DiscordSettings): DiscordClient {
       }
     },
     getMessagesInChannel: async function(channelId: ChannelId, before?: MessageId): Promise<APIMessage[]> {
-      const requestUrl = `/channels/${channelId.id}/messages?limit=100${before ? "before=" + before.id : ""}`
+      const requestUrl = `/channels/${channelId.id}/messages?limit=100${before ? "&before=" + before.id : ""}`
       try {
         const res = await sendDiscordRequest(requestUrl, { method: "GET" })
         return await res.json() as APIMessage[]
