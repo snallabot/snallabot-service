@@ -236,7 +236,7 @@ import { createCanvas, loadImage } from "canvas"
 async function formatPlayoffBracket(client: DiscordClient, token: string, standings: Standing[], playoffGames: MaddenGame[], teams: TeamList): Promise<void> {
   try {
     // Load the template image
-    const templatePath = '../../emojis/templates/playoff_picture_template.png'; // Adjust path as needed
+    const templatePath = './../../emojis/templates/playoff_picture_template.png'; // Adjust path as needed
     const template = await loadImage(templatePath);
 
     // Create canvas with template dimensions
@@ -294,7 +294,7 @@ async function formatPlayoffBracket(client: DiscordClient, token: string, standi
     // Helper function to load team logo
     async function loadTeamLogo(abbrName: string): Promise<any> {
       try {
-        const logoPath = `../../emojis/nfl_logos/${abbrName.toLowerCase()}.png`;
+        const logoPath = `./../../emojis/nfl_logos/${abbrName.toLowerCase()}.png`;
         return await loadImage(logoPath);
       } catch (error) {
         console.warn(`Logo not found for ${abbrName}, defaulting`);
