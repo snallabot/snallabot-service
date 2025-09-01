@@ -33,7 +33,8 @@ async function getDashboardInfo(client: DiscordClient, token: string, guild_id: 
       const [leagueInfo, leagues] = await Promise.all([eaClient.getLeagueInfo(leagueId), eaClient.getLeagues()])
       const name = leagues.find(l => l.leagueId === leagueId)?.leagueName || "League not found"
       message += `League Name: ${name}\n`
-      message += `Current Week: ${leagueInfo.careerHubInfo.seasonInfo.displayWeek}\n`
+      const seasonInfo = leagueInfo.careerHubInfo.seasonInfo
+      message += `Current Week: ${seasonInfo.weekTitle} ${seasonInfo.displayWeek > 0 ? seasonInfo.displayWeek : ''}\n`
       await client.editOriginalInteraction(token,
         {
           flags: 32768,
