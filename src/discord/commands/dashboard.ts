@@ -41,7 +41,7 @@ async function getDashboardInfo(client: DiscordClient, token: string, guild_id: 
           ]
         })
     } catch (e) {
-      message += `Could not fetch league information. Error: ${e}\n`
+      message += `Could not fetch league information. Error: ${e}\n\nTo link a different league, click on the link above. Hit unlink league. Then come back here, and setup the new league at the link above`
       await client.editOriginalInteraction(token,
         {
           flags: 32768,
