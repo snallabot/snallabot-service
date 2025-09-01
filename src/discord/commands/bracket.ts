@@ -294,11 +294,11 @@ async function formatPlayoffBracket(client: DiscordClient, token: string, standi
     // Helper function to load team logo
     async function loadTeamLogo(abbrName: string): Promise<any> {
       try {
-        const logoPath = `./../../emojis/nfl_logos/${abbrName.toLowerCase()}.png`;
+        const logoPath = `./emojis/nfl_logos/${abbrName.toLowerCase()}.png`;
         return await loadImage(logoPath);
       } catch (error) {
         console.warn(`Logo not found for ${abbrName}, defaulting`);
-        return await loadImage(`../../emojis/nfl_logos/nfl.png`);
+        return await loadImage(`./emojis/nfl_logos/nfl.png`);
       }
     }
 
