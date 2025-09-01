@@ -1,5 +1,5 @@
 import EventDB, { EventDelivery, SnallabotEvent } from "../db/events_db"
-import { DiscordClient, formatTeamMessageName, SnallabotReactions } from "./discord_utils"
+import { DiscordClient, formatTeamMessageName, SnallabotDiscordError, SnallabotReactions } from "./discord_utils"
 import LeagueSettingsDB, { ChannelId, GameChannel, GameChannelState, LeagueSettings, MessageId, TeamAssignments, UserId } from "./settings_db"
 import createLogger from "./logging"
 import MaddenDB from "../db/madden_db"
@@ -83,7 +83,12 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
         await client.deleteChannel(gameChannel.channel)
       }
     } catch (e) {
-      console.log(`Error deleting trophied channel ${e}`)
+      if (e instanceof SnallabotDiscordError) {
+        if (e.isDeletedChannel()) {
+          return
+        }
+      }
+      console.error(e)
     }
   }
   async function deleteTracking(currentState: GameChannel, season: number, week: number) {
