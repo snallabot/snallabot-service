@@ -446,7 +446,7 @@ async function formatPlayoffBracket(client: DiscordClient, token: string, standi
         },
       ]
     }
-    formData.append("payload_json", new Blob([JSON.stringify(payload)]), { type: "application/json" })
+    formData.append("payload_json", new Blob([JSON.stringify(payload)], { type: "application/json" }))
     formData.append("files[0]", imageBlob, "playoff_bracket.png")
 
     await client.editOriginalInteractionWithForm(token, formData)
