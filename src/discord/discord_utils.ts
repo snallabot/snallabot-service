@@ -119,7 +119,7 @@ export function createClient(settings: DiscordSettings): DiscordClient {
       const res = await fetch(url, {
         headers: {
           Authorization: `Bot ${settings.botToken}`,
-          "Content-Type": "multipart/form-data; charset=UTF-8",
+          // "Content-Type": "multipart/form-data; charset=UTF-8",
         },
         body: body,
         ...options
