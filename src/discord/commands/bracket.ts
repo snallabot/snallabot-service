@@ -438,7 +438,7 @@ async function formatPlayoffBracket(client: DiscordClient, token: string, standi
           type: ComponentType.MediaGallery,
           items: [{
             media: {
-              url: `data:image/png;base64,${image}`
+              url: `attachment:data:image/png;base64,${image}`
             },
             description: `Current Playoff Picture`
           }]
