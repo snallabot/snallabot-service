@@ -433,17 +433,9 @@ async function formatPlayoffBracket(client: DiscordClient, token: string, standi
     const formData = new FormData()
     const imageBlob = new Blob([image], { type: 'image/png' })
     const payload = {
-      flags: 32768,
-      components: [
-        {
-          type: ComponentType.MediaGallery,
-          items: [{
-            media: {
-              url: `attachment:playoff_bracket.png`
-            },
-            description: `Current Playoff Picture`
-          }]
-        },
+      content: "Current Playoff Picture",
+      attachments: [
+        { id: 0, description: "Playoff Picture", filename: "playoff_bracket.png" }
       ]
     }
     formData.append("payload_json", new Blob([JSON.stringify(payload)], { type: "application/json" }))
