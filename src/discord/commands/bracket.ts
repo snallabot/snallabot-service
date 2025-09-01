@@ -44,7 +44,7 @@ async function formatPlayoffBracket(client: DiscordClient, token: string, standi
 
       // AFC Divisional (1 seed at top)
       afc_div_1: { logo: { home: { x: 370, y: 120 }, away: { x: 370, y: 320 } }, score: { x: 400, y: 200 } },
-      afc_div_2: { logo: { home: { x: 370, y: 560 }, away: { x: 370, y: 7600 } }, score: { x: 400, y: 500 } },
+      afc_div_2: { logo: { home: { x: 370, y: 560 }, away: { x: 370, y: 760 } }, score: { x: 400, y: 500 } },
 
       // AFC Championship
       afc_champ: { logo: { home: { x: 630, y: 340 }, away: { x: 550, y: 540 } }, score: { x: 650, y: 350 } },
@@ -86,10 +86,10 @@ async function formatPlayoffBracket(client: DiscordClient, token: string, standi
       const homeLogo = await loadTeamLogo(homeTeam.abbrName);
 
       if (awayLogo) {
-        ctx.drawImage(awayLogo, position.logo.away.x, position.logo.away.y, 80, 80);
+        ctx.drawImage(awayLogo, position.logo.away.x, position.logo.away.y, 100, 100);
       }
       if (homeLogo) {
-        ctx.drawImage(homeLogo, position.logo.home.x, position.logo.home.y, 120, 120);
+        ctx.drawImage(homeLogo, position.logo.home.x, position.logo.home.y, 100, 100);
       }
 
       // Draw scores if game is completed
