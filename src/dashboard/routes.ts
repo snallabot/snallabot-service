@@ -59,7 +59,6 @@ async function renderConnectedLeagueErrorsMiddleware(ctx: ParameterizedContext, 
   try {
     await next()
   } catch (e) {
-    console.error(e)
     if (e instanceof EAAccountError) {
       const error = `Error receieved from EA <br> Message: ${e.message} <br> Snallabot Guidance: ${e.troubleshoot}`
       ctx.body = errorRender({ error: error, canUnlink: true })
@@ -265,7 +264,6 @@ router.get("/", async (ctx) => {
       const team = latestTeams.getTeamForId(Number(teamId)).displayName
       return [team, status]
     } catch (e) {
-      console.error(e)
       return ["Unknown Team", status]
     }
   }))

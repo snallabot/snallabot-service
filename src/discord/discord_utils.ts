@@ -57,6 +57,7 @@ export interface DiscordClient {
   interactionVerifier(ctx: ParameterizedContext): Promise<boolean>,
   handleSlashCommand(mode: CommandMode, command: RESTPostAPIApplicationCommandsJSONBody, guild?: string): Promise<void>,
   editOriginalInteraction(token: string, body: { [key: string]: any }): Promise<void>,
+  editOriginalInteractionWithForm(token: string, body: FormData): Promise<void>,
   createMessage(channel: ChannelId, content: string, allowedMentions: string[]): Promise<MessageId>,
   editMessage(channel: ChannelId, messageId: MessageId, content: string, allowedMentions: string[]): Promise<void>,
   deleteMessage(channel: ChannelId, messageId: MessageId): Promise<void>,
@@ -95,7 +96,42 @@ export function createClient(settings: DiscordSettings): DiscordClient {
         } catch (e) {
           tries = tries + 1
           await new Promise((r) => setTimeout(r, 1000))
-          console.error(`could not send request to Discord, retrying: ${stringData}`)
+        }
+        if (data.retry_after) {
+          tries = tries + 1
+          const retryTime = data.retry_after
+          await new Promise((r) => setTimeout(r, retryTime * 1000))
+        } else {
+          throw new DiscordRequestError(data)
+        }
+      } else {
+        return res
+      }
+    }
+    throw new Error("max tries reached")
+  }
+
+  async function sendDiscordRequestForm(endpoint: string, body: FormData, options: { [key: string]: any }, maxTries: number = 10) {
+    // append endpoint to root API URL
+    const url = "https://discord.com/api/v10/" + endpoint
+    let tries = 0
+    while (tries < maxTries) {
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `Bot ${settings.botToken}`,
+          "Content-Type": "multipart/form-data; charset=UTF-8",
+        },
+        body: body,
+        ...options
+      })
+      if (!res.ok) {
+        const stringData = await res.text()
+        let data: DiscordError = { message: "Snallabot Error, could not send to discord", code: 1 }
+        try {
+          data = JSON.parse(stringData) as DiscordError
+        } catch (e) {
+          tries = tries + 1
+          await new Promise((r) => setTimeout(r, 1000))
         }
         if (data.retry_after) {
           tries = tries + 1
@@ -155,6 +191,13 @@ export function createClient(settings: DiscordSettings): DiscordClient {
       } catch (e) {
       }
     },
+    editOriginalInteractionWithForm: async (token: string, body: FormData) => {
+      try {
+        await sendDiscordRequestForm(`webhooks/${settings.appId}/${token}/messages/@original`, body, { method: "PATCH" })
+      } catch (e) {
+      }
+    }
+    ,
     createMessage: async (channel: ChannelId, content: string, allowedMentions = []): Promise<MessageId> => {
       try {
         const res = await sendDiscordRequest(`channels/${channel.id}/messages`, {
@@ -291,7 +334,7 @@ export function createClient(settings: DiscordSettings): DiscordClient {
       }
     },
     getMessagesInChannel: async function(channelId: ChannelId, before?: MessageId): Promise<APIMessage[]> {
-      const requestUrl = `/channels/${channelId.id}/messages?limit=100${before ? "before=" + before.id : ""}`
+      const requestUrl = `/channels/${channelId.id}/messages?limit=100${before ? "&before=" + before.id : ""}`
       try {
         const res = await sendDiscordRequest(requestUrl, { method: "GET" })
         return await res.json() as APIMessage[]

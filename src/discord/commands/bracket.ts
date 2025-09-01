@@ -429,22 +429,27 @@ async function formatPlayoffBracket(client: DiscordClient, token: string, standi
     }
 
     // Return base64 encoded image
-    const image = canvas.toBuffer('image/png').toString('base64');
-
-    await client.editOriginalInteraction(token, {
+    const image = canvas.toBuffer('image/png')
+    const formData = new FormData()
+    const imageBlob = new Blob([image], { type: 'image/png' })
+    const payload = {
       flags: 32768,
       components: [
         {
           type: ComponentType.MediaGallery,
           items: [{
             media: {
-              url: `attachment:data:image/png;base64,${image}`
+              url: `attachment:playoff_bracket.png`
             },
             description: `Current Playoff Picture`
           }]
         },
       ]
-    })
+    }
+    formData.append("payload_json", new Blob([JSON.stringify(payload)]), { type: "application/json" })
+    formData.append("files[0]", imageBlob, "playoff_bracket.png")
+
+    await client.editOriginalInteractionWithForm(token, formData)
   } catch (e) {
     console.error(e)
     await client.editOriginalInteraction(token, {
