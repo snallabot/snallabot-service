@@ -1,7 +1,7 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command } from "../commands_handler"
-import { respond, createMessageResponse, DiscordClient, deferMessage } from "../discord_utils"
-import { ApplicationCommandType, ComponentType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
+import { respond, DiscordClient, deferMessage } from "../discord_utils"
+import { ApplicationCommandType, ComponentType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
 import { DEPLOYMENT_URL } from "../../config"
 import { discordLeagueView } from "../../db/view"
@@ -19,12 +19,7 @@ async function getDashboardInfo(client: DiscordClient, token: string, guild_id: 
           {
             type: ComponentType.TextDisplay,
             content: message + `Fetching League Information...`
-          },
-          {
-            type: ComponentType.Separator,
-            divider: true,
-            spacing: SeparatorSpacingSize.Small
-          },
+          }
         ]
       })
     try {
@@ -42,12 +37,7 @@ async function getDashboardInfo(client: DiscordClient, token: string, guild_id: 
             {
               type: ComponentType.TextDisplay,
               content: message
-            },
-            {
-              type: ComponentType.Separator,
-              divider: true,
-              spacing: SeparatorSpacingSize.Small
-            },
+            }
           ]
         })
     } catch (e) {
@@ -59,12 +49,7 @@ async function getDashboardInfo(client: DiscordClient, token: string, guild_id: 
             {
               type: ComponentType.TextDisplay,
               content: message
-            },
-            {
-              type: ComponentType.Separator,
-              divider: true,
-              spacing: SeparatorSpacingSize.Small
-            },
+            }
           ]
         })
     }
@@ -77,12 +62,7 @@ async function getDashboardInfo(client: DiscordClient, token: string, guild_id: 
           {
             type: ComponentType.TextDisplay,
             content: message
-          },
-          {
-            type: ComponentType.Separator,
-            divider: true,
-            spacing: SeparatorSpacingSize.Small
-          },
+          }
         ]
       })
   }
