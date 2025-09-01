@@ -236,7 +236,7 @@ import { createCanvas, loadImage } from "canvas"
 async function formatPlayoffBracket(client: DiscordClient, token: string, standings: Standing[], playoffGames: MaddenGame[], teams: TeamList): Promise<void> {
   try {
     // Load the template image
-    const templatePath = './../../emojis/templates/playoff_picture_template.png'; // Adjust path as needed
+    const templatePath = './emojis/templates/playoff_picture_template.png'; // Adjust path as needed
     const template = await loadImage(templatePath);
 
     // Create canvas with template dimensions
