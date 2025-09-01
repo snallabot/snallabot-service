@@ -446,6 +446,7 @@ async function formatPlayoffBracket(client: DiscordClient, token: string, standi
       ]
     })
   } catch (e) {
+    console.error(e)
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
