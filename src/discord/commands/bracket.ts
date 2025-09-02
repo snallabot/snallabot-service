@@ -6,10 +6,99 @@ import { Firestore } from "firebase-admin/firestore"
 import { discordLeagueView } from "../../db/view"
 import MaddenDB, { TeamList } from "../../db/madden_db"
 import { GameResult, MaddenGame, PlayoffStatus, Standing, formatRecord } from "../../export/madden_league_types"
-import { createCanvas, loadImage } from "canvas"
+import { CanvasRenderingContext2D, createCanvas, loadImage } from "canvas"
 
 // Load the template image
+type Position = { x: number, y: number }
+type GamePosition = {
+  logo: {
+    home: Position,
+    away: Position,
+    size: number
+  }
+  score: {
+    home: Position,
+    away: Position
+  }
+
+}
 const templatePath = './emojis/templates/playoff_picture_template.png'; // Adjust path as needed
+// Define positions for each slot (you'll need to adjust these based on your template)
+const positions: Record<string, GamePosition> = {
+  // AFC Wild Card (left side, top to bottom: 2v7, 3v6, 4v5)
+  afc_wc_1: { logo: { home: { x: 120, y: 100 }, away: { x: 120, y: 225 }, size: 100 }, score: { home: { x: 285, y: 125 }, away: { x: 285, y: 245 } } },
+  afc_wc_2: { logo: { home: { x: 120, y: 400 }, away: { x: 120, y: 525 }, size: 100 }, score: { home: { x: 285, y: 430 }, away: { x: 285, y: 550 } } },
+  afc_wc_3: { logo: { home: { x: 120, y: 700 }, away: { x: 120, y: 825 }, size: 100 }, score: { home: { x: 285, y: 725 }, away: { x: 285, y: 845 } } },
+
+  // AFC Divisional (1 seed at top)
+  afc_div_1: { logo: { home: { x: 370, y: 120 }, away: { x: 370, y: 320 }, size: 125 }, score: { home: { x: 540, y: 170 }, away: { x: 540, y: 360 } } },
+  afc_div_2: { logo: { home: { x: 370, y: 560 }, away: { x: 370, y: 760 }, size: 125 }, score: { home: { x: 540, y: 605 }, away: { x: 540, y: 795 } } },
+
+  // AFC Championship
+  afc_champ: { logo: { home: { x: 625, y: 340 }, away: { x: 625, y: 540 }, size: 125 }, score: { home: { x: 800, y: 390 }, away: { x: 800, y: 585 } } },
+
+  // NFC Wild Card (right side, top to bottom: 2v7, 3v6, 4v5)
+  nfc_wc_1: { logo: { home: { x: 1670, y: 100 }, away: { x: 1670, y: 225 }, size: 100 }, score: { home: { x: 1610, y: 125 }, away: { x: 285, y: 245 } } },
+  nfc_wc_2: { logo: { home: { x: 1670, y: 400 }, away: { x: 1670, y: 525 }, size: 100 }, score: { home: { x: 1610, y: 125 }, away: { x: 1610, y: 245 } } },
+  nfc_wc_3: { logo: { home: { x: 1670, y: 700 }, away: { x: 1670, y: 825 }, size: 100 }, score: { home: { x: 1610, y: 125 }, away: { x: 1610, y: 245 } } },
+
+  // NFC Divisional (1 seed at top)
+  nfc_div_1: { logo: { home: { x: 1415, y: 120 }, away: { x: 1415, y: 320 }, size: 125 }, score: { home: { x: 1355, y: 170 }, away: { x: 1355, y: 360 } } },
+  nfc_div_2: { logo: { home: { x: 1415, y: 560 }, away: { x: 1415, y: 760 }, size: 125 }, score: { home: { x: 1355, y: 605 }, away: { x: 1355, y: 795 } } },
+
+  // NFC Championship
+  nfc_champ: { logo: { home: { x: 1160, y: 340 }, away: { x: 1160, y: 540 }, size: 125 }, score: { home: { x: 1095, y: 390 }, away: { x: 1095, y: 585 } } },
+
+  // Super Bowl
+  super_bowl: {
+    logo: { home: { x: 885, y: 250 }, away: { x: 885, y: 620 }, size: 140 }, score: { home: { x: 940, y: 195 }, away: { x: 940, y: 785 } }
+  }
+}
+
+// Helper function to load team logo
+async function loadTeamLogo(abbrName: string): Promise<any> {
+  try {
+    const logoPath = `./emojis/nfl_logos/${abbrName.toLowerCase()}.png`;
+    return await loadImage(logoPath);
+  } catch (error) {
+    console.warn(`Logo not found for ${abbrName}, defaulting`);
+    return await loadImage(`./emojis/nfl_logos/nfl.png`);
+  }
+}
+
+// Helper function to draw game
+async function drawGame(game: MaddenGame, position: GamePosition, teams: TeamList, ctx: CanvasRenderingContext2D) {
+  const awayTeam = teams.getTeamForId(game.awayTeamId);
+  const homeTeam = teams.getTeamForId(game.homeTeamId);
+
+  // Load and draw logos
+  const awayLogo = await loadTeamLogo(awayTeam.abbrName);
+  const homeLogo = await loadTeamLogo(homeTeam.abbrName);
+
+  if (awayLogo) {
+    ctx.drawImage(awayLogo, position.logo.away.x, position.logo.away.y, position.logo.size, position.logo.size);
+  }
+  if (homeLogo) {
+    ctx.drawImage(homeLogo, position.logo.home.x, position.logo.home.y, position.logo.size, position.logo.size);
+  }
+
+  // Draw scores if game is completed
+  if (game.status !== GameResult.NOT_PLAYED) {
+    ctx.fillStyle = game.awayScore > game.homeScore ? 'red' : 'white';
+    ctx.font = 'bold 24px Arial';
+    ctx.textAlign = 'center';
+
+    const awayScoreText = `${game.awayScore}`;
+    ctx.fillText(awayScoreText, position.score.away.x, position.score.away.y);
+
+    ctx.fillStyle = game.homeScore > game.awayScore ? 'red' : 'white';
+    ctx.font = 'bold 24px Arial';
+    ctx.textAlign = 'center';
+    const homeScoretext = `${game.homeScore}`;
+    ctx.fillText(homeScoretext, position.score.home.x, position.score.home.y);
+  }
+}
+
 async function formatPlayoffBracket(client: DiscordClient, token: string, standings: Standing[], playoffGames: MaddenGame[], teams: TeamList): Promise<void> {
   try {
     const template = await loadImage(templatePath);
@@ -35,74 +124,6 @@ async function formatPlayoffBracket(client: DiscordClient, token: string, standi
     const conferenceGames = playoffGames.filter(game => game.weekIndex === 20);
     const superBowlGames = playoffGames.filter(game => game.weekIndex === 22);
 
-    // Define positions for each slot (you'll need to adjust these based on your template)
-    const positions = {
-      // AFC Wild Card (left side, top to bottom: 2v7, 3v6, 4v5)
-      afc_wc_1: { logo: { home: { x: 120, y: 100 }, away: { x: 120, y: 225 } }, score: { x: 150, y: 150 } },
-      afc_wc_2: { logo: { home: { x: 120, y: 400 }, away: { x: 120, y: 525 } }, score: { x: 150, y: 350 } },
-      afc_wc_3: { logo: { home: { x: 120, y: 700 }, away: { x: 120, y: 825 } }, score: { x: 150, y: 550 } },
-
-      // AFC Divisional (1 seed at top)
-      afc_div_1: { logo: { home: { x: 370, y: 120 }, away: { x: 370, y: 320 } }, score: { x: 400, y: 200 } },
-      afc_div_2: { logo: { home: { x: 370, y: 560 }, away: { x: 370, y: 760 } }, score: { x: 400, y: 500 } },
-
-      // AFC Championship
-      afc_champ: { logo: { home: { x: 630, y: 340 }, away: { x: 550, y: 540 } }, score: { x: 650, y: 350 } },
-
-      // NFC Wild Card (right side, top to bottom: 2v7, 3v6, 4v5)
-      nfc_wc_1: { logo: { away: { x: 1350, y: 100 }, home: { x: 1350, y: 200 } }, score: { x: 1250, y: 150 } },
-      nfc_wc_2: { logo: { away: { x: 1350, y: 300 }, home: { x: 1350, y: 400 } }, score: { x: 1250, y: 350 } },
-      nfc_wc_3: { logo: { away: { x: 1350, y: 500 }, home: { x: 1350, y: 600 } }, score: { x: 1250, y: 550 } },
-
-      // NFC Divisional (1 seed at top)
-      nfc_div_1: { logo: { away: { x: 1100, y: 150 }, home: { x: 1100, y: 250 } }, score: { x: 1000, y: 200 } },
-      nfc_div_2: { logo: { away: { x: 1100, y: 450 }, home: { x: 1100, y: 550 } }, score: { x: 1000, y: 500 } },
-
-      // NFC Championship
-      nfc_champ: { logo: { away: { x: 850, y: 300 }, home: { x: 850, y: 400 } }, score: { x: 750, y: 350 } },
-
-      // Super Bowl
-      super_bowl: { logo: { away: { x: 650, y: 250 }, home: { x: 750, y: 250 } }, score: { x: 700, y: 300 } }
-    };
-
-    // Helper function to load team logo
-    async function loadTeamLogo(abbrName: string): Promise<any> {
-      try {
-        const logoPath = `./emojis/nfl_logos/${abbrName.toLowerCase()}.png`;
-        return await loadImage(logoPath);
-      } catch (error) {
-        console.warn(`Logo not found for ${abbrName}, defaulting`);
-        return await loadImage(`./emojis/nfl_logos/nfl.png`);
-      }
-    }
-
-    // Helper function to draw game
-    async function drawGame(game: MaddenGame, position: any) {
-      const awayTeam = teams.getTeamForId(game.awayTeamId);
-      const homeTeam = teams.getTeamForId(game.homeTeamId);
-
-      // Load and draw logos
-      const awayLogo = await loadTeamLogo(awayTeam.abbrName);
-      const homeLogo = await loadTeamLogo(homeTeam.abbrName);
-
-      if (awayLogo) {
-        ctx.drawImage(awayLogo, position.logo.away.x, position.logo.away.y, 100, 100);
-      }
-      if (homeLogo) {
-        ctx.drawImage(homeLogo, position.logo.home.x, position.logo.home.y, 100, 100);
-      }
-
-      // Draw scores if game is completed
-      if (game.status !== GameResult.NOT_PLAYED) {
-        ctx.fillStyle = 'white';
-        ctx.font = 'bold 24px Arial';
-        ctx.textAlign = 'center';
-
-        const scoreText = `${game.awayScore} - ${game.homeScore}`;
-        ctx.fillText(scoreText, position.score.x, position.score.y);
-      }
-    }
-
     // Helper function to find game by team seeds
     function findGameBySeeds(games: MaddenGame[], conference: string, seed1: number, seed2: number): MaddenGame | undefined {
       return games.find(game => {
@@ -123,18 +144,18 @@ async function formatPlayoffBracket(client: DiscordClient, token: string, standi
     const afc36 = findGameBySeeds(wildCardGames, 'afc', 3, 6);
     const afc45 = findGameBySeeds(wildCardGames, 'afc', 4, 5);
 
-    if (afc27) await drawGame(afc27, positions.afc_wc_1);
-    if (afc36) await drawGame(afc36, positions.afc_wc_2);
-    if (afc45) await drawGame(afc45, positions.afc_wc_3);
+    if (afc27) await drawGame(afc27, positions.afc_wc_1, teams, ctx);
+    if (afc36) await drawGame(afc36, positions.afc_wc_2, teams, ctx);
+    if (afc45) await drawGame(afc45, positions.afc_wc_3, teams, ctx);
 
     // Draw NFC Wild Card games (2v7, 3v6, 4v5)
     const nfc27 = findGameBySeeds(wildCardGames, 'nfc', 2, 7);
     const nfc36 = findGameBySeeds(wildCardGames, 'nfc', 3, 6);
     const nfc45 = findGameBySeeds(wildCardGames, 'nfc', 4, 5);
 
-    if (nfc27) await drawGame(nfc27, positions.nfc_wc_1);
-    if (nfc36) await drawGame(nfc36, positions.nfc_wc_2);
-    if (nfc45) await drawGame(nfc45, positions.nfc_wc_3);
+    if (nfc27) await drawGame(nfc27, positions.nfc_wc_1, teams, ctx);
+    if (nfc36) await drawGame(nfc36, positions.nfc_wc_2, teams, ctx);
+    if (nfc45) await drawGame(nfc45, positions.nfc_wc_3, teams, ctx);
 
     // Draw Divisional games (1 seed should be at top)
     const afcDivisional = divisionalGames.filter(game => {
@@ -156,8 +177,8 @@ async function formatPlayoffBracket(client: DiscordClient, token: string, standi
       return Math.min(...aSeeds) - Math.min(...bSeeds);
     });
 
-    if (afcDivisional[0]) await drawGame(afcDivisional[0], positions.afc_div_1); // 1 seed game at top
-    if (afcDivisional[1]) await drawGame(afcDivisional[1], positions.afc_div_2);
+    if (afcDivisional[0]) await drawGame(afcDivisional[0], positions.afc_div_1, teams, ctx); // 1 seed game at top
+    if (afcDivisional[1]) await drawGame(afcDivisional[1], positions.afc_div_2, teams, ctx);
 
     // Same for NFC
     const nfcDivisional = divisionalGames.filter(game => {
@@ -178,8 +199,8 @@ async function formatPlayoffBracket(client: DiscordClient, token: string, standi
       return Math.min(...aSeeds) - Math.min(...bSeeds);
     });
 
-    if (nfcDivisional[0]) await drawGame(nfcDivisional[0], positions.nfc_div_1); // 1 seed game at top
-    if (nfcDivisional[1]) await drawGame(nfcDivisional[1], positions.nfc_div_2);
+    if (nfcDivisional[0]) await drawGame(nfcDivisional[0], positions.nfc_div_1, teams, ctx); // 1 seed game at top
+    if (nfcDivisional[1]) await drawGame(nfcDivisional[1], positions.nfc_div_2, teams, ctx);
 
     // Draw Conference Championships
     const afcChamp = conferenceGames.find(game => {
@@ -194,12 +215,12 @@ async function formatPlayoffBracket(client: DiscordClient, token: string, standi
       return awayStanding?.conferenceName.toLowerCase() === 'nfc';
     });
 
-    if (afcChamp) await drawGame(afcChamp, positions.afc_champ);
-    if (nfcChamp) await drawGame(nfcChamp, positions.nfc_champ);
+    if (afcChamp) await drawGame(afcChamp, positions.afc_champ, teams, ctx);
+    if (nfcChamp) await drawGame(nfcChamp, positions.nfc_champ, teams, ctx);
 
     // Draw Super Bowl
     if (superBowlGames[0]) {
-      await drawGame(superBowlGames[0], positions.super_bowl);
+      await drawGame(superBowlGames[0], positions.super_bowl, teams, ctx);
     }
 
     // Return base64 encoded image
