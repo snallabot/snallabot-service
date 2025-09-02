@@ -38,9 +38,9 @@ const positions: Record<string, GamePosition> = {
   afc_champ: { logo: { home: { x: 625, y: 340 }, away: { x: 625, y: 540 }, size: 125 }, score: { home: { x: 800, y: 390 }, away: { x: 800, y: 585 } } },
 
   // NFC Wild Card (right side, top to bottom: 2v7, 3v6, 4v5)
-  nfc_wc_1: { logo: { home: { x: 1680, y: 90 }, away: { x: 1680, y: 215 }, size: 100 }, score: { home: { x: 1610, y: 125 }, away: { x: 1610, y: 250 } } },
-  nfc_wc_2: { logo: { home: { x: 1680, y: 385 }, away: { x: 1680, y: 510 }, size: 100 }, score: { home: { x: 1610, y: 430 }, away: { x: 1610, y: 550 } } },
-  nfc_wc_3: { logo: { home: { x: 1680, y: 680 }, away: { x: 1680, y: 805 }, size: 100 }, score: { home: { x: 1610, y: 725 }, away: { x: 1610, y: 845 } } },
+  nfc_wc_1: { logo: { home: { x: 1680, y: 90 }, away: { x: 1680, y: 215 }, size: 110 }, score: { home: { x: 1610, y: 125 }, away: { x: 1610, y: 250 } } },
+  nfc_wc_2: { logo: { home: { x: 1680, y: 385 }, away: { x: 1680, y: 510 }, size: 110 }, score: { home: { x: 1610, y: 430 }, away: { x: 1610, y: 550 } } },
+  nfc_wc_3: { logo: { home: { x: 1680, y: 680 }, away: { x: 1680, y: 805 }, size: 110 }, score: { home: { x: 1610, y: 725 }, away: { x: 1610, y: 845 } } },
 
   // NFC Divisional (1 seed at top)
   nfc_div_1: { logo: { home: { x: 1415, y: 120 }, away: { x: 1415, y: 320 }, size: 125 }, score: { home: { x: 1355, y: 170 }, away: { x: 1355, y: 360 } } },
