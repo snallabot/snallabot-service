@@ -39,8 +39,8 @@ const positions: Record<string, GamePosition> = {
 
   // NFC Wild Card (right side, top to bottom: 2v7, 3v6, 4v5)
   nfc_wc_1: { logo: { home: { x: 1670, y: 100 }, away: { x: 1670, y: 225 }, size: 100 }, score: { home: { x: 1610, y: 125 }, away: { x: 285, y: 245 } } },
-  nfc_wc_2: { logo: { home: { x: 1670, y: 400 }, away: { x: 1670, y: 525 }, size: 100 }, score: { home: { x: 1610, y: 125 }, away: { x: 1610, y: 245 } } },
-  nfc_wc_3: { logo: { home: { x: 1670, y: 700 }, away: { x: 1670, y: 825 }, size: 100 }, score: { home: { x: 1610, y: 125 }, away: { x: 1610, y: 245 } } },
+  nfc_wc_2: { logo: { home: { x: 1670, y: 400 }, away: { x: 1670, y: 525 }, size: 100 }, score: { home: { x: 1610, y: 125 }, away: { x: 1610, y: 550 } } },
+  nfc_wc_3: { logo: { home: { x: 1670, y: 700 }, away: { x: 1670, y: 825 }, size: 100 }, score: { home: { x: 1610, y: 125 }, away: { x: 1610, y: 845 } } },
 
   // NFC Divisional (1 seed at top)
   nfc_div_1: { logo: { home: { x: 1415, y: 120 }, away: { x: 1415, y: 320 }, size: 125 }, score: { home: { x: 1355, y: 170 }, away: { x: 1355, y: 360 } } },
@@ -84,16 +84,18 @@ async function drawGame(game: MaddenGame, position: GamePosition, teams: TeamLis
 
   // Draw scores if game is completed
   if (game.status !== GameResult.NOT_PLAYED) {
-    ctx.fillStyle = game.awayScore > game.homeScore ? 'red' : 'white';
+    ctx.fillStyle = game.awayScore > game.homeScore ? 'orange' : 'white';
     ctx.font = 'bold 24px Arial';
 
     const awayScoreText = `${game.awayScore}`;
-    ctx.fillText(awayScoreText, position.score.away.x, position.score.away.y);
+    const awayOffset = ctx.measureText(awayScoreText).fontBoundingBoxAscent
+    ctx.fillText(awayScoreText, position.score.away.x, position.score.away.y + awayOffset);
 
-    ctx.fillStyle = game.homeScore > game.awayScore ? 'red' : 'white';
+    ctx.fillStyle = game.homeScore > game.awayScore ? 'orange' : 'white';
     ctx.font = 'bold 24px Arial';
     const homeScoretext = `${game.homeScore}`;
-    ctx.fillText(homeScoretext, position.score.home.x, position.score.home.y);
+    const homeOffset = ctx.measureText(homeScoretext).fontBoundingBoxAscent
+    ctx.fillText(homeScoretext, position.score.home.x, position.score.home.y + homeOffset);
   }
 }
 
