@@ -47,11 +47,11 @@ const positions: Record<string, GamePosition> = {
   nfc_div_2: { logo: { home: { x: 1415, y: 560 }, away: { x: 1415, y: 760 }, size: 125 }, score: { home: { x: 1355, y: 605 }, away: { x: 1355, y: 805 } } },
 
   // NFC Championship
-  nfc_champ: { logo: { home: { x: 1160, y: 340 }, away: { x: 1160, y: 540 }, size: 125 }, score: { home: { x: 1095, y: 390 }, away: { x: 1095, y: 585 } } },
+  nfc_champ: { logo: { home: { x: 1160, y: 340 }, away: { x: 1160, y: 540 }, size: 140 }, score: { home: { x: 1095, y: 390 }, away: { x: 1095, y: 585 } } },
 
   // Super Bowl
   super_bowl: {
-    logo: { home: { x: 885, y: 250 }, away: { x: 885, y: 620 }, size: 140 }, score: { home: { x: 950, y: 190 }, away: { x: 950, y: 790 } }
+    logo: { home: { x: 885, y: 250 }, away: { x: 885, y: 620 }, size: 165 }, score: { home: { x: 950, y: 190 }, away: { x: 950, y: 790 } }
   }
 }
 
