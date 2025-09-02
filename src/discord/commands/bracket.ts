@@ -86,14 +86,12 @@ async function drawGame(game: MaddenGame, position: GamePosition, teams: TeamLis
   if (game.status !== GameResult.NOT_PLAYED) {
     ctx.fillStyle = game.awayScore > game.homeScore ? 'red' : 'white';
     ctx.font = 'bold 24px Arial';
-    ctx.textAlign = 'center';
 
     const awayScoreText = `${game.awayScore}`;
     ctx.fillText(awayScoreText, position.score.away.x, position.score.away.y);
 
     ctx.fillStyle = game.homeScore > game.awayScore ? 'red' : 'white';
     ctx.font = 'bold 24px Arial';
-    ctx.textAlign = 'center';
     const homeScoretext = `${game.homeScore}`;
     ctx.fillText(homeScoretext, position.score.home.x, position.score.home.y);
   }
