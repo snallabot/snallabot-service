@@ -66,8 +66,10 @@ async function loadTeamLogo(abbrName: string): Promise<any> {
   }
 }
 
+type Matchup = { homeTeamId: number, awayTeamId: number, homeSeed: number, awaySeed: number, homeScore: number, awayScore: number, status: GameResult }
+
 // Helper function to draw game
-async function drawGame(game: MaddenGame, position: GamePosition, teams: TeamList, ctx: CanvasRenderingContext2D) {
+async function drawGame(game: Matchup, position: GamePosition, teams: TeamList, ctx: CanvasRenderingContext2D) {
   const awayTeam = teams.getTeamForId(game.awayTeamId);
   const homeTeam = teams.getTeamForId(game.homeTeamId);
 
@@ -97,6 +99,14 @@ async function drawGame(game: MaddenGame, position: GamePosition, teams: TeamLis
   }
 }
 
+type PlayoffPicture = {
+  afc27: Matchup,
+  afc36: Matchup
+}
+function getProjectedPicture(standings: Standing[]): Matchup[] {
+
+}
+
 async function formatPlayoffBracket(client: DiscordClient, token: string, standings: Standing[], playoffGames: MaddenGame[], teams: TeamList): Promise<void> {
   try {
     const template = await loadImage(templatePath);
@@ -107,20 +117,12 @@ async function formatPlayoffBracket(client: DiscordClient, token: string, standi
     // Draw the template
     ctx.drawImage(template, 0, 0);
 
-    // Get playoff teams by conference
-    const afcTeams = standings
-      .filter(team => team.seed > 0 && team.seed <= 7 && team.conferenceName.toLowerCase() === 'afc')
-      .sort((a, b) => a.seed - b.seed);
-
-    const nfcTeams = standings
-      .filter(team => team.seed > 0 && team.seed <= 7 && team.conferenceName.toLowerCase() === 'nfc')
-      .sort((a, b) => a.seed - b.seed);
-
     // Group playoff games by week
     const wildCardGames = playoffGames.filter(game => game.weekIndex === 18);
     const divisionalGames = playoffGames.filter(game => game.weekIndex === 19);
     const conferenceGames = playoffGames.filter(game => game.weekIndex === 20);
     const superBowlGames = playoffGames.filter(game => game.weekIndex === 22);
+    const wildCardMatchups = wildCardGames.length === 0 ? standings.filter(t => t.seed <= 7) : wildCardGames
 
     // Helper function to find game by team seeds
     function findGameBySeeds(games: MaddenGame[], conference: string, seed1: number, seed2: number): MaddenGame | undefined {
