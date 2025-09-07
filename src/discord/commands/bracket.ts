@@ -30,31 +30,31 @@ const templatePath = './emojis/templates/playoff_picture_template.png'; // Adjus
 const positions: Record<string, GamePosition> = {
   // AFC Wild Card (left side, top to bottom: 2v7, 3v6, 4v5)
   afc_wc_1: { logo: { home: { x: 110, y: 90 }, away: { x: 110, y: 215 }, size: 110 }, score: { home: { x: 285, y: 125 }, away: { x: 285, y: 250 } }, seeds: { home: { x: 95, y: 95 }, away: { x: 95, y: 215 } } },
-  afc_wc_2: { logo: { home: { x: 110, y: 385 }, away: { x: 110, y: 510 }, size: 110 }, score: { home: { x: 285, y: 430 }, away: { x: 285, y: 550 } }, seeds: { home: { x: 95, y: 380 }, away: { x: 95, y: 510 } } },
-  afc_wc_3: { logo: { home: { x: 110, y: 680 }, away: { x: 110, y: 805 }, size: 110 }, score: { home: { x: 285, y: 725 }, away: { x: 285, y: 845 } }, seeds: { home: { x: 95, y: 675 }, away: { x: 95, y: 805 } } },
+  afc_wc_2: { logo: { home: { x: 110, y: 385 }, away: { x: 110, y: 510 }, size: 110 }, score: { home: { x: 285, y: 430 }, away: { x: 285, y: 550 } }, seeds: { home: { x: 95, y: 390 }, away: { x: 95, y: 510 } } },
+  afc_wc_3: { logo: { home: { x: 110, y: 680 }, away: { x: 110, y: 805 }, size: 110 }, score: { home: { x: 285, y: 725 }, away: { x: 285, y: 845 } }, seeds: { home: { x: 95, y: 695 }, away: { x: 95, y: 806 } } },
 
   // AFC Divisional (1 seed at top)
-  afc_div_1: { logo: { home: { x: 370, y: 120 }, away: { x: 370, y: 320 }, size: 125 }, score: { home: { x: 540, y: 170 }, away: { x: 540, y: 365 } }, seeds: { home: { x: 360, y: 100 }, away: { x: 360, y: 300 } } },
-  afc_div_2: { logo: { home: { x: 370, y: 560 }, away: { x: 370, y: 760 }, size: 125 }, score: { home: { x: 540, y: 605 }, away: { x: 540, y: 805 } }, seeds: { home: { x: 360, y: 540 }, away: { x: 360, y: 740 } } },
+  afc_div_1: { logo: { home: { x: 370, y: 120 }, away: { x: 370, y: 320 }, size: 125 }, score: { home: { x: 540, y: 170 }, away: { x: 540, y: 365 } }, seeds: { home: { x: 355, y: 100 }, away: { x: 355, y: 300 } } },
+  afc_div_2: { logo: { home: { x: 370, y: 560 }, away: { x: 370, y: 760 }, size: 125 }, score: { home: { x: 540, y: 605 }, away: { x: 540, y: 805 } }, seeds: { home: { x: 355, y: 540 }, away: { x: 355, y: 740 } } },
 
   // AFC Championship
-  afc_champ: { logo: { home: { x: 625, y: 340 }, away: { x: 625, y: 540 }, size: 125 }, score: { home: { x: 800, y: 390 }, away: { x: 800, y: 585 } }, seeds: { home: { x: 615, y: 320 }, away: { x: 615, y: 420 } } },
+  afc_champ: { logo: { home: { x: 625, y: 340 }, away: { x: 625, y: 540 }, size: 125 }, score: { home: { x: 800, y: 390 }, away: { x: 800, y: 585 } }, seeds: { home: { x: 615, y: 320 }, away: { x: 615, y: 520 } } },
 
   // NFC Wild Card (right side, top to bottom: 2v7, 3v6, 4v5)
   nfc_wc_1: { logo: { home: { x: 1680, y: 90 }, away: { x: 1680, y: 215 }, size: 110 }, score: { home: { x: 1610, y: 125 }, away: { x: 1610, y: 250 } }, seeds: { home: { x: 1815, y: 95 }, away: { x: 1815, y: 220 } } },
-  nfc_wc_2: { logo: { home: { x: 1680, y: 385 }, away: { x: 1680, y: 510 }, size: 110 }, score: { home: { x: 1610, y: 430 }, away: { x: 1610, y: 550 } }, seeds: { home: { x: 1815, y: 390 }, away: { x: 95, y: 515 } } },
-  nfc_wc_3: { logo: { home: { x: 1680, y: 680 }, away: { x: 1680, y: 805 }, size: 110 }, score: { home: { x: 1610, y: 725 }, away: { x: 1610, y: 845 } }, seeds: { home: { x: 1815, y: 685 }, away: { x: 1815, y: 685 } } },
+  nfc_wc_2: { logo: { home: { x: 1680, y: 385 }, away: { x: 1680, y: 510 }, size: 110 }, score: { home: { x: 1610, y: 430 }, away: { x: 1610, y: 550 } }, seeds: { home: { x: 1815, y: 390 }, away: { x: 1815, y: 515 } } },
+  nfc_wc_3: { logo: { home: { x: 1680, y: 680 }, away: { x: 1680, y: 805 }, size: 110 }, score: { home: { x: 1610, y: 725 }, away: { x: 1610, y: 845 } }, seeds: { home: { x: 1815, y: 685 }, away: { x: 1815, y: 810 } } },
 
   // NFC Divisional (1 seed at top)
-  nfc_div_1: { logo: { home: { x: 1415, y: 120 }, away: { x: 1415, y: 320 }, size: 125 }, score: { home: { x: 1355, y: 170 }, away: { x: 1355, y: 360 } }, seeds: { home: { x: 1545, y: 100 }, away: { x: 1545, y: 300 } } },
-  nfc_div_2: { logo: { home: { x: 1415, y: 560 }, away: { x: 1415, y: 760 }, size: 125 }, score: { home: { x: 1355, y: 605 }, away: { x: 1355, y: 805 } }, seeds: { home: { x: 1545, y: 540 }, away: { x: 1545, y: 740 } } },
+  nfc_div_1: { logo: { home: { x: 1415, y: 120 }, away: { x: 1415, y: 320 }, size: 125 }, score: { home: { x: 1355, y: 170 }, away: { x: 1355, y: 360 } }, seeds: { home: { x: 1550, y: 100 }, away: { x: 1550, y: 300 } } },
+  nfc_div_2: { logo: { home: { x: 1415, y: 560 }, away: { x: 1415, y: 760 }, size: 125 }, score: { home: { x: 1355, y: 605 }, away: { x: 1355, y: 805 } }, seeds: { home: { x: 1550, y: 540 }, away: { x: 1550, y: 740 } } },
 
   // NFC Championship
   nfc_champ: { logo: { home: { x: 1160, y: 340 }, away: { x: 1160, y: 540 }, size: 140 }, score: { home: { x: 1095, y: 390 }, away: { x: 1095, y: 585 } }, seeds: { home: { x: 1290, y: 320 }, away: { x: 1290, y: 520 } } },
 
   // Super Bowl
   super_bowl: {
-    logo: { home: { x: 885, y: 250 }, away: { x: 885, y: 620 }, size: 165 }, score: { home: { x: 950, y: 190 }, away: { x: 950, y: 790 } }, seeds: { home: { x: 880, y: 235 }, away: { x: 880, y: 605 } }
+    logo: { home: { x: 885, y: 250 }, away: { x: 885, y: 620 }, size: 165 }, score: { home: { x: 950, y: 190 }, away: { x: 950, y: 790 } }, seeds: { home: { x: 875, y: 235 }, away: { x: 875, y: 605 } }
   }
 }
 
@@ -130,7 +130,7 @@ async function drawGame(game: Matchup, position: GamePosition, teams: TeamList, 
     ctx.fillText(homeSeedText, position.seeds.home.x, position.seeds.home.y + offset);
 
     ctx.fillStyle = 'white';
-    ctx.font = 'italic 20px Arial';
+    ctx.font = 'italic 18px Arial';
     const awaySeedText = `${game.awaySeed}`;
     ctx.fillText(awaySeedText, position.seeds.away.x, position.seeds.away.y + offset);
   } else if (game.type === MatchupType.TBD) {
