@@ -8,7 +8,7 @@ import { discordLeagueView } from "../../db/view"
 import { storedTokenClient } from "../../dashboard/ea_client"
 
 async function getDashboardInfo(client: DiscordClient, token: string, guild_id: string) {
-  let message = `Snallabot Dashboard: https://${DEPLOYMENT_URL}/dashboard?discord_connection=${guild_id}\n`
+  let message = `${createDashboard(guild_id)}\n`
   const v = await discordLeagueView.createView(guild_id)
   if (v && v.leagueId) {
     message += `Connected League: ${v.leagueId}\n`
@@ -68,9 +68,14 @@ async function getDashboardInfo(client: DiscordClient, token: string, guild_id: 
   }
 }
 
+export function createDashboard(guild_id: string) {
+  return `Snallabot Dashboard: https://${DEPLOYMENT_URL}/dashboard?discord_connection=${guild_id}`
+}
+
 export default {
   async handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext) {
     const { guild_id } = command
+
     getDashboardInfo(client, command.token, command.guild_id)
     respond(ctx, deferMessage())
   },

@@ -2,6 +2,7 @@ import { ParameterizedContext } from "koa"
 import { verifyKey } from "discord-interactions"
 import { APIApplicationCommand, APIChannel, APIGuild, APIGuildMember, APIMessage, APIThreadChannel, APIUser, ChannelType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { CategoryId, ChannelId, DiscordIdType, MessageId, UserId } from "./settings_db"
+import { createDashboard } from "./commands/dashboard"
 import { GameResult, MaddenGame } from "../export/madden_league_types"
 import { TeamList } from "../db/madden_db"
 
@@ -23,6 +24,12 @@ export class DiscordRequestError extends Error {
 
   isPermissionError() {
     return this.code == 50013 || this.code == 50001
+  }
+}
+
+export class NoConnectedLeagueError extends Error {
+  constructor(guild_id: string) {
+    super(`There is no Madden league connected to this Discord server. To connect, setup the dashboard at this url: ${createDashboard(guild_id)}`)
   }
 }
 
@@ -52,6 +59,7 @@ export interface DiscordClient {
   interactionVerifier(ctx: ParameterizedContext): Promise<boolean>,
   handleSlashCommand(mode: CommandMode, command: RESTPostAPIApplicationCommandsJSONBody, guild?: string): Promise<void>,
   editOriginalInteraction(token: string, body: { [key: string]: any }): Promise<void>,
+  editOriginalInteractionWithForm(token: string, body: FormData): Promise<void>,
   createMessage(channel: ChannelId, content: string, allowedMentions: string[]): Promise<MessageId>,
   editMessage(channel: ChannelId, messageId: MessageId, content: string, allowedMentions: string[]): Promise<void>,
   deleteMessage(channel: ChannelId, messageId: MessageId): Promise<void>,
@@ -81,6 +89,42 @@ export function createClient(settings: DiscordSettings): DiscordClient {
           "Content-Type": "application/json; charset=UTF-8",
         },
         ...options,
+      })
+      if (!res.ok) {
+        const stringData = await res.text()
+        let data: DiscordError = { message: "Snallabot Error, could not send to discord", code: 1 }
+        try {
+          data = JSON.parse(stringData) as DiscordError
+        } catch (e) {
+          tries = tries + 1
+          await new Promise((r) => setTimeout(r, 1000))
+        }
+        if (data.retry_after) {
+          tries = tries + 1
+          const retryTime = data.retry_after
+          await new Promise((r) => setTimeout(r, retryTime * 1000))
+        } else {
+          throw new DiscordRequestError(data)
+        }
+      } else {
+        return res
+      }
+    }
+    throw new Error("max tries reached")
+  }
+
+  async function sendDiscordRequestForm(endpoint: string, body: FormData, options: { [key: string]: any }, maxTries: number = 10) {
+    // append endpoint to root API URL
+    const url = "https://discord.com/api/v10/" + endpoint
+    let tries = 0
+    while (tries < maxTries) {
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `Bot ${settings.botToken}`,
+          // "Content-Type": "multipart/form-data; charset=UTF-8",
+        },
+        body: body,
+        ...options
       })
       if (!res.ok) {
         const stringData = await res.text()
@@ -149,6 +193,13 @@ export function createClient(settings: DiscordSettings): DiscordClient {
       } catch (e) {
       }
     },
+    editOriginalInteractionWithForm: async (token: string, body: FormData) => {
+      try {
+        await sendDiscordRequestForm(`webhooks/${settings.appId}/${token}/messages/@original`, body, { method: "PATCH" })
+      } catch (e) {
+      }
+    }
+    ,
     createMessage: async (channel: ChannelId, content: string, allowedMentions = []): Promise<MessageId> => {
       try {
         const res = await sendDiscordRequest(`channels/${channel.id}/messages`, {
@@ -503,9 +554,9 @@ export enum SnallabotTeamEmojis {
 export function getTeamEmoji(teamAbbr: string): SnallabotTeamEmojis {
   return SnallabotTeamEmojis[teamAbbr.toUpperCase() as keyof typeof SnallabotTeamEmojis] || SnallabotTeamEmojis.NFL
 }
-export function formatTeamEmoji(teamId?: string) {
-  if (teamId) {
-    return getTeamEmoji(teamId)
+export function formatTeamEmoji(teamAbbr?: string) {
+  if (teamAbbr) {
+    return getTeamEmoji(teamAbbr)
   }
   return SnallabotTeamEmojis.NFL
 }

@@ -1,7 +1,7 @@
 import { ParameterizedContext } from "koa"
 import { APIChatInputApplicationCommandInteractionData, APIInteractionGuildMember } from "discord-api-types/payloads"
 import { APIApplicationCommandOptionChoice, APIAutocompleteApplicationCommandInteractionData, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
-import { createMessageResponse, respond, DiscordClient, CommandMode, SnallabotDiscordError } from "./discord_utils"
+import { createMessageResponse, respond, DiscordClient, CommandMode, SnallabotDiscordError, NoConnectedLeagueError } from "./discord_utils"
 import { Firestore } from "firebase-admin/firestore"
 import leagueExportHandler from "./commands/league_export"
 import testHandler from "./commands/test"
@@ -17,6 +17,7 @@ import exportHandler from "./commands/export"
 import standingsHandler from "./commands/standings"
 import playerHandler from "./commands/player"
 import gameStatsHandler from "./commands/game_stats"
+import bracketHandler from "./commands/bracket"
 import { APIMessageComponentInteractionData } from "discord-api-types/v9"
 
 export type Command = { command_name: string, token: string, guild_id: string, data: APIChatInputApplicationCommandInteractionData, member: APIInteractionGuildMember }
@@ -50,7 +51,8 @@ const SlashCommands: CommandsHandler = {
   "export": exportHandler,
   "test": testHandler,
   "standings": standingsHandler,
-  "player": playerHandler
+  "player": playerHandler,
+  "playoffs": bracketHandler
 }
 
 const AutocompleteCommands: AutocompleteHandlers = {
@@ -79,7 +81,10 @@ export async function handleCommand(command: Command, ctx: ParameterizedContext,
       ctx.status = 200
       if (error instanceof SnallabotDiscordError) {
         respond(ctx, createMessageResponse(`Discord Error in ${commandName}: ${error.message} Guidance: ${error.guidance}`))
-      } else {
+      } else if (error instanceof NoConnectedLeagueError) {
+        respond(ctx, createMessageResponse(error.message))
+      }
+      else {
         respond(ctx, createMessageResponse(`Fatal Error in ${commandName}: ${error.message}`))
       }
     }

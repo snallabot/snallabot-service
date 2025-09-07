@@ -101,6 +101,7 @@ interface MaddenDB {
   getLatestTeams(leagueId: string): Promise<TeamList>,
   getLatestWeekSchedule(leagueId: string, week: number): Promise<MaddenGame[]>,
   getLatestSchedule(leagueId: string): Promise<MaddenGame[]>,
+  getPlayoffSchedule(leagueId: string): Promise<MaddenGame[]>,
   getAllWeeks(leagueId: string): Promise<SeasonWeek[]>,
   getWeekScheduleForSeason(leagueId: string, week: number, season: number): Promise<MaddenGame[]>
   getGameForSchedule(leagueId: string, scheduleId: number, week: number, season: number): Promise<MaddenGame>,
@@ -357,6 +358,28 @@ const MaddenDB: MaddenDB = {
 
     return currentWeekGames.docs.map(doc => doc.data() as MaddenGame);
   },
+  getPlayoffSchedule: async function(leagueId: string) {
+    const weeks = await this.getAllWeeks(leagueId)
+    const currentSeason = weeks.length === 0 ? 0 : Math.max(...weeks.map(ws => ws.seasonIndex))
+    const scheduleRef = db.collection("madden_data26")
+      .doc(leagueId)
+      .collection(MaddenEvents.MADDEN_SCHEDULE)
+      .where("seasonIndex", "==", currentSeason)
+    const playoffGames = await Promise.all([scheduleRef
+      .where("weekIndex", "==", 18)
+      .get(), scheduleRef
+        .where("weekIndex", "==", 19)
+        .get(),
+    scheduleRef
+      .where("weekIndex", "==", 20)
+      .get(),
+    scheduleRef
+      .where("weekIndex", "==", 22)
+      .get()
+    ])
+    return playoffGames.flatMap(p => p.docs.map(d => d.data() as MaddenGame)).filter(g => g.awayTeamId !== 0 && g.homeTeamId !== 0)
+  }
+  ,
   getWeekScheduleForSeason: async function(leagueId: string, week: number, season: number) {
     const weekDocs = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_SCHEDULE).where("weekIndex", "==", week - 1).where("seasonIndex", "==", season)
       .where("stageIndex", "==", 1).get()
