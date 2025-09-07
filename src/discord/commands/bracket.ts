@@ -271,8 +271,9 @@ async function formatPlayoffBracket(client: DiscordClient, token: string, standi
       const afcOneSeed = standings.find(s => s.conferenceName.toLowerCase() === "afc" && s.seed === 1)
       if (afcOneSeed) {
         await drawGame({ type: MatchupType.TBD, homeSeed: afcOneSeed.seed, homeTeamId: afcOneSeed.teamId, playoffStatus: afcOneSeed.playoffStatus }, positions.afc_div_1, teams, ctx)
+      } else {
+        throw new Error(`Could not get AFC one seed`)
       }
-      throw new Error(`Could not get AFC one seed`)
     }
     if (afcDivisional[1]) await drawGame(decidedMatchupFromGame(afcDivisional[1], standings), positions.afc_div_2, teams, ctx);
 
@@ -299,8 +300,9 @@ async function formatPlayoffBracket(client: DiscordClient, token: string, standi
       const nfcOneSeed = standings.find(s => s.conferenceName.toLowerCase() === "nfc" && s.seed === 1)
       if (nfcOneSeed) {
         await drawGame({ type: MatchupType.TBD, homeSeed: nfcOneSeed.seed, homeTeamId: nfcOneSeed.teamId, playoffStatus: nfcOneSeed.playoffStatus }, positions.nfc_div_1, teams, ctx)
+      } else {
+        throw new Error(`Could not get NFC one seed`)
       }
-      throw new Error(`Could not get NFC one seed`)
     }
     if (nfcDivisional[1]) await drawGame(decidedMatchupFromGame(nfcDivisional[1], standings), positions.nfc_div_2, teams, ctx);
 
