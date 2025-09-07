@@ -54,7 +54,7 @@ const positions: Record<string, GamePosition> = {
 
   // Super Bowl
   super_bowl: {
-    logo: { home: { x: 885, y: 250 }, away: { x: 885, y: 620 }, size: 165 }, score: { home: { x: 950, y: 190 }, away: { x: 950, y: 790 }, seeds: { home: { x: 880, y: 235 }, away: { x: 880, y: 605 } } }
+    logo: { home: { x: 885, y: 250 }, away: { x: 885, y: 620 }, size: 165 }, score: { home: { x: 950, y: 190 }, away: { x: 950, y: 790 } }, seeds: { home: { x: 880, y: 235 }, away: { x: 880, y: 605 } }
   }
 }
 
