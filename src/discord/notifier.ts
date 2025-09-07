@@ -88,7 +88,6 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
           return
         }
       }
-      console.error(e)
     }
   }
   async function deleteTracking(currentState: GameChannel, season: number, week: number) {
