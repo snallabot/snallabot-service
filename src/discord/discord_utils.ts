@@ -2,6 +2,8 @@ import { ParameterizedContext } from "koa"
 import { verifyKey } from "discord-interactions"
 import { APIApplicationCommand, APIChannel, APIGuild, APIGuildMember, APIMessage, APIThreadChannel, APIUser, ChannelType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { CategoryId, ChannelId, DiscordIdType, MessageId, UserId } from "./settings_db"
+import { GameResult, MaddenGame } from "../export/madden_league_types"
+import { TeamList } from "../db/madden_db"
 
 export enum CommandMode {
   INSTALL = "INSTALL",
@@ -506,4 +508,22 @@ export function formatTeamEmoji(teamId?: string) {
     return getTeamEmoji(teamId)
   }
   return SnallabotTeamEmojis.NFL
+}
+
+export function formatGame(game: MaddenGame, teams: TeamList) {
+  const awayTeam = teams.getTeamForId(game.awayTeamId)
+  const homeTeam = teams.getTeamForId(game.homeTeamId)
+  const awayDisplay = `${formatTeamEmoji(awayTeam?.abbrName)} ${awayTeam?.displayName}`;
+  const homeDisplay = `${formatTeamEmoji(homeTeam?.abbrName)} ${homeTeam?.displayName}`;
+
+  if (game.status === GameResult.NOT_PLAYED) {
+    return `${awayDisplay} vs ${homeDisplay}`;
+  } else {
+    if (game.awayScore > game.homeScore) {
+      return `**${awayDisplay} ${game.awayScore}** vs ${game.homeScore} ${homeDisplay}`;
+    } else if (game.homeScore > game.awayScore) {
+      return `${awayDisplay} ${game.awayScore} vs **${game.homeScore} ${homeDisplay}**`;
+    }
+    return `${awayDisplay} ${game.awayScore} vs ${game.homeScore} ${homeDisplay}`;
+  }
 }
