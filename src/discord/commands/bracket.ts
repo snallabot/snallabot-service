@@ -217,8 +217,8 @@ async function formatPlayoffBracket(client: DiscordClient, token: string, standi
       if (foundGame) {
         return { type: MatchupType.DECIDED, homeTeamId: foundGame.homeTeamId, awayTeamId: foundGame.awayTeamId, homeSeed: homeSeed, awaySeed: awaySeed, finishedGame: foundGame }
       } else {
-        const homeTeam = standings.find(s => s.seed === homeSeed)
-        const awayTeam = standings.find(s => s.seed === awaySeed)
+        const homeTeam = standings.find(s => s.seed === homeSeed && s.conferenceName.toLowerCase() === conference)
+        const awayTeam = standings.find(s => s.seed === awaySeed && s.conferenceName.toLowerCase() === conference)
         if (!homeTeam || !awayTeam) {
           throw new Error(`Could not find correct seeds for ${homeSeed} vs ${awaySeed}`)
         }
