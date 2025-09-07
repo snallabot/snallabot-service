@@ -71,15 +71,15 @@ async function loadTeamLogo(abbrName: string): Promise<any> {
 function formatPlayoffStatusIndicator(status: PlayoffStatus): string {
   switch (status) {
     case PlayoffStatus.CLINCHED_TOP_SEED:
-      return "z";
+      return "(z)";
     case PlayoffStatus.CLINCHED_DIVISION:
-      return "y";
+      return "(y)";
     case PlayoffStatus.CLINCHED_PLAYOFF_BERTH:
-      return "x";
+      return "(x)";
     case PlayoffStatus.ELIMINATED:
-      return "e";
+      return "(e)";
     case PlayoffStatus.UNDECIDED:
-      return "?";
+      return "";
     default:
       return "";
   }
@@ -144,7 +144,7 @@ async function drawGame(game: Matchup, position: GamePosition, teams: TeamList, 
     ctx.font = 'italic 20px Arial';
     const offset = ctx.measureText('M').width;
 
-    const homeSeedText = `${game.homeSeed}(${formatPlayoffStatusIndicator(game.playoffStatus)})`;
+    const homeSeedText = `${game.homeSeed}${formatPlayoffStatusIndicator(game.playoffStatus)}`;
     ctx.fillText(homeSeedText, position.seeds.home.x, position.seeds.home.y + offset);
   } else {
     const awayTeam = teams.getTeamForId(game.awayTeamId);
@@ -164,12 +164,12 @@ async function drawGame(game: Matchup, position: GamePosition, teams: TeamList, 
     ctx.fillStyle = 'white';
     ctx.font = 'italic 20px Arial';
     const offset = ctx.measureText('M').width;
-    const homeSeedText = `${game.homeSeed}(${formatPlayoffStatusIndicator(game.homePlayoffStatus)})`;
+    const homeSeedText = `${game.homeSeed}${formatPlayoffStatusIndicator(game.homePlayoffStatus)}`;
     ctx.fillText(homeSeedText, position.seeds.home.x, position.seeds.home.y + offset);
 
     ctx.fillStyle = 'white';
     ctx.font = 'italic 20px Arial';
-    const awaySeedText = `${game.awaySeed}(${formatPlayoffStatusIndicator(game.awayPlayoffStatus)})`;
+    const awaySeedText = `${game.awaySeed}${formatPlayoffStatusIndicator(game.awayPlayoffStatus)}`;
     ctx.fillText(awaySeedText, position.seeds.away.x, position.seeds.away.y + offset);
   }
 }
