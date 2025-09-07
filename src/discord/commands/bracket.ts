@@ -64,7 +64,6 @@ async function loadTeamLogo(abbrName: string): Promise<any> {
     const logoPath = `./emojis/nfl_logos/${abbrName.toLowerCase()}.png`;
     return await loadImage(logoPath);
   } catch (error) {
-    console.warn(`Logo not found for ${abbrName}, defaulting`);
     return await loadImage(`./emojis/nfl_logos/nfl.png`);
   }
 }
