@@ -4,7 +4,7 @@ import { respond, createMessageResponse, DiscordClient, SnallabotDiscordError } 
 import { APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIApplicationCommandInteractionDataUserOption, ApplicationCommandOptionType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { FieldValue, Firestore } from "firebase-admin/firestore"
 import LeagueSettingsDB, { ChannelId, DiscordIdType, LeagueSettings, MessageId, TeamAssignments } from "../settings_db"
-import MaddenClient from "../../db/madden_db"
+import MaddenClient, { TeamList } from "../../db/madden_db"
 import { Team } from "../../export/madden_league_types"
 import { teamSearchView, discordLeagueView } from "../../db/view"
 import fuzzysort from "fuzzysort"
@@ -38,15 +38,15 @@ function formatTeamMessage(teams: Team[], teamAssignments: TeamAssignments): str
 export async function fetchTeamsMessage(settings: LeagueSettings): Promise<string> {
   if (settings?.commands?.madden_league?.league_id) {
     const teams = await MaddenClient.getLatestTeams(settings.commands.madden_league.league_id)
-    return createTeamsMessage(settings, teams.getLatestTeams())
+    return createTeamsMessage(settings, teams)
   } else {
     return "# Teams\nNo Madden League connected. Connect Snallabot to your league and reconfigure"
   }
 }
 
-function createTeamsMessage(settings: LeagueSettings, teams: Team[]): string {
+function createTeamsMessage(settings: LeagueSettings, teams: TeamList): string {
   if (settings?.commands?.madden_league?.league_id) {
-    return formatTeamMessage(teams, settings.commands.teams?.assignments || {})
+    return formatTeamMessage(teams.getLatestTeams(), teams.getLatestTeamAssignments(settings.commands.teams?.assignments || {}))
   } else {
     return "# Teams\nNo Madden League connected. Connect Snallabot to your league and reconfigure"
   }
@@ -144,7 +144,7 @@ export default {
       const assignments = { ...leagueSettings.commands.teams?.assignments, [teams.getTeamForId(assignedTeam.id).teamId]: { discord_user: { id: user, id_type: DiscordIdType.USER }, ...roleAssignment } }
       leagueSettings.commands.teams.assignments = assignments
       await LeagueSettingsDB.updateAssignment(guild_id, assignments)
-      const message = createTeamsMessage(leagueSettings, teams.getLatestTeams())
+      const message = createTeamsMessage(leagueSettings, teams)
       try {
         await client.editMessage(leagueSettings.commands.teams.channel, leagueSettings.commands.teams.messageId, message, [])
         respond(ctx, createMessageResponse("Team Assigned"))
@@ -190,7 +190,7 @@ export default {
       delete currentAssignments[`${teamIdToDelete}`]
       leagueSettings.commands.teams.assignments = currentAssignments
       await LeagueSettingsDB.removeAssignment(guild_id, teamIdToDelete)
-      const message = createTeamsMessage(leagueSettings, teams.getLatestTeams())
+      const message = createTeamsMessage(leagueSettings, teams)
       try {
         await client.editMessage(leagueSettings.commands.teams.channel, leagueSettings.commands.teams.messageId, message, [])
         respond(ctx, createMessageResponse("Team Freed"))

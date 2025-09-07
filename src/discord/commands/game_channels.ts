@@ -1,6 +1,6 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command } from "../commands_handler"
-import { respond, createMessageResponse, DiscordClient, deferMessage, formatTeamMessageName, SnallabotReactions, SnallabotDiscordError } from "../discord_utils"
+import { respond, createMessageResponse, DiscordClient, deferMessage, formatTeamMessageName, SnallabotReactions, SnallabotDiscordError, formatGame } from "../discord_utils"
 import { APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ApplicationCommandType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
 import LeagueSettingsDB, { CategoryId, ChannelId, DiscordIdType, GameChannel, GameChannelConfiguration, GameChannelState, LeagueSettings, MaddenLeagueConfiguration, MessageId, RoleId, UserId, WeekState } from "../settings_db"
@@ -36,24 +36,9 @@ export function formatScoreboard(week: number, seasonIndex: number, games: Madde
   const gameToSim = new Map<number, ConfirmedSimV2>()
   sims.forEach(sim => gameToSim.set(sim.scheduleId, sim))
   const scoreboardGames = games.sort((g1, g2) => g1.scheduleId - g2.scheduleId).map(game => {
-    const simMessage = gameToSim.has(game.scheduleId) ? ` (${createSimMessage(gameToSim.get(game.scheduleId)!)})` : ""
-    const awayTeamName = teams.getTeamForId(game.awayTeamId)?.displayName
-    const homeTeamName = teams.getTeamForId(game.homeTeamId)?.displayName
-    const awayTeam = `${awayTeamName}`
-    const homeTeam = `${homeTeamName}`
-    if (game.awayScore == 0 && game.homeScore == 0) {
-      return `${awayTeam} vs ${homeTeam}${simMessage}`
-    } else {
-      if (game.awayScore > game.homeScore) {
-        return `**${awayTeam} ${game.awayScore
-          }** vs ${game.homeScore} ${homeTeam}${simMessage}`
-      } else if (game.homeScore > game.awayScore) {
-        return `${awayTeam} ${game.awayScore
-          } vs **${game.homeScore} ${homeTeam}**${simMessage}`
-      }
-      return `${awayTeam} ${game.awayScore} vs ${game.homeScore
-        } ${homeTeam}${simMessage}`
-    }
+    const simMessage = gameToSim.has(game.scheduleId) ? `(${createSimMessage(gameToSim.get(game.scheduleId)!)})` : ""
+    const gameMessage = formatGame(game, teams)
+    return `${gameMessage} ${simMessage}`
   }).join("\n")
   return `# ${seasonIndex + MADDEN_SEASON} Season ${getMessageForWeek(week)} Scoreboard\n${scoreboardGames}`
 }
@@ -124,12 +109,13 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
     }
 
     const teams = await MaddenClient.getLatestTeams(leagueId)
-    const gameChannels = await Promise.all(weekSchedule.map(async game => {
+    const gameChannels = []
+    for (const game of weekSchedule) {
       const awayTeam = teams.getTeamForId(game.awayTeamId)?.displayName
       const homeTeam = teams.getTeamForId(game.homeTeamId)?.displayName
-      const channel = await client.createChannel(guild_id, `${awayTeam}-at-${homeTeam}`, category)
-      return { game: game, scheduleId: game.scheduleId, channel: channel }
-    }))
+      const channel = await client.createChannel(guild_id, `${awayTeam}-at-${homeTeam}${game.isGameOfTheWeek ? "⚔️" : ""}`, category)
+      gameChannels.push({ game: game, scheduleId: game.scheduleId, channel: channel })
+    }
     channelsToCleanup = gameChannels.map(c => c.channel)
     await client.editOriginalInteraction(token, {
       content: `Creating Game Channels:

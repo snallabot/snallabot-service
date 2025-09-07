@@ -1,6 +1,6 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command, AutocompleteHandler, Autocomplete, MessageComponentHandler, MessageComponentInteraction } from "../commands_handler"
-import { respond, DiscordClient, deferMessage, formatTeamEmoji } from "../discord_utils"
+import { respond, DiscordClient, deferMessage, formatTeamEmoji, formatGame } from "../discord_utils"
 import { APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ApplicationCommandType, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
 import { GameResult, MADDEN_SEASON, Team, getMessageForWeek } from "../../export/madden_league_types"
@@ -22,31 +22,15 @@ async function showSchedule(token: string, client: DiscordClient,
     }
     const teams = settledPromise[1].value
     const sortedSchedule = schedule.sort((a, b) => a.scheduleId - b.scheduleId)
-    const teamMap = new Map<Number, Team>()
-    teams.getLatestTeams().forEach(t => teamMap.set(t.teamId, t))
     const schedulesMessage = sortedSchedule.filter(w => w.awayTeamId !== 0 && w.homeTeamId !== 0).map(game => {
-      const awayTeam = teamMap.get(game.awayTeamId);
-      const homeTeam = teamMap.get(game.homeTeamId);
-      const awayDisplay = `${formatTeamEmoji(awayTeam?.abbrName)} ${awayTeam?.displayName}`;
-      const homeDisplay = `${formatTeamEmoji(homeTeam?.abbrName)} ${homeTeam?.displayName}`;
-
-      if (game.status === GameResult.NOT_PLAYED) {
-        return `${awayDisplay} vs ${homeDisplay}`;
-      } else {
-        if (game.awayScore > game.homeScore) {
-          return `**${awayDisplay} ${game.awayScore}** vs ${game.homeScore} ${homeDisplay}`;
-        } else if (game.homeScore > game.awayScore) {
-          return `${awayDisplay} ${game.awayScore} vs **${game.homeScore} ${homeDisplay}**`;
-        }
-        return `${awayDisplay} ${game.awayScore} vs ${game.homeScore} ${homeDisplay}`;
-      }
+      return formatGame(game, teams)
     }).join("\n")
     const season = schedule?.[0]?.seasonIndex >= 0 ? schedule[0].seasonIndex : requestedSeason != null ? requestedSeason : 0
     const week = schedule?.[0]?.weekIndex >= 0 ? schedule[0].weekIndex + 1 : requestedWeek != null ? requestedWeek : 1
 
     const message = `# ${MADDEN_SEASON + season} ${getMessageForWeek(week)} Schedule\n${schedulesMessage}`
     const gameOptions = sortedSchedule.filter(g => g.status !== GameResult.NOT_PLAYED && g.stageIndex > 0).map(game => ({
-      label: `${teamMap.get(game.awayTeamId)?.abbrName} ${game.awayScore} - ${game.homeScore} ${teamMap.get(game.homeTeamId)?.abbrName}`,
+      label: `${teams.getTeamForId(game.awayTeamId)?.abbrName} ${game.awayScore} - ${game.homeScore} ${teams.getTeamForId(game.homeTeamId)?.abbrName}`,
       value: { w: game.weekIndex, s: game.seasonIndex, c: game.scheduleId, o: GameStatsOptions.OVERVIEW, b: { wi: week - 1, si: season } }
     }))
       .map(option => ({ ...option, value: JSON.stringify(option.value) }))
