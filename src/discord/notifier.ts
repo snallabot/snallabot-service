@@ -82,12 +82,14 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
       } else {
         await client.deleteChannel(gameChannel.channel)
       }
+      return true
     } catch (e) {
       if (e instanceof SnallabotDiscordError) {
         if (e.isDeletedChannel()) {
           return
         }
       }
+      return false
     }
   }
   async function deleteTracking(currentState: GameChannel, season: number, week: number) {
@@ -96,8 +98,10 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
   }
   return {
     deleteGameChannel: async function(currentState: GameChannel, season: number, week: number, originators: UserId[]) {
-      await gameFinished(originators, currentState)
-      await deleteTracking(currentState, season, week)
+      const result = await gameFinished(originators, currentState)
+      if (result) {
+        await deleteTracking(currentState, season, week)
+      }
     },
     ping: async function(gameChannel: GameChannel, season: number, week: number) {
       const game = await MaddenDB.getGameForSchedule(leagueId, gameChannel.scheduleId, week, season)
