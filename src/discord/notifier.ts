@@ -86,7 +86,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
     } catch (e) {
       if (e instanceof SnallabotDiscordError) {
         if (e.isDeletedChannel()) {
-          return
+          return true
         }
       }
       return false
