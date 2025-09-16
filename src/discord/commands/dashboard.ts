@@ -9,6 +9,16 @@ import { storedTokenClient } from "../../dashboard/ea_client"
 
 async function getDashboardInfo(client: DiscordClient, token: string, guild_id: string) {
   let message = `${createDashboard(guild_id)}\n`
+  await client.editOriginalInteraction(token,
+    {
+      flags: 32768,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: message
+        }
+      ]
+    })
   const v = await discordLeagueView.createView(guild_id)
   if (v && v.leagueId) {
     message += `Connected League: ${v.leagueId}\n`
