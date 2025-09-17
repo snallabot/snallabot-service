@@ -225,7 +225,11 @@ async function clearGameChannels(client: DiscordClient, db: Firestore, token: st
   try {
     await client.editOriginalInteraction(token, { content: `Clearing Game Channels...` })
     const weekStates = settings.commands.game_channel?.weekly_states || {}
-    const channelsToClear = Object.entries(weekStates).flatMap(entry => {
+    const weekStatesWithChannels = Object.fromEntries(Object.entries(weekStates).filter(entry => {
+      const weekState = entry[1]
+      return weekState?.channel_states
+    }))
+    const channelsToClear = Object.entries(weekStatesWithChannels).flatMap(entry => {
       const weekState = entry[1]
       return Object.values(weekState?.channel_states || {})
     }).map(channelStates => {
@@ -250,7 +254,7 @@ async function clearGameChannels(client: DiscordClient, db: Firestore, token: st
         }
       }))
     }
-    await Promise.all(Object.values(weekStates).map(async weekState => {
+    await Promise.all(Object.values(weekStatesWithChannels).map(async weekState => {
       await LeagueSettingsDB.deleteGameChannels(guild_id, weekState.week, weekState.seasonIndex)
     }))
     await client.editOriginalInteraction(token, { content: `Game Channels Cleared` })
