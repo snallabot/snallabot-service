@@ -1,6 +1,6 @@
 import { ParameterizedContext } from "koa"
 import { verifyKey } from "discord-interactions"
-import { APIApplicationCommand, APIChannel, APIGuild, APIGuildMember, APIMessage, APIThreadChannel, APIUser, ChannelType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
+import { APIApplicationCommand, APIChannel, APIEmoji, APIGuild, APIGuildMember, APIMessage, APIThreadChannel, APIUser, ChannelType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { CategoryId, ChannelId, DiscordIdType, MessageId, UserId } from "./settings_db"
 import { createDashboard } from "./commands/dashboard"
 import { GameResult, MaddenGame } from "../export/madden_league_types"
@@ -72,7 +72,8 @@ export interface DiscordClient {
   createThreadInChannel(channel: ChannelId, channelName: string): Promise<ChannelId>,
   checkMessageExists(channel: ChannelId, messageId: MessageId): Promise<boolean>,
   getUsers(guild_id: string): Promise<APIGuildMember[]>,
-  getGuildInformation(guild_id: String): Promise<APIGuild>
+  getGuildInformation(guild_id: string): Promise<APIGuild>,
+  uploadEmoji(imageData: string, name: string): Promise<APIEmoji>
 }
 
 type DiscordSettings = { publicKey: string, botToken: string, appId: string }
@@ -424,6 +425,16 @@ export function createClient(settings: DiscordSettings): DiscordClient {
       })
       const guildInfo = (await guildInfoRes.json()) as APIGuild
       return guildInfo
+    },
+    uploadEmoji: async function(image: string, name: string) {
+      const res = await sendDiscordRequest(`applications/${settings.appId}/emojis`, {
+        method: "POST",
+        body: {
+          name: name,
+          image: image
+        }
+      })
+      return (await res.json()) as APIEmoji
     }
   }
 }

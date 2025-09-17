@@ -1,6 +1,6 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command, AutocompleteHandler, Autocomplete } from "../commands_handler"
-import { respond, createMessageResponse, DiscordClient, SnallabotDiscordError, NoConnectedLeagueError } from "../discord_utils"
+import { respond, createMessageResponse, DiscordClient, SnallabotDiscordError, NoConnectedLeagueError, deferMessage } from "../discord_utils"
 import { APIApplicationCommandInteractionDataAttachmentOption, APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIApplicationCommandInteractionDataUserOption, ApplicationCommandOptionType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { FieldValue, Firestore } from "firebase-admin/firestore"
 import LeagueSettingsDB, { ChannelId, DiscordIdType, LeagueSettings, MessageId, TeamAssignments } from "../settings_db"
@@ -9,7 +9,8 @@ import { Team } from "../../export/madden_league_types"
 import { teamSearchView, discordLeagueView } from "../../db/view"
 import fuzzysort from "fuzzysort"
 import MaddenDB from "../../db/madden_db"
-
+import { createCanvas, loadImage } from "canvas"
+import FileHandler, { imageSerializer } from "../../file_handlers"
 
 function formatTeamMessage(teams: Team[], teamAssignments: TeamAssignments): string {
   const header = "# Teams"
@@ -49,6 +50,44 @@ function createTeamsMessage(settings: LeagueSettings, teams: TeamList): string {
     return formatTeamMessage(teams.getLatestTeams(), teams.getLatestTeamAssignments(settings.commands.teams?.assignments || {}))
   } else {
     return "# Teams\nNo Madden League connected. Connect Snallabot to your league and reconfigure"
+  }
+}
+
+async function handleCustomLogo(guild_id: string, league_id: string, client: DiscordClient, token: string, imageUrl: string, teamToCustomize: Team) {
+  try {
+    // Download the image
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.statusText}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // Load the image into canvas
+    const image = await loadImage(buffer);
+
+    // Create a 128x128 canvas
+    const canvas = createCanvas(128, 128);
+    const ctx = canvas.getContext('2d');
+
+    // Draw the resized image
+    ctx.drawImage(image, 0, 0, 128, 128);
+
+    // Convert to buffer
+    const resizedBuffer = canvas.toBuffer('image/png');
+    const base64Image = `data:image/png;base64,${resizedBuffer.toString('base64')}`;
+    await client.uploadEmoji(base64Image, `${league_id}_${teamToCustomize.abbrName}`)
+    await FileHandler.writeFile<string>(base64Image, `custom_logos/${league_id}/${teamToCustomize.abbrName}.png`, imageSerializer)
+    client.editOriginalInteraction(token, {
+      content: `Assigned custom logo`
+    })
+
+  } catch (error) {
+    console.error('Error processing custom logo:', error);
+    client.editOriginalInteraction(token, {
+      content: `Error processing custom logo:, ${error}`
+    })
   }
 }
 
@@ -254,9 +293,10 @@ export default {
         throw new Error(`Found more than one  team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs.Found teams: ${results.map(t => t.obj.displayName).join(", ")}`)
       }
       const assignedTeam = results[0].obj
-      const teamIdToCustomize = teams.getTeamForId(assignedTeam.id).teamId
-      console.log(command.data.resolved.attachments[image.value])
-      respond(ctx, createMessageResponse("<:test_gb:1417730512948301824>"))
+      const teamToCustomize = teams.getTeamForId(assignedTeam.id)
+      const { url } = command.data.resolved.attachments[image.value]
+      handleCustomLogo(guild_id, leagueId, client, command.token, url, teamToCustomize)
+      respond(ctx, deferMessage())
     }
     else {
       throw new Error(`teams ${subCommand} misconfigured`)
