@@ -77,10 +77,10 @@ async function handleCustomLogo(guild_id: string, league_id: string, client: Dis
     // Convert to buffer
     const resizedBuffer = canvas.toBuffer('image/png');
     const base64Image = `data:image/png;base64,${resizedBuffer.toString('base64')}`;
-    await client.uploadEmoji(base64Image, `${league_id}_${teamToCustomize.abbrName}`)
+    const emoji = await client.uploadEmoji(base64Image, `${league_id}_${teamToCustomize.abbrName}`)
     await FileHandler.writeFile<string>(base64Image, `custom_logos/${league_id}/${teamToCustomize.abbrName}.png`, imageSerializer)
     client.editOriginalInteraction(token, {
-      content: `Assigned custom logo`
+      content: `Assigned custom logo ${teamToCustomize.abbrName}: <:${emoji.name}:${emoji.id}>`
     })
   } catch (error) {
     console.error('Error processing custom logo:', error);
