@@ -1,12 +1,12 @@
 import NodeCache from "node-cache"
 import EventDB, { SnallabotEvent } from "./events_db"
 import MaddenDB, { MaddenEvents } from "./madden_db"
-import { MaddenGame, Player, Team } from "../export/madden_league_types"
+import { Player, Team } from "../export/madden_league_types"
 import LeagueSettingsDB from "../discord/settings_db"
 import { DiscordLeagueConnectionEvent } from "./events"
 import FileHandler from "../file_handlers"
 
-const TTL = 0
+const TTL = 10800 // 3 hours in seconds
 
 abstract class View<T> {
   id: string

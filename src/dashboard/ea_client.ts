@@ -525,7 +525,10 @@ async function exportTeamData(data: TeamData, destinations: { [key: string]: Exp
     }))
   }
 }
-
+const staggeringCall = async <T>(p: Promise<T>, waitTime: number = STAGGERED_MAX_MS): Promise<T> => {
+  await new Promise(r => setTimeout(r, randomIntFromInterval(1, waitTime)))
+  return await p
+}
 export async function exporterForLeague(leagueId: number, context: ExportContext): Promise<MaddenExporter> {
   const client = await storedTokenClient(leagueId)
   const exports = client.getExports()
@@ -540,10 +543,6 @@ export async function exporterForLeague(leagueId: number, context: ExportContext
     }
   }))
   const leagueInfo = await client.getLeagueInfo(leagueId)
-  const staggeringCall = async <T>(p: Promise<T>, waitTime: number = STAGGERED_MAX_MS): Promise<T> => {
-    await new Promise(r => setTimeout(r, randomIntFromInterval(1, waitTime)))
-    return await p
-  }
   return {
     exportCurrentWeek: async function() {
       const weekIndex = leagueInfo.careerHubInfo.seasonInfo.seasonWeek
