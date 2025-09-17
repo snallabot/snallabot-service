@@ -77,7 +77,7 @@ function formatPlayoffStatusIndicator(status: PlayoffStatus): string {
     case PlayoffStatus.CLINCHED_PLAYOFF_BERTH:
       return "(x)";
     case PlayoffStatus.ELIMINATED:
-      return "(e)";
+      return "";
     case PlayoffStatus.UNDECIDED:
       return "";
     default:
