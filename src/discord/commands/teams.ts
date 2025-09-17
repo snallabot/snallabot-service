@@ -239,7 +239,6 @@ export default {
 
       const teamSearchPhrase = (teamsCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value.toLowerCase()
       const image = (teamsCommand.options[1] as APIApplicationCommandInteractionDataAttachmentOption)
-      console.log(command.data.resolved.attachments[image.value])
       if (!leagueSettings?.commands?.madden_league?.league_id) {
         throw new NoConnectedLeagueError(guild_id)
       }
@@ -256,8 +255,8 @@ export default {
       }
       const assignedTeam = results[0].obj
       const teamIdToCustomize = teams.getTeamForId(assignedTeam.id).teamId
-      console.log(image)
-      respond(ctx, createMessageResponse("wip"))
+      console.log(command.data.resolved.attachments[image.value])
+      respond(ctx, createMessageResponse(":test_gb:"))
     }
     else {
       throw new Error(`teams ${subCommand} misconfigured`)
