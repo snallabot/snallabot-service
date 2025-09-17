@@ -237,7 +237,7 @@ export default {
         throw new Error("teams customize_logo misconfigured")
       }
       const teamSearchPhrase = (teamsCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value.toLowerCase()
-      const image = (teamsCommand.options[1] as APIApplicationCommandInteractionDataAttachmentOption).value
+      const image = (teamsCommand.options[1] as APIApplicationCommandInteractionDataAttachmentOption)
       if (!leagueSettings?.commands?.madden_league?.league_id) {
         throw new NoConnectedLeagueError(guild_id)
       }
