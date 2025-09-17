@@ -374,11 +374,13 @@ const MaddenDB: MaddenDB = {
     const latestSeason = Math.max(...(Object.keys(bySeason).map(i => Number(i))))
     const latestSeasonSchedule = bySeason[latestSeason]
     if (latestSeasonSchedule) {
+      console.log("herelatestweekschedule")
       return deduplicateSchedule(latestSeasonSchedule, teamList)
     }
     throw new Error("Missing schedule for week " + week)
   },
   getLatestSchedule: async function(leagueId: string) {
+    console.log("herelatestschedule")
     const scheduleCollection = db.collection("madden_data26")
       .doc(leagueId)
       .collection(MaddenEvents.MADDEN_SCHEDULE);
@@ -444,12 +446,12 @@ const MaddenDB: MaddenDB = {
   }
   ,
   getWeekScheduleForSeason: async function(leagueId: string, week: number, season: number) {
+    console.log("get week schedule for season")
     const [weekDocs, teamList] = await Promise.all([db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_SCHEDULE).where("weekIndex", "==", week - 1).where("seasonIndex", "==", season)
       .where("stageIndex", "==", 1).get(), this.getLatestTeams(leagueId)])
     const maddenSchedule = deduplicateSchedule(weekDocs.docs.map(d => convertDate(d.data())() as StoredEvent<MaddenGame>), teamList)
       .filter(game => game.awayTeamId != 0 && game.homeTeamId != 0)
     if (maddenSchedule.length !== 0) {
-      console.log(maddenSchedule)
       return maddenSchedule
     }
     throw new Error(`Missing schedule for week ${week} and season ${MADDEN_SEASON + season}`)
