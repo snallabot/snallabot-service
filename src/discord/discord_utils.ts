@@ -433,8 +433,48 @@ export function createClient(settings: DiscordSettings): DiscordClient {
           name: name,
           image: image
         }
-      })
-      return (await res.json()) as APIEmoji
+      });
+
+      // Check if the response indicates a duplicate name error
+      if (!res.ok) {
+        const errorData = await res.json();
+
+        // Check for the specific duplicate emoji name error
+        if (errorData.code === 50035 &&
+          errorData.errors?.name?._errors?.[0]?.code === "APPLICATION_EMOJI_NAME_ALREADY_TAKEN") {
+
+          // Get all existing emojis to find the one with the same name
+          const existingEmojisRes = await sendDiscordRequest(`applications/${settings.appId}/emojis`, {
+            method: "GET"
+          });
+
+          const existingEmojis = await existingEmojisRes.json();
+          const duplicateEmoji = existingEmojis.find((emoji: any) => emoji.name === name);
+
+          if (duplicateEmoji) {
+            // Delete the existing emoji
+            await sendDiscordRequest(`applications/${settings.appId}/emojis/${duplicateEmoji.id}`, {
+              method: "DELETE"
+            });
+
+            // Create the new emoji
+            const newRes = await sendDiscordRequest(`applications/${settings.appId}/emojis`, {
+              method: "POST",
+              body: {
+                name: name,
+                image: image
+              }
+            });
+
+            return (await newRes.json()) as APIEmoji;
+          }
+        }
+
+        // If it's a different error, throw it
+        throw new Error(`Discord API Error: ${errorData.message}`);
+      }
+
+      return (await res.json()) as APIEmoji;
     }
   }
 }

@@ -82,7 +82,6 @@ async function handleCustomLogo(guild_id: string, league_id: string, client: Dis
     client.editOriginalInteraction(token, {
       content: `Assigned custom logo`
     })
-
   } catch (error) {
     console.error('Error processing custom logo:', error);
     client.editOriginalInteraction(token, {
@@ -297,6 +296,7 @@ export default {
       const { url } = command.data.resolved.attachments[image.value]
       handleCustomLogo(guild_id, leagueId, client, command.token, url, teamToCustomize)
       respond(ctx, deferMessage())
+      return
     }
     else {
       throw new Error(`teams ${subCommand} misconfigured`)
