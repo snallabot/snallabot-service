@@ -213,7 +213,7 @@ function createTeamList(teams: StoredEvent<Team>[]): TeamList {
 
 async function getStats<T extends { rosterId: number, stageIndex: number }>(leagueId: string, rosterId: number, collection: string): Promise<SnallabotEvent<T>[]> {
   const stats = await db.collection("madden_data26").doc(leagueId).collection(collection).where("rosterId", "==", rosterId).get()
-  const playerStats = stats.docs.map(d => d.data() as StoredEvent<T>).filter(d => d.stageIndex > 0)
+  const playerStats = stats.docs.map(d => convertDate(d.data()) as StoredEvent<T>).filter(d => d.stageIndex > 0)
   return playerStats
 }
 
@@ -237,6 +237,68 @@ function reconstructFromHistory<T>(histories: StoredHistory[], og: T) {
     previousVersion = { ...reconstructedSchedule };
   }
   return all
+}
+
+
+function deduplicateSchedule(games: StoredEvent<MaddenGame>[], teams: TeamList): StoredEvent<MaddenGame>[] {
+  const gameMap = new Map<string, StoredEvent<MaddenGame>>();
+
+  for (const game of games) {
+    // Map team IDs to their latest versions
+    const latestHomeTeam = teams.getTeamForId(game.homeTeamId);
+    const latestAwayTeam = teams.getTeamForId(game.awayTeamId);
+
+    // Create a unique key for this matchup using the latest team IDs
+    // Sort the team IDs to ensure consistent ordering (so home vs away doesn't matter for deduplication)
+    const teamIds = [latestHomeTeam.teamId, latestAwayTeam.teamId].sort((a, b) => a - b);
+    const gameKey = `${game.seasonIndex}-${game.weekIndex}-${teamIds[0]}-${teamIds[1]}`;
+
+    const existingGame = gameMap.get(gameKey);
+
+    if (!existingGame) {
+      // First occurrence of this game
+      gameMap.set(gameKey, game);
+    } else {
+      // Duplicate found - keep the one with the later timestamp
+      if (game.timestamp > existingGame.timestamp) {
+        gameMap.set(gameKey, game);
+      }
+      // If existing game has later timestamp, we keep it (do nothing)
+    }
+  }
+  return Array.from(gameMap.values());
+}
+
+function findLatestScheduleId(scheduleId: number, games: StoredEvent<MaddenGame>[], teams: TeamList): StoredEvent<MaddenGame> {
+  // First, find the game with the given schedule ID
+  const originalGame = games.find(game => game.scheduleId === scheduleId);
+
+  if (!originalGame) {
+    throw new Error(`No game found with schedule ID: ${scheduleId}`);
+  }
+
+  // Map the original game's team IDs to their latest versions
+  const latestHomeTeam = teams.getTeamForId(originalGame.homeTeamId);
+  const latestAwayTeam = teams.getTeamForId(originalGame.awayTeamId);
+
+  // Create the game key using latest team IDs (sorted for consistency)
+  const teamIds = [latestHomeTeam.teamId, latestAwayTeam.teamId].sort((a, b) => a - b);
+  const gameKey = `${originalGame.seasonIndex}-${originalGame.weekIndex}-${teamIds[0]}-${teamIds[1]}`;
+
+  // Find all games that match this same matchup (same teams, week, season)
+  const matchingGames = games.filter(game => {
+    const gameLatestHomeTeam = teams.getTeamForId(game.homeTeamId);
+    const gameLatestAwayTeam = teams.getTeamForId(game.awayTeamId);
+    const gameTeamIds = [gameLatestHomeTeam.teamId, gameLatestAwayTeam.teamId].sort((a, b) => a - b);
+    const gameGameKey = `${game.seasonIndex}-${game.weekIndex}-${gameTeamIds[0]}-${gameTeamIds[1]}`;
+
+    return gameGameKey === gameKey;
+  });
+
+  // Return the game with the latest timestamp
+  return matchingGames.reduce((latest, current) =>
+    current.timestamp > latest.timestamp ? current : latest
+  )
 }
 
 
@@ -298,12 +360,12 @@ const MaddenDB: MaddenDB = {
   },
   getLatestTeams: async function(leagueId: string): Promise<TeamList> {
     const teamDocs = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_TEAM).get()
-    return createTeamList(teamDocs.docs.filter(d => d.id !== "leagueteams").map(d => convertDate(d.data()) as StoredEvent<Team>))
+    return createTeamList(teamDocs.docs.map(d => convertDate(d.data()) as StoredEvent<Team>))
   },
   getLatestWeekSchedule: async function(leagueId: string, week: number) {
-    const weekDocs = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_SCHEDULE).where("weekIndex", "==", week - 1)
-      .where("stageIndex", "==", 1).orderBy("seasonIndex", "desc").limit(16).get()
-    const maddenSchedule = weekDocs.docs.filter(d => !d.id.startsWith("schedules")).map(d => d.data() as MaddenGame)
+    const [weekDocs, teamList] = await Promise.all([db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_SCHEDULE).where("weekIndex", "==", week - 1)
+      .where("stageIndex", "==", 1).orderBy("seasonIndex", "desc").get(), this.getLatestTeams(leagueId)])
+    const maddenSchedule = weekDocs.docs.map(d => convertDate(d.data()) as StoredEvent<MaddenGame>)
       .filter(game => game.awayTeamId != 0 && game.homeTeamId != 0)
     if (maddenSchedule.length === 0) {
       throw new Error("Missing schedule for week " + week)
@@ -312,7 +374,7 @@ const MaddenDB: MaddenDB = {
     const latestSeason = Math.max(...(Object.keys(bySeason).map(i => Number(i))))
     const latestSeasonSchedule = bySeason[latestSeason]
     if (latestSeasonSchedule) {
-      return latestSeasonSchedule
+      return deduplicateSchedule(latestSeasonSchedule, teamList)
     }
     throw new Error("Missing schedule for week " + week)
   },
@@ -320,6 +382,7 @@ const MaddenDB: MaddenDB = {
     const scheduleCollection = db.collection("madden_data26")
       .doc(leagueId)
       .collection(MaddenEvents.MADDEN_SCHEDULE);
+    const teamList = await this.getLatestTeams(leagueId)
 
     // Query for unplayed games only
     const unplayedSnapshot = await scheduleCollection
@@ -335,12 +398,11 @@ const MaddenDB: MaddenDB = {
         throw new Error(`Missing schedule for league`)
       }
 
-      const games: MaddenGame[] = allGamesSnapshot.docs.map(doc => doc.data() as MaddenGame);
+      const games = allGamesSnapshot.docs.map(doc => doc.data() as StoredEvent<MaddenGame>);
       const maxSeason = Math.max(...games.map(game => game.seasonIndex));
       const gamesInLatestSeason = games.filter(game => game.seasonIndex === maxSeason);
       const maxWeek = Math.max(...gamesInLatestSeason.map(game => game.weekIndex));
-
-      return games.filter(game => game.seasonIndex === maxSeason && game.weekIndex === maxWeek);
+      return deduplicateSchedule(games.filter(game => game.seasonIndex === maxSeason && game.weekIndex === maxWeek), teamList)
     }
 
     // Find the earliest season and week with unplayed games
@@ -356,7 +418,7 @@ const MaddenDB: MaddenDB = {
       .where("stageIndex", "==", 1)
       .get();
 
-    return currentWeekGames.docs.map(doc => doc.data() as MaddenGame);
+    return deduplicateSchedule(currentWeekGames.docs.map(doc => doc.data() as StoredEvent<MaddenGame>), teamList)
   },
   getPlayoffSchedule: async function(leagueId: string) {
     const weeks = await this.getAllWeeks(leagueId)
@@ -377,13 +439,14 @@ const MaddenDB: MaddenDB = {
       .where("weekIndex", "==", 22)
       .get()
     ])
-    return playoffGames.flatMap(p => p.docs.map(d => d.data() as MaddenGame)).filter(g => g.awayTeamId !== 0 && g.homeTeamId !== 0)
+    const teamList = await this.getLatestTeams(leagueId)
+    return deduplicateSchedule(playoffGames.flatMap(p => p.docs.map(d => convertDate(d.data()) as StoredEvent<MaddenGame>)), teamList).filter(g => g.awayTeamId !== 0 && g.homeTeamId !== 0)
   }
   ,
   getWeekScheduleForSeason: async function(leagueId: string, week: number, season: number) {
-    const weekDocs = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_SCHEDULE).where("weekIndex", "==", week - 1).where("seasonIndex", "==", season)
-      .where("stageIndex", "==", 1).get()
-    const maddenSchedule = weekDocs.docs.map(d => d.data() as MaddenGame)
+    const [weekDocs, teamList] = await Promise.all([db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_SCHEDULE).where("weekIndex", "==", week - 1).where("seasonIndex", "==", season)
+      .where("stageIndex", "==", 1).get(), this.getLatestTeams(leagueId)])
+    const maddenSchedule = deduplicateSchedule(weekDocs.docs.map(d => convertDate(d.data())() as StoredEvent<MaddenGame>), teamList)
       .filter(game => game.awayTeamId != 0 && game.homeTeamId != 0)
     if (maddenSchedule.length !== 0) {
       return maddenSchedule
@@ -391,13 +454,9 @@ const MaddenDB: MaddenDB = {
     throw new Error(`Missing schedule for week ${week} and season ${MADDEN_SEASON + season}`)
   },
   getGameForSchedule: async function(leagueId: string, scheduleId: number, week: number, season: number) {
-    const docId = idWeeklyEvents({ seasonIndex: season, weekIndex: week - 1 }, scheduleId)
-    const schedule = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_SCHEDULE).doc(docId).get()
-    if (!schedule.exists) {
-      throw new Error("Schedule document not found for id" + docId)
-    }
-    const game = schedule.data() as MaddenGame
-    return game
+    const [weekDocs, teamList] = await Promise.all([db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_SCHEDULE).where("weekIndex", "==", week - 1).where("seasonIndex", "==", season)
+      .where("stageIndex", "==", 1).get(), this.getLatestTeams(leagueId)])
+    return findLatestScheduleId(scheduleId, weekDocs.docs.map(d => convertDate(d.data()) as StoredEvent<MaddenGame>), teamList)
   },
   getAllWeeks: async function(leagueId: string) {
     const status = await this.getExportStatus(leagueId)
@@ -427,14 +486,14 @@ const MaddenDB: MaddenDB = {
   },
   getLatestPlayers: async function(leagueId: string) {
     const playerSnapshot = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).select("rosterId", "firstName", "lastName", "teamId", "position").get()
-    return playerSnapshot.docs.filter(d => !d.id.startsWith("roster")).map(doc => {
+    return playerSnapshot.docs.map(doc => {
       return doc.data() as Player
     })
   },
   getPlayer: async function(leagueId: string, rosterId: string) {
     const playerDoc = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).doc(rosterId).get()
     if (playerDoc.exists) {
-      return playerDoc.data() as Player
+      return convertDate(playerDoc.data()) as Player
     }
     throw new Error(`Player ${rosterId} not found in league ${leagueId}`)
   },
@@ -526,7 +585,7 @@ const MaddenDB: MaddenDB = {
 
     const snapshot = await playersQuery.get();
 
-    const players = snapshot.docs.map(d => d.data() as Player)
+    const players = snapshot.docs.map(d => convertDate(d.data())() as Player)
     if (endBefore) {
       return players.reverse()
     } else {
