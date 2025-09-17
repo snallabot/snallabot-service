@@ -256,7 +256,7 @@ export default {
       const assignedTeam = results[0].obj
       const teamIdToCustomize = teams.getTeamForId(assignedTeam.id).teamId
       console.log(command.data.resolved.attachments[image.value])
-      respond(ctx, createMessageResponse(":test_gb:"))
+      respond(ctx, createMessageResponse("<:test_gb:1417728805023518830>"))
     }
     else {
       throw new Error(`teams ${subCommand} misconfigured`)
