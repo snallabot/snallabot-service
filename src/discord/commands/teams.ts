@@ -233,7 +233,7 @@ export default {
 
       }
     } else if (subCommand === "customize_logo") {
-      if (!teamsCommand.options || !teamsCommand.options[0] || !teamsCommand.resolved) {
+      if (!teamsCommand.options || !teamsCommand.options[0] || !teamsCommand.options[1]) {
         throw new Error("teams customize_logo misconfigured")
       }
       console.log(teamsCommand)
