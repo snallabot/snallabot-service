@@ -11,15 +11,17 @@ export enum CommandMode {
   DELETE = "DELETE"
 }
 
-export type DiscordError = { message: string, code: number, retry_after?: number }
+export type DiscordError = { message: string, code: number, retry_after?: number, errors?: { name: { _errors: { code: string, message: string }[] } } }
 
 // https://discord.com/developers/docs/topics/opcodes-and-status-codes
 export class DiscordRequestError extends Error {
   code: number
+  originalError: DiscordError
   constructor(error: DiscordError) {
     super(JSON.stringify(error))
     this.name = "DiscordError"
     this.code = error.code
+    this.originalError = error
   }
 
   isPermissionError() {
@@ -427,54 +429,53 @@ export function createClient(settings: DiscordSettings): DiscordClient {
       return guildInfo
     },
     uploadEmoji: async function(image: string, name: string) {
-      const res = await sendDiscordRequest(`applications/${settings.appId}/emojis`, {
-        method: "POST",
-        body: {
-          name: name,
-          image: image
-        }
-      });
+      try {
+        const res = await sendDiscordRequest(`applications/${settings.appId}/emojis`, {
+          method: "POST",
+          body: {
+            name: name,
+            image: image
+          }
+        })
+        return (await res.json()) as APIEmoji;
+      }
+      catch (e) {
+        if (e instanceof DiscordRequestError) {
+          const errorData = e.originalError
+          // Check for the specific duplicate emoji name error
+          if (errorData.code === 50035 &&
+            errorData.errors?.name?._errors?.[0]?.code === "APPLICATION_EMOJI_NAME_ALREADY_TAKEN") {
 
-      // Check if the response indicates a duplicate name error
-      if (!res.ok) {
-        const errorData = await res.json();
-
-        // Check for the specific duplicate emoji name error
-        if (errorData.code === 50035 &&
-          errorData.errors?.name?._errors?.[0]?.code === "APPLICATION_EMOJI_NAME_ALREADY_TAKEN") {
-
-          // Get all existing emojis to find the one with the same name
-          const existingEmojisRes = await sendDiscordRequest(`applications/${settings.appId}/emojis`, {
-            method: "GET"
-          });
-
-          const existingEmojis = await existingEmojisRes.json();
-          const duplicateEmoji = existingEmojis.find((emoji: any) => emoji.name === name);
-
-          if (duplicateEmoji) {
-            // Delete the existing emoji
-            await sendDiscordRequest(`applications/${settings.appId}/emojis/${duplicateEmoji.id}`, {
-              method: "DELETE"
+            // Get all existing emojis to find the one with the same name
+            const existingEmojisRes = await sendDiscordRequest(`applications/${settings.appId}/emojis`, {
+              method: "GET"
             });
 
-            // Create the new emoji
-            const newRes = await sendDiscordRequest(`applications/${settings.appId}/emojis`, {
-              method: "POST",
-              body: {
-                name: name,
-                image: image
-              }
-            });
+            const existingEmojis = await existingEmojisRes.json();
+            const duplicateEmoji = existingEmojis.find((emoji: any) => emoji.name === name);
 
-            return (await newRes.json()) as APIEmoji;
+            if (duplicateEmoji) {
+              // Delete the existing emoji
+              await sendDiscordRequest(`applications/${settings.appId}/emojis/${duplicateEmoji.id}`, {
+                method: "DELETE"
+              });
+
+              // Create the new emoji
+              const newRes = await sendDiscordRequest(`applications/${settings.appId}/emojis`, {
+                method: "POST",
+                body: {
+                  name: name,
+                  image: image
+                }
+              });
+
+              return (await newRes.json()) as APIEmoji;
+            }
           }
         }
-
         // If it's a different error, throw it
-        throw new Error(`Discord API Error: ${errorData.message}`);
+        throw new Error(`Discord API Error: ${e}`);
       }
-
-      return (await res.json()) as APIEmoji;
     }
   }
 }
