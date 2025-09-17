@@ -211,10 +211,26 @@ function createTeamList(teams: StoredEvent<Team>[]): TeamList {
   }
 }
 
-async function getStats<T extends { rosterId: number, stageIndex: number }>(leagueId: string, rosterId: number, collection: string): Promise<SnallabotEvent<T>[]> {
-  const stats = await db.collection("madden_data26").doc(leagueId).collection(collection).where("rosterId", "==", rosterId).get()
-  const playerStats = stats.docs.map(d => convertDate(d.data()) as StoredEvent<T>).filter(d => d.stageIndex > 0)
-  return playerStats
+function deduplicateStats<T extends { weekIndex: number, seasonIndex: number, timestamp: Date }>(stats: T[]) {
+  const statMap = new Map<string, T>();
+
+  for (const stat of stats) {
+    const key = `${stat.seasonIndex}-${stat.weekIndex}`;
+    const existing = statMap.get(key);
+
+    // If no existing stat for this season/week, or current stat is newer, use it
+    if (!existing || stat.timestamp > existing.timestamp) {
+      statMap.set(key, stat);
+    }
+  }
+
+  return Array.from(statMap.values());
+}
+
+async function getStats<T extends { rosterId: number, stageIndex: number, weekIndex: number, seasonIndex: number, timestamp: Date }>(leagueId: string, rosterIds: number[], collection: string): Promise<SnallabotEvent<T>[]> {
+  const stats = await Promise.all(rosterIds.map(async rosterId => await db.collection("madden_data26").doc(leagueId).collection(collection).where("rosterId", "==", rosterId).get()))
+  const playerStats = stats.flatMap(s => s.docs).map(d => convertDate(d.data()) as StoredEvent<T>).filter(d => d.stageIndex > 0)
+  return deduplicateStats(playerStats)
 }
 
 
@@ -260,7 +276,6 @@ function deduplicateSchedule(games: StoredEvent<MaddenGame>[], teams: TeamList):
       gameMap.set(gameKey, game);
     } else {
       // Duplicate found - keep the one with the later timestamp
-      console.log(game.timestamp)
       if (game.timestamp > existingGame.timestamp) {
         gameMap.set(gameKey, game);
       }
@@ -270,35 +285,6 @@ function deduplicateSchedule(games: StoredEvent<MaddenGame>[], teams: TeamList):
   return Array.from(gameMap.values());
 }
 
-function deduplicateSchedule(games: StoredEvent<MaddenGame>[], teams: TeamList): StoredEvent<MaddenGame>[] {
-  const gameMap = new Map<string, StoredEvent<MaddenGame>>();
-
-  for (const game of games) {
-    // Map team IDs to their latest versions
-    const latestHomeTeam = teams.getTeamForId(game.homeTeamId);
-    const latestAwayTeam = teams.getTeamForId(game.awayTeamId);
-
-    // Create a unique key for this matchup using the latest team IDs
-    // Sort the team IDs to ensure consistent ordering (so home vs away doesn't matter for deduplication)
-    const teamIds = [latestHomeTeam.teamId, latestAwayTeam.teamId].sort((a, b) => a - b);
-    const gameKey = `${game.seasonIndex}-${game.weekIndex}-${teamIds[0]}-${teamIds[1]}`;
-
-    const existingGame = gameMap.get(gameKey);
-
-    if (!existingGame) {
-      // First occurrence of this game
-      gameMap.set(gameKey, game);
-    } else {
-      // Duplicate found - keep the one with the later timestamp
-      console.log(game.timestamp)
-      if (game.timestamp > existingGame.timestamp) {
-        gameMap.set(gameKey, game);
-      }
-      // If existing game has later timestamp, we keep it (do nothing)
-    }
-  }
-  return Array.from(gameMap.values());
-}
 
 function deduplicatePlayers(players: StoredEvent<Player>[]): StoredEvent<Player>[] {
   const playerMap = new Map<string, StoredEvent<Player>>();
@@ -322,6 +308,38 @@ function deduplicatePlayers(players: StoredEvent<Player>[]): StoredEvent<Player>
   }
 
   return Array.from(playerMap.values());
+}
+
+function findLatestScheduleId(scheduleId: number, games: StoredEvent<MaddenGame>[], teams: TeamList): StoredEvent<MaddenGame> {
+  // First, find the game with the given schedule ID
+  const originalGame = games.find(game => game.scheduleId === scheduleId);
+
+  if (!originalGame) {
+    throw new Error(`No game found with schedule ID: ${scheduleId}`);
+  }
+
+  // Map the original game's team IDs to their latest versions
+  const latestHomeTeam = teams.getTeamForId(originalGame.homeTeamId);
+  const latestAwayTeam = teams.getTeamForId(originalGame.awayTeamId);
+
+  // Create the game key using latest team IDs (sorted for consistency)
+  const teamIds = [latestHomeTeam.teamId, latestAwayTeam.teamId].sort((a, b) => a - b);
+  const gameKey = `${originalGame.seasonIndex}-${originalGame.weekIndex}-${teamIds[0]}-${teamIds[1]}`;
+
+  // Find all games that match this same matchup (same teams, week, season)
+  const matchingGames = games.filter(game => {
+    const gameLatestHomeTeam = teams.getTeamForId(game.homeTeamId);
+    const gameLatestAwayTeam = teams.getTeamForId(game.awayTeamId);
+    const gameTeamIds = [gameLatestHomeTeam.teamId, gameLatestAwayTeam.teamId].sort((a, b) => a - b);
+    const gameGameKey = `${game.seasonIndex}-${game.weekIndex}-${gameTeamIds[0]}-${gameTeamIds[1]}`;
+
+    return gameGameKey === gameKey;
+  });
+
+  // Return the game with the latest timestamp
+  return matchingGames.reduce((latest, current) =>
+    current.timestamp > latest.timestamp ? current : latest
+  )
 }
 
 
@@ -532,10 +550,16 @@ const MaddenDB: MaddenDB = {
     throw new Error(`Player ${rosterId} not found in league ${leagueId}`)
   },
   getPlayerStats: async function(leagueId: string, player: Player): Promise<PlayerStats> {
-    const rosterId = player.rosterId
+    const potentiallyDuplicatePlayers = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER)
+      .where("presentationId", "==", player.presentationId)
+      .where("birthYear", "==", player.birthYear)
+      .where("birthMonth", "==", player.birthMonth)
+      .where("birthDay", "==", player.birthDay)
+      .get()
+    const rosterIds = potentiallyDuplicatePlayers.docs.map(d => d.data() as Player).map(p => p.rosterId)
     switch (player.position) {
       case "QB":
-        const [passingStats, rushingStats] = await Promise.all([getStats<PassingStats>(leagueId, rosterId, MaddenEvents.MADDEN_PASSING_STAT), getStats<RushingStats>(leagueId, rosterId, MaddenEvents.MADDEN_RUSHING_STAT)])
+        const [passingStats, rushingStats] = await Promise.all([getStats<StoredEvent<PassingStats>>(leagueId, rosterIds, MaddenEvents.MADDEN_PASSING_STAT), getStats<StoredEvent<RushingStats>>(leagueId, rosterIds, MaddenEvents.MADDEN_RUSHING_STAT)])
         return {
           [PlayerStatType.PASSING]: passingStats,
           [PlayerStatType.RUSHING]: rushingStats,
@@ -544,18 +568,18 @@ const MaddenDB: MaddenDB = {
       case "FB":
       case "WR":
       case "TE":
-        const [rushing, receivingStats] = await Promise.all([getStats<RushingStats>(leagueId, rosterId, MaddenEvents.MADDEN_RUSHING_STAT), getStats<ReceivingStats>(leagueId, rosterId, MaddenEvents.MADDEN_RECEIVING_STAT)])
+        const [rushing, receivingStats] = await Promise.all([getStats<StoredEvent<RushingStats>>(leagueId, rosterIds, MaddenEvents.MADDEN_RUSHING_STAT), getStats<StoredEvent<ReceivingStats>>(leagueId, rosterIds, MaddenEvents.MADDEN_RECEIVING_STAT)])
         return {
           [PlayerStatType.RUSHING]: rushing,
           [PlayerStatType.RECEIVING]: receivingStats
         }
       case "K":
-        const kickingStats = await getStats<KickingStats>(leagueId, rosterId, MaddenEvents.MADDEN_KICKING_STAT)
+        const kickingStats = await getStats<StoredEvent<KickingStats>>(leagueId, rosterIds, MaddenEvents.MADDEN_KICKING_STAT)
         return {
           [PlayerStatType.KICKING]: kickingStats
         }
       case "P":
-        const puntingStats = await getStats<PuntingStats>(leagueId, rosterId, MaddenEvents.MADDEN_PUNTING_STAT)
+        const puntingStats = await getStats<StoredEvent<PuntingStats>>(leagueId, rosterIds, MaddenEvents.MADDEN_PUNTING_STAT)
         return {
           [PlayerStatType.PUNTING]: puntingStats
         }
@@ -568,7 +592,7 @@ const MaddenDB: MaddenDB = {
       case "CB":
       case "FS":
       case "SS":
-        const defenseStats = await getStats<DefensiveStats>(leagueId, rosterId, MaddenEvents.MADDEN_DEFENSIVE_STAT)
+        const defenseStats = await getStats<StoredEvent<DefensiveStats>>(leagueId, rosterIds, MaddenEvents.MADDEN_DEFENSIVE_STAT)
         return {
           [PlayerStatType.DEFENSE]: defenseStats
         }
@@ -583,7 +607,7 @@ const MaddenDB: MaddenDB = {
     let playersQuery;
     // flip the query for going backwards by ordering opposite and using start after
     if (endBefore) {
-      playersQuery = db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).orderBy("playerBestOvr", "asc").orderBy("rosterId", "desc").limit(limit)
+      playersQuery = db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).orderBy("playerBestOvr", "asc").orderBy("rosterIds", "desc").limit(limit)
     } else {
       playersQuery = db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).orderBy("playerBestOvr", "desc").orderBy("rosterId").limit(limit)
     }
