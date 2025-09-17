@@ -12,5 +12,12 @@ router.get("/cacheStats", async (ctx) => {
     stats: stats
   }
 })
+.get("/memoryUsage", async (ctx) => {
+  ctx.status = 200
+  ctx.set("Content-Type", "application/json")
+  ctx.body = {
+    stats: process.memoryUsage()
+  }
+})
 
 export default router
