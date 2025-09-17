@@ -557,6 +557,7 @@ const MaddenDB: MaddenDB = {
       .where("birthDay", "==", player.birthDay)
       .get()
     const rosterIds = potentiallyDuplicatePlayers.docs.map(d => d.data() as Player).map(p => p.rosterId)
+    console.log(rosterIds)
     switch (player.position) {
       case "QB":
         const [passingStats, rushingStats] = await Promise.all([getStats<StoredEvent<PassingStats>>(leagueId, rosterIds, MaddenEvents.MADDEN_PASSING_STAT), getStats<StoredEvent<RushingStats>>(leagueId, rosterIds, MaddenEvents.MADDEN_RUSHING_STAT)])
