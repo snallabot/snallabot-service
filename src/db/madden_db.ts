@@ -449,6 +449,7 @@ const MaddenDB: MaddenDB = {
     const maddenSchedule = deduplicateSchedule(weekDocs.docs.map(d => convertDate(d.data())() as StoredEvent<MaddenGame>), teamList)
       .filter(game => game.awayTeamId != 0 && game.homeTeamId != 0)
     if (maddenSchedule.length !== 0) {
+      console.log(maddenSchedule)
       return maddenSchedule
     }
     throw new Error(`Missing schedule for week ${week} and season ${MADDEN_SEASON + season}`)
