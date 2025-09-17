@@ -260,6 +260,7 @@ function deduplicateSchedule(games: StoredEvent<MaddenGame>[], teams: TeamList):
       gameMap.set(gameKey, game);
     } else {
       // Duplicate found - keep the one with the later timestamp
+      console.log(game.timestamp)
       if (game.timestamp > existingGame.timestamp) {
         gameMap.set(gameKey, game);
       }
