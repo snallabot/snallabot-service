@@ -260,6 +260,7 @@ function deduplicateSchedule(games: StoredEvent<MaddenGame>[], teams: TeamList):
       gameMap.set(gameKey, game);
     } else {
       // Duplicate found - keep the one with the later timestamp
+      console.log(game.timestamp)
       if (game.timestamp > existingGame.timestamp) {
         gameMap.set(gameKey, game);
       }
@@ -374,13 +375,11 @@ const MaddenDB: MaddenDB = {
     const latestSeason = Math.max(...(Object.keys(bySeason).map(i => Number(i))))
     const latestSeasonSchedule = bySeason[latestSeason]
     if (latestSeasonSchedule) {
-      console.log("herelatestweekschedule")
       return deduplicateSchedule(latestSeasonSchedule, teamList)
     }
     throw new Error("Missing schedule for week " + week)
   },
   getLatestSchedule: async function(leagueId: string) {
-    console.log("herelatestschedule")
     const scheduleCollection = db.collection("madden_data26")
       .doc(leagueId)
       .collection(MaddenEvents.MADDEN_SCHEDULE);
@@ -446,7 +445,6 @@ const MaddenDB: MaddenDB = {
   }
   ,
   getWeekScheduleForSeason: async function(leagueId: string, week: number, season: number) {
-    console.log("get week schedule for season")
     const [weekDocs, teamList] = await Promise.all([db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_SCHEDULE).where("weekIndex", "==", week - 1).where("seasonIndex", "==", season)
       .where("stageIndex", "==", 1).get(), this.getLatestTeams(leagueId)])
     const maddenSchedule = deduplicateSchedule(weekDocs.docs.map(d => d.data() as StoredEvent<MaddenGame>), teamList)
