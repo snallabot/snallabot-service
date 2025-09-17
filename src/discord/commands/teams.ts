@@ -1,7 +1,7 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command, AutocompleteHandler, Autocomplete } from "../commands_handler"
-import { respond, createMessageResponse, DiscordClient, SnallabotDiscordError } from "../discord_utils"
-import { APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIApplicationCommandInteractionDataUserOption, ApplicationCommandOptionType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
+import { respond, createMessageResponse, DiscordClient, SnallabotDiscordError, NoConnectedLeagueError } from "../discord_utils"
+import { APIApplicationCommandInteractionDataAttachmentOption, APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIApplicationCommandInteractionDataUserOption, ApplicationCommandOptionType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { FieldValue, Firestore } from "firebase-admin/firestore"
 import LeagueSettingsDB, { ChannelId, DiscordIdType, LeagueSettings, MessageId, TeamAssignments } from "../settings_db"
 import MaddenClient, { TeamList } from "../../db/madden_db"
@@ -121,7 +121,7 @@ export default {
       const teamSearchPhrase = (teamsCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value.toLowerCase()
       const user = (teamsCommand.options[1] as APIApplicationCommandInteractionDataUserOption).value
       if (!leagueSettings?.commands?.madden_league?.league_id) {
-        throw new Error("No Madden league linked, setup the bot with your madden league first.")
+        throw new NoConnectedLeagueError(guild_id)
       }
       if (!leagueSettings?.commands?.teams?.channel.id) {
         throw new Error("Teams not configured, run /teams configure first")
@@ -167,14 +167,13 @@ export default {
       }
       const teamSearchPhrase = (teamsCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value.toLowerCase()
       if (!leagueSettings?.commands?.madden_league?.league_id) {
-        throw new Error("No Madden league linked, setup the bot with your madden league first.")
+        throw new NoConnectedLeagueError(guild_id)
       }
       if (!leagueSettings.commands.teams?.channel.id) {
         throw new Error("Teams not configured, run /teams configure first")
       }
       const leagueId = leagueSettings.commands.madden_league.league_id
-      const teams = await MaddenClient.getLatestTeams(leagueId)
-      const teamsToSearch = await teamSearchView.createView(leagueId)
+      const [teams, teamsToSearch] = await Promise.all([MaddenClient.getLatestTeams(leagueId), teamSearchView.createView(leagueId)])
       if (!teamsToSearch) {
         throw new Error("no teams found")
       }
@@ -233,7 +232,32 @@ export default {
         }
 
       }
-    } else {
+    } else if (subCommand === "customize_logo") {
+      if (!teamsCommand.options || !teamsCommand.options[0] || !teamsCommand.options[1]) {
+        throw new Error("teams customize_logo misconfigured")
+      }
+      const teamSearchPhrase = (teamsCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value.toLowerCase()
+      const image = (teamsCommand.options[1] as APIApplicationCommandInteractionDataAttachmentOption).value
+      if (!leagueSettings?.commands?.madden_league?.league_id) {
+        throw new NoConnectedLeagueError(guild_id)
+      }
+      const leagueId = leagueSettings.commands.madden_league.league_id
+      const [teams, teamsToSearch] = await Promise.all([MaddenClient.getLatestTeams(leagueId), teamSearchView.createView(leagueId)])
+      if (!teamsToSearch) {
+        throw new Error("no teams found")
+      }
+      const results = fuzzysort.go(teamSearchPhrase, Object.values(teamsToSearch), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.9 })
+      if (results.length < 1) {
+        throw new Error(`Could not find team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs`)
+      } else if (results.length > 1) {
+        throw new Error(`Found more than one  team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs.Found teams: ${results.map(t => t.obj.displayName).join(", ")}`)
+      }
+      const assignedTeam = results[0].obj
+      const teamIdToCustomize = teams.getTeamForId(assignedTeam.id).teamId
+      console.log(image)
+      respond(ctx, createMessageResponse("wip"))
+    }
+    else {
       throw new Error(`teams ${subCommand} misconfigured`)
     }
   },
@@ -301,6 +325,27 @@ export default {
               name: "use_role_updates",
               description: "turn on role updates to auto assign teams based on team roles",
               required: false,
+            },
+          ],
+        },
+        {
+          type: ApplicationCommandOptionType.Subcommand,
+          name: "customize_logo",
+          description: "customize the logo for a specific team",
+          options: [
+            {
+              type: ApplicationCommandOptionType.String,
+              name: "team",
+              description:
+                "the team city, name, or abbreviation. Ex: Buccaneers, TB, Tampa Bay",
+              required: true,
+              autocomplete: true
+            },
+            {
+              type: ApplicationCommandOptionType.Attachment,
+              name: "image_file",
+              description: "image file to use as the team logo",
+              required: true,
             },
           ],
         },
