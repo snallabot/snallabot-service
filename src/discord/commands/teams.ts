@@ -233,12 +233,13 @@ export default {
 
       }
     } else if (subCommand === "customize_logo") {
-      if (!teamsCommand.options || !teamsCommand.options[0] || !teamsCommand.options[1]) {
+      if (!teamsCommand.options || !teamsCommand.options[0] || !command.data.resolved?.attachments) {
         throw new Error("teams customize_logo misconfigured")
       }
-      console.log(teamsCommand)
+
       const teamSearchPhrase = (teamsCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value.toLowerCase()
       const image = (teamsCommand.options[1] as APIApplicationCommandInteractionDataAttachmentOption)
+      console.log(command.data.resolved.attachments[image.value])
       if (!leagueSettings?.commands?.madden_league?.league_id) {
         throw new NoConnectedLeagueError(guild_id)
       }
