@@ -1107,9 +1107,9 @@ function formatGameKey(g: { scheduleId: number, weekIndex: number, seasonIndex: 
 }
 
 function formatGame(game: MaddenGame, player: Player, teams: TeamList) {
-  const playerTeam = player.teamId
-  const homeTeam = game.homeTeamId
-  const awayTeam = game.awayTeamId
+  const playerTeam = teams.getTeamForId(player.teamId).teamId
+  const homeTeam = teams.getTeamForId(game.homeTeamId).teamId
+  const awayTeam = teams.getTeamForId(game.awayTeamId).teamId
   const opponentTeam = playerTeam === awayTeam ? homeTeam : awayTeam
   const opponent = getTeamAbbr(opponentTeam, teams)
   return `${formatWeek(game)} vs ${opponent.padEnd(3)} ${formatGameEmoji(game, playerTeam)} ${formatScore(game)}:`
