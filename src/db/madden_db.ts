@@ -514,7 +514,7 @@ const MaddenDB: MaddenDB = {
   ,
   getStandingForTeam: async function(leagueId: string, teamId: number) {
     const teamList = await this.getLatestTeams(leagueId)
-    const standing = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_STANDING).doc(`${teamList.getTeamForId(teamId)}`).get()
+    const standing = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_STANDING).doc(`${teamList.getTeamForId(teamId).teamId}`).get()
     if (!standing.exists) {
       throw new Error("standing not found for id " + teamId)
     }
