@@ -480,7 +480,7 @@ const MaddenDB: MaddenDB = {
       .get()
     ])
     const teamList = await this.getLatestTeams(leagueId)
-    return deduplicateSchedule(playoffGames.flatMap(p => p.docs.map(d => convertDate(d.data()) as StoredEvent<MaddenGame>)), teamList).filter(g => g.awayTeamId !== 0 && g.homeTeamId !== 0)
+    return deduplicateSchedule(playoffGames.flatMap(p => p.docs.map(d => convertDate(d.data()) as StoredEvent<MaddenGame>)).filter(g => g.awayTeamId !== 0 && g.homeTeamId !== 0), teamList)
   }
   ,
   getWeekScheduleForSeason: async function(leagueId: string, week: number, season: number) {
