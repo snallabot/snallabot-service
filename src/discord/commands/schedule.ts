@@ -204,7 +204,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
     let ties = 0
 
     playedGames.forEach(game => {
-      const isTeamAway = game.awayTeamId === teamId
+      const isTeamAway = teams.getTeamForId(game.awayTeamId).teamId === teamId
       const teamScore = isTeamAway ? game.awayScore : game.homeScore
       const opponentScore = isTeamAway ? game.homeScore : game.awayScore
 
@@ -259,7 +259,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
         value: { si: s, ti: teamId }
       }))
       .map(option => ({ ...option, value: JSON.stringify(option.value) }))
-
+    console.log(message.length)
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
