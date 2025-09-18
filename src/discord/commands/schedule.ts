@@ -143,7 +143,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
     const teamId = teams.getTeamForId(requestedTeamId).teamId
 
     // Filter schedule to only include games for the specified team
-    const teamSchedule = schedule.filter(game =>
+    const teamSchedule = schedule.filter(game => game.awayTeamId !== 0 && game.homeTeamId !== 0).filter(game =>
       teams.getTeamForId(game.awayTeamId).teamId === teamId || teams.getTeamForId(game.homeTeamId).teamId === teamId
     ).sort((a, b) => a.scheduleId - b.scheduleId)
 
