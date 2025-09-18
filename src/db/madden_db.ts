@@ -259,31 +259,35 @@ function reconstructFromHistory<T>(histories: StoredHistory[], og: T) {
 function deduplicateSchedule(games: StoredEvent<MaddenGame>[], teams: TeamList): StoredEvent<MaddenGame>[] {
   const gameMap = new Map<string, StoredEvent<MaddenGame>>();
   console.log(`deduplicating games ${games.length}`)
-  for (const game of games) {
-    // Map team IDs to their latest versions
-    const latestHomeTeam = teams.getTeamForId(game.homeTeamId);
-    const latestAwayTeam = teams.getTeamForId(game.awayTeamId);
+  try {
+    for (const game of games) {
+      // Map team IDs to their latest versions
+      const latestHomeTeam = teams.getTeamForId(game.homeTeamId);
+      const latestAwayTeam = teams.getTeamForId(game.awayTeamId);
 
-    // Create a unique key for this matchup using the latest team IDs
-    // Sort the team IDs to ensure consistent ordering (so home vs away doesn't matter for deduplication)
-    const teamIds = [latestHomeTeam.teamId, latestAwayTeam.teamId].sort((a, b) => a - b);
-    const gameKey = `${game.seasonIndex}-${game.weekIndex}-${teamIds[0]}-${teamIds[1]}`;
+      // Create a unique key for this matchup using the latest team IDs
+      // Sort the team IDs to ensure consistent ordering (so home vs away doesn't matter for deduplication)
+      const teamIds = [latestHomeTeam.teamId, latestAwayTeam.teamId].sort((a, b) => a - b);
+      const gameKey = `${game.seasonIndex}-${game.weekIndex}-${teamIds[0]}-${teamIds[1]}`;
 
-    const existingGame = gameMap.get(gameKey);
+      const existingGame = gameMap.get(gameKey);
 
-    if (!existingGame) {
-      // First occurrence of this game
-      gameMap.set(gameKey, game);
-    } else {
-      // Duplicate found - keep the one with the later timestamp
-      if (game.timestamp > existingGame.timestamp) {
+      if (!existingGame) {
+        // First occurrence of this game
         gameMap.set(gameKey, game);
+      } else {
+        // Duplicate found - keep the one with the later timestamp
+        if (game.timestamp > existingGame.timestamp) {
+          gameMap.set(gameKey, game);
+        }
+        // If existing game has later timestamp, we keep it (do nothing)
       }
-      // If existing game has later timestamp, we keep it (do nothing)
     }
+    console.log(`deduplicated games ${Array.from(gameMap.values()).length}`)
+    return Array.from(gameMap.values());
+  } catch (e) {
+    console.error(e)
   }
-  console.log(`deduplicated games ${Array.from(gameMap.values()).length}`)
-  return Array.from(gameMap.values());
 }
 
 
