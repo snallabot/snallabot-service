@@ -1,11 +1,11 @@
 export const MADDEN_SEASON = 2025
 
-export function getMessageForWeek(week: number) {
+export function getMessageForWeek(week: number, shorten = false) {
   if (week < 1 || week > 23 || week === 22) {
     throw new Error("Invalid week number. Valid weeks are week 1-18 and for playoffs: Wildcard = 19, Divisional = 20, Conference Championship = 21, Super Bowl = 23")
   }
   if (week <= 18) {
-    return `Week ${week}`
+    return shorten ? `Wk ${week}` : `Week ${week}`
   } else if (week === 19) {
     return "Wildcard Round"
   } else if (week === 20) {

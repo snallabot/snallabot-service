@@ -3,7 +3,7 @@ import { CommandHandler, Command, AutocompleteHandler, Autocomplete, MessageComp
 import { respond, DiscordClient, deferMessage, formatTeamEmoji, formatGame } from "../discord_utils"
 import { APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ApplicationCommandType, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
-import { GameResult, MADDEN_SEASON, Team, getMessageForWeek } from "../../export/madden_league_types"
+import { GameResult, MADDEN_SEASON, getMessageForWeek } from "../../export/madden_league_types"
 import MaddenClient from "../../db/madden_db"
 import LeagueSettingsDB from "../settings_db"
 import { discordLeagueView, teamSearchView } from "../../db/view"
@@ -168,7 +168,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
         // Only show bye week for regular season weeks (1-18)
         // its only a bye week if that week exists. if it does not, then its just a missing exported week
         if (week <= 18) {
-          scheduleLines.push(`**Week ${week}:** BYE`)
+          scheduleLines.push(`**Wk ${week}:** BYE`)
         }
       } else {
         const isTeamAway = teams.getTeamForId(game.awayTeamId).teamId === teamId
