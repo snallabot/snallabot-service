@@ -259,30 +259,35 @@ function reconstructFromHistory<T>(histories: StoredHistory[], og: T) {
 function deduplicateSchedule(games: StoredEvent<MaddenGame>[], teams: TeamList): StoredEvent<MaddenGame>[] {
   const gameMap = new Map<string, StoredEvent<MaddenGame>>();
 
-  for (const game of games) {
-    // Map team IDs to their latest versions
-    const latestHomeTeam = teams.getTeamForId(game.homeTeamId);
-    const latestAwayTeam = teams.getTeamForId(game.awayTeamId);
+  try {
+    for (const game of games.filter(game => game.awayTeamId !== 0 && game.homeTeamId !== 0)) {
+      // Map team IDs to their latest versions
+      const latestHomeTeam = teams.getTeamForId(game.homeTeamId);
+      const latestAwayTeam = teams.getTeamForId(game.awayTeamId);
 
-    // Create a unique key for this matchup using the latest team IDs
-    // Sort the team IDs to ensure consistent ordering (so home vs away doesn't matter for deduplication)
-    const teamIds = [latestHomeTeam.teamId, latestAwayTeam.teamId].sort((a, b) => a - b);
-    const gameKey = `${game.seasonIndex}-${game.weekIndex}-${teamIds[0]}-${teamIds[1]}`;
+      // Create a unique key for this matchup using the latest team IDs
+      // Sort the team IDs to ensure consistent ordering (so home vs away doesn't matter for deduplication)
+      const teamIds = [latestHomeTeam.teamId, latestAwayTeam.teamId].sort((a, b) => a - b);
+      const gameKey = `${game.seasonIndex}-${game.weekIndex}-${teamIds[0]}-${teamIds[1]}`;
 
-    const existingGame = gameMap.get(gameKey);
+      const existingGame = gameMap.get(gameKey);
 
-    if (!existingGame) {
-      // First occurrence of this game
-      gameMap.set(gameKey, game);
-    } else {
-      // Duplicate found - keep the one with the later timestamp
-      if (game.timestamp > existingGame.timestamp) {
+      if (!existingGame) {
+        // First occurrence of this game
         gameMap.set(gameKey, game);
+      } else {
+        // Duplicate found - keep the one with the later timestamp
+        if (game.timestamp > existingGame.timestamp) {
+          gameMap.set(gameKey, game);
+        }
+        // If existing game has later timestamp, we keep it (do nothing)
       }
-      // If existing game has later timestamp, we keep it (do nothing)
     }
+    return Array.from(gameMap.values());
+  } catch (e) {
+    console.error(e)
+    return []
   }
-  return Array.from(gameMap.values());
 }
 
 
@@ -480,7 +485,7 @@ const MaddenDB: MaddenDB = {
       .get()
     ])
     const teamList = await this.getLatestTeams(leagueId)
-    return deduplicateSchedule(playoffGames.flatMap(p => p.docs.map(d => convertDate(d.data()) as StoredEvent<MaddenGame>)).filter(g => g.awayTeamId !== 0 && g.homeTeamId !== 0), teamList)
+    return deduplicateSchedule(playoffGames.flatMap(p => p.docs.map(d => convertDate(d.data()) as StoredEvent<MaddenGame>)), teamList)
   }
   ,
   getWeekScheduleForSeason: async function(leagueId: string, week: number, season: number) {
@@ -556,7 +561,6 @@ const MaddenDB: MaddenDB = {
       .where("birthDay", "==", player.birthDay)
       .get()
     const rosterIds = potentiallyDuplicatePlayers.docs.map(d => d.data() as Player).map(p => p.rosterId)
-    console.log(rosterIds)
     switch (player.position) {
       case "QB":
         const [passingStats, rushingStats] = await Promise.all([getStats<StoredEvent<PassingStats>>(leagueId, rosterIds, MaddenEvents.MADDEN_PASSING_STAT), getStats<StoredEvent<RushingStats>>(leagueId, rosterIds, MaddenEvents.MADDEN_RUSHING_STAT)])
@@ -785,6 +789,7 @@ const MaddenDB: MaddenDB = {
     return gameStats;
   },
   getTeamSchedule: async function(leagueId: string, season?: number) {
+    const teams = await this.getLatestTeams(leagueId)
     const scheduleCollection = db.collection("madden_data26")
       .doc(leagueId)
       .collection(MaddenEvents.MADDEN_SCHEDULE).where("stageIndex", "==", 1)
@@ -795,23 +800,23 @@ const MaddenDB: MaddenDB = {
         .where("seasonIndex", "==", season)
         .get();
 
-      const seasonGames: MaddenGame[] = seasonGamesSnapshot.docs.map(doc => doc.data() as MaddenGame);
-      return seasonGames.sort((a, b) => a.weekIndex - b.weekIndex);
+      const seasonGames = seasonGamesSnapshot.docs.map(doc => convertDate(doc.data()) as StoredEvent<MaddenGame>);
+
+      return deduplicateSchedule(seasonGames, teams).sort((a, b) => a.weekIndex - b.weekIndex)
     } else {
 
       const allGamesSnapshot = await scheduleCollection.get();
 
       if (allGamesSnapshot.empty) {
+        console.log("no games")
         return [];
       }
 
-      const games: MaddenGame[] = allGamesSnapshot.docs.map(doc => doc.data() as MaddenGame);
+      const games = allGamesSnapshot.docs.map(doc => convertDate(doc.data()) as StoredEvent<MaddenGame>)
       const latestSeason = Math.max(...games.map(game => game.seasonIndex));
-
-
-      return games
+      return deduplicateSchedule(games
         .filter(game => game.seasonIndex === latestSeason)
-        .sort((a, b) => a.weekIndex - b.weekIndex);
+        , teams).sort((a, b) => a.weekIndex - b.weekIndex)
     }
   }
 }

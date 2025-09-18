@@ -3,7 +3,7 @@ import { CommandHandler, Command, AutocompleteHandler, Autocomplete, MessageComp
 import { respond, DiscordClient, deferMessage, formatTeamEmoji, formatGame } from "../discord_utils"
 import { APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ApplicationCommandType, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
-import { GameResult, MADDEN_SEASON, Team, getMessageForWeek } from "../../export/madden_league_types"
+import { GameResult, MADDEN_SEASON, getMessageForWeek } from "../../export/madden_league_types"
 import MaddenClient from "../../db/madden_db"
 import LeagueSettingsDB from "../settings_db"
 import { discordLeagueView, teamSearchView } from "../../db/view"
@@ -204,7 +204,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
     let ties = 0
 
     playedGames.forEach(game => {
-      const isTeamAway = game.awayTeamId === teamId
+      const isTeamAway = teams.getTeamForId(game.awayTeamId).teamId === teamId
       const teamScore = isTeamAway ? game.awayScore : game.homeScore
       const opponentScore = isTeamAway ? game.homeScore : game.awayScore
 
@@ -259,7 +259,6 @@ async function showTeamSchedule(token: string, client: DiscordClient,
         value: { si: s, ti: teamId }
       }))
       .map(option => ({ ...option, value: JSON.stringify(option.value) }))
-
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
