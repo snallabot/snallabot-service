@@ -292,7 +292,6 @@ function deduplicatePlayers(players: StoredEvent<Player>[]): StoredEvent<Player>
   for (const player of players) {
     // Create a unique key using the combination of identifying fields
     const playerKey = `${player.presentationId}-${player.birthYear}-${player.birthMonth}-${player.birthDay}`;
-    console.log(playerKey)
     const existingPlayer = playerMap.get(playerKey);
 
     if (!existingPlayer) {
@@ -301,6 +300,9 @@ function deduplicatePlayers(players: StoredEvent<Player>[]): StoredEvent<Player>
     } else {
       // Duplicate found - keep the one with the later timestamp
       if (player.timestamp > existingPlayer.timestamp) {
+        if (player.firstName === "Israel") {
+          console.log(`using newer player ${player.rosterId}`)
+        }
         playerMap.set(playerKey, player);
       }
       // If existing player has later timestamp, we keep it (do nothing)
