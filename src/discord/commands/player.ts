@@ -1076,15 +1076,15 @@ enum SnallabotGameResult {
   TIE = "<:snallabot_tie:1368713402016337950>"
 }
 
-function formatGameEmoji(game: MaddenGame, playerTeam: number) {
+function formatGameEmoji(game: MaddenGame, playerTeam: number, teams: TeamList) {
   if (game.awayScore === game.homeScore) {
     return SnallabotGameResult.TIE
   }
   if (game.awayScore > game.homeScore) {
-    return game.awayTeamId === playerTeam ? SnallabotGameResult.WIN : SnallabotGameResult.LOSS
+    return teams.getTeamForId(game.awayTeamId).teamId === playerTeam ? SnallabotGameResult.WIN : SnallabotGameResult.LOSS
   }
   if (game.awayScore < game.homeScore) {
-    return game.homeTeamId === playerTeam ? SnallabotGameResult.WIN : SnallabotGameResult.LOSS
+    return teams.getTeamForId(game.homeTeamId).teamId === playerTeam ? SnallabotGameResult.WIN : SnallabotGameResult.LOSS
   }
 }
 
@@ -1112,7 +1112,7 @@ function formatGame(game: MaddenGame, player: Player, teams: TeamList) {
   const awayTeam = teams.getTeamForId(game.awayTeamId).teamId
   const opponentTeam = playerTeam === awayTeam ? homeTeam : awayTeam
   const opponent = getTeamAbbr(opponentTeam, teams)
-  return `${formatWeek(game)} vs ${opponent.padEnd(3)} ${formatGameEmoji(game, playerTeam)} ${formatScore(game)}:`
+  return `${formatWeek(game)} vs ${opponent.padEnd(3)} ${formatGameEmoji(game, playerTeam, teams)} ${formatScore(game)}:`
 }
 
 function formatWeeklyStats(player: Player, teams: TeamList, stats: PlayerStats, games: MaddenGame[]) {
