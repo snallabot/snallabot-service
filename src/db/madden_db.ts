@@ -785,6 +785,7 @@ const MaddenDB: MaddenDB = {
     return gameStats;
   },
   getTeamSchedule: async function(leagueId: string, season?: number) {
+    const teams = await this.getLatestTeams(leagueId)
     const scheduleCollection = db.collection("madden_data26")
       .doc(leagueId)
       .collection(MaddenEvents.MADDEN_SCHEDULE).where("stageIndex", "==", 1)
@@ -795,8 +796,8 @@ const MaddenDB: MaddenDB = {
         .where("seasonIndex", "==", season)
         .get();
 
-      const seasonGames: MaddenGame[] = seasonGamesSnapshot.docs.map(doc => doc.data() as MaddenGame);
-      return seasonGames.sort((a, b) => a.weekIndex - b.weekIndex);
+      const seasonGames = seasonGamesSnapshot.docs.map(doc => convertDate(doc.data()) as StoredEvent<MaddenGame>);
+      return deduplicateSchedule(seasonGames.sort((a, b) => a.weekIndex - b.weekIndex), teams)
     } else {
 
       const allGamesSnapshot = await scheduleCollection.get();
@@ -805,13 +806,13 @@ const MaddenDB: MaddenDB = {
         return [];
       }
 
-      const games: MaddenGame[] = allGamesSnapshot.docs.map(doc => doc.data() as MaddenGame);
+      const games = allGamesSnapshot.docs.map(doc => doc.data() as StoredEvent<MaddenGame>)
       const latestSeason = Math.max(...games.map(game => game.seasonIndex));
 
 
-      return games
+      return deduplicateSchedule(games
         .filter(game => game.seasonIndex === latestSeason)
-        .sort((a, b) => a.weekIndex - b.weekIndex);
+        .sort((a, b) => a.weekIndex - b.weekIndex), teams)
     }
   }
 }
