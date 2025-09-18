@@ -132,6 +132,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
     ])
 
     const schedule = settledPromise[0].status === "fulfilled" ? settledPromise[0].value : []
+    console.log(schedule.length)
     if (settledPromise[1].status !== "fulfilled") {
       throw new Error("No Teams setup, setup the bot and export")
     }
@@ -168,7 +169,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
         // Only show bye week for regular season weeks (1-18)
         // its only a bye week if that week exists. if it does not, then its just a missing exported week
         if (week <= 18) {
-          scheduleLines.push(`**Wk ${week}:** BYE`)
+          scheduleLines.push(`**Week ${week}:** BYE`)
         }
       } else {
         const isTeamAway = teams.getTeamForId(game.awayTeamId).teamId === teamId
@@ -176,7 +177,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
         const opponentDisplay = `${formatTeamEmoji(opponent?.abbrName)} ${opponent?.displayName}`
         const teamDisplay = `${formatTeamEmoji(selectedTeam.abbrName)} ${selectedTeam.displayName}`
 
-        const weekLabel = getMessageForWeek(week, true)
+        const weekLabel = getMessageForWeek(week)
 
         if (game.status === GameResult.NOT_PLAYED) {
           scheduleLines.push(`**${weekLabel}:** ${teamDisplay} ${isTeamAway ? '@' : 'vs'} ${opponentDisplay}`)

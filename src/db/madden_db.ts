@@ -797,7 +797,7 @@ const MaddenDB: MaddenDB = {
         .get();
 
       const seasonGames = seasonGamesSnapshot.docs.map(doc => convertDate(doc.data()) as StoredEvent<MaddenGame>);
-      return deduplicateSchedule(seasonGames.sort((a, b) => a.weekIndex - b.weekIndex), teams)
+      return deduplicateSchedule(seasonGames, teams).sort((a, b) => a.weekIndex - b.weekIndex)
     } else {
 
       const allGamesSnapshot = await scheduleCollection.get();
@@ -812,7 +812,7 @@ const MaddenDB: MaddenDB = {
 
       return deduplicateSchedule(games
         .filter(game => game.seasonIndex === latestSeason)
-        .sort((a, b) => a.weekIndex - b.weekIndex), teams)
+        , teams).sort((a, b) => a.weekIndex - b.weekIndex)
     }
   }
 }
