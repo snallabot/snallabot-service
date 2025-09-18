@@ -11,7 +11,7 @@
     "pinger": "node dist/discord/pinger.js",
     "migration-20241218": "node dist/export/migration.js",
     "dev": "npx firebase --project dev emulators:start & FIRESTORE_EMULATOR_HOST=localhost:8080 nodemon src/index.ts && kill $!",
-    "ea-refresher": "dist/dashboard/ea_refresher.js"
+    "ea-refresher": "node dist/dashboard/ea_refresher.js"
   },
   "engines": {
     "node": "21.x"

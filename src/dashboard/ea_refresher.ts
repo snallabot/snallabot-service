@@ -15,7 +15,6 @@ async function getLatestLeagues(): Promise<LatestLeagues> {
   const docs = await collection.get()
   let leagues = docs.docs.map(d => d.id)
   collection.onSnapshot(querySnapshot => {
-    console.log("Leagues being updated")
     leagues = querySnapshot.docs.map(d => d.id)
   })
   return {
@@ -55,6 +54,7 @@ function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+const SLEEP_MIN = 60
 async function runLeagueChecks() {
   const latestLeagues = await getLatestLeagues()
 
@@ -69,9 +69,9 @@ async function runLeagueChecks() {
         console.error(`Error checking league ${leagueId}: ${e}`)
       }
     }
-    console.log("Check complete, sleeping for 5 minutes...\n")
+    console.log(`Check complete, sleeping for ${SLEEP_MIN} minutes...\n`)
     await fetch("https://hc-ping.com/82b9220a-02cf-4ca1-9385-3c8b9463cff3")
-    await sleep(5 * 60 * 1000)
+    await sleep(SLEEP_MIN * 60 * 1000)
   }
 }
 
