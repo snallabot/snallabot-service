@@ -292,7 +292,6 @@ function deduplicatePlayers(players: StoredEvent<Player>[]): StoredEvent<Player>
   for (const player of players) {
     // Create a unique key using the combination of identifying fields
     const playerKey = `${player.presentationId}-${player.birthYear}-${player.birthMonth}-${player.birthDay}`;
-
     const existingPlayer = playerMap.get(playerKey);
 
     if (!existingPlayer) {
@@ -528,7 +527,7 @@ const MaddenDB: MaddenDB = {
     }).filter(s => latestTeams.has(s.teamId))
   },
   getLatestPlayers: async function(leagueId: string) {
-    const playerSnapshot = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).select("rosterId", "firstName", "lastName", "teamId", "position", "birthYear", "birthMonth", "birthDay", "presentationId").get()
+    const playerSnapshot = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).select("rosterId", "firstName", "lastName", "teamId", "position", "birthYear", "birthMonth", "birthDay", "presentationId", "timestamp").get()
     return deduplicatePlayers(playerSnapshot.docs.map(doc => {
       return convertDate(doc.data()) as StoredEvent<Player>
     }))
