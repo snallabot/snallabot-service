@@ -299,10 +299,6 @@ function deduplicatePlayers(players: StoredEvent<Player>[]): StoredEvent<Player>
       playerMap.set(playerKey, player);
     } else {
       // Duplicate found - keep the one with the later timestamp
-      if (player.firstName === "Israel") {
-        console.log(player.timestamp)
-        console.log(existingPlayer.timestamp)
-      }
       if (player.timestamp > existingPlayer.timestamp) {
         playerMap.set(playerKey, player);
       }
@@ -531,8 +527,7 @@ const MaddenDB: MaddenDB = {
     }).filter(s => latestTeams.has(s.teamId))
   },
   getLatestPlayers: async function(leagueId: string) {
-    const playerSnapshot = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).select("rosterId", "firstName", "lastName", "teamId", "position", "birthYear", "birthMonth", "birthDay", "presentationId").get()
-    console.log("here")
+    const playerSnapshot = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).select("rosterId", "firstName", "lastName", "teamId", "position", "birthYear", "birthMonth", "birthDay", "presentationId", "timestamp").get()
     return deduplicatePlayers(playerSnapshot.docs.map(doc => {
       return convertDate(doc.data()) as StoredEvent<Player>
     }))
