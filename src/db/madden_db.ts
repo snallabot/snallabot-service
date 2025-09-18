@@ -611,12 +611,13 @@ const MaddenDB: MaddenDB = {
     let playersQuery;
     // flip the query for going backwards by ordering opposite and using start after
     if (endBefore) {
-      playersQuery = db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).orderBy("playerBestOvr", "asc").orderBy("rosterIds", "desc").limit(limit)
+      playersQuery = db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).orderBy("playerBestOvr", "asc").orderBy("presentationId", "desc").orderBy("birthYear", "desc").orderBy("birthMonth", "desc").orderBy("birthDay", "desc").limit(limit * 2)
     } else {
-      playersQuery = db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).orderBy("playerBestOvr", "desc").orderBy("rosterId").limit(limit)
+      playersQuery = db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).orderBy("playerBestOvr", "desc").orderBy("presentationId", "asc").orderBy("birthYear", "asc").orderBy("birthMonth", "asc").orderBy("birthDay", "asc").limit(limit * 2)
     }
     if ((query.teamId && query.teamId !== -1) || query.teamId === 0) {
-      playersQuery = playersQuery.where("teamId", "==", query.teamId);
+      const teams = await this.getLatestTeams(leagueId)
+      playersQuery = playersQuery.where("teamId", "==", teams.getTeamForId(query.teamId).teamId);
     }
 
     if (query.position) {
@@ -638,16 +639,16 @@ const MaddenDB: MaddenDB = {
     }
 
     if (startAfter) {
-      playersQuery = playersQuery.startAfter(startAfter.playerBestOvr, startAfter.rosterId);
+      playersQuery = playersQuery.startAfter(startAfter.playerBestOvr, startAfter.presentationId, startAfter.birthYear, startAfter.birthMonth, startAfter.birthDay)
     }
 
     if (endBefore) {
-      playersQuery = playersQuery.startAfter(endBefore.playerBestOvr, endBefore.rosterId);
+      playersQuery = playersQuery.startAfter(endBefore.playerBestOvr, endBefore.presentationId, endBefore.birthYear, endBefore.birthMonth, endBefore.birthDay)
     }
 
     const snapshot = await playersQuery.get();
 
-    const players = snapshot.docs.map(d => convertDate(d.data()) as Player)
+    const players = deduplicatePlayers(snapshot.docs.map(d => convertDate(d.data()) as StoredEvent<Player>)).slice(0, limit)
     if (endBefore) {
       return players.reverse()
     } else {
