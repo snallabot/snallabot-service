@@ -259,7 +259,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
         value: { si: s, ti: teamId }
       }))
       .map(option => ({ ...option, value: JSON.stringify(option.value) }))
-    console.log(message.length)
+    console.log(message)
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
