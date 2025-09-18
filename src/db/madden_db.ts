@@ -260,7 +260,7 @@ function deduplicateSchedule(games: StoredEvent<MaddenGame>[], teams: TeamList):
   const gameMap = new Map<string, StoredEvent<MaddenGame>>();
 
   try {
-    for (const game of games) {
+    for (const game of games.filter(game => game.awayTeamId !== 0 && game.homeTeamId !== 0)) {
       // Map team IDs to their latest versions
       const latestHomeTeam = teams.getTeamForId(game.homeTeamId);
       const latestAwayTeam = teams.getTeamForId(game.awayTeamId);
@@ -485,7 +485,7 @@ const MaddenDB: MaddenDB = {
       .get()
     ])
     const teamList = await this.getLatestTeams(leagueId)
-    return deduplicateSchedule(playoffGames.flatMap(p => p.docs.map(d => convertDate(d.data()) as StoredEvent<MaddenGame>)).filter(g => g.awayTeamId !== 0 && g.homeTeamId !== 0), teamList)
+    return deduplicateSchedule(playoffGames.flatMap(p => p.docs.map(d => convertDate(d.data()) as StoredEvent<MaddenGame>)), teamList)
   }
   ,
   getWeekScheduleForSeason: async function(leagueId: string, week: number, season: number) {
@@ -802,7 +802,7 @@ const MaddenDB: MaddenDB = {
 
       const seasonGames = seasonGamesSnapshot.docs.map(doc => convertDate(doc.data()) as StoredEvent<MaddenGame>);
 
-      return deduplicateSchedule(seasonGames.filter(game => game.awayTeamId !== 0 && game.homeTeamId !== 0), teams).sort((a, b) => a.weekIndex - b.weekIndex)
+      return deduplicateSchedule(seasonGames, teams).sort((a, b) => a.weekIndex - b.weekIndex)
     } else {
 
       const allGamesSnapshot = await scheduleCollection.get();
@@ -816,7 +816,6 @@ const MaddenDB: MaddenDB = {
       const latestSeason = Math.max(...games.map(game => game.seasonIndex));
       return deduplicateSchedule(games
         .filter(game => game.seasonIndex === latestSeason)
-        .filter(game => game.awayTeamId !== 0 && game.homeTeamId !== 0)
         , teams).sort((a, b) => a.weekIndex - b.weekIndex)
     }
   }
