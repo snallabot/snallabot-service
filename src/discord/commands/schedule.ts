@@ -132,7 +132,6 @@ async function showTeamSchedule(token: string, client: DiscordClient,
     ])
 
     const schedule = settledPromise[0].status === "fulfilled" ? settledPromise[0].value : []
-    console.log(schedule.length)
     if (settledPromise[1].status !== "fulfilled") {
       throw new Error("No Teams setup, setup the bot and export")
     }
