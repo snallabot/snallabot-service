@@ -806,7 +806,7 @@ const MaddenDB: MaddenDB = {
         return [];
       }
 
-      const games = allGamesSnapshot.docs.map(doc => doc.data() as StoredEvent<MaddenGame>)
+      const games = allGamesSnapshot.docs.map(doc => convertDate(doc.data()) as StoredEvent<MaddenGame>)
       const latestSeason = Math.max(...games.map(game => game.seasonIndex));
 
 
