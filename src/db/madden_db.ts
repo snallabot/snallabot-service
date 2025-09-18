@@ -258,7 +258,7 @@ function reconstructFromHistory<T>(histories: StoredHistory[], og: T) {
 
 function deduplicateSchedule(games: StoredEvent<MaddenGame>[], teams: TeamList): StoredEvent<MaddenGame>[] {
   const gameMap = new Map<string, StoredEvent<MaddenGame>>();
-  console.log(`deduplicating games ${games.length}`)
+
   try {
     for (const game of games) {
       // Map team IDs to their latest versions
@@ -283,7 +283,6 @@ function deduplicateSchedule(games: StoredEvent<MaddenGame>[], teams: TeamList):
         // If existing game has later timestamp, we keep it (do nothing)
       }
     }
-    console.log(`deduplicated games ${Array.from(gameMap.values()).length}`)
     return Array.from(gameMap.values());
   } catch (e) {
     console.error(e)
@@ -562,7 +561,6 @@ const MaddenDB: MaddenDB = {
       .where("birthDay", "==", player.birthDay)
       .get()
     const rosterIds = potentiallyDuplicatePlayers.docs.map(d => d.data() as Player).map(p => p.rosterId)
-    console.log(rosterIds)
     switch (player.position) {
       case "QB":
         const [passingStats, rushingStats] = await Promise.all([getStats<StoredEvent<PassingStats>>(leagueId, rosterIds, MaddenEvents.MADDEN_PASSING_STAT), getStats<StoredEvent<RushingStats>>(leagueId, rosterIds, MaddenEvents.MADDEN_RUSHING_STAT)])
@@ -804,7 +802,7 @@ const MaddenDB: MaddenDB = {
 
       const seasonGames = seasonGamesSnapshot.docs.map(doc => convertDate(doc.data()) as StoredEvent<MaddenGame>);
 
-      return deduplicateSchedule(seasonGames, teams).sort((a, b) => a.weekIndex - b.weekIndex)
+      return deduplicateSchedule(seasonGames.filter(game => game.awayTeamId !== 0 && game.homeTeamId !== 0), teams).sort((a, b) => a.weekIndex - b.weekIndex)
     } else {
 
       const allGamesSnapshot = await scheduleCollection.get();
@@ -818,6 +816,7 @@ const MaddenDB: MaddenDB = {
       const latestSeason = Math.max(...games.map(game => game.seasonIndex));
       return deduplicateSchedule(games
         .filter(game => game.seasonIndex === latestSeason)
+        .filter(game => game.awayTeamId !== 0 && game.homeTeamId !== 0)
         , teams).sort((a, b) => a.weekIndex - b.weekIndex)
     }
   }
