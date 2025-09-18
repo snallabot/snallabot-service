@@ -287,6 +287,7 @@ function deduplicateSchedule(games: StoredEvent<MaddenGame>[], teams: TeamList):
     return Array.from(gameMap.values());
   } catch (e) {
     console.error(e)
+    return []
   }
 }
 
