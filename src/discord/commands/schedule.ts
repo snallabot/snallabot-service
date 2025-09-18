@@ -123,7 +123,7 @@ async function showSchedule(token: string, client: DiscordClient,
 }
 
 async function showTeamSchedule(token: string, client: DiscordClient,
-  league: string, teamId: number, requestedSeason?: number) {
+  league: string, requestedTeamId: number, requestedSeason?: number) {
   try {
     const settledPromise = await Promise.allSettled([
       MaddenClient.getTeamSchedule(league, requestedSeason),
@@ -140,10 +140,11 @@ async function showTeamSchedule(token: string, client: DiscordClient,
       throw new Error("Failed to get all season weeks")
     }
     const allWeeks = settledPromise[2].value
+    const teamId = teams.getTeamForId(requestedTeamId).teamId
 
     // Filter schedule to only include games for the specified team
-    const teamSchedule = schedule.filter(game =>
-      game.awayTeamId === teamId || game.homeTeamId === teamId
+    const teamSchedule = schedule.filter(game => game.awayTeamId !== 0 && game.homeTeamId !== 0).filter(game =>
+      teams.getTeamForId(game.awayTeamId).teamId === teamId || teams.getTeamForId(game.homeTeamId).teamId === teamId
     ).sort((a, b) => a.scheduleId - b.scheduleId)
 
 

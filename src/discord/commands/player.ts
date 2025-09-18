@@ -5,7 +5,7 @@ import { APIApplicationCommandInteractionDataStringOption, APIApplicationCommand
 import { Firestore } from "firebase-admin/firestore"
 import { playerSearchIndex, discordLeagueView, teamSearchView } from "../../db/view"
 import fuzzysort from "fuzzysort"
-import MaddenDB, { PlayerListQuery, PlayerStatType, PlayerStats } from "../../db/madden_db"
+import MaddenDB, { PlayerListQuery, PlayerStatType, PlayerStats, TeamList } from "../../db/madden_db"
 import { CoverBallTrait, DevTrait, LBStyleTrait, MADDEN_SEASON, MaddenGame, POSITIONS, POSITION_GROUP, PenaltyTrait, PlayBallTrait, Player, QBStyleTrait, SensePressureTrait, YesNoTrait } from "../../export/madden_league_types"
 
 enum PlayerSelection {
@@ -76,17 +76,7 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, token
       }
       searchRosterId = results[0].rosterId
     }
-    const player = await MaddenDB.getPlayer(leagueId, `${searchRosterId}`)
-    const teamView = await teamSearchView.createView(leagueId)
-    if (!teamView) {
-      throw new Error("Missing teams?? Maybe try the command again")
-    }
-    const teamsDisplayNames = Object.fromEntries(Object.entries(teamView).map(teamEntry => {
-      const [teamId, t] = teamEntry
-      return [teamId, t.abbrName]
-    }))
-    // 0 team id means the player is a free agent
-    teamsDisplayNames["0"] = "FA"
+    const [player, teamList] = await Promise.all([MaddenDB.getPlayer(leagueId, `${searchRosterId}`), MaddenDB.getLatestTeams(leagueId)])
     const backToSearch = pagination ? [
       {
         type: ComponentType.Separator,
@@ -111,7 +101,7 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, token
       components: [
         {
           type: ComponentType.TextDisplay,
-          content: formatPlayerCard(player, teamsDisplayNames)
+          content: formatPlayerCard(player, teamList)
         },
         {
           type: ComponentType.Separator,
@@ -151,17 +141,8 @@ async function showPlayerFullRatings(rosterId: number, client: DiscordClient, to
   if (!leagueId) {
     throw new Error(`No League connected to snallabot`)
   }
-  const player = await MaddenDB.getPlayer(leagueId, `${rosterId}`)
-  const teamView = await teamSearchView.createView(leagueId)
-  if (!teamView) {
-    throw new Error("Missing teams?? Maybe try the command again")
-  }
-  const teamsDisplayNames = Object.fromEntries(Object.entries(teamView).map(teamEntry => {
-    const [teamId, t] = teamEntry
-    return [teamId, t.abbrName]
-  }))
+  const [player, teamList] = await Promise.all([MaddenDB.getPlayer(leagueId, `${rosterId}`), MaddenDB.getLatestTeams(leagueId)])
   // 0 team id means the player is a free agent
-  teamsDisplayNames["0"] = "FA"
   const backToSearch = pagination ? [
     {
       type: ComponentType.Separator,
@@ -186,7 +167,7 @@ async function showPlayerFullRatings(rosterId: number, client: DiscordClient, to
     components: [
       {
         type: ComponentType.TextDisplay,
-        content: formatFullRatings(player, teamsDisplayNames)
+        content: formatFullRatings(player, teamList)
       },
       {
         type: ComponentType.Separator,
@@ -215,17 +196,7 @@ async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, to
   if (!leagueId) {
     throw new Error(`No League connected to snallabot`)
   }
-  const player = await MaddenDB.getPlayer(leagueId, `${rosterId}`)
-  const teamView = await teamSearchView.createView(leagueId)
-  if (!teamView) {
-    throw new Error("Missing teams?? Maybe try the command again")
-  }
-  const teamsDisplayNames = Object.fromEntries(Object.entries(teamView).map(teamEntry => {
-    const [teamId, t] = teamEntry
-    return [teamId, t.abbrName]
-  }))
-  // 0 team id means the player is a free agent
-  teamsDisplayNames["0"] = "FA"
+  const [player, teamList] = await Promise.all([MaddenDB.getPlayer(leagueId, `${rosterId}`), MaddenDB.getLatestTeams(leagueId)])
   const playerStats = await MaddenDB.getPlayerStats(leagueId, player)
   const statGames = new Map<String, { id: number, week: number, season: number }>()
   Object.values(playerStats).flat().forEach(p => statGames.set(`${p.scheduleId}|${p.weekIndex}|${p.seasonIndex}`, { id: p.scheduleId, week: p.weekIndex + 1, season: p.seasonIndex }))
@@ -254,7 +225,7 @@ async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, to
     components: [
       {
         type: ComponentType.TextDisplay,
-        content: formatWeeklyStats(player, teamsDisplayNames, playerStats, games)
+        content: formatWeeklyStats(player, teamList, playerStats, games)
       },
       {
         type: ComponentType.Separator,
@@ -283,19 +254,8 @@ async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, to
   if (!leagueId) {
     throw new Error(`No League connected to snallabot`)
   }
-  const player = await MaddenDB.getPlayer(leagueId, `${rosterId}`)
+  const [player, teamList] = await Promise.all([MaddenDB.getPlayer(leagueId, `${rosterId}`), MaddenDB.getLatestTeams(leagueId)])
   const playerStats = await MaddenDB.getPlayerStats(leagueId, player)
-  const teamView = await teamSearchView.createView(leagueId)
-  if (!teamView) {
-    throw new Error("Missing teams?? Maybe try the command again")
-  }
-
-  const teamsDisplayNames = Object.fromEntries(Object.entries(teamView).map(teamEntry => {
-    const [teamId, t] = teamEntry
-    return [teamId, t.abbrName]
-  }))
-  // 0 team id means the player is a free agent
-  teamsDisplayNames["0"] = "FA"
   const backToSearch = pagination ? [
     {
       type: ComponentType.Separator,
@@ -320,7 +280,7 @@ async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, to
     components: [
       {
         type: ComponentType.TextDisplay,
-        content: formatSeasonStats(player, playerStats, teamsDisplayNames)
+        content: formatSeasonStats(player, playerStats, teamList)
       },
       {
         type: ComponentType.Separator,
@@ -401,19 +361,8 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
       const { teamId, rookie, position } = results[0]
       query = { teamId, rookie: rookie ? true : false, position }
     }
-
-    const players = await getPlayers(leagueId, query, startAfterPlayer, endBeforePlayer)
-    const teamView = await teamSearchView.createView(leagueId)
-    if (!teamView) {
-      throw new Error("Missing teams?? Maybe try the command again")
-    }
-    const teamsDisplayNames = Object.fromEntries(Object.entries(teamView).map(teamEntry => {
-      const [teamId, t] = teamEntry
-      return [teamId, t.abbrName]
-    }))
-    // 0 team id means the player is a free agent
-    teamsDisplayNames["0"] = "FA"
-    const message = players.length === 0 ? `# No results` : formatPlayerList(players, teamsDisplayNames)
+    const [players, teamList] = await Promise.all([getPlayers(leagueId, query, startAfterPlayer, endBeforePlayer), MaddenDB.getLatestTeams(leagueId)])
+    const message = players.length === 0 ? `# No results` : formatPlayerList(players, teamList)
     const backDisabled = startAfterPlayer || endBeforePlayer ? false : true
     const nextDisabled = players.length < PAGINATION_LIMIT ? true : false
     const nextPagination = players.length === 0 ? startAfterPlayer : players[players.length - 1].rosterId
@@ -789,10 +738,16 @@ function formatMoney(m: number) {
   }
 }
 
-function formatPlayerCard(player: Player, teams: { [key: string]: string }) {
+function getTeamAbbr(teamId: number, teams: TeamList) {
+  if (teamId === 0) {
+    return "FA"
+  }
+  return teams.getTeamForId(teamId).abbrName
+}
 
-  const teamAbbr = teams[`${player.teamId}`]
+function formatPlayerCard(player: Player, teams: TeamList) {
 
+  const teamAbbr = getTeamAbbr(player.teamId, teams)
   const heightFeet = Math.floor(player.height / 12)
   const heightInches = player.height % 12
   const formattedHeight = `${heightFeet}'${heightInches}"`
@@ -886,8 +841,8 @@ function formatLbStyle(lbStyle: LBStyleTrait) {
 }
 
 
-function formatFullRatings(player: Player, teams: { [key: string]: string }) {
-  const teamAbbr = teams[`${player.teamId}`]
+function formatFullRatings(player: Player, teams: TeamList) {
+  const teamAbbr = getTeamAbbr(player.teamId, teams)
 
   return `
 # ${getTeamEmoji(teamAbbr)} ${player.position} ${player.firstName} ${player.lastName}
@@ -1121,15 +1076,15 @@ enum SnallabotGameResult {
   TIE = "<:snallabot_tie:1368713402016337950>"
 }
 
-function formatGameEmoji(game: MaddenGame, playerTeam: number) {
+function formatGameEmoji(game: MaddenGame, playerTeam: number, teams: TeamList) {
   if (game.awayScore === game.homeScore) {
     return SnallabotGameResult.TIE
   }
   if (game.awayScore > game.homeScore) {
-    return game.awayTeamId === playerTeam ? SnallabotGameResult.WIN : SnallabotGameResult.LOSS
+    return teams.getTeamForId(game.awayTeamId).teamId === playerTeam ? SnallabotGameResult.WIN : SnallabotGameResult.LOSS
   }
   if (game.awayScore < game.homeScore) {
-    return game.homeTeamId === playerTeam ? SnallabotGameResult.WIN : SnallabotGameResult.LOSS
+    return teams.getTeamForId(game.homeTeamId).teamId === playerTeam ? SnallabotGameResult.WIN : SnallabotGameResult.LOSS
   }
 }
 
@@ -1151,16 +1106,16 @@ function formatGameKey(g: { scheduleId: number, weekIndex: number, seasonIndex: 
   return `${g.scheduleId}|${g.weekIndex}|${g.seasonIndex}`
 }
 
-function formatGame(game: MaddenGame, player: Player, teams: { [key: string]: string }) {
-  const playerTeam = player.teamId
-  const homeTeam = game.homeTeamId
-  const awayTeam = game.awayTeamId
+function formatGame(game: MaddenGame, player: Player, teams: TeamList) {
+  const playerTeam = teams.getTeamForId(player.teamId).teamId
+  const homeTeam = teams.getTeamForId(game.homeTeamId).teamId
+  const awayTeam = teams.getTeamForId(game.awayTeamId).teamId
   const opponentTeam = playerTeam === awayTeam ? homeTeam : awayTeam
-  const opponent = teams[opponentTeam]
-  return `${formatWeek(game)} vs ${opponent.padEnd(3)} ${formatGameEmoji(game, playerTeam)} ${formatScore(game)}:`
+  const opponent = getTeamAbbr(opponentTeam, teams)
+  return `${formatWeek(game)} vs ${opponent.padEnd(3)} ${formatGameEmoji(game, playerTeam, teams)} ${formatScore(game)}:`
 }
 
-function formatWeeklyStats(player: Player, teams: { [key: string]: string }, stats: PlayerStats, games: MaddenGame[]) {
+function formatWeeklyStats(player: Player, teams: TeamList, stats: PlayerStats, games: MaddenGame[]) {
   const currentSeason = Math.max(...games.map(g => g.seasonIndex))
   const currentGameIds = new Set(games.filter(g => g.seasonIndex === currentSeason && g.stageIndex > 0).map(g => formatGameKey(g)))
   const gameResults = Object.groupBy(games.filter(g => currentGameIds.has(formatGameKey(g))), g => formatGameKey(g))
@@ -1178,7 +1133,7 @@ function formatWeeklyStats(player: Player, teams: { [key: string]: string }, sta
     }
   }).sort((a, b) => (a.weekIndex < b.weekIndex ? -1 : 1)).map(g => g.value)
 
-  const teamAbbr = teams[`${player.teamId}`]
+  const teamAbbr = getTeamAbbr(player.teamId, teams)
   const joinedWeekStats = weekStats.join("\n")
   return `
 # ${getTeamEmoji(teamAbbr)} ${player.position} ${player.firstName} ${player.lastName}
@@ -1556,9 +1511,8 @@ function aggregateSeason(stats: PlayerStats): SeasonAggregation {
   return seasonAggregation;
 }
 
-function formatSeasonStats(player: Player, stats: PlayerStats, teams: { [key: string]: string }) {
-
-  const teamAbbr = teams[`${player.teamId}`]
+function formatSeasonStats(player: Player, stats: PlayerStats, teams: TeamList) {
+  const teamAbbr = getTeamAbbr(player.teamId, teams)
   const agg = aggregateSeason(stats)
   const formattedAgg = formatSeasonAggregation(agg)
 
@@ -1570,11 +1524,11 @@ ${formattedAgg}
 `
 }
 
-function formatPlayerList(players: Player[], teams: { [key: string]: string }) {
+function formatPlayerList(players: Player[], teams: TeamList) {
   let message = "# Player Results:\n";
 
   for (const player of players) {
-    const teamName = teams[`${player.teamId}`]
+    const teamName = getTeamAbbr(player.teamId, teams)
     const fullName = `${player.firstName} ${player.lastName}`;
     const heightFeet = Math.floor(player.height / 12);
     const heightInches = player.height % 12;
