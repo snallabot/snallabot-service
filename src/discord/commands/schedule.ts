@@ -176,7 +176,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
         const opponentDisplay = `${formatTeamEmoji(opponent?.abbrName)} ${opponent?.displayName}`
         const teamDisplay = `${formatTeamEmoji(selectedTeam.abbrName)} ${selectedTeam.displayName}`
 
-        const weekLabel = getMessageForWeek(week)
+        const weekLabel = getMessageForWeek(week, true)
 
         if (game.status === GameResult.NOT_PLAYED) {
           scheduleLines.push(`**${weekLabel}:** ${teamDisplay} ${isTeamAway ? '@' : 'vs'} ${opponentDisplay}`)
