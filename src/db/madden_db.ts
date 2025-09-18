@@ -258,7 +258,7 @@ function reconstructFromHistory<T>(histories: StoredHistory[], og: T) {
 
 function deduplicateSchedule(games: StoredEvent<MaddenGame>[], teams: TeamList): StoredEvent<MaddenGame>[] {
   const gameMap = new Map<string, StoredEvent<MaddenGame>>();
-
+  console.log(`deduplicating games ${games.length}`)
   for (const game of games) {
     // Map team IDs to their latest versions
     const latestHomeTeam = teams.getTeamForId(game.homeTeamId);
@@ -282,6 +282,7 @@ function deduplicateSchedule(games: StoredEvent<MaddenGame>[], teams: TeamList):
       // If existing game has later timestamp, we keep it (do nothing)
     }
   }
+  console.log(`deduplicated games ${Array.from(gameMap.values()).length}`)
   return Array.from(gameMap.values());
 }
 
@@ -810,7 +811,6 @@ const MaddenDB: MaddenDB = {
 
       const games = allGamesSnapshot.docs.map(doc => convertDate(doc.data()) as StoredEvent<MaddenGame>)
       const latestSeason = Math.max(...games.map(game => game.seasonIndex));
-      console.log("games " + games.length)
       return deduplicateSchedule(games
         .filter(game => game.seasonIndex === latestSeason)
         , teams).sort((a, b) => a.weekIndex - b.weekIndex)
