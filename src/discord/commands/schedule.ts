@@ -171,7 +171,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
           scheduleLines.push(`**Week ${week}:** BYE`)
         }
       } else {
-        const isTeamAway = game.awayTeamId === teamId
+        const isTeamAway = teams.getTeamForId(game.awayTeamId).teamId === teamId
         const opponent = teams.getTeamForId(isTeamAway ? game.homeTeamId : game.awayTeamId)
         const opponentDisplay = `${formatTeamEmoji(opponent?.abbrName)} ${opponent?.displayName}`
         const teamDisplay = `${formatTeamEmoji(selectedTeam.abbrName)} ${selectedTeam.displayName}`
