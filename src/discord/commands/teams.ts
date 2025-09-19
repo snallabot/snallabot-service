@@ -146,7 +146,7 @@ async function handleCustomLogo(guild_id: string, league_id: string, client: Dis
     }
 
     const arrayBuffer = await response.arrayBuffer();
-    const buffer = autoCropImage(Buffer.from(arrayBuffer))
+    const buffer = await autoCropImage(Buffer.from(arrayBuffer))
 
     // // Load the image into canvas
     // const image = await loadImage(buffer);
