@@ -55,7 +55,89 @@ function createTeamsMessage(settings: LeagueSettings, teams: TeamList): string {
   }
 }
 
-async function handleCustomLogo(guild_id: string, league_id: string, client: DiscordClient, token: string, imageUrl: string, teamToCustomize: Team, height: number, width: number) {
+async function autoCropImage(inputPath: Buffer, padding = 10) {
+  try {
+    // Load the original image
+    const image = await loadImage(inputPath);
+
+    // Create a canvas with the original image size
+    const canvas = createCanvas(image.width, image.height);
+    const ctx = canvas.getContext('2d');
+
+    // Draw the image onto the canvas
+    ctx.drawImage(image, 0, 0);
+
+    // Get image data to analyze pixels
+    const imageData = ctx.getImageData(0, 0, image.width, image.height);
+    const data = imageData.data;
+
+    // Find the bounding box of non-transparent/non-white content
+    let minX = image.width;
+    let minY = image.height;
+    let maxX = 0;
+    let maxY = 0;
+
+    // Scan all pixels
+    for (let y = 0; y < image.height; y++) {
+      for (let x = 0; x < image.width; x++) {
+        const index = (y * image.width + x) * 4;
+        const r = data[index];
+        const g = data[index + 1];
+        const b = data[index + 2];
+        const a = data[index + 3];
+
+        // Check if pixel is not transparent and not white/very light
+        const isNotEmpty = a > 10 && !(r > 240 && g > 240 && b > 240);
+
+        if (isNotEmpty) {
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x);
+          maxY = Math.max(maxY, y);
+        }
+      }
+    }
+
+    // Calculate crop dimensions
+    const cropWidth = maxX - minX + 1;
+    const cropHeight = maxY - minY + 1;
+
+    // Make it square by using the larger dimension
+    const squareSize = Math.max(cropWidth, cropHeight) + (padding * 2);
+
+    // Calculate center position for the content in the square
+    const centerX = minX + cropWidth / 2;
+    const centerY = minY + cropHeight / 2;
+
+    // Create new canvas for the cropped square image
+    const croppedCanvas = createCanvas(squareSize, squareSize);
+    const croppedCtx = croppedCanvas.getContext('2d');
+
+    // Fill with transparent background
+    croppedCtx.clearRect(0, 0, squareSize, squareSize);
+
+    // Draw the cropped portion centered in the square
+    const sourceX = centerX - squareSize / 2;
+    const sourceY = centerY - squareSize / 2;
+
+    croppedCtx.drawImage(
+      canvas,
+      sourceX, sourceY, squareSize, squareSize,  // source
+      0, 0, squareSize, squareSize               // destination
+    );
+
+    // Return the buffer
+    const buffer = croppedCanvas.toBuffer('image/png');
+
+    return buffer
+
+  } catch (error) {
+    console.error('Error cropping image:', error);
+    throw error;
+  }
+}
+
+async function handleCustomLogo(guild_id: string, league_id: string, client: DiscordClient, token: string, imageUrl: string, teamToCustomize: Team) {
   try {
     // Download the image
     const response = await fetch(imageUrl);
@@ -64,7 +146,7 @@ async function handleCustomLogo(guild_id: string, league_id: string, client: Dis
     }
 
     const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    const buffer = autoCropImage(Buffer.from(arrayBuffer))
 
     // // Load the image into canvas
     // const image = await loadImage(buffer);
