@@ -316,7 +316,8 @@ function deduplicatePlayers(players: StoredEvent<Player>[]): StoredEvent<Player>
 
 function findLatestScheduleId(scheduleId: number, games: StoredEvent<MaddenGame>[], teams: TeamList): StoredEvent<MaddenGame> {
   // First, find the game with the given schedule ID
-  const originalGame = games.find(game => game.scheduleId === scheduleId);
+  const filteredGames = games.filter(game => game.awayTeamId !== 0 && game.homeTeamId !== 0)
+  const originalGame = filteredGames.find(game => game.scheduleId === scheduleId);
 
   if (!originalGame) {
     throw new Error(`No game found with schedule ID: ${scheduleId}`);
@@ -331,7 +332,7 @@ function findLatestScheduleId(scheduleId: number, games: StoredEvent<MaddenGame>
   const gameKey = `${originalGame.seasonIndex}-${originalGame.weekIndex}-${teamIds[0]}-${teamIds[1]}`;
 
   // Find all games that match this same matchup (same teams, week, season)
-  const matchingGames = games.filter(game => {
+  const matchingGames = filteredGames.filter(game => {
     const gameLatestHomeTeam = teams.getTeamForId(game.homeTeamId);
     const gameLatestAwayTeam = teams.getTeamForId(game.awayTeamId);
     const gameTeamIds = [gameLatestHomeTeam.teamId, gameLatestAwayTeam.teamId].sort((a, b) => a - b);
