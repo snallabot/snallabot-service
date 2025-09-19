@@ -1,21 +1,8 @@
-import db from "../db/firebase"
-import { createClient } from "./discord_utils"
+import { createProdClient } from "./discord_utils"
 import createNotifier from "./notifier"
-import LeagueSettingsDB, { LeagueSettings } from "./settings_db"
+import LeagueSettingsDB from "./settings_db"
 
-if (!process.env.PUBLIC_KEY) {
-  throw new Error("No Public Key passed for interaction verification")
-}
-
-if (!process.env.DISCORD_TOKEN) {
-  throw new Error("No Discord Token passed for interaction verification")
-}
-if (!process.env.APP_ID) {
-  throw new Error("No App Id passed for interaction verification")
-}
-const prodSettings = { publicKey: process.env.PUBLIC_KEY, botToken: process.env.DISCORD_TOKEN, appId: process.env.APP_ID }
-
-const prodClient = createClient(prodSettings)
+const prodClient = createProdClient()
 
 function getRandomInt(max: number) {
   return Math.floor(Math.random() * max);
@@ -30,7 +17,7 @@ async function updateEachLeagueNotifier() {
       const jitter = getRandomInt(3)
       await new Promise((r) => setTimeout(r, 1000 + jitter * 1000));
       await Promise.all(Object.values(weeklyStates).map(async weeklyState => {
-        await Promise.all(Object.entries(weeklyState.channel_states).map(async channelEntry => {
+        await Promise.all(Object.entries(weeklyState.channel_states || {}).map(async channelEntry => {
           const [channelId, channelState] = channelEntry
           try {
             await new Promise((r) => setTimeout(r, 500 + jitter * 100));
