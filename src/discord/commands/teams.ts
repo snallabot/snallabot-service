@@ -55,7 +55,7 @@ function createTeamsMessage(settings: LeagueSettings, teams: TeamList): string {
   }
 }
 
-async function handleCustomLogo(guild_id: string, league_id: string, client: DiscordClient, token: string, imageUrl: string, teamToCustomize: Team, height, width) {
+async function handleCustomLogo(guild_id: string, league_id: string, client: DiscordClient, token: string, imageUrl: string, teamToCustomize: Team, height: number, width: number) {
   try {
     // Download the image
     const response = await fetch(imageUrl);
