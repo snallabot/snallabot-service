@@ -11,6 +11,8 @@ import fuzzysort from "fuzzysort"
 import MaddenDB from "../../db/madden_db"
 import { createCanvas, loadImage } from "canvas"
 import FileHandler, { imageSerializer } from "../../file_handlers"
+import EventDB, { EventDelivery } from "../../db/events_db"
+import { TeamLogoCustomizedEvent } from "../../db/events"
 
 function formatTeamMessage(teams: Team[], teamAssignments: TeamAssignments): string {
   const header = "# Teams"
@@ -78,7 +80,13 @@ async function handleCustomLogo(guild_id: string, league_id: string, client: Dis
     const resizedBuffer = canvas.toBuffer('image/png');
     const base64Image = `data:image/png;base64,${resizedBuffer.toString('base64')}`;
     const emoji = await client.uploadEmoji(base64Image, `${league_id}_${teamToCustomize.abbrName}`)
+    if (!emoji.name || !emoji.id) {
+      throw new Error(`Emoji not created correctly`)
+    }
     await FileHandler.writeFile<string>(base64Image, `custom_logos/${league_id}/${teamToCustomize.abbrName}.png`, imageSerializer)
+    await EventDB.appendEvents<TeamLogoCustomizedEvent>(
+      [{ key: league_id, event_type: "CUSTOM_LOGO", emoji_name: emoji.name, emoji_id: emoji.id, teamAbbr: teamToCustomize.abbrName }], EventDelivery.EVENT_SOURCE
+    )
     client.editOriginalInteraction(token, {
       content: `Assigned custom logo ${teamToCustomize.abbrName}: <:${emoji.name}:${emoji.id}>`
     })

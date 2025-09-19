@@ -3,7 +3,7 @@ import EventDB, { SnallabotEvent } from "./events_db"
 import MaddenDB, { MaddenEvents } from "./madden_db"
 import { Player, Team } from "../export/madden_league_types"
 import LeagueSettingsDB from "../discord/settings_db"
-import { DiscordLeagueConnectionEvent } from "./events"
+import { DiscordLeagueConnectionEvent, TeamLogoCustomizedEvent } from "./events"
 import FileHandler, { defaultSerializer } from "../file_handlers"
 
 const TTL = 10800 // 3 hours in seconds
@@ -220,3 +220,19 @@ class CacheablePlayerSearchIndex extends StorageBackedCachedView<PlayerSearch> {
 }
 export const playerSearchIndex = new CacheablePlayerSearchIndex()
 playerSearchIndex.listen(MaddenEvents.MADDEN_PLAYER)
+
+export type LeagueLogos = {
+  [key: string]: TeamLogoCustomizedEvent
+}
+class CustomTeamLogosView extends View<LeagueLogos> {
+  constructor() {
+    super("custom_team_logos")
+  }
+  async createView(key: string) {
+    const events = await EventDB.queryEvents<TeamLogoCustomizedEvent>(key, "CUSTOM_LOGO", new Date(0), {}, 100)
+    return Object.fromEntries(events.map(e => {
+      return [e.teamAbbr, e]
+    }))
+  }
+}
+export const leagueLogosView = new CustomTeamLogosView()

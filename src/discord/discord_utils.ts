@@ -5,6 +5,7 @@ import { CategoryId, ChannelId, DiscordIdType, MessageId, UserId } from "./setti
 import { createDashboard } from "./commands/dashboard"
 import { GameResult, MaddenGame } from "../export/madden_league_types"
 import { TeamList } from "../db/madden_db"
+import { LeagueLogos, leagueLogosView } from "../db/view"
 
 export enum CommandMode {
   INSTALL = "INSTALL",
@@ -603,21 +604,27 @@ export enum SnallabotTeamEmojis {
   NFL = "<:snallabot_nfl:1364108784229810257>"
 }
 
-export function getTeamEmoji(teamAbbr: string): SnallabotTeamEmojis {
+export function getTeamEmoji(teamAbbr: string, leagueCustomLogos: LeagueLogos): string {
+  const customLogo = leagueCustomLogos[teamAbbr]
+  if (customLogo) {
+    return `<:${customLogo.emoji_name}:${customLogo.emoji_id}>`
+  }
   return SnallabotTeamEmojis[teamAbbr.toUpperCase() as keyof typeof SnallabotTeamEmojis] || SnallabotTeamEmojis.NFL
 }
-export function formatTeamEmoji(teamAbbr?: string) {
+export function formatTeamEmoji(leagueCustomLogos: LeagueLogos, teamAbbr?: string) {
   if (teamAbbr) {
-    return getTeamEmoji(teamAbbr)
+    return getTeamEmoji(teamAbbr, leagueCustomLogos)
   }
   return SnallabotTeamEmojis.NFL
 }
 
-export function formatGame(game: MaddenGame, teams: TeamList) {
+export function formatGame(game: MaddenGame, teams: TeamList, leagueCustomLogos: LeagueLogos) {
   const awayTeam = teams.getTeamForId(game.awayTeamId)
   const homeTeam = teams.getTeamForId(game.homeTeamId)
-  const awayDisplay = `${formatTeamEmoji(awayTeam?.abbrName)} ${awayTeam?.displayName}`;
-  const homeDisplay = `${formatTeamEmoji(homeTeam?.abbrName)} ${homeTeam?.displayName}`;
+  const awayEmoji = formatTeamEmoji(leagueCustomLogos, awayTeam?.abbrName)
+  const homeEmoji = formatTeamEmoji(leagueCustomLogos, homeTeam?.abbrName)
+  const awayDisplay = `${awayEmoji} ${awayTeam?.displayName}`;
+  const homeDisplay = `${homeEmoji} ${homeTeam?.displayName}`;
 
   if (game.status === GameResult.NOT_PLAYED) {
     return `${awayDisplay} vs ${homeDisplay}`;
