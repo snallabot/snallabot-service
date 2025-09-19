@@ -1,25 +1,28 @@
 import { ParameterizedContext } from "koa"
 import { verifyKey } from "discord-interactions"
-import { APIApplicationCommand, APIChannel, APIGuild, APIGuildMember, APIMessage, APIThreadChannel, APIUser, ChannelType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
+import { APIApplicationCommand, APIChannel, APIEmoji, APIGuild, APIGuildMember, APIMessage, APIThreadChannel, APIUser, ChannelType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { CategoryId, ChannelId, DiscordIdType, MessageId, UserId } from "./settings_db"
 import { createDashboard } from "./commands/dashboard"
 import { GameResult, MaddenGame } from "../export/madden_league_types"
 import { TeamList } from "../db/madden_db"
+import { LeagueLogos, leagueLogosView } from "../db/view"
 
 export enum CommandMode {
   INSTALL = "INSTALL",
   DELETE = "DELETE"
 }
 
-export type DiscordError = { message: string, code: number, retry_after?: number }
+export type DiscordError = { message: string, code: number, retry_after?: number, errors?: { name: { _errors: { code: string, message: string }[] } } }
 
 // https://discord.com/developers/docs/topics/opcodes-and-status-codes
 export class DiscordRequestError extends Error {
   code: number
+  originalError: DiscordError
   constructor(error: DiscordError) {
     super(JSON.stringify(error))
     this.name = "DiscordError"
     this.code = error.code
+    this.originalError = error
   }
 
   isPermissionError() {
@@ -72,7 +75,8 @@ export interface DiscordClient {
   createThreadInChannel(channel: ChannelId, channelName: string): Promise<ChannelId>,
   checkMessageExists(channel: ChannelId, messageId: MessageId): Promise<boolean>,
   getUsers(guild_id: string): Promise<APIGuildMember[]>,
-  getGuildInformation(guild_id: String): Promise<APIGuild>
+  getGuildInformation(guild_id: string): Promise<APIGuild>,
+  uploadEmoji(imageData: string, name: string): Promise<APIEmoji>
 }
 
 type DiscordSettings = { publicKey: string, botToken: string, appId: string }
@@ -424,6 +428,55 @@ export function createClient(settings: DiscordSettings): DiscordClient {
       })
       const guildInfo = (await guildInfoRes.json()) as APIGuild
       return guildInfo
+    },
+    uploadEmoji: async function(image: string, name: string) {
+      try {
+        const res = await sendDiscordRequest(`applications/${settings.appId}/emojis`, {
+          method: "POST",
+          body: {
+            name: name,
+            image: image
+          }
+        })
+        return (await res.json()) as APIEmoji;
+      }
+      catch (e) {
+        if (e instanceof DiscordRequestError) {
+          const errorData = e.originalError
+          // Check for the specific duplicate emoji name error
+          if (errorData.code === 50035 &&
+            errorData.errors?.name?._errors?.[0]?.code === "APPLICATION_EMOJI_NAME_ALREADY_TAKEN") {
+
+            // Get all existing emojis to find the one with the same name
+            const existingEmojisRes = await sendDiscordRequest(`applications/${settings.appId}/emojis`, {
+              method: "GET"
+            });
+
+            const existingEmojis = await existingEmojisRes.json() as { items: APIEmoji[] }
+            const duplicateEmoji = existingEmojis.items.find((emoji) => emoji.name === name);
+
+            if (duplicateEmoji) {
+              // Delete the existing emoji
+              await sendDiscordRequest(`applications/${settings.appId}/emojis/${duplicateEmoji.id}`, {
+                method: "DELETE"
+              });
+
+              // Create the new emoji
+              const newRes = await sendDiscordRequest(`applications/${settings.appId}/emojis`, {
+                method: "POST",
+                body: {
+                  name: name,
+                  image: image
+                }
+              });
+
+              return (await newRes.json()) as APIEmoji;
+            }
+          }
+        }
+        // If it's a different error, throw it
+        throw new Error(`Discord API Error: ${e}`);
+      }
     }
   }
 }
@@ -551,21 +604,28 @@ export enum SnallabotTeamEmojis {
   NFL = "<:snallabot_nfl:1364108784229810257>"
 }
 
-export function getTeamEmoji(teamAbbr: string): SnallabotTeamEmojis {
+export function getTeamEmoji(teamAbbr: string, leagueCustomLogos: LeagueLogos): string {
+  const customLogo = leagueCustomLogos[teamAbbr]
+  if (customLogo) {
+    console.log(customLogo)
+    return `<:${customLogo.emoji_name}:${customLogo.emoji_id}>`
+  }
   return SnallabotTeamEmojis[teamAbbr.toUpperCase() as keyof typeof SnallabotTeamEmojis] || SnallabotTeamEmojis.NFL
 }
-export function formatTeamEmoji(teamAbbr?: string) {
+export function formatTeamEmoji(leagueCustomLogos: LeagueLogos, teamAbbr?: string) {
   if (teamAbbr) {
-    return getTeamEmoji(teamAbbr)
+    return getTeamEmoji(teamAbbr, leagueCustomLogos)
   }
   return SnallabotTeamEmojis.NFL
 }
 
-export function formatGame(game: MaddenGame, teams: TeamList) {
+export function formatGame(game: MaddenGame, teams: TeamList, leagueCustomLogos: LeagueLogos) {
   const awayTeam = teams.getTeamForId(game.awayTeamId)
   const homeTeam = teams.getTeamForId(game.homeTeamId)
-  const awayDisplay = `${formatTeamEmoji(awayTeam?.abbrName)} ${awayTeam?.displayName}`;
-  const homeDisplay = `${formatTeamEmoji(homeTeam?.abbrName)} ${homeTeam?.displayName}`;
+  const awayEmoji = formatTeamEmoji(leagueCustomLogos, awayTeam?.abbrName)
+  const homeEmoji = formatTeamEmoji(leagueCustomLogos, homeTeam?.abbrName)
+  const awayDisplay = `${awayEmoji} ${awayTeam?.displayName}`;
+  const homeDisplay = `${homeEmoji} ${homeTeam?.displayName}`;
 
   if (game.status === GameResult.NOT_PLAYED) {
     return `${awayDisplay} vs ${homeDisplay}`;

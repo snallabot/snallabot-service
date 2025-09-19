@@ -1,4 +1,4 @@
-import FileHandler from "../file_handlers"
+import FileHandler, { defaultSerializer } from "../file_handlers"
 import NodeCache from "node-cache"
 
 const hash: (a: any) => string = require("object-hash")
@@ -61,7 +61,7 @@ const HashStorage: MaddenHashStorage = {
       return cachedTree
     } else {
       try {
-        const tree = await FileHandler.readFile<MerkleTree>(filePath(league, event_type, request_type))
+        const tree = await FileHandler.readFile<MerkleTree>(filePath(league, event_type, request_type), defaultSerializer<MerkleTree>())
         try {
           treeCache.set(createCacheKey(league, request_type), tree, CACHE_TTL)
         } catch (e) {
@@ -78,7 +78,7 @@ const HashStorage: MaddenHashStorage = {
     } catch (e) {
     }
     try {
-      await FileHandler.writeFile<MerkleTree>(tree, filePath(league, event_type, request_type))
+      await FileHandler.writeFile<MerkleTree>(tree, filePath(league, event_type, request_type), defaultSerializer<MerkleTree>())
     } catch (e) {
     }
   }

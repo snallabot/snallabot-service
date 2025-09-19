@@ -11,6 +11,7 @@ import { ConfirmedSim, ConfirmedSimV2, SimResult } from "../../db/events"
 import createNotifier from "../notifier"
 import { ExportContext, Stage, exporterForLeague } from "../../dashboard/ea_client"
 import { EAAccountError } from "../../dashboard/routes"
+import { LeagueLogos, leagueLogosView } from "../../db/view"
 
 async function react(client: DiscordClient, channel: ChannelId, message: MessageId, reaction: SnallabotReactions) {
   await client.reactToMessage(`${reaction}`, message, channel)
@@ -32,12 +33,12 @@ function createSimMessage(sim: ConfirmedSim): string {
 }
 
 
-export function formatScoreboard(week: number, seasonIndex: number, games: MaddenGame[], teams: TeamList, sims: ConfirmedSimV2[]) {
+export function formatScoreboard(week: number, seasonIndex: number, games: MaddenGame[], teams: TeamList, sims: ConfirmedSimV2[], logos: LeagueLogos) {
   const gameToSim = new Map<number, ConfirmedSimV2>()
   sims.forEach(sim => gameToSim.set(sim.scheduleId, sim))
   const scoreboardGames = games.sort((g1, g2) => g1.scheduleId - g2.scheduleId).map(game => {
     const simMessage = gameToSim.has(game.scheduleId) ? `(${createSimMessage(gameToSim.get(game.scheduleId)!)})` : ""
-    const gameMessage = formatGame(game, teams)
+    const gameMessage = formatGame(game, teams, logos)
     return `${gameMessage} ${simMessage}`
   }).join("\n")
   return `# ${seasonIndex + MADDEN_SEASON} Season ${getMessageForWeek(week)} Scoreboard\n${scoreboardGames}`
@@ -178,7 +179,8 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
     })
 
     const season = weekSchedule[0].seasonIndex
-    const scoreboardMessage = formatScoreboard(week, season, weekSchedule, teams, [])
+    const logos = await leagueLogosView.createView(leagueId)
+    const scoreboardMessage = formatScoreboard(week, season, weekSchedule, teams, [], logos)
     const scoreboardMessageId = await client.createMessage(settings.commands.game_channel?.scoreboard_channel, scoreboardMessage, [])
     const weeklyState: WeekState = { week: week, seasonIndex: season, scoreboard: scoreboardMessageId, channel_states: channelsMap }
     await client.editOriginalInteraction(token, {

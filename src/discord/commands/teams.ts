@@ -1,15 +1,18 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command, AutocompleteHandler, Autocomplete } from "../commands_handler"
-import { respond, createMessageResponse, DiscordClient, SnallabotDiscordError } from "../discord_utils"
-import { APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIApplicationCommandInteractionDataUserOption, ApplicationCommandOptionType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
-import { FieldValue, Firestore } from "firebase-admin/firestore"
+import { respond, createMessageResponse, DiscordClient, SnallabotDiscordError, NoConnectedLeagueError, deferMessage } from "../discord_utils"
+import { APIApplicationCommandInteractionDataAttachmentOption, APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIApplicationCommandInteractionDataUserOption, ApplicationCommandOptionType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
+import { Firestore } from "firebase-admin/firestore"
 import LeagueSettingsDB, { ChannelId, DiscordIdType, LeagueSettings, MessageId, TeamAssignments } from "../settings_db"
 import MaddenClient, { TeamList } from "../../db/madden_db"
 import { Team } from "../../export/madden_league_types"
 import { teamSearchView, discordLeagueView } from "../../db/view"
 import fuzzysort from "fuzzysort"
 import MaddenDB from "../../db/madden_db"
-
+import { createCanvas, loadImage } from "canvas"
+import FileHandler, { imageSerializer } from "../../file_handlers"
+import EventDB, { EventDelivery } from "../../db/events_db"
+import { TeamLogoCustomizedEvent } from "../../db/events"
 
 function formatTeamMessage(teams: Team[], teamAssignments: TeamAssignments): string {
   const header = "# Teams"
@@ -49,6 +52,132 @@ function createTeamsMessage(settings: LeagueSettings, teams: TeamList): string {
     return formatTeamMessage(teams.getLatestTeams(), teams.getLatestTeamAssignments(settings.commands.teams?.assignments || {}))
   } else {
     return "# Teams\nNo Madden League connected. Connect Snallabot to your league and reconfigure"
+  }
+}
+
+async function autoCropImage(inputPath: Buffer, padding = 10) {
+  try {
+    // Load the original image
+    const image = await loadImage(inputPath);
+
+    // Create a canvas with the original image size
+    const canvas = createCanvas(image.width, image.height);
+    const ctx = canvas.getContext('2d');
+
+    // Draw the image onto the canvas
+    ctx.drawImage(image, 0, 0);
+
+    // Get image data to analyze pixels
+    const imageData = ctx.getImageData(0, 0, image.width, image.height);
+    const data = imageData.data;
+
+    // Find the bounding box of non-transparent/non-white content
+    let minX = image.width;
+    let minY = image.height;
+    let maxX = 0;
+    let maxY = 0;
+
+    // Scan all pixels
+    for (let y = 0; y < image.height; y++) {
+      for (let x = 0; x < image.width; x++) {
+        const index = (y * image.width + x) * 4;
+        const r = data[index];
+        const g = data[index + 1];
+        const b = data[index + 2];
+        const a = data[index + 3];
+
+        // Check if pixel is not transparent and not white/very light
+        const isNotEmpty = a > 10 && !(r > 240 && g > 240 && b > 240);
+
+        if (isNotEmpty) {
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x);
+          maxY = Math.max(maxY, y);
+        }
+      }
+    }
+
+    // Calculate crop dimensions
+    const cropWidth = maxX - minX + 1;
+    const cropHeight = maxY - minY + 1;
+
+    // Make it square by using the larger dimension
+    const squareSize = Math.max(cropWidth, cropHeight) + (padding * 2);
+
+    // Calculate center position for the content in the square
+    const centerX = minX + cropWidth / 2;
+    const centerY = minY + cropHeight / 2;
+
+    // Create new canvas for the cropped square image
+    const croppedCanvas = createCanvas(squareSize, squareSize);
+    const croppedCtx = croppedCanvas.getContext('2d');
+
+    // Fill with transparent background
+    croppedCtx.clearRect(0, 0, squareSize, squareSize);
+
+    // Draw the cropped portion centered in the square
+    const sourceX = centerX - squareSize / 2;
+    const sourceY = centerY - squareSize / 2;
+
+    croppedCtx.drawImage(
+      canvas,
+      sourceX, sourceY, squareSize, squareSize,  // source
+      0, 0, squareSize, squareSize               // destination
+    );
+
+    // Return the buffer
+    const buffer = croppedCanvas.toBuffer('image/png');
+
+    return buffer
+
+  } catch (error) {
+    console.error('Error cropping image:', error);
+    throw error;
+  }
+}
+
+async function handleCustomLogo(guild_id: string, league_id: string, client: DiscordClient, token: string, imageUrl: string, teamToCustomize: Team) {
+  try {
+    // Download the image
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.statusText}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = await autoCropImage(Buffer.from(arrayBuffer))
+
+    // // Load the image into canvas
+    // const image = await loadImage(buffer);
+
+    // // Create a 128x128 canvas
+    // const canvas = createCanvas(height, width);
+    // const ctx = canvas.getContext('2d');
+
+    // // Draw the resized image
+    // ctx.drawImage(image, 0, 0, 128, 128);
+
+    // // Convert to buffer
+    // const resizedBuffer = canvas.toBuffer('image/png');
+    const base64Image = `data:image/png;base64,${buffer.toString('base64')}`;
+    const emoji = await client.uploadEmoji(base64Image, `${league_id}_${teamToCustomize.abbrName}`)
+    if (!emoji.name || !emoji.id) {
+      throw new Error(`Emoji not created correctly`)
+    }
+    const teamLogoPath = `custom_logos/${league_id}/${teamToCustomize.abbrName}.png`
+    await FileHandler.writeFile<string>(base64Image, teamLogoPath, imageSerializer)
+    await EventDB.appendEvents<TeamLogoCustomizedEvent>(
+      [{ key: league_id, event_type: "CUSTOM_LOGO", emoji_name: emoji.name, emoji_id: emoji.id, teamAbbr: teamToCustomize.abbrName, teamLogoPath: teamLogoPath }], EventDelivery.EVENT_SOURCE
+    )
+    client.editOriginalInteraction(token, {
+      content: `Assigned custom logo ${teamToCustomize.abbrName}: <:${emoji.name}:${emoji.id}>`
+    })
+  } catch (error) {
+    console.error('Error processing custom logo:', error);
+    client.editOriginalInteraction(token, {
+      content: `Error processing custom logo:, ${error}`
+    })
   }
 }
 
@@ -121,7 +250,7 @@ export default {
       const teamSearchPhrase = (teamsCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value.toLowerCase()
       const user = (teamsCommand.options[1] as APIApplicationCommandInteractionDataUserOption).value
       if (!leagueSettings?.commands?.madden_league?.league_id) {
-        throw new Error("No Madden league linked, setup the bot with your madden league first.")
+        throw new NoConnectedLeagueError(guild_id)
       }
       if (!leagueSettings?.commands?.teams?.channel.id) {
         throw new Error("Teams not configured, run /teams configure first")
@@ -167,14 +296,13 @@ export default {
       }
       const teamSearchPhrase = (teamsCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value.toLowerCase()
       if (!leagueSettings?.commands?.madden_league?.league_id) {
-        throw new Error("No Madden league linked, setup the bot with your madden league first.")
+        throw new NoConnectedLeagueError(guild_id)
       }
       if (!leagueSettings.commands.teams?.channel.id) {
         throw new Error("Teams not configured, run /teams configure first")
       }
       const leagueId = leagueSettings.commands.madden_league.league_id
-      const teams = await MaddenClient.getLatestTeams(leagueId)
-      const teamsToSearch = await teamSearchView.createView(leagueId)
+      const [teams, teamsToSearch] = await Promise.all([MaddenClient.getLatestTeams(leagueId), teamSearchView.createView(leagueId)])
       if (!teamsToSearch) {
         throw new Error("no teams found")
       }
@@ -233,7 +361,36 @@ export default {
         }
 
       }
-    } else {
+    } else if (subCommand === "customize_logo") {
+      if (!teamsCommand.options || !teamsCommand.options[0] || !command.data.resolved?.attachments) {
+        throw new Error("teams customize_logo misconfigured")
+      }
+
+      const teamSearchPhrase = (teamsCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value.toLowerCase()
+      const image = (teamsCommand.options[1] as APIApplicationCommandInteractionDataAttachmentOption)
+      if (!leagueSettings?.commands?.madden_league?.league_id) {
+        throw new NoConnectedLeagueError(guild_id)
+      }
+      const leagueId = leagueSettings.commands.madden_league.league_id
+      const [teams, teamsToSearch] = await Promise.all([MaddenClient.getLatestTeams(leagueId), teamSearchView.createView(leagueId)])
+      if (!teamsToSearch) {
+        throw new Error("no teams found")
+      }
+      const results = fuzzysort.go(teamSearchPhrase, Object.values(teamsToSearch), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.9 })
+      if (results.length < 1) {
+        throw new Error(`Could not find team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs`)
+      } else if (results.length > 1) {
+        throw new Error(`Found more than one  team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs.Found teams: ${results.map(t => t.obj.displayName).join(", ")}`)
+      }
+      const assignedTeam = results[0].obj
+      const teamToCustomize = teams.getTeamForId(assignedTeam.id)
+      const { url } = command.data.resolved.attachments[image.value]
+
+      handleCustomLogo(guild_id, leagueId, client, command.token, url, teamToCustomize)
+      respond(ctx, deferMessage())
+      return
+    }
+    else {
       throw new Error(`teams ${subCommand} misconfigured`)
     }
   },
@@ -301,6 +458,27 @@ export default {
               name: "use_role_updates",
               description: "turn on role updates to auto assign teams based on team roles",
               required: false,
+            },
+          ],
+        },
+        {
+          type: ApplicationCommandOptionType.Subcommand,
+          name: "customize_logo",
+          description: "customize the logo for a specific team",
+          options: [
+            {
+              type: ApplicationCommandOptionType.String,
+              name: "team",
+              description:
+                "the team city, name, or abbreviation. Ex: Buccaneers, TB, Tampa Bay",
+              required: true,
+              autocomplete: true
+            },
+            {
+              type: ApplicationCommandOptionType.Attachment,
+              name: "image_file",
+              description: "image file to use as the team logo",
+              required: true,
             },
           ],
         },

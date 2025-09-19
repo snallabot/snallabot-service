@@ -13,3 +13,4 @@ export type RemoveChannelEvent = { channel_id: string, discord_server: string }
 export type ConfirmedSim = { confirmedUsers: UserId[], requestedUsers: UserId[], result: SimResult, scheduleId: number, seasonIndex: number, week: number, homeUser?: UserId, awayUser?: UserId, leagueId?: string }
 export type ConfirmedSimV2 = { confirmedUsers: UserId[], requestedUsers: UserId[], result: SimResult, scheduleId: number, seasonIndex: number, week: number, homeUser?: UserId, awayUser?: UserId }
 export type DiscordLeagueConnectionEvent = { guildId: string, leagueId: string }
+export type TeamLogoCustomizedEvent = { emoji_id: string, emoji_name: string, teamAbbr: string, teamLogoPath: string }

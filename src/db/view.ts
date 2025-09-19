@@ -1,10 +1,10 @@
 import NodeCache from "node-cache"
-import EventDB, { SnallabotEvent } from "./events_db"
+import EventDB, { SnallabotEvent, StoredEvent } from "./events_db"
 import MaddenDB, { MaddenEvents } from "./madden_db"
 import { Player, Team } from "../export/madden_league_types"
 import LeagueSettingsDB from "../discord/settings_db"
-import { DiscordLeagueConnectionEvent } from "./events"
-import FileHandler from "../file_handlers"
+import { DiscordLeagueConnectionEvent, TeamLogoCustomizedEvent } from "./events"
+import FileHandler, { defaultSerializer } from "../file_handlers"
 
 const TTL = 10800 // 3 hours in seconds
 
@@ -83,7 +83,7 @@ abstract class StorageBackedCachedView<T> extends View<T> {
     }
     const viewFile = this.createStorageDirectory(key)
     try {
-      const storedView = await FileHandler.readFile<T>(viewFile)
+      const storedView = await FileHandler.readFile<T>(viewFile, defaultSerializer<T>())
       viewCache.set(this.createCacheKey(key), storedView, TTL)
       return storedView
     } catch (e) {
@@ -92,7 +92,7 @@ abstract class StorageBackedCachedView<T> extends View<T> {
       if (view) {
         viewCache.set(this.createCacheKey(key), view, TTL)
         try {
-          await FileHandler.writeFile<T>(view, viewFile)
+          await FileHandler.writeFile<T>(view, viewFile, defaultSerializer<T>())
         }
         catch (e2) {
         }
@@ -111,7 +111,7 @@ abstract class StorageBackedCachedView<T> extends View<T> {
         if (currentView) {
           const newView = this.update({ [event_type]: events }, currentView)
           viewCache.set(this.createCacheKey(key), newView, TTL)
-          await FileHandler.writeFile<T>(newView, this.createStorageDirectory(key))
+          await FileHandler.writeFile<T>(newView, this.createStorageDirectory(key), defaultSerializer<T>())
         }
       })
     })
@@ -220,3 +220,25 @@ class CacheablePlayerSearchIndex extends StorageBackedCachedView<PlayerSearch> {
 }
 export const playerSearchIndex = new CacheablePlayerSearchIndex()
 playerSearchIndex.listen(MaddenEvents.MADDEN_PLAYER)
+
+export type LeagueLogos = {
+  [key: string]: TeamLogoCustomizedEvent
+}
+class CustomTeamLogosView extends View<LeagueLogos> {
+  constructor() {
+    super("custom_team_logos")
+  }
+  async createView(key: string) {
+    const events = await EventDB.queryEvents<TeamLogoCustomizedEvent>(key, "CUSTOM_LOGO", new Date(0), {}, 100)
+    return Object.fromEntries(
+      Object.values(
+        events.reduce((acc, e) => {
+          if (!acc[e.teamAbbr] || e.timestamp > acc[e.teamAbbr].timestamp) {
+            acc[e.teamAbbr] = e
+          }
+          return acc
+        }, {} as Record<string, StoredEvent<TeamLogoCustomizedEvent>>)
+      ).map(e => [e.teamAbbr, e]))
+  }
+}
+export const leagueLogosView = new CustomTeamLogosView()

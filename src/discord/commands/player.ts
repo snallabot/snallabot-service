@@ -3,7 +3,7 @@ import { CommandHandler, Command, AutocompleteHandler, Autocomplete, MessageComp
 import { respond, DiscordClient, deferMessage, getTeamEmoji, SnallabotTeamEmojis } from "../discord_utils"
 import { APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ButtonStyle, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
-import { playerSearchIndex, discordLeagueView, teamSearchView } from "../../db/view"
+import { playerSearchIndex, discordLeagueView, teamSearchView, LeagueLogos, leagueLogosView } from "../../db/view"
 import fuzzysort from "fuzzysort"
 import MaddenDB, { PlayerListQuery, PlayerStatType, PlayerStats, TeamList } from "../../db/madden_db"
 import { CoverBallTrait, DevTrait, LBStyleTrait, MADDEN_SEASON, MaddenGame, POSITIONS, POSITION_GROUP, PenaltyTrait, PlayBallTrait, Player, QBStyleTrait, SensePressureTrait, YesNoTrait } from "../../export/madden_league_types"
@@ -96,12 +96,13 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, token
       }
 
     ] : []
+    const logos = await leagueLogosView.createView(leagueId)
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
         {
           type: ComponentType.TextDisplay,
-          content: formatPlayerCard(player, teamList)
+          content: formatPlayerCard(player, teamList, logos)
         },
         {
           type: ComponentType.Separator,
@@ -162,12 +163,13 @@ async function showPlayerFullRatings(rosterId: number, client: DiscordClient, to
     }
 
   ] : []
+  const logos = await leagueLogosView.createView(leagueId)
   await client.editOriginalInteraction(token, {
     flags: 32768,
     components: [
       {
         type: ComponentType.TextDisplay,
-        content: formatFullRatings(player, teamList)
+        content: formatFullRatings(player, teamList, logos)
       },
       {
         type: ComponentType.Separator,
@@ -220,12 +222,13 @@ async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, to
     }
 
   ] : []
+  const logos = await leagueLogosView.createView(leagueId)
   await client.editOriginalInteraction(token, {
     flags: 32768,
     components: [
       {
         type: ComponentType.TextDisplay,
-        content: formatWeeklyStats(player, teamList, playerStats, games)
+        content: formatWeeklyStats(player, teamList, playerStats, games, logos)
       },
       {
         type: ComponentType.Separator,
@@ -275,12 +278,13 @@ async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, to
     }
 
   ] : []
+  const logos = await leagueLogosView.createView(leagueId)
   await client.editOriginalInteraction(token, {
     flags: 32768,
     components: [
       {
         type: ComponentType.TextDisplay,
-        content: formatSeasonStats(player, playerStats, teamList)
+        content: formatSeasonStats(player, playerStats, teamList, logos)
       },
       {
         type: ComponentType.Separator,
@@ -361,8 +365,8 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
       const { teamId, rookie, position } = results[0]
       query = { teamId, rookie: rookie ? true : false, position }
     }
-    const [players, teamList] = await Promise.all([getPlayers(leagueId, query, startAfterPlayer, endBeforePlayer), MaddenDB.getLatestTeams(leagueId)])
-    const message = players.length === 0 ? `# No results` : formatPlayerList(players, teamList)
+    const [players, teamList, logos] = await Promise.all([getPlayers(leagueId, query, startAfterPlayer, endBeforePlayer), MaddenDB.getLatestTeams(leagueId), leagueLogosView.createView(leagueId)])
+    const message = players.length === 0 ? `# No results` : formatPlayerList(players, teamList, logos)
     const backDisabled = startAfterPlayer || endBeforePlayer ? false : true
     const nextDisabled = players.length < PAGINATION_LIMIT ? true : false
     const nextPagination = players.length === 0 ? startAfterPlayer : players[players.length - 1].rosterId
@@ -745,7 +749,7 @@ function getTeamAbbr(teamId: number, teams: TeamList) {
   return teams.getTeamForId(teamId).abbrName
 }
 
-function formatPlayerCard(player: Player, teams: TeamList) {
+function formatPlayerCard(player: Player, teams: TeamList, logos: LeagueLogos) {
 
   const teamAbbr = getTeamAbbr(player.teamId, teams)
   const heightFeet = Math.floor(player.height / 12)
@@ -768,7 +772,7 @@ function formatPlayerCard(player: Player, teams: TeamList) {
       .join(", ")
     : ""
   return `
-# ${getTeamEmoji(teamAbbr)} ${player.position} ${player.firstName} ${player.lastName}
+  # ${getTeamEmoji(teamAbbr, logos)} ${player.position} ${player.firstName} ${player.lastName}
 ## ${getDevTraitName(player.devTrait)} **${player.playerBestOvr} OVR**
 **${age} yrs** | **${getSeasonFormatting(player.yearsPro)}** | **${formattedHeight}, ${player.weight} lbs**
 ## Contract
@@ -841,11 +845,11 @@ function formatLbStyle(lbStyle: LBStyleTrait) {
 }
 
 
-function formatFullRatings(player: Player, teams: TeamList) {
+function formatFullRatings(player: Player, teams: TeamList, logos: LeagueLogos) {
   const teamAbbr = getTeamAbbr(player.teamId, teams)
 
   return `
-# ${getTeamEmoji(teamAbbr)} ${player.position} ${player.firstName} ${player.lastName}
+  # ${getTeamEmoji(teamAbbr, logos)} ${player.position} ${player.firstName} ${player.lastName}
 ## ${getDevTraitName(player.devTrait)} **${player.playerBestOvr} OVR**
 ## Ratings
 __**Physical Attributes:**__
@@ -1115,7 +1119,7 @@ function formatGame(game: MaddenGame, player: Player, teams: TeamList) {
   return `${formatWeek(game)} vs ${opponent.padEnd(3)} ${formatGameEmoji(game, playerTeam, teams)} ${formatScore(game)}:`
 }
 
-function formatWeeklyStats(player: Player, teams: TeamList, stats: PlayerStats, games: MaddenGame[]) {
+function formatWeeklyStats(player: Player, teams: TeamList, stats: PlayerStats, games: MaddenGame[], logos: LeagueLogos) {
   const currentSeason = Math.max(...games.map(g => g.seasonIndex))
   const currentGameIds = new Set(games.filter(g => g.seasonIndex === currentSeason && g.stageIndex > 0).map(g => formatGameKey(g)))
   const gameResults = Object.groupBy(games.filter(g => currentGameIds.has(formatGameKey(g))), g => formatGameKey(g))
@@ -1136,7 +1140,7 @@ function formatWeeklyStats(player: Player, teams: TeamList, stats: PlayerStats, 
   const teamAbbr = getTeamAbbr(player.teamId, teams)
   const joinedWeekStats = weekStats.join("\n")
   return `
-# ${getTeamEmoji(teamAbbr)} ${player.position} ${player.firstName} ${player.lastName}
+  # ${getTeamEmoji(teamAbbr, logos)} ${player.position} ${player.firstName} ${player.lastName}
 ## ${getDevTraitName(player.devTrait)} **${player.playerBestOvr} OVR**
 ## Stats
 ${joinedWeekStats}
@@ -1511,20 +1515,20 @@ function aggregateSeason(stats: PlayerStats): SeasonAggregation {
   return seasonAggregation;
 }
 
-function formatSeasonStats(player: Player, stats: PlayerStats, teams: TeamList) {
+function formatSeasonStats(player: Player, stats: PlayerStats, teams: TeamList, logos: LeagueLogos) {
   const teamAbbr = getTeamAbbr(player.teamId, teams)
   const agg = aggregateSeason(stats)
   const formattedAgg = formatSeasonAggregation(agg)
 
   return `
-# ${getTeamEmoji(teamAbbr)} ${player.position} ${player.firstName} ${player.lastName}
+  # ${getTeamEmoji(teamAbbr, logos)} ${player.position} ${player.firstName} ${player.lastName}
 ## ${getDevTraitName(player.devTrait)} **${player.playerBestOvr} OVR**
 ## Stats
 ${formattedAgg}
 `
 }
 
-function formatPlayerList(players: Player[], teams: TeamList) {
+function formatPlayerList(players: Player[], teams: TeamList, logos: LeagueLogos) {
   let message = "# Player Results:\n";
 
   for (const player of players) {
@@ -1533,7 +1537,7 @@ function formatPlayerList(players: Player[], teams: TeamList) {
     const heightFeet = Math.floor(player.height / 12);
     const heightInches = player.height % 12;
     const heightFormatted = `${heightFeet}'${heightInches}"`;
-    const teamEmoji = getTeamEmoji(teamName) === SnallabotTeamEmojis.NFL ? `**${teamName.toUpperCase()}**` : getTeamEmoji(teamName)
+    const teamEmoji = getTeamEmoji(teamName, logos) === SnallabotTeamEmojis.NFL ? `**${teamName.toUpperCase()}**` : getTeamEmoji(teamName, logos)
     const experience = getSeasonFormatting(player.yearsPro)
     const devTraitEmoji = getDevTraitName(player.devTrait)
     message += `## ${teamEmoji} ${player.position} ${fullName} - ${player.playerBestOvr} OVR\n`;
