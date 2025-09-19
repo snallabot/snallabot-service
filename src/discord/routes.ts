@@ -14,6 +14,7 @@ import MaddenClient from "../db/madden_db"
 import { formatScoreboard } from "./commands/game_channels"
 import MaddenDB from "../db/madden_db"
 import { GameResult, MaddenGame } from "../export/madden_league_types"
+import { leagueLogosView } from "../db/view"
 
 const router = new Router({ prefix: "/discord/webhook" })
 
@@ -107,7 +108,8 @@ async function updateScoreboard(leagueSettings: LeagueSettings, guildId: string,
     for (let i = 0; i < sims.length && i < simGames.length; i++) {
       sims[i].scheduleId = simGames[i].scheduleId;
     }
-    const message = formatScoreboard(week, seasonIndex, games, teams, sims)
+    const logos = await leagueLogosView.createView(leagueId)
+    const message = formatScoreboard(week, seasonIndex, games, teams, sims, logos)
     await prodClient.editMessage(scoreboard_channel, scoreboard, message, [])
   } catch (e) {
   }

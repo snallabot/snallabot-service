@@ -1,5 +1,5 @@
 import MaddenDB, { PlayerStatType } from "../../db/madden_db"
-import { discordLeagueView } from "../../db/view"
+import { discordLeagueView, leagueLogosView } from "../../db/view"
 import { GameResult, MADDEN_SEASON, getMessageForWeek } from "../../export/madden_league_types"
 import { MessageComponentHandler, MessageComponentInteraction } from "../commands_handler"
 import { DiscordClient, formatTeamEmoji } from "../discord_utils"
@@ -13,12 +13,12 @@ export enum GameStatsOptions {
 export type GameSelection = { w: number, s: number, c: number, o: GameStatsOptions, b?: WeekSelection | TeamSelection }
 
 export async function showGameStats(token: string, client: DiscordClient, leagueId: string, weekIndex: number, seasonIndex: number, scheduleId: number, selection: GameStatsOptions, showBack?: WeekSelection | TeamSelection) {
-  const [gameResult, stats, latestTeams] = await Promise.all([MaddenDB.getGameForSchedule(leagueId, scheduleId, weekIndex + 1, seasonIndex), MaddenDB.getStatsForGame(leagueId, seasonIndex, weekIndex + 1, scheduleId), MaddenDB.getLatestTeams(leagueId)])
+  const [gameResult, stats, latestTeams, logos] = await Promise.all([MaddenDB.getGameForSchedule(leagueId, scheduleId, weekIndex + 1, seasonIndex), MaddenDB.getStatsForGame(leagueId, seasonIndex, weekIndex + 1, scheduleId), MaddenDB.getLatestTeams(leagueId), leagueLogosView.createView(leagueId)])
   const awayTeam = latestTeams.getTeamForId(gameResult.awayTeamId)
   const homeTeam = latestTeams.getTeamForId(gameResult.homeTeamId)
 
   let content = "";
-  content += `# ${formatTeamEmoji(awayTeam?.abbrName)} ${awayTeam?.displayName} ${gameResult.awayScore} vs ${gameResult.homeScore} ${formatTeamEmoji(homeTeam?.abbrName)} ${homeTeam?.displayName}\n`;
+  content += `# ${formatTeamEmoji(logos, awayTeam?.abbrName)} ${awayTeam?.displayName} ${gameResult.awayScore} vs ${gameResult.homeScore} ${formatTeamEmoji(logos, homeTeam?.abbrName)} ${homeTeam?.displayName}\n`;
   content += `**Season ${seasonIndex + MADDEN_SEASON}, ${getMessageForWeek(weekIndex + 1)}**\n`;
 
   if (selection === GameStatsOptions.OVERVIEW) {
@@ -26,7 +26,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
     const awayTeamStats = stats.teamStats.find(ts => ts.teamId === gameResult.awayTeamId);
     const homeTeamStats = stats.teamStats.find(ts => ts.teamId === gameResult.homeTeamId);
     if (awayTeamStats) {
-      content += `## ${formatTeamEmoji(awayTeam?.abbrName)} ${awayTeam?.displayName} Stats\n`;
+      content += `## ${formatTeamEmoji(logos, awayTeam?.abbrName)} ${awayTeam?.displayName} Stats\n`;
       content += `Total Yards: ${awayTeamStats.offTotalYds} | Pass Yards: ${awayTeamStats.offPassYds} | Rush Yards: ${awayTeamStats.offRushYds}\n`;
       content += `1st Downs: ${awayTeamStats.off1stDowns} | 3rd Down: ${awayTeamStats.off3rdDownConv}/${awayTeamStats.off3rdDownAtt} (${awayTeamStats.off3rdDownConvPct.toFixed(1)}%)\n`;
       content += `Turnovers: ${awayTeamStats.tOGiveaways} | TO Diff: ${awayTeamStats.tODiff}\n`;
@@ -34,7 +34,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
     }
 
     if (homeTeamStats) {
-      content += `## ${formatTeamEmoji(homeTeam?.abbrName)} ${homeTeam?.displayName} Stats\n`;
+      content += `## ${formatTeamEmoji(logos, homeTeam?.abbrName)} ${homeTeam?.displayName} Stats\n`;
       content += `Total Yards: ${homeTeamStats.offTotalYds} | Pass Yards: ${homeTeamStats.offPassYds} | Rush Yards: ${homeTeamStats.offRushYds}\n`;
       content += `1st Downs: ${homeTeamStats.off1stDowns} | 3rd Down: ${homeTeamStats.off3rdDownConv}/${homeTeamStats.off3rdDownAtt} (${homeTeamStats.off3rdDownConvPct.toFixed(1)}%)\n`;
       content += `Turnovers: ${homeTeamStats.tOGiveaways} | TO Diff: ${homeTeamStats.tODiff}\n`;
@@ -42,7 +42,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
     }
   }
   else if (selection === GameStatsOptions.AWAY_PLAYER_STATS) {
-    content += `## ${formatTeamEmoji(awayTeam?.abbrName)}${awayTeam?.displayName} Player Stats\n`;
+    content += `## ${formatTeamEmoji(logos, awayTeam?.abbrName)}${awayTeam?.displayName} Player Stats\n`;
 
     // Passing stats
     const awayPassing = stats.playerStats[PlayerStatType.PASSING]?.filter(p => p.teamId === gameResult.awayTeamId)
@@ -156,7 +156,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
     }
   }
   else if (selection === GameStatsOptions.HOME_PLAYER_STATS) {
-    content += `## ${formatTeamEmoji(homeTeam?.abbrName)}${homeTeam?.displayName} Player Stats\n`;
+    content += `## ${formatTeamEmoji(logos, homeTeam?.abbrName)}${homeTeam?.displayName} Player Stats\n`;
 
     // Passing stats
     const homePassing = stats.playerStats[PlayerStatType.PASSING]?.filter(p => p.teamId === gameResult.homeTeamId)

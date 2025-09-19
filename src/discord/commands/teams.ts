@@ -2,7 +2,7 @@ import { ParameterizedContext } from "koa"
 import { CommandHandler, Command, AutocompleteHandler, Autocomplete } from "../commands_handler"
 import { respond, createMessageResponse, DiscordClient, SnallabotDiscordError, NoConnectedLeagueError, deferMessage } from "../discord_utils"
 import { APIApplicationCommandInteractionDataAttachmentOption, APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIApplicationCommandInteractionDataUserOption, ApplicationCommandOptionType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
-import { FieldValue, Firestore } from "firebase-admin/firestore"
+import { Firestore } from "firebase-admin/firestore"
 import LeagueSettingsDB, { ChannelId, DiscordIdType, LeagueSettings, MessageId, TeamAssignments } from "../settings_db"
 import MaddenClient, { TeamList } from "../../db/madden_db"
 import { Team } from "../../export/madden_league_types"
@@ -83,9 +83,10 @@ async function handleCustomLogo(guild_id: string, league_id: string, client: Dis
     if (!emoji.name || !emoji.id) {
       throw new Error(`Emoji not created correctly`)
     }
-    await FileHandler.writeFile<string>(base64Image, `custom_logos/${league_id}/${teamToCustomize.abbrName}.png`, imageSerializer)
+    const teamLogoPath = `custom_logos/${league_id}/${teamToCustomize.abbrName}.png`
+    await FileHandler.writeFile<string>(base64Image, teamLogoPath, imageSerializer)
     await EventDB.appendEvents<TeamLogoCustomizedEvent>(
-      [{ key: league_id, event_type: "CUSTOM_LOGO", emoji_name: emoji.name, emoji_id: emoji.id, teamAbbr: teamToCustomize.abbrName }], EventDelivery.EVENT_SOURCE
+      [{ key: league_id, event_type: "CUSTOM_LOGO", emoji_name: emoji.name, emoji_id: emoji.id, teamAbbr: teamToCustomize.abbrName, teamLogoPath: teamLogoPath }], EventDelivery.EVENT_SOURCE
     )
     client.editOriginalInteraction(token, {
       content: `Assigned custom logo ${teamToCustomize.abbrName}: <:${emoji.name}:${emoji.id}>`

@@ -6,7 +6,7 @@ import { Firestore } from "firebase-admin/firestore"
 import { GameResult, MADDEN_SEASON, getMessageForWeek } from "../../export/madden_league_types"
 import MaddenClient from "../../db/madden_db"
 import LeagueSettingsDB from "../settings_db"
-import { discordLeagueView, teamSearchView } from "../../db/view"
+import { discordLeagueView, leagueLogosView, teamSearchView } from "../../db/view"
 import { GameStatsOptions } from "./game_stats"
 import fuzzysort from "fuzzysort"
 
@@ -21,9 +21,10 @@ async function showSchedule(token: string, client: DiscordClient,
       throw new Error("No Teams setup, setup the bot and export")
     }
     const teams = settledPromise[1].value
+    const logos = await leagueLogosView.createView(league)
     const sortedSchedule = schedule.sort((a, b) => a.scheduleId - b.scheduleId)
     const schedulesMessage = sortedSchedule.filter(w => w.awayTeamId !== 0 && w.homeTeamId !== 0).map(game => {
-      return formatGame(game, teams)
+      return formatGame(game, teams, logos)
     }).join("\n")
     const season = schedule?.[0]?.seasonIndex >= 0 ? schedule[0].seasonIndex : requestedSeason != null ? requestedSeason : 0
     const week = schedule?.[0]?.weekIndex >= 0 ? schedule[0].weekIndex + 1 : requestedWeek != null ? requestedWeek : 1
@@ -141,6 +142,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
     }
     const allWeeks = settledPromise[2].value
     const teamId = teams.getTeamForId(requestedTeamId).teamId
+    const logos = await leagueLogosView.createView(league)
 
     // Filter schedule to only include games for the specified team
     const teamSchedule = schedule.filter(game => game.awayTeamId !== 0 && game.homeTeamId !== 0).filter(game =>
@@ -173,8 +175,8 @@ async function showTeamSchedule(token: string, client: DiscordClient,
       } else {
         const isTeamAway = teams.getTeamForId(game.awayTeamId).teamId === teamId
         const opponent = teams.getTeamForId(isTeamAway ? game.homeTeamId : game.awayTeamId)
-        const opponentDisplay = `${formatTeamEmoji(opponent?.abbrName)} ${opponent?.displayName}`
-        const teamDisplay = `${formatTeamEmoji(selectedTeam.abbrName)} ${selectedTeam.displayName}`
+        const opponentDisplay = `${formatTeamEmoji(logos, opponent?.abbrName)} ${opponent?.displayName}`
+        const teamDisplay = `${formatTeamEmoji(logos, selectedTeam.abbrName)} ${selectedTeam.displayName}`
 
         const weekLabel = getMessageForWeek(week)
 

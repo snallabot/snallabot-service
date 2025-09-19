@@ -3,10 +3,11 @@ import { CommandHandler, Command } from "../commands_handler"
 import { respond, createMessageResponse, DiscordClient, NoConnectedLeagueError, formatTeamEmoji, deferMessage } from "../discord_utils"
 import { ApplicationCommandType, ComponentType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
-import { discordLeagueView } from "../../db/view"
+import { LeagueLogos, discordLeagueView, leagueLogosView } from "../../db/view"
 import MaddenDB, { TeamList } from "../../db/madden_db"
 import { GameResult, MaddenGame, PlayoffStatus, Standing, formatRecord } from "../../export/madden_league_types"
-import { CanvasRenderingContext2D, createCanvas, loadImage } from "canvas"
+import { CanvasRenderingContext2D, Image, createCanvas, loadImage } from "canvas"
+import FileHandler, { imageSerializer } from "../../file_handlers"
 
 // Load the template image
 type Position = { x: number, y: number }
@@ -59,10 +60,18 @@ const positions: Record<string, GamePosition> = {
 }
 
 // Helper function to load team logo
-async function loadTeamLogo(abbrName: string): Promise<any> {
+async function loadTeamLogo(abbrName: string, logos: LeagueLogos): Promise<Image> {
   try {
-    const logoPath = `./emojis/nfl_logos/${abbrName.toLowerCase()}.png`;
-    return await loadImage(logoPath);
+    const customLogo = logos[abbrName]
+    if (customLogo) {
+      const logoImageBuffer = await FileHandler.readFile(customLogo.teamLogoPath, imageSerializer)
+      const image = new Image()
+      image.src = logoImageBuffer
+      return image
+    } else {
+      const logoPath = `./emojis/nfl_logos/${abbrName.toLowerCase()}.png`;
+      return await loadImage(logoPath);
+    }
   } catch (error) {
     return await loadImage(`./emojis/nfl_logos/nfl.png`);
   }
@@ -92,14 +101,14 @@ enum MatchupType {
 type Matchup = { type: MatchupType.DECIDED, homeTeamId: number, awayTeamId: number, homeSeed: number, awaySeed: number, finishedGame: MaddenGame } | { type: MatchupType.TBD, homeTeamId: number, homeSeed: number, playoffStatus: PlayoffStatus } | { type: MatchupType.SET, homeTeamId: number, awayTeamId: number, homeSeed: number, awaySeed: number, homePlayoffStatus: PlayoffStatus, awayPlayoffStatus: PlayoffStatus }
 
 // Helper function to draw game
-async function drawGame(game: Matchup, position: GamePosition, teams: TeamList, ctx: CanvasRenderingContext2D) {
+async function drawGame(game: Matchup, position: GamePosition, teams: TeamList, ctx: CanvasRenderingContext2D, logos: LeagueLogos) {
   if (game.type === MatchupType.DECIDED) {
     const awayTeam = teams.getTeamForId(game.awayTeamId);
     const homeTeam = teams.getTeamForId(game.homeTeamId);
 
     // Load and draw logos
-    const awayLogo = await loadTeamLogo(awayTeam.abbrName);
-    const homeLogo = await loadTeamLogo(homeTeam.abbrName);
+    const awayLogo = await loadTeamLogo(awayTeam.abbrName, logos);
+    const homeLogo = await loadTeamLogo(homeTeam.abbrName, logos);
 
     if (awayLogo) {
       ctx.drawImage(awayLogo, position.logo.away.x, position.logo.away.y, position.logo.size, position.logo.size);
@@ -135,7 +144,7 @@ async function drawGame(game: Matchup, position: GamePosition, teams: TeamList, 
   } else if (game.type === MatchupType.TBD) {
     const homeTeam = teams.getTeamForId(game.homeTeamId);
 
-    const homeLogo = await loadTeamLogo(homeTeam.abbrName);
+    const homeLogo = await loadTeamLogo(homeTeam.abbrName, logos);
 
     if (homeLogo) {
       ctx.drawImage(homeLogo, position.logo.home.x, position.logo.home.y, position.logo.size, position.logo.size);
@@ -151,8 +160,8 @@ async function drawGame(game: Matchup, position: GamePosition, teams: TeamList, 
     const homeTeam = teams.getTeamForId(game.homeTeamId);
 
     // Load and draw logos
-    const awayLogo = await loadTeamLogo(awayTeam.abbrName);
-    const homeLogo = await loadTeamLogo(homeTeam.abbrName);
+    const awayLogo = await loadTeamLogo(awayTeam.abbrName, logos);
+    const homeLogo = await loadTeamLogo(homeTeam.abbrName, logos);
 
     if (awayLogo) {
       ctx.drawImage(awayLogo, position.logo.away.x, position.logo.away.y, position.logo.size, position.logo.size);
@@ -183,7 +192,7 @@ function decidedMatchupFromGame(game: MaddenGame, standings: Standing[]): Matchu
   return { type: MatchupType.DECIDED, homeTeamId: game.homeTeamId, awayTeamId: game.awayTeamId, homeSeed: homeSeed.seed, awaySeed: awaySeed.seed, finishedGame: game }
 }
 
-async function formatPlayoffBracket(client: DiscordClient, token: string, standings: Standing[], playoffGames: MaddenGame[], teams: TeamList): Promise<void> {
+async function formatPlayoffBracket(client: DiscordClient, token: string, standings: Standing[], playoffGames: MaddenGame[], teams: TeamList, logos: LeagueLogos): Promise<void> {
   try {
     const template = await loadImage(templatePath);
     // Create canvas with template dimensions
@@ -231,18 +240,18 @@ async function formatPlayoffBracket(client: DiscordClient, token: string, standi
     const afc36 = findGameBySeeds(wildCardGames, 'afc', 3, 6);
     const afc45 = findGameBySeeds(wildCardGames, 'afc', 4, 5);
 
-    if (afc27) await drawGame(afc27, positions.afc_wc_1, teams, ctx);
-    if (afc36) await drawGame(afc36, positions.afc_wc_2, teams, ctx);
-    if (afc45) await drawGame(afc45, positions.afc_wc_3, teams, ctx);
+    if (afc27) await drawGame(afc27, positions.afc_wc_1, teams, ctx, logos);
+    if (afc36) await drawGame(afc36, positions.afc_wc_2, teams, ctx, logos);
+    if (afc45) await drawGame(afc45, positions.afc_wc_3, teams, ctx, logos);
 
     // Draw NFC Wild Card games (2v7, 3v6, 4v5)
     const nfc27 = findGameBySeeds(wildCardGames, 'nfc', 2, 7);
     const nfc36 = findGameBySeeds(wildCardGames, 'nfc', 3, 6);
     const nfc45 = findGameBySeeds(wildCardGames, 'nfc', 4, 5);
 
-    if (nfc27) await drawGame(nfc27, positions.nfc_wc_1, teams, ctx);
-    if (nfc36) await drawGame(nfc36, positions.nfc_wc_2, teams, ctx);
-    if (nfc45) await drawGame(nfc45, positions.nfc_wc_3, teams, ctx);
+    if (nfc27) await drawGame(nfc27, positions.nfc_wc_1, teams, ctx, logos);
+    if (nfc36) await drawGame(nfc36, positions.nfc_wc_2, teams, ctx, logos);
+    if (nfc45) await drawGame(nfc45, positions.nfc_wc_3, teams, ctx, logos);
 
     // Draw Divisional games (1 seed should be at top)
     const afcDivisional = divisionalGames.filter(game => {
@@ -266,16 +275,16 @@ async function formatPlayoffBracket(client: DiscordClient, token: string, standi
 
     // put the game, or put the 1 seed in place
     if (afcDivisional[0]) {
-      await drawGame(decidedMatchupFromGame(afcDivisional[0], standings), positions.afc_div_1, teams, ctx); // 1 seed game at top
+      await drawGame(decidedMatchupFromGame(afcDivisional[0], standings), positions.afc_div_1, teams, ctx, logos); // 1 seed game at top
     } else {
       const afcOneSeed = standings.find(s => s.conferenceName.toLowerCase() === "afc" && s.seed === 1)
       if (afcOneSeed) {
-        await drawGame({ type: MatchupType.TBD, homeSeed: afcOneSeed.seed, homeTeamId: afcOneSeed.teamId, playoffStatus: afcOneSeed.playoffStatus }, positions.afc_div_1, teams, ctx)
+        await drawGame({ type: MatchupType.TBD, homeSeed: afcOneSeed.seed, homeTeamId: afcOneSeed.teamId, playoffStatus: afcOneSeed.playoffStatus }, positions.afc_div_1, teams, ctx, logos)
       } else {
         throw new Error(`Could not get AFC one seed`)
       }
     }
-    if (afcDivisional[1]) await drawGame(decidedMatchupFromGame(afcDivisional[1], standings), positions.afc_div_2, teams, ctx);
+    if (afcDivisional[1]) await drawGame(decidedMatchupFromGame(afcDivisional[1], standings), positions.afc_div_2, teams, ctx, logos);
 
     // Same for NFC
     const nfcDivisional = divisionalGames.filter(game => {
@@ -296,15 +305,15 @@ async function formatPlayoffBracket(client: DiscordClient, token: string, standi
       return Math.min(...aSeeds) - Math.min(...bSeeds);
     });
 
-    if (nfcDivisional[0]) { await drawGame(decidedMatchupFromGame(nfcDivisional[0], standings), positions.nfc_div_1, teams, ctx) } else {
+    if (nfcDivisional[0]) { await drawGame(decidedMatchupFromGame(nfcDivisional[0], standings), positions.nfc_div_1, teams, ctx, logos) } else {
       const nfcOneSeed = standings.find(s => s.conferenceName.toLowerCase() === "nfc" && s.seed === 1)
       if (nfcOneSeed) {
-        await drawGame({ type: MatchupType.TBD, homeSeed: nfcOneSeed.seed, homeTeamId: nfcOneSeed.teamId, playoffStatus: nfcOneSeed.playoffStatus }, positions.nfc_div_1, teams, ctx)
+        await drawGame({ type: MatchupType.TBD, homeSeed: nfcOneSeed.seed, homeTeamId: nfcOneSeed.teamId, playoffStatus: nfcOneSeed.playoffStatus }, positions.nfc_div_1, teams, ctx, logos)
       } else {
         throw new Error(`Could not get NFC one seed`)
       }
     }
-    if (nfcDivisional[1]) await drawGame(decidedMatchupFromGame(nfcDivisional[1], standings), positions.nfc_div_2, teams, ctx);
+    if (nfcDivisional[1]) await drawGame(decidedMatchupFromGame(nfcDivisional[1], standings), positions.nfc_div_2, teams, ctx, logos);
 
     // Draw Conference Championships
     const afcChamp = conferenceGames.find(game => {
@@ -319,12 +328,12 @@ async function formatPlayoffBracket(client: DiscordClient, token: string, standi
       return awayStanding?.conferenceName.toLowerCase() === 'nfc';
     });
 
-    if (afcChamp) await drawGame(decidedMatchupFromGame(afcChamp, standings), positions.afc_champ, teams, ctx);
-    if (nfcChamp) await drawGame(decidedMatchupFromGame(nfcChamp, standings), positions.nfc_champ, teams, ctx);
+    if (afcChamp) await drawGame(decidedMatchupFromGame(afcChamp, standings), positions.afc_champ, teams, ctx, logos);
+    if (nfcChamp) await drawGame(decidedMatchupFromGame(nfcChamp, standings), positions.nfc_champ, teams, ctx, logos);
 
     // Draw Super Bowl
     if (superBowlGames[0]) {
-      await drawGame(decidedMatchupFromGame(superBowlGames[0], standings), positions.super_bowl, teams, ctx);
+      await drawGame(decidedMatchupFromGame(superBowlGames[0], standings), positions.super_bowl, teams, ctx, logos);
     }
 
     // Return base64 encoded image
@@ -360,8 +369,8 @@ export default {
     const { guild_id } = command
     const view = await discordLeagueView.createView(guild_id)
     if (view) {
-      const [standings, games, teams] = await Promise.all([MaddenDB.getLatestStandings(view.leagueId), MaddenDB.getPlayoffSchedule(view.leagueId), MaddenDB.getLatestTeams(view.leagueId)])
-      formatPlayoffBracket(client, command.token, standings, games, teams)
+      const [standings, games, teams, logos] = await Promise.all([MaddenDB.getLatestStandings(view.leagueId), MaddenDB.getPlayoffSchedule(view.leagueId), MaddenDB.getLatestTeams(view.leagueId), leagueLogosView.createView(view.leagueId)])
+      formatPlayoffBracket(client, command.token, standings, games, teams, logos)
       respond(ctx, deferMessage())
     } else {
       throw new NoConnectedLeagueError(guild_id)
