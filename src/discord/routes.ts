@@ -103,6 +103,10 @@ async function updateScoreboard(leagueSettings: LeagueSettings, guildId: string,
     const teams = await MaddenClient.getLatestTeams(leagueId)
     const games = await MaddenClient.getWeekScheduleForSeason(leagueId, week, seasonIndex)
     const sims = await EventDB.queryEvents<ConfirmedSimV2>(leagueId, "CONFIRMED_SIM", new Date(0), { week: week, seasonIndex: seasonIndex }, 30)
+    const simGames = await MaddenClient.getGamesForSchedule(leagueId, sims.map(s => ({ id: s.scheduleId, week: s.week, season: s.seasonIndex })))
+    for (let i = 0; i < sims.length && i < simGames.length; i++) {
+      sims[i].scheduleId = simGames[i].scheduleId;
+    }
     const message = formatScoreboard(week, seasonIndex, games, teams, sims)
     await prodClient.editMessage(scoreboard_channel, scoreboard, message, [])
   } catch (e) {

@@ -3,7 +3,7 @@ import { CommandHandler, Command, AutocompleteHandler, Autocomplete, MessageComp
 import { respond, DiscordClient, deferMessage, formatTeamEmoji, formatGame } from "../discord_utils"
 import { APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ApplicationCommandType, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
-import { GameResult, MADDEN_SEASON, Team, getMessageForWeek } from "../../export/madden_league_types"
+import { GameResult, MADDEN_SEASON, getMessageForWeek } from "../../export/madden_league_types"
 import MaddenClient from "../../db/madden_db"
 import LeagueSettingsDB from "../settings_db"
 import { discordLeagueView, teamSearchView } from "../../db/view"
@@ -123,7 +123,7 @@ async function showSchedule(token: string, client: DiscordClient,
 }
 
 async function showTeamSchedule(token: string, client: DiscordClient,
-  league: string, teamId: number, requestedSeason?: number) {
+  league: string, requestedTeamId: number, requestedSeason?: number) {
   try {
     const settledPromise = await Promise.allSettled([
       MaddenClient.getTeamSchedule(league, requestedSeason),
@@ -140,10 +140,11 @@ async function showTeamSchedule(token: string, client: DiscordClient,
       throw new Error("Failed to get all season weeks")
     }
     const allWeeks = settledPromise[2].value
+    const teamId = teams.getTeamForId(requestedTeamId).teamId
 
     // Filter schedule to only include games for the specified team
-    const teamSchedule = schedule.filter(game =>
-      game.awayTeamId === teamId || game.homeTeamId === teamId
+    const teamSchedule = schedule.filter(game => game.awayTeamId !== 0 && game.homeTeamId !== 0).filter(game =>
+      teams.getTeamForId(game.awayTeamId).teamId === teamId || teams.getTeamForId(game.homeTeamId).teamId === teamId
     ).sort((a, b) => a.scheduleId - b.scheduleId)
 
 
@@ -170,7 +171,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
           scheduleLines.push(`**Week ${week}:** BYE`)
         }
       } else {
-        const isTeamAway = game.awayTeamId === teamId
+        const isTeamAway = teams.getTeamForId(game.awayTeamId).teamId === teamId
         const opponent = teams.getTeamForId(isTeamAway ? game.homeTeamId : game.awayTeamId)
         const opponentDisplay = `${formatTeamEmoji(opponent?.abbrName)} ${opponent?.displayName}`
         const teamDisplay = `${formatTeamEmoji(selectedTeam.abbrName)} ${selectedTeam.displayName}`
@@ -203,7 +204,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
     let ties = 0
 
     playedGames.forEach(game => {
-      const isTeamAway = game.awayTeamId === teamId
+      const isTeamAway = teams.getTeamForId(game.awayTeamId).teamId === teamId
       const teamScore = isTeamAway ? game.awayScore : game.homeScore
       const opponentScore = isTeamAway ? game.homeScore : game.awayScore
 
@@ -258,7 +259,6 @@ async function showTeamSchedule(token: string, client: DiscordClient,
         value: { si: s, ti: teamId }
       }))
       .map(option => ({ ...option, value: JSON.stringify(option.value) }))
-
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [

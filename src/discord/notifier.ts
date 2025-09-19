@@ -106,10 +106,11 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
     ping: async function(gameChannel: GameChannel, season: number, week: number) {
       const game = await MaddenDB.getGameForSchedule(leagueId, gameChannel.scheduleId, week, season)
       const teams = await MaddenDB.getLatestTeams(leagueId)
-      const awayTeam = game.awayTeamId
-      const homeTeam = game.homeTeamId
-      const awayTag = formatTeamMessageName(settings.commands.teams?.assignments?.[`${awayTeam}`]?.discord_user?.id, teams.getTeamForId(awayTeam).userName)
-      const homeTag = formatTeamMessageName(settings.commands.teams?.assignments?.[`${homeTeam}`]?.discord_user?.id, teams.getTeamForId(homeTeam).userName)
+      const awayTeam = teams.getTeamForId(game.awayTeamId)
+      const homeTeam = teams.getTeamForId(game.homeTeamId)
+      const assignments = teams.getLatestTeamAssignments(settings.commands.teams?.assignments || {})
+      const awayTag = formatTeamMessageName(assignments[`${awayTeam.teamId}`]?.discord_user?.id, awayTeam.userName)
+      const homeTag = formatTeamMessageName(assignments[`${homeTeam.teamId}`]?.discord_user?.id, homeTeam.userName)
       await LeagueSettingsDB.updateGameChannelPingTime(guildId, week, season, gameChannel.channel)
       try {
         await client.createMessage(gameChannel.channel, `${awayTag} ${homeTag} is your game scheduled? Schedule it! or react to my first message to set it as scheduled! Hit the trophy if its done already`, ["users"])

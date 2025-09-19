@@ -341,6 +341,7 @@ async function formatPlayoffBracket(client: DiscordClient, token: string, standi
     formData.append("files[0]", imageBlob, "playoff_bracket.png")
     await client.editOriginalInteractionWithForm(token, formData)
   } catch (e) {
+    console.error(e)
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
