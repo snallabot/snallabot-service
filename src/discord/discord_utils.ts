@@ -607,6 +607,7 @@ export enum SnallabotTeamEmojis {
 export function getTeamEmoji(teamAbbr: string, leagueCustomLogos: LeagueLogos): string {
   const customLogo = leagueCustomLogos[teamAbbr]
   if (customLogo) {
+    console.log(customLogo)
     return `<:${customLogo.emoji_name}:${customLogo.emoji_id}>`
   }
   return SnallabotTeamEmojis[teamAbbr.toUpperCase() as keyof typeof SnallabotTeamEmojis] || SnallabotTeamEmojis.NFL

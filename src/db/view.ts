@@ -1,5 +1,5 @@
 import NodeCache from "node-cache"
-import EventDB, { SnallabotEvent } from "./events_db"
+import EventDB, { SnallabotEvent, StoredEvent } from "./events_db"
 import MaddenDB, { MaddenEvents } from "./madden_db"
 import { Player, Team } from "../export/madden_league_types"
 import LeagueSettingsDB from "../discord/settings_db"
@@ -230,9 +230,15 @@ class CustomTeamLogosView extends View<LeagueLogos> {
   }
   async createView(key: string) {
     const events = await EventDB.queryEvents<TeamLogoCustomizedEvent>(key, "CUSTOM_LOGO", new Date(0), {}, 100)
-    return Object.fromEntries(events.map(e => {
-      return [e.teamAbbr, e]
-    }))
+    return Object.fromEntries(
+      Object.values(
+        events.reduce((acc, e) => {
+          if (!acc[e.teamAbbr] || e.timestamp > acc[e.teamAbbr].timestamp) {
+            acc[e.teamAbbr] = e
+          }
+          return acc
+        }, {} as Record<string, StoredEvent<TeamLogoCustomizedEvent>>)
+      ).map(e => [e.teamAbbr, e]))
   }
 }
 export const leagueLogosView = new CustomTeamLogosView()
