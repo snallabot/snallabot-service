@@ -304,7 +304,7 @@ export default {
       const teamToCustomize = teams.getTeamForId(assignedTeam.id)
       const { url, height, width } = command.data.resolved.attachments[image.value]
 
-      handleCustomLogo(guild_id, leagueId, client, command.token, url, teamToCustomize, height ? 128 : height, width ? 128 : width)
+      handleCustomLogo(guild_id, leagueId, client, command.token, url, teamToCustomize, height ? height : 128, width ? width : 128)
       respond(ctx, deferMessage())
       return
     }
