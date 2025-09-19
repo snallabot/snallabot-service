@@ -55,7 +55,7 @@ function createTeamsMessage(settings: LeagueSettings, teams: TeamList): string {
   }
 }
 
-async function handleCustomLogo(guild_id: string, league_id: string, client: DiscordClient, token: string, imageUrl: string, teamToCustomize: Team) {
+async function handleCustomLogo(guild_id: string, league_id: string, client: DiscordClient, token: string, imageUrl: string, teamToCustomize: Team, height, width) {
   try {
     // Download the image
     const response = await fetch(imageUrl);
@@ -70,7 +70,7 @@ async function handleCustomLogo(guild_id: string, league_id: string, client: Dis
     const image = await loadImage(buffer);
 
     // Create a 128x128 canvas
-    const canvas = createCanvas(128, 128);
+    const canvas = createCanvas(height, width);
     const ctx = canvas.getContext('2d');
 
     // Draw the resized image
@@ -302,8 +302,9 @@ export default {
       }
       const assignedTeam = results[0].obj
       const teamToCustomize = teams.getTeamForId(assignedTeam.id)
-      const { url } = command.data.resolved.attachments[image.value]
-      handleCustomLogo(guild_id, leagueId, client, command.token, url, teamToCustomize)
+      const { url, height, width } = command.data.resolved.attachments[image.value]
+
+      handleCustomLogo(guild_id, leagueId, client, command.token, url, teamToCustomize, height ? 128 : height, width ? 128 : width)
       respond(ctx, deferMessage())
       return
     }
