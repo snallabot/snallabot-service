@@ -13,7 +13,6 @@ import { createCanvas, loadImage } from "canvas"
 import FileHandler, { imageSerializer } from "../../file_handlers"
 import EventDB, { EventDelivery } from "../../db/events_db"
 import { TeamLogoCustomizedEvent } from "../../db/events"
-import { removeBackground } from "@imgly/background-removal-node"
 
 function formatTeamMessage(teams: Team[], teamAssignments: TeamAssignments): string {
   const header = "# Teams"
@@ -79,9 +78,7 @@ async function handleCustomLogo(guild_id: string, league_id: string, client: Dis
 
     // Convert to buffer
     const resizedBuffer = canvas.toBuffer('image/png');
-    const backgroundRemoved = await removeBackground(resizedBuffer)
-    const b = await backgroundRemoved.arrayBuffer()
-    const base64Image = `data:image/png;base64,${Buffer.from(b)}`;
+    const base64Image = `data:image/png;base64,${resizedBuffer.toString('base64')}`;
     const emoji = await client.uploadEmoji(base64Image, `${league_id}_${teamToCustomize.abbrName}`)
     if (!emoji.name || !emoji.id) {
       throw new Error(`Emoji not created correctly`)
