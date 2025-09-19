@@ -3,7 +3,7 @@ import Pug from "pug"
 import path from "path"
 import { Next, ParameterizedContext } from "koa"
 import { EA_LOGIN_URL, AUTH_SOURCE, CLIENT_SECRET, REDIRECT_URL, CLIENT_ID, AccountToken, TokenInfo, Entitlements, VALID_ENTITLEMENTS, Persona, MACHINE_KEY, Personas, ENTITLEMENT_TO_VALID_NAMESPACE, NAMESPACES, ENTITLEMENT_TO_SYSTEM, SystemConsole, exportOptions, seasonType } from "./ea_constants"
-import { BlazeError, ExportContext, ExportDestination, unlinkLeague, ephemeralClientFromToken, exporterForLeague, storeToken, storedTokenClient } from "./ea_client"
+import { BlazeError, ExportContext, ExportDestination, unlinkLeague, ephemeralClientFromToken, exporterForLeague, storeToken, storedTokenClient, EAAccountError } from "./ea_client"
 import { removeLeague, setLeague } from "../connections/routes"
 import { discordLeagueView } from "../db/view"
 import LeagueSettingsDB from "../discord/settings_db"
@@ -20,17 +20,6 @@ const dashboardRender = Pug.compileFile(path.join(__dirname, "/templates/dashboa
 const router = new Router({ prefix: "/dashboard" })
 
 const client = createProdClient()
-
-export class EAAccountError extends Error {
-  troubleshoot: string
-
-  constructor(message: string, troubleshoot: string) {
-    super(message)
-    this.name = "EAAccountError"
-    this.troubleshoot = troubleshoot
-  }
-}
-
 
 type RetrievePersonasRequest = { code: string, discord?: string }
 type LinkPersona = { selected_persona: string, access_token: string, discord?: string }

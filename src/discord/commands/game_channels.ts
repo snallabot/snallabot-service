@@ -9,8 +9,7 @@ import { formatRecord, getMessageForWeek, MADDEN_SEASON, MaddenGame } from "../.
 import createLogger from "../logging"
 import { ConfirmedSim, ConfirmedSimV2, SimResult } from "../../db/events"
 import createNotifier from "../notifier"
-import { ExportContext, Stage, exporterForLeague } from "../../dashboard/ea_client"
-import { EAAccountError } from "../../dashboard/routes"
+import { ExportContext, Stage, exporterForLeague, EAAccountError } from "../../dashboard/ea_client"
 import { LeagueLogos, leagueLogosView } from "../../db/view"
 
 async function react(client: DiscordClient, channel: ChannelId, message: MessageId, reaction: SnallabotReactions) {

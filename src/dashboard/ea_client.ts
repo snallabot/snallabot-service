@@ -1,6 +1,5 @@
 import { Agent, fetch } from "undici";
 import { CLIENT_ID, CLIENT_SECRET, AUTH_SOURCE, AccountToken, BLAZE_SERVICE, SystemConsole, BLAZE_PRODUCT_NAME, BlazeAuthenticatedResponse, MACHINE_KEY, League, GetMyLeaguesResponse, LeagueResponse, BlazeLeagueResponse } from "./ea_constants"
-import { EAAccountError } from "./routes";
 import { constants, randomBytes, createHash } from "crypto"
 import { Buffer } from "buffer"
 import { TeamExport, StandingExport, SchedulesExport, RushingExport, TeamStatsExport, PuntingExport, ReceivingExport, DefensiveExport, KickingExport, PassingExport, RosterExport } from "../export/madden_league_types"
@@ -63,6 +62,18 @@ export class BlazeError extends Error {
     this.error = error
   }
 }
+
+export class EAAccountError extends Error {
+  troubleshoot: string
+
+  constructor(message: string, troubleshoot: string) {
+    super(message)
+    this.name = "EAAccountError"
+    this.troubleshoot = troubleshoot
+  }
+}
+
+
 
 // EA is on legaacy SSL, node by default rejects these requests. Have to turn off manually
 const dispatcher = new Agent({
