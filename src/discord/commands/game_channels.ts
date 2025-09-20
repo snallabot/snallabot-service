@@ -1,6 +1,6 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command } from "../commands_handler"
-import { respond, createMessageResponse, DiscordClient, deferMessage, formatTeamMessageName, SnallabotReactions, SnallabotDiscordError, formatGame } from "../discord_utils"
+import { respond, createMessageResponse, DiscordClient, deferMessage, formatTeamMessageName, SnallabotReactions, SnallabotDiscordError, formatGame, formatSchedule } from "../discord_utils"
 import { APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ApplicationCommandType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
 import LeagueSettingsDB, { CategoryId, ChannelId, DiscordIdType, GameChannel, GameChannelConfiguration, GameChannelState, LeagueSettings, MaddenLeagueConfiguration, MessageId, RoleId, UserId, WeekState } from "../settings_db"
@@ -18,29 +18,6 @@ async function react(client: DiscordClient, channel: ChannelId, message: Message
 
 function notifierMessage(users: string, waitPing: number, role: RoleId): string {
   return `${users}\nTime to schedule your game! Once your game is scheduled, hit the ⏰. Otherwise, You will be notified again every ${waitPing} hours.\nWhen you're done playing, let me know with 🏆 and I will clean up the channel.\nNeed to sim this game? React with ⏭ AND the home/away request a force win from <@&${role.id}>. Choose both home and away to fair sim! <@&${role.id}> hit the ⏭ to confirm it!`
-}
-
-function createSimMessage(sim: ConfirmedSim): string {
-  if (sim.result === SimResult.FAIR_SIM) {
-    return "Fair Sim"
-  } else if (sim.result === SimResult.FORCE_WIN_AWAY) {
-    return "Force Win Away"
-  } else if (sim.result === SimResult.FORCE_WIN_HOME) {
-    return "Force Win Home"
-  }
-  throw new Error("Should not have gotten here! from createSimMessage")
-}
-
-
-export function formatScoreboard(week: number, seasonIndex: number, games: MaddenGame[], teams: TeamList, sims: ConfirmedSimV2[], logos: LeagueLogos) {
-  const gameToSim = new Map<number, ConfirmedSimV2>()
-  sims.forEach(sim => gameToSim.set(sim.scheduleId, sim))
-  const scoreboardGames = games.sort((g1, g2) => g1.scheduleId - g2.scheduleId).map(game => {
-    const simMessage = gameToSim.has(game.scheduleId) ? `(${createSimMessage(gameToSim.get(game.scheduleId)!)})` : ""
-    const gameMessage = formatGame(game, teams, logos)
-    return `${gameMessage} ${simMessage}`
-  }).join("\n")
-  return `# ${seasonIndex + MADDEN_SEASON} Season ${getMessageForWeek(week)} Scoreboard\n${scoreboardGames}`
 }
 
 enum SnallabotCommandReactions {
@@ -179,7 +156,7 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
 
     const season = weekSchedule[0].seasonIndex
     const logos = await leagueLogosView.createView(leagueId)
-    const scoreboardMessage = formatScoreboard(week, season, weekSchedule, teams, [], logos)
+    const scoreboardMessage = formatSchedule(week, season, weekSchedule, teams, [], logos)
     const scoreboardMessageId = await client.createMessage(settings.commands.game_channel?.scoreboard_channel, scoreboardMessage, [])
     const weeklyState: WeekState = { week: week, seasonIndex: season, scoreboard: scoreboardMessageId, channel_states: channelsMap }
     await client.editOriginalInteraction(token, {
