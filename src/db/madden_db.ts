@@ -431,29 +431,23 @@ const MaddenDB: MaddenDB = {
     const teamList = await this.getLatestTeams(leagueId)
 
     // Query for unplayed games only
-    const unplayedSnapshot = await scheduleCollection
-      .where("status", "==", GameResult.NOT_PLAYED)
+    const allGames = await scheduleCollection
       .where("stageIndex", "==", 1)
-      .get();
+      .get()
 
-    if (unplayedSnapshot.empty) {
+    const games = deduplicateSchedule(allGames.docs.map(d => convertDate(d.data()) as StoredEvent<MaddenGame>), teamList)
+    const unplayedGames = games.filter(g => g.status === GameResult.NOT_PLAYED)
+
+    if (unplayedGames.length === 0) {
       // All games have been played - get games from the latest week of the latest season
-      const allGamesSnapshot = await scheduleCollection.get();
-
-      if (allGamesSnapshot.empty) {
-        throw new Error(`Missing schedule for league`)
-      }
-
-      const games = allGamesSnapshot.docs.map(doc => doc.data() as StoredEvent<MaddenGame>);
       const maxSeason = Math.max(...games.map(game => game.seasonIndex));
       const gamesInLatestSeason = games.filter(game => game.seasonIndex === maxSeason);
       const maxWeek = Math.max(...gamesInLatestSeason.map(game => game.weekIndex));
       return deduplicateSchedule(games.filter(game => game.seasonIndex === maxSeason && game.weekIndex === maxWeek), teamList)
     }
 
-    // Find the earliest season and week with unplayed games
-    const unplayedGames = deduplicateSchedule(unplayedSnapshot.docs.map(doc => doc.data() as StoredEvent<MaddenGame>), teamList)
-    const currentSeason = Math.min(...unplayedGames.map(game => game.seasonIndex));
+    // Find the latest season and week with unplayed games
+    const currentSeason = Math.max(...unplayedGames.map(game => game.seasonIndex));
     const gamesInCurrentSeason = unplayedGames.filter(game => game.seasonIndex === currentSeason);
     const currentWeek = Math.min(...gamesInCurrentSeason.map(game => game.weekIndex));
 
