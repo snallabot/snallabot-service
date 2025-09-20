@@ -1,10 +1,7 @@
-import LeagueSettingsDB, { LeagueSettings, createWeekKey, } from "../discord/settings_db"
+import LeagueSettingsDB, { createWeekKey, } from "../discord/settings_db"
 import MaddenClient from "../db/madden_db"
-import { formatScoreboard } from "../discord/commands/game_channels"
-import { createClient } from "../discord/discord_utils"
-import EventDB from "../db/events_db"
-import { ConfirmedSimV2 } from "../db/events"
-import db from "../db/firebase"
+import { createClient, formatSchedule, getSimsForWeek } from "../discord/discord_utils"
+
 import { leagueLogosView } from "../db/view"
 
 if (!process.env.PUBLIC_KEY) {
@@ -39,9 +36,10 @@ async function updateScoreboard(guildId: string, seasonIndex: number, week: numb
   }
   const teams = await MaddenClient.getLatestTeams(leagueId)
   const games = await MaddenClient.getWeekScheduleForSeason(leagueId, week, seasonIndex)
-  const sims = await EventDB.queryEvents<ConfirmedSimV2>(leagueId, "CONFIRMED_SIM", new Date(0), { week: week, seasonIndex: seasonIndex }, 30)
+
   const logos = await leagueLogosView.createView(leagueId)
-  const message = formatScoreboard(week, seasonIndex, games, teams, sims, logos)
+  const sims = await getSimsForWeek(leagueId, week, seasonIndex)
+  const message = formatSchedule(week, seasonIndex, games, teams, sims, logos)
   await prodClient.editMessage(scoreboard_channel, scoreboard, message, [])
 }
 
