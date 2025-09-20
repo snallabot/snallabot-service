@@ -452,7 +452,7 @@ const MaddenDB: MaddenDB = {
     }
 
     // Find the earliest season and week with unplayed games
-    const unplayedGames: MaddenGame[] = unplayedSnapshot.docs.map(doc => doc.data() as MaddenGame);
+    const unplayedGames = deduplicateSchedule(unplayedSnapshot.docs.map(doc => doc.data() as StoredEvent<MaddenGame>), teamList)
     const currentSeason = Math.min(...unplayedGames.map(game => game.seasonIndex));
     const gamesInCurrentSeason = unplayedGames.filter(game => game.seasonIndex === currentSeason);
     const currentWeek = Math.min(...gamesInCurrentSeason.map(game => game.weekIndex));
