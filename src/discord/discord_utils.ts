@@ -3,9 +3,11 @@ import { verifyKey } from "discord-interactions"
 import { APIApplicationCommand, APIChannel, APIEmoji, APIGuild, APIGuildMember, APIMessage, APIThreadChannel, APIUser, ChannelType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { CategoryId, ChannelId, DiscordIdType, MessageId, UserId } from "./settings_db"
 import { createDashboard } from "./commands/dashboard"
-import { GameResult, MaddenGame } from "../export/madden_league_types"
-import { TeamList } from "../db/madden_db"
+import { GameResult, MADDEN_SEASON, MaddenGame, getMessageForWeek } from "../export/madden_league_types"
+import MaddenDB, { TeamList } from "../db/madden_db"
 import { LeagueLogos, leagueLogosView } from "../db/view"
+import EventDB from "../db/events_db"
+import { ConfirmedSimV2, SimResult } from "../db/events"
 
 export enum CommandMode {
   INSTALL = "INSTALL",
@@ -636,4 +638,34 @@ export function formatGame(game: MaddenGame, teams: TeamList, leagueCustomLogos:
     }
     return `${awayDisplay} ${game.awayScore} vs ${game.homeScore} ${homeDisplay}`;
   }
+}
+
+export async function getSimsForWeek(leagueId: string, week: number, seasonIndex: number) {
+  const sims = await EventDB.queryEvents<ConfirmedSimV2>(leagueId, "CONFIRMED_SIM", new Date(0), { week: week, seasonIndex: seasonIndex }, 30)
+  const simGames = await MaddenDB.getGamesForSchedule(leagueId, sims.map(s => ({ id: s.scheduleId, week: s.week, season: s.seasonIndex })))
+  const convertedSims = sims.map((s, simIndex) => ({ ...s, scheduleId: simGames[simIndex].scheduleId }))
+  return convertedSims
+
+}
+
+function createSimMessage(sim: ConfirmedSimV2): string {
+  if (sim.result === SimResult.FAIR_SIM) {
+    return "Fair Sim"
+  } else if (sim.result === SimResult.FORCE_WIN_AWAY) {
+    return "Force Win Away"
+  } else if (sim.result === SimResult.FORCE_WIN_HOME) {
+    return "Force Win Home"
+  }
+  throw new Error("Should not have gotten here! from createSimMessage")
+}
+
+export function formatSchedule(week: number, seasonIndex: number, games: MaddenGame[], teams: TeamList, sims: ConfirmedSimV2[], logos: LeagueLogos) {
+  const gameToSim = new Map<number, ConfirmedSimV2>()
+  sims.forEach(sim => gameToSim.set(sim.scheduleId, sim))
+  const scoreboardGames = games.sort((g1, g2) => g1.scheduleId - g2.scheduleId).map(game => {
+    const simMessage = gameToSim.has(game.scheduleId) ? `(${createSimMessage(gameToSim.get(game.scheduleId)!)})` : ""
+    const gameMessage = formatGame(game, teams, logos)
+    return `${gameMessage} ${simMessage}`
+  }).join("\n")
+  return `# ${seasonIndex + MADDEN_SEASON} Season ${getMessageForWeek(week)} Games\n${scoreboardGames}`
 }

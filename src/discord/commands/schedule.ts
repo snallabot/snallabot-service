@@ -1,6 +1,6 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command, AutocompleteHandler, Autocomplete, MessageComponentHandler, MessageComponentInteraction } from "../commands_handler"
-import { respond, DiscordClient, deferMessage, formatTeamEmoji, formatGame } from "../discord_utils"
+import { respond, DiscordClient, deferMessage, formatTeamEmoji, formatGame, getSimsForWeek, formatSchedule } from "../discord_utils"
 import { APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ApplicationCommandType, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
 import { GameResult, MADDEN_SEASON, getMessageForWeek } from "../../export/madden_league_types"
@@ -23,12 +23,10 @@ async function showSchedule(token: string, client: DiscordClient,
     const teams = settledPromise[1].value
     const logos = await leagueLogosView.createView(league)
     const sortedSchedule = schedule.sort((a, b) => a.scheduleId - b.scheduleId)
-    const schedulesMessage = sortedSchedule.filter(w => w.awayTeamId !== 0 && w.homeTeamId !== 0).map(game => {
-      return formatGame(game, teams, logos)
-    }).join("\n")
     const season = schedule?.[0]?.seasonIndex >= 0 ? schedule[0].seasonIndex : requestedSeason != null ? requestedSeason : 0
     const week = schedule?.[0]?.weekIndex >= 0 ? schedule[0].weekIndex + 1 : requestedWeek != null ? requestedWeek : 1
-
+    const sims = await getSimsForWeek(league, week, season)
+    const schedulesMessage = formatSchedule(week, season, sortedSchedule, teams, sims, logos)
     const message = `# ${MADDEN_SEASON + season} ${getMessageForWeek(week)} Schedule\n${schedulesMessage}`
     const gameOptions = sortedSchedule.filter(g => g.status !== GameResult.NOT_PLAYED && g.stageIndex > 0).map(game => ({
       label: `${teams.getTeamForId(game.awayTeamId)?.abbrName} ${game.awayScore} - ${game.homeScore} ${teams.getTeamForId(game.homeTeamId)?.abbrName}`,

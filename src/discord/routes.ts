@@ -1,6 +1,6 @@
 import { ParameterizedContext } from "koa"
 import Router from "@koa/router"
-import { CommandMode, DiscordClient, SNALLABOT_TEST_USER, SNALLABOT_USER, createClient, createProdClient } from "./discord_utils"
+import { CommandMode, DiscordClient, SNALLABOT_TEST_USER, SNALLABOT_USER, createProdClient, getSimsForWeek, formatSchedule } from "./discord_utils"
 import { APIInteraction, InteractionType, InteractionResponseType, APIChatInputApplicationCommandGuildInteraction, APIApplicationCommandAutocompleteInteraction, APIMessageComponentInteraction } from "discord-api-types/payloads"
 import db from "../db/firebase"
 import EventDB from "../db/events_db"
@@ -11,7 +11,6 @@ import LeagueSettingsDB, { DiscordIdType, LeagueSettings, TeamAssignments, creat
 import { fetchTeamsMessage } from "./commands/teams"
 import createNotifier from "./notifier"
 import MaddenClient from "../db/madden_db"
-import { formatScoreboard } from "./commands/game_channels"
 import MaddenDB from "../db/madden_db"
 import { GameResult, MaddenGame } from "../export/madden_league_types"
 import { leagueLogosView } from "../db/view"
@@ -103,13 +102,10 @@ async function updateScoreboard(leagueSettings: LeagueSettings, guildId: string,
   try {
     const teams = await MaddenClient.getLatestTeams(leagueId)
     const games = await MaddenClient.getWeekScheduleForSeason(leagueId, week, seasonIndex)
-    const sims = await EventDB.queryEvents<ConfirmedSimV2>(leagueId, "CONFIRMED_SIM", new Date(0), { week: week, seasonIndex: seasonIndex }, 30)
-    const simGames = await MaddenClient.getGamesForSchedule(leagueId, sims.map(s => ({ id: s.scheduleId, week: s.week, season: s.seasonIndex })))
-    for (let i = 0; i < sims.length && i < simGames.length; i++) {
-      sims[i].scheduleId = simGames[i].scheduleId;
-    }
+
     const logos = await leagueLogosView.createView(leagueId)
-    const message = formatScoreboard(week, seasonIndex, games, teams, sims, logos)
+    const sims = await getSimsForWeek(leagueId, week, seasonIndex)
+    const message = formatSchedule(week, seasonIndex, games, teams, sims, logos)
     await prodClient.editMessage(scoreboard_channel, scoreboard, message, [])
   } catch (e) {
   }
