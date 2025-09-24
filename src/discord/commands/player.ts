@@ -6,7 +6,7 @@ import { Firestore } from "firebase-admin/firestore"
 import { playerSearchIndex, discordLeagueView, teamSearchView, LeagueLogos, leagueLogosView } from "../../db/view"
 import fuzzysort from "fuzzysort"
 import MaddenDB, { PlayerListQuery, PlayerStatType, PlayerStats, TeamList } from "../../db/madden_db"
-import { DevTrait, LBStyleTrait, MADDEN_SEASON, MaddenGame, POSITIONS, POSITION_GROUP, PenaltyTrait, PlayBallTrait, Player, QBStyleTrait, SensePressureTrait, YesNoTrait } from "../../export/madden_league_types"
+import { DevTrait, LBStyleTrait, MADDEN_SEASON, MaddenGame, POSITIONS, POSITION_GROUP, PlayBallTrait, Player, QBStyleTrait, SensePressureTrait, YesNoTrait } from "../../export/madden_league_types"
 
 enum PlayerSelection {
   PLAYER_OVERVIEW = "po",
@@ -613,7 +613,6 @@ function getPositionalTraits(player: Player) {
       attributes.push(
         { name: "QB Style", value: formatQbStyle(player.qBStyleTrait) },
         { name: "Sense Pressure", value: formatSensePressure(player.sensePressureTrait) },
-        { name: "Penalty", value: formatPenaltyTrait(player.penaltyTrait) },
       )
       yesNoAttributes.push({ name: "Throw Away", value: player.throwAwayTrait },
         { name: "Tight Spiral", value: player.tightSpiralTrait })
@@ -622,9 +621,6 @@ function getPositionalTraits(player: Player) {
     case "HB":
     case "WR":
     case "TE":
-      attributes.push(
-        { name: "Penalty", value: formatPenaltyTrait(player.penaltyTrait) },
-      )
       yesNoAttributes.push(
         { name: "YAC Catch", value: player.yACCatchTrait },
         { name: "Possesion Catch", value: player.posCatchTrait },
@@ -639,16 +635,10 @@ function getPositionalTraits(player: Player) {
     case "C":
     case "RG":
     case "RT":
-      attributes.push(
-        { name: "Penalty", value: formatPenaltyTrait(player.penaltyTrait) },
-      )
       break
     case "LE":
     case "RE":
     case "DT":
-      attributes.push(
-        { name: "Penalty", value: formatPenaltyTrait(player.penaltyTrait) },
-      )
       yesNoAttributes.push(
         { name: "DL Swim Move", value: player.dLSwimTrait },
         { name: "DL Spin Move", value: player.dLSpinTrait },
@@ -661,7 +651,6 @@ function getPositionalTraits(player: Player) {
     case "ROLB":
     case "MLB":
       attributes.push(
-        { name: "Penalty", value: formatPenaltyTrait(player.penaltyTrait) },
         { name: "LB Style", value: formatLbStyle(player.lBStyleTrait) },
         { name: "Play Ball", value: formatPlayBallTrait(player.playBallTrait) }
       )
@@ -678,7 +667,6 @@ function getPositionalTraits(player: Player) {
     case "FS":
     case "SS":
       attributes.push(
-        { name: "Penalty", value: formatPenaltyTrait(player.penaltyTrait) },
         { name: "Play Ball", value: formatPlayBallTrait(player.playBallTrait) }
       )
       yesNoAttributes.push(
@@ -822,14 +810,6 @@ function formatSensePressure(sensePressureTrait: SensePressureTrait) {
   }
 }
 
-function formatPenaltyTrait(penalty: PenaltyTrait) {
-  switch (penalty) {
-    case PenaltyTrait.DISCIPLINED: return "Disciplined"
-    case PenaltyTrait.NORMAL: return "Balanced"
-    case PenaltyTrait.UNDISCIPLINED: return "Undisciplined"
-  }
-}
-
 function formatPlayBallTrait(playBallTrait: PlayBallTrait) {
   switch (playBallTrait) {
     case PlayBallTrait.AGGRESSIVE: return "Aggressive"
@@ -936,7 +916,6 @@ __**Styles:**__
 **LB Style:** ${formatLbStyle(player.lBStyleTrait)}
 
 __**Traits:**__
-**Penalty:** ${formatPenaltyTrait(player.penaltyTrait)}
 **Predictable:** ${formatYesNoTrait(player.predictTrait)}
 **Clutch:** ${formatYesNoTrait(player.clutchTrait)}
 **Tight Spiral:** ${formatYesNoTrait(player.tightSpiralTrait)}
