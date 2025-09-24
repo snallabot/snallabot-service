@@ -701,7 +701,10 @@ function getPositionalTraits(player: Player) {
 }
 
 
-function getDevTraitName(devTrait: DevTrait): string {
+function getDevTraitName(devTrait: DevTrait, yearsPro: number): string {
+  if (yearsPro === 0) {
+    return SnallabotDevEmojis.HIDDEN
+  }
   switch (devTrait) {
     case DevTrait.NORMAL: return SnallabotDevEmojis.NORMAL
     case DevTrait.STAR: return SnallabotDevEmojis.STAR
@@ -716,6 +719,7 @@ enum SnallabotDevEmojis {
   STAR = "<:snallabot_star_dev:1363761179805220884>",
   SUPERSTAR = "<:snallabot_superstar_dev:1363761181525020703>",
   XFACTOR = "<:snallabot_xfactor_dev:1363761178622562484>",
+  HIDDEN = "<:snallabot_hidden_dev:1363761182682517565>"
 }
 const rules = new Intl.PluralRules("en-US", { type: "ordinal" })
 const suffixes = new Map([
@@ -773,7 +777,7 @@ function formatPlayerCard(player: Player, teams: TeamList, logos: LeagueLogos) {
     : ""
   return `
   # ${getTeamEmoji(teamAbbr, logos)} ${player.position} ${player.firstName} ${player.lastName}
-## ${getDevTraitName(player.devTrait)} **${player.playerBestOvr} OVR**
+## ${getDevTraitName(player.devTrait, player.yearsPro)} **${player.playerBestOvr} OVR**
 **${age} yrs** | **${getSeasonFormatting(player.yearsPro)}** | **${formattedHeight}, ${player.weight} lbs**
 ## Contract
 ${contractStatus}
@@ -850,7 +854,7 @@ function formatFullRatings(player: Player, teams: TeamList, logos: LeagueLogos) 
 
   return `
   # ${getTeamEmoji(teamAbbr, logos)} ${player.position} ${player.firstName} ${player.lastName}
-## ${getDevTraitName(player.devTrait)} **${player.playerBestOvr} OVR**
+  ## ${getDevTraitName(player.devTrait, player.yearsPro)} **${player.playerBestOvr} OVR**
 ## Ratings
 __**Physical Attributes:**__
 **Speed:** ${player.speedRating}
@@ -1141,7 +1145,7 @@ function formatWeeklyStats(player: Player, teams: TeamList, stats: PlayerStats, 
   const joinedWeekStats = weekStats.join("\n")
   return `
   # ${getTeamEmoji(teamAbbr, logos)} ${player.position} ${player.firstName} ${player.lastName}
-## ${getDevTraitName(player.devTrait)} **${player.playerBestOvr} OVR**
+## ${getDevTraitName(player.devTrait, player.yearsPro)} **${player.playerBestOvr} OVR**
 ## Stats
 ${joinedWeekStats}
 `
@@ -1522,7 +1526,7 @@ function formatSeasonStats(player: Player, stats: PlayerStats, teams: TeamList, 
 
   return `
   # ${getTeamEmoji(teamAbbr, logos)} ${player.position} ${player.firstName} ${player.lastName}
-## ${getDevTraitName(player.devTrait)} **${player.playerBestOvr} OVR**
+## ${getDevTraitName(player.devTrait, player.yearsPro)} **${player.playerBestOvr} OVR**
 ## Stats
 ${formattedAgg}
 `
@@ -1539,7 +1543,7 @@ function formatPlayerList(players: Player[], teams: TeamList, logos: LeagueLogos
     const heightFormatted = `${heightFeet}'${heightInches}"`;
     const teamEmoji = getTeamEmoji(teamName, logos) === SnallabotTeamEmojis.NFL ? `**${teamName.toUpperCase()}**` : getTeamEmoji(teamName, logos)
     const experience = getSeasonFormatting(player.yearsPro)
-    const devTraitEmoji = getDevTraitName(player.devTrait)
+    const devTraitEmoji = getDevTraitName(player.devTrait, player.yearsPro)
     message += `## ${teamEmoji} ${player.position} ${fullName} - ${player.playerBestOvr} OVR\n`;
     message += `${devTraitEmoji} | ${player.age} yrs | ${experience} | ${heightFormatted} | ${player.weight} lbs\n\n`;
   }
