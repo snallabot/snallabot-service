@@ -6,7 +6,7 @@ import { Firestore } from "firebase-admin/firestore"
 import { playerSearchIndex, discordLeagueView, teamSearchView, LeagueLogos, leagueLogosView } from "../../db/view"
 import fuzzysort from "fuzzysort"
 import MaddenDB, { PlayerListQuery, PlayerStatType, PlayerStats, TeamList } from "../../db/madden_db"
-import { CoverBallTrait, DevTrait, LBStyleTrait, MADDEN_SEASON, MaddenGame, POSITIONS, POSITION_GROUP, PenaltyTrait, PlayBallTrait, Player, QBStyleTrait, SensePressureTrait, YesNoTrait } from "../../export/madden_league_types"
+import { DevTrait, LBStyleTrait, MADDEN_SEASON, MaddenGame, POSITIONS, POSITION_GROUP, PlayBallTrait, Player, QBStyleTrait, SensePressureTrait, YesNoTrait } from "../../export/madden_league_types"
 
 enum PlayerSelection {
   PLAYER_OVERVIEW = "po",
@@ -432,7 +432,7 @@ function getTopAttributesByPosition(player: Player): Array<{ name: string, value
   const attributes: Array<{ name: string, value: number }> = []
   attributes.push(
     { name: "Speed", value: player.speedRating },
-    { name: "Acceleration", value: player.accelRating },
+    { name: "Accel", value: player.accelRating },
     { name: "Agility", value: player.agilityRating },
     { name: "Awareness", value: player.awareRating },
     { name: "Injury", value: player.injuryRating }
@@ -442,9 +442,9 @@ function getTopAttributesByPosition(player: Player): Array<{ name: string, value
     case "QB":
       attributes.push(
         { name: "Throw Power", value: player.throwPowerRating },
-        { name: "Deep Accuracy", value: player.throwAccDeepRating },
-        { name: "Medium Accuracy", value: player.throwAccMidRating },
-        { name: "Short Accuracy", value: player.throwAccShortRating },
+        { name: "Deep Acc", value: player.throwAccDeepRating },
+        { name: "Medium Acc", value: player.throwAccMidRating },
+        { name: "Short Acc", value: player.throwAccShortRating },
         { name: "Play Action", value: player.playActionRating },
         { name: "Throw Under Pressure", value: player.throwUnderPressureRating },
         { name: "Break Sack", value: player.breakSackRating },
@@ -522,17 +522,17 @@ function getTopAttributesByPosition(player: Player): Array<{ name: string, value
         { name: "Pass Block Finesse", value: player.passBlockFinesseRating },
         { name: "Lead Block", value: player.leadBlockRating },
         { name: "Impact Blocking", value: player.impactBlockRating },
-        { name: "Long Snap Rating", value: player.longSnapRating }
+        { name: "Long Snap", value: player.longSnapRating }
       )
       break
-    case "LE":
-    case "RE":
+    case "LEDGE":
+    case "REDGE":
       attributes.push(
         { name: "Power Moves", value: player.powerMovesRating },
         { name: "Finesse Moves", value: player.finesseMovesRating },
         { name: "Tackle", value: player.tackleRating },
         { name: "Block Shedding", value: player.blockShedRating },
-        { name: "Play Recognition", value: player.playRecRating },
+        { name: "Play Rec", value: player.playRecRating },
         { name: "Strength", value: player.strengthRating },
       )
       break
@@ -543,11 +543,11 @@ function getTopAttributesByPosition(player: Player): Array<{ name: string, value
         { name: "Power Moves", value: player.powerMovesRating },
         { name: "Finesse Moves", value: player.finesseMovesRating },
         { name: "Tackle", value: player.tackleRating },
-        { name: "Play Recognition", value: player.playRecRating },
+        { name: "Play Rec", value: player.playRecRating },
       )
       break
-    case "LOLB":
-    case "ROLB":
+    case "SAM":
+    case "WILL":
       attributes.push(
         { name: "Hit Power", value: player.hitPowerRating },
         { name: "Tackle", value: player.tackleRating },
@@ -555,16 +555,16 @@ function getTopAttributesByPosition(player: Player): Array<{ name: string, value
         { name: "Power Moves", value: player.powerMovesRating },
         { name: "Finesse Moves", value: player.finesseMovesRating },
         { name: "Block Shedding", value: player.blockShedRating },
-        { name: "Play Recognition", value: player.playRecRating },
+        { name: "Play Rec", value: player.playRecRating },
       )
       break
-    case "MLB":
+    case "MIKE":
       attributes.push(
         { name: "Tackle", value: player.tackleRating },
         { name: "Block Shedding", value: player.blockShedRating },
         { name: "Hit Power", value: player.hitPowerRating },
         { name: "Pursuit", value: player.pursuitRating },
-        { name: "Play Recognition", value: player.playRecRating },
+        { name: "Play Rec", value: player.playRecRating },
         { name: "Strength", value: player.strengthRating },
         { name: "Zone Coverage", value: player.zoneCoverRating },
       )
@@ -573,7 +573,7 @@ function getTopAttributesByPosition(player: Player): Array<{ name: string, value
       attributes.push(
         { name: "Man Coverage", value: player.manCoverRating },
         { name: "Zone Coverage", value: player.zoneCoverRating },
-        { name: "Play Recognition", value: player.playRecRating },
+        { name: "Play Rec", value: player.playRecRating },
         { name: "Press", value: player.pressRating },
         { name: "Tackle", value: player.tackleRating },
         { name: "Jumping", value: player.jumpRating },
@@ -583,11 +583,11 @@ function getTopAttributesByPosition(player: Player): Array<{ name: string, value
     case "FS":
     case "SS":
       attributes.push(
+        { name: "Man Coverage", value: player.manCoverRating },
         { name: "Zone Coverage", value: player.zoneCoverRating },
         { name: "Tackle", value: player.tackleRating },
         { name: "Pursuit", value: player.pursuitRating },
-        { name: "Play Recognition", value: player.playRecRating },
-        { name: "Man Coverage", value: player.manCoverRating },
+        { name: "Play Rec", value: player.playRecRating },
         { name: "Hit Power", value: player.hitPowerRating },
         { name: "Block Shedding", value: player.blockShedRating },
       )
@@ -613,7 +613,6 @@ function getPositionalTraits(player: Player) {
       attributes.push(
         { name: "QB Style", value: formatQbStyle(player.qBStyleTrait) },
         { name: "Sense Pressure", value: formatSensePressure(player.sensePressureTrait) },
-        { name: "Penalty", value: formatPenaltyTrait(player.penaltyTrait) },
       )
       yesNoAttributes.push({ name: "Throw Away", value: player.throwAwayTrait },
         { name: "Tight Spiral", value: player.tightSpiralTrait })
@@ -622,10 +621,6 @@ function getPositionalTraits(player: Player) {
     case "HB":
     case "WR":
     case "TE":
-      attributes.push(
-        { name: "Cover Ball", value: formatCoverBallTrait(player.coverBallTrait) },
-        { name: "Penalty", value: formatPenaltyTrait(player.penaltyTrait) },
-      )
       yesNoAttributes.push(
         { name: "YAC Catch", value: player.yACCatchTrait },
         { name: "Possesion Catch", value: player.posCatchTrait },
@@ -640,16 +635,10 @@ function getPositionalTraits(player: Player) {
     case "C":
     case "RG":
     case "RT":
-      attributes.push(
-        { name: "Penalty", value: formatPenaltyTrait(player.penaltyTrait) },
-      )
       break
     case "LE":
     case "RE":
     case "DT":
-      attributes.push(
-        { name: "Penalty", value: formatPenaltyTrait(player.penaltyTrait) },
-      )
       yesNoAttributes.push(
         { name: "DL Swim Move", value: player.dLSwimTrait },
         { name: "DL Spin Move", value: player.dLSpinTrait },
@@ -662,7 +651,6 @@ function getPositionalTraits(player: Player) {
     case "ROLB":
     case "MLB":
       attributes.push(
-        { name: "Penalty", value: formatPenaltyTrait(player.penaltyTrait) },
         { name: "LB Style", value: formatLbStyle(player.lBStyleTrait) },
         { name: "Play Ball", value: formatPlayBallTrait(player.playBallTrait) }
       )
@@ -679,7 +667,6 @@ function getPositionalTraits(player: Player) {
     case "FS":
     case "SS":
       attributes.push(
-        { name: "Penalty", value: formatPenaltyTrait(player.penaltyTrait) },
         { name: "Play Ball", value: formatPlayBallTrait(player.playBallTrait) }
       )
       yesNoAttributes.push(
@@ -701,7 +688,10 @@ function getPositionalTraits(player: Player) {
 }
 
 
-function getDevTraitName(devTrait: DevTrait): string {
+function getDevTraitName(devTrait: DevTrait, yearsPro: number): string {
+  if (yearsPro === 0) {
+    return SnallabotDevEmojis.HIDDEN
+  }
   switch (devTrait) {
     case DevTrait.NORMAL: return SnallabotDevEmojis.NORMAL
     case DevTrait.STAR: return SnallabotDevEmojis.STAR
@@ -716,6 +706,7 @@ enum SnallabotDevEmojis {
   STAR = "<:snallabot_star_dev:1363761179805220884>",
   SUPERSTAR = "<:snallabot_superstar_dev:1363761181525020703>",
   XFACTOR = "<:snallabot_xfactor_dev:1363761178622562484>",
+  HIDDEN = "<:snallabot_hidden_dev:1363761182682517565>"
 }
 const rules = new Intl.PluralRules("en-US", { type: "ordinal" })
 const suffixes = new Map([
@@ -749,6 +740,25 @@ function getTeamAbbr(teamId: number, teams: TeamList) {
   return teams.getTeamForId(teamId).abbrName
 }
 
+function formatAttributes(topAttributes: { name: string, value: number }[]): string {
+  const lines: string[] = [];
+
+  for (let i = 0; i < topAttributes.length; i += 2) {
+    const attr1 = topAttributes[i];
+    const attr2 = topAttributes[i + 1];
+
+    if (attr2) {
+      // Both attributes exist
+      lines.push(`> **${attr1.name}:** ${attr1.value} | **${attr2.name}:** ${attr2.value}`);
+    } else {
+      // Only first attribute exists (odd number of attributes)
+      lines.push(`> **${attr1.name}:** ${attr1.value}`);
+    }
+  }
+
+  return lines.join('\n');
+}
+
 function formatPlayerCard(player: Player, teams: TeamList, logos: LeagueLogos) {
 
   const teamAbbr = getTeamAbbr(player.teamId, teams)
@@ -759,7 +769,7 @@ function formatPlayerCard(player: Player, teams: TeamList, logos: LeagueLogos) {
   let age = player.age
 
   const contractStatus = player.isFreeAgent ? "Free Agent" :
-    `> **Length**: ${player.contractYearsLeft}/${player.contractLength} yrs\n> **Salary**: $${formatMoney(player.contractSalary)}\n> **Cap Hit**: $${formatMoney(player.capHit)}\n> **Bonus**: $${formatMoney(player.contractBonus)}\n> **Savings**: $${formatMoney(player.capReleaseNetSavings)}\n> **Penalty**: $${formatMoney(player.capReleasePenalty)}`
+    `> **Length**: ${player.contractYearsLeft}/${player.contractLength} yrs | **Salary**: $${formatMoney(player.contractSalary)}\n> **Cap Hit**: $${formatMoney(player.capHit)} | **Bonus**: $${formatMoney(player.contractBonus)}\n> **Savings**: $${formatMoney(player.capReleaseNetSavings)} | **Penalty**: $${formatMoney(player.capReleasePenalty)}`
 
   const topAttributes = getTopAttributesByPosition(player)
 
@@ -773,14 +783,12 @@ function formatPlayerCard(player: Player, teams: TeamList, logos: LeagueLogos) {
     : ""
   return `
   # ${getTeamEmoji(teamAbbr, logos)} ${player.position} ${player.firstName} ${player.lastName}
-## ${getDevTraitName(player.devTrait)} **${player.playerBestOvr} OVR**
+## ${getDevTraitName(player.devTrait, player.yearsPro)} **${player.playerBestOvr} OVR**
 **${age} yrs** | **${getSeasonFormatting(player.yearsPro)}** | **${formattedHeight}, ${player.weight} lbs**
-## Contract
+### Contract
 ${contractStatus}
-## Ratings
-${topAttributes.map(attr => `> **${attr.name}:** ${attr.value}`).join('\n')}
-${getPositionalTraits(player)}${abilities}
-`
+### Ratings
+${formatAttributes(topAttributes)}${getPositionalTraits(player)}${abilities}`
 }
 
 function formatYesNoTrait(trait: YesNoTrait) {
@@ -802,29 +810,11 @@ function formatSensePressure(sensePressureTrait: SensePressureTrait) {
   }
 }
 
-function formatPenaltyTrait(penalty: PenaltyTrait) {
-  switch (penalty) {
-    case PenaltyTrait.DISCIPLINED: return "Disciplined"
-    case PenaltyTrait.NORMAL: return "Balanced"
-    case PenaltyTrait.UNDISCIPLINED: return "Undisciplined"
-  }
-}
-
 function formatPlayBallTrait(playBallTrait: PlayBallTrait) {
   switch (playBallTrait) {
     case PlayBallTrait.AGGRESSIVE: return "Aggressive"
     case PlayBallTrait.BALANCED: return "Balanced"
     case PlayBallTrait.CONSERVATIVE: return "Conservative"
-  }
-}
-
-function formatCoverBallTrait(coverBallTrait: CoverBallTrait) {
-  switch (coverBallTrait) {
-    case CoverBallTrait.ALWAYS: return "Always"
-    case CoverBallTrait.FOR_ALL_HITS: return "For All Hits"
-    case CoverBallTrait.NEVER: return "Never"
-    case CoverBallTrait.ON_BIG_HITS: return "On Big Hits"
-    case CoverBallTrait.ON_MEDIUM_HITS: return "On Medium Hits"
   }
 }
 
@@ -850,7 +840,7 @@ function formatFullRatings(player: Player, teams: TeamList, logos: LeagueLogos) 
 
   return `
   # ${getTeamEmoji(teamAbbr, logos)} ${player.position} ${player.firstName} ${player.lastName}
-## ${getDevTraitName(player.devTrait)} **${player.playerBestOvr} OVR**
+  ## ${getDevTraitName(player.devTrait, player.yearsPro)} **${player.playerBestOvr} OVR**
 ## Ratings
 __**Physical Attributes:**__
 **Speed:** ${player.speedRating}
@@ -926,7 +916,6 @@ __**Styles:**__
 **LB Style:** ${formatLbStyle(player.lBStyleTrait)}
 
 __**Traits:**__
-**Penalty:** ${formatPenaltyTrait(player.penaltyTrait)}
 **Predictable:** ${formatYesNoTrait(player.predictTrait)}
 **Clutch:** ${formatYesNoTrait(player.clutchTrait)}
 **Tight Spiral:** ${formatYesNoTrait(player.tightSpiralTrait)}
@@ -939,7 +928,6 @@ __**Traits:**__
 **Big Hitter:** ${formatYesNoTrait(player.bigHitTrait)}
 **Strip Ball:** ${formatYesNoTrait(player.stripBallTrait)}
 **Play Ball:** ${formatPlayBallTrait(player.playBallTrait)}
-**Cover Ball:** ${formatCoverBallTrait(player.coverBallTrait)}
 **Fight for Yards:** ${formatYesNoTrait(player.fightForYardsTrait)}
 **YAC Catch:** ${formatYesNoTrait(player.yACCatchTrait)}
 **Possession Catch:** ${formatYesNoTrait(player.posCatchTrait)}
@@ -1141,7 +1129,7 @@ function formatWeeklyStats(player: Player, teams: TeamList, stats: PlayerStats, 
   const joinedWeekStats = weekStats.join("\n")
   return `
   # ${getTeamEmoji(teamAbbr, logos)} ${player.position} ${player.firstName} ${player.lastName}
-## ${getDevTraitName(player.devTrait)} **${player.playerBestOvr} OVR**
+## ${getDevTraitName(player.devTrait, player.yearsPro)} **${player.playerBestOvr} OVR**
 ## Stats
 ${joinedWeekStats}
 `
@@ -1522,7 +1510,7 @@ function formatSeasonStats(player: Player, stats: PlayerStats, teams: TeamList, 
 
   return `
   # ${getTeamEmoji(teamAbbr, logos)} ${player.position} ${player.firstName} ${player.lastName}
-## ${getDevTraitName(player.devTrait)} **${player.playerBestOvr} OVR**
+## ${getDevTraitName(player.devTrait, player.yearsPro)} **${player.playerBestOvr} OVR**
 ## Stats
 ${formattedAgg}
 `
@@ -1539,7 +1527,7 @@ function formatPlayerList(players: Player[], teams: TeamList, logos: LeagueLogos
     const heightFormatted = `${heightFeet}'${heightInches}"`;
     const teamEmoji = getTeamEmoji(teamName, logos) === SnallabotTeamEmojis.NFL ? `**${teamName.toUpperCase()}**` : getTeamEmoji(teamName, logos)
     const experience = getSeasonFormatting(player.yearsPro)
-    const devTraitEmoji = getDevTraitName(player.devTrait)
+    const devTraitEmoji = getDevTraitName(player.devTrait, player.yearsPro)
     message += `## ${teamEmoji} ${player.position} ${fullName} - ${player.playerBestOvr} OVR\n`;
     message += `${devTraitEmoji} | ${player.age} yrs | ${experience} | ${heightFormatted} | ${player.weight} lbs\n\n`;
   }
