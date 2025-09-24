@@ -774,7 +774,7 @@ function formatPlayerCard(player: Player, teams: TeamList, logos: LeagueLogos) {
   const topAttributes = getTopAttributesByPosition(player)
 
   const abilities = player.signatureSlotList && player.signatureSlotList.length > 0
-    ? "**Abilities:** " + player.signatureSlotList
+    ? "\n**Abilities:** " + player.signatureSlotList
       .filter(ability => !ability.isEmpty && ability.signatureAbility)
       .map(ability => {
         return ability.signatureAbility?.signatureTitle || "Unnamed Ability"
