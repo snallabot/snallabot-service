@@ -786,7 +786,7 @@ function formatPlayerCard(player: Player, teams: TeamList, logos: LeagueLogos) {
   const topAttributes = getTopAttributesByPosition(player)
 
   const abilities = player.signatureSlotList && player.signatureSlotList.length > 0
-    ? "\n**Abilities:** " + player.signatureSlotList
+    ? "**Abilities:** " + player.signatureSlotList
       .filter(ability => !ability.isEmpty && ability.signatureAbility)
       .map(ability => {
         return ability.signatureAbility?.signatureTitle || "Unnamed Ability"
@@ -800,8 +800,7 @@ function formatPlayerCard(player: Player, teams: TeamList, logos: LeagueLogos) {
 ### Contract
 ${contractStatus}
 ### Ratings
-${formatAttributes(topAttributes)}${getPositionalTraits(player)}${abilities}
-`
+${formatAttributes(topAttributes)}${getPositionalTraits(player)}${abilities}`
 }
 
 function formatYesNoTrait(trait: YesNoTrait) {
