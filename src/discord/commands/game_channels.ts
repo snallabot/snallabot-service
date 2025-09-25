@@ -345,7 +345,7 @@ export default {
       const gameChannelWeekToClear = (gameChannelsCommand?.options?.[0] as APIApplicationCommandInteractionDataIntegerOption)?.value
       const weekToClear = gameChannelWeekToClear ? Number(gameChannelWeekToClear) : undefined
       respond(ctx, deferMessage())
-      clearGameChannels(client, db, token, guild_id, leagueSettings, author)
+      clearGameChannels(client, db, token, guild_id, leagueSettings, author, weekToClear)
     } else if (subCommand === "notify") {
       respond(ctx, deferMessage())
       notifyGameChannels(client, token, guild_id, leagueSettings)
