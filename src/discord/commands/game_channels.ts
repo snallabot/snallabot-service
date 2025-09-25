@@ -199,12 +199,15 @@ ${errorMessage}
   }
 }
 
-async function clearGameChannels(client: DiscordClient, db: Firestore, token: string, guild_id: string, settings: LeagueSettings, author: UserId) {
+async function clearGameChannels(client: DiscordClient, db: Firestore, token: string, guild_id: string, settings: LeagueSettings, author: UserId, weekToClear?: number) {
   try {
     await client.editOriginalInteraction(token, { content: `Clearing Game Channels...` })
     const weekStates = settings.commands.game_channel?.weekly_states || {}
     const weekStatesWithChannels = Object.fromEntries(Object.entries(weekStates).filter(entry => {
       const weekState = entry[1]
+      if (weekToClear) {
+        return weekState?.channel_states && weekState.week === weekToClear
+      }
       return weekState?.channel_states
     }))
     const channelsToClear = Object.entries(weekStatesWithChannels).flatMap(entry => {
@@ -338,8 +341,11 @@ export default {
       respond(ctx, deferMessage())
       createGameChannels(client, db, token, guild_id, leagueSettings, week, { id: category, id_type: DiscordIdType.CATEGORY }, author)
     } else if (subCommand === "clear") {
+      const gameChannelsCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
+      const gameChannelWeekToClear = (gameChannelsCommand?.options?.[0] as APIApplicationCommandInteractionDataIntegerOption)?.value
+      const weekToClear = gameChannelWeekToClear ? Number(gameChannelWeekToClear) : undefined
       respond(ctx, deferMessage())
-      clearGameChannels(client, db, token, guild_id, leagueSettings, author)
+      clearGameChannels(client, db, token, guild_id, leagueSettings, author, weekToClear)
     } else if (subCommand === "notify") {
       respond(ctx, deferMessage())
       notifyGameChannels(client, token, guild_id, leagueSettings)
@@ -434,6 +440,12 @@ export default {
           name: "clear",
           description: "clear all game channels",
           options: [
+            {
+              type: ApplicationCommandOptionType.Integer,
+              name: "week",
+              description: "optional week to clear",
+              required: false,
+            },
           ]
         },
         {
