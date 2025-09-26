@@ -1,7 +1,7 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command } from "../commands_handler"
 import { respond, createMessageResponse, DiscordClient, deferMessage, formatTeamMessageName, SnallabotReactions, SnallabotDiscordError, formatGame, formatSchedule } from "../discord_utils"
-import { APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ApplicationCommandType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
+import { APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ApplicationCommandType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
 import LeagueSettingsDB, { CategoryId, ChannelId, DiscordIdType, GameChannel, GameChannelConfiguration, GameChannelState, LeagueSettings, MaddenLeagueConfiguration, MessageId, RoleId, UserId, WeekState } from "../settings_db"
 import MaddenClient, { TeamList } from "../../db/madden_db"
@@ -282,12 +282,14 @@ export default {
       const scoreboardChannel = (gameChannelsCommand.options[1] as APIApplicationCommandInteractionDataChannelOption).value
       const waitPing = (gameChannelsCommand.options[2] as APIApplicationCommandInteractionDataIntegerOption).value
       const adminRole = (gameChannelsCommand.options[3] as APIApplicationCommandInteractionDataRoleOption).value
+      const usePrivateChannels = (gameChannelsCommand?.options?.[4] as APIApplicationCommandInteractionDataBooleanOption)?.value
       const conf: GameChannelConfiguration = {
         admin: { id: adminRole, id_type: DiscordIdType.ROLE },
         default_category: { id: gameChannelCategory, id_type: DiscordIdType.CATEGORY },
         scoreboard_channel: { id: scoreboardChannel, id_type: DiscordIdType.CHANNEL },
         wait_ping: Number.parseInt(`${waitPing}`),
-        weekly_states: leagueSettings?.commands?.game_channel?.weekly_states || {}
+        weekly_states: leagueSettings?.commands?.game_channel?.weekly_states || {},
+        private_channels: !!usePrivateChannels
       }
       await LeagueSettingsDB.configureGameChannel(guild_id, conf)
       respond(ctx, createMessageResponse(`game channels commands are configured! Configuration:
@@ -295,7 +297,8 @@ export default {
 - Admin Role: <@&${adminRole}>
 - Game Channel Category: <#${gameChannelCategory}>
 - Scoreboard Channel: <#${scoreboardChannel}>
-- Notification Period: Every ${waitPing} hour(s)`))
+- Notification Period: Every ${waitPing} hour(s)
+- Private Channels: ${!!usePrivateChannels ? "Yes" : "No"}`))
     } else if (subCommand === "create" || subCommand === "wildcard" || subCommand === "divisional" || subCommand === "conference" || subCommand === "superbowl") {
       const week = (() => {
         if (subCommand === "create") {
@@ -478,6 +481,12 @@ export default {
               name: "admin_role",
               description: "admin role to confirm force wins",
               required: true,
+            },
+            {
+              type: ApplicationCommandOptionType.Boolean,
+              name: "private_channels",
+              description: "make game channels private to users and admins",
+              required: false,
             },
           ],
         },
