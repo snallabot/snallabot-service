@@ -122,7 +122,7 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
       const awayTeamId = teams.getTeamForId(game.awayTeamId).teamId
       const homeTeamId = teams.getTeamForId(game.homeTeamId).teamId
       const awayUser = formatTeamMessageName(assignments?.[awayTeamId]?.discord_user?.id, teams.getTeamForId(game.awayTeamId)?.userName)
-      const homeUser = formatTeamMessageName(assignments?.[game.homeTeamId]?.discord_user?.id, teams.getTeamForId(game.homeTeamId)?.userName)
+      const homeUser = formatTeamMessageName(assignments?.[homeTeamId]?.discord_user?.id, teams.getTeamForId(game.homeTeamId)?.userName)
       const awayTeamStanding = await MaddenClient.getStandingForTeam(leagueId, awayTeamId)
       const homeTeamStanding = await MaddenClient.getStandingForTeam(leagueId, homeTeamId)
       const usersMessage = `${awayUser} (${formatRecord(awayTeamStanding)}) at ${homeUser} (${formatRecord(homeTeamStanding)})`
