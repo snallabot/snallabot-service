@@ -6,22 +6,10 @@ import { DEPLOYMENT_URL } from "../config"
 const changeCache = new NodeCache()
 const hash: (a: any) => string = require("object-hash")
 
-interface LatestLeagues {
-  getLatestLeagues(): string[]
-}
-
-async function getLatestLeagues(): Promise<LatestLeagues> {
+async function getLatestLeagues(): Promise<string[]> {
   const collection = db.collection("madden_data26").where("blazeId", "!=", null)
   const docs = await collection.get()
-  let leagues = docs.docs.map(d => d.id)
-  collection.onSnapshot(querySnapshot => {
-    leagues = querySnapshot.docs.map(d => d.id)
-  })
-  return {
-    getLatestLeagues() {
-      return leagues
-    }
-  }
+  return docs.docs.map(d => d.id)
 }
 
 async function checkLeague(leagueId: string) {
@@ -56,10 +44,8 @@ function sleep(ms: number) {
 
 const SLEEP_MIN = 60
 async function runLeagueChecks() {
-  const latestLeagues = await getLatestLeagues()
-
   while (true) {
-    const leagues = latestLeagues.getLatestLeagues()
+    const leagues = await getLatestLeagues()
     for (const leagueId of leagues) {
       // avoid any overloading of EA
       await sleep(5000)
