@@ -93,7 +93,7 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
       const homeTeam = teams.getTeamForId(game.homeTeamId)
       let channel;
       if (settings.commands.game_channel?.private_channels) {
-        const users: UserId[] = [assignments[awayTeam.teamId].discord_user, assignments[homeTeam.teamId].discord_user]
+        const users: UserId[] = [assignments?.[awayTeam.teamId]?.discord_user, assignments?.[homeTeam.teamId]?.discord_user]
           .flatMap(u => u ? [u] : [])
         channel = await client.createChannel(guild_id, `${awayTeam.displayName}-at-${homeTeam.displayName}`, category, users, [settings.commands.game_channel.admin])
       } else {
