@@ -86,11 +86,19 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
     }
 
     const teams = await MaddenClient.getLatestTeams(leagueId)
+    const assignments = teams.getLatestTeamAssignments(settings.commands.teams?.assignments || {})
     const gameChannels = []
     for (const game of weekSchedule) {
-      const awayTeam = teams.getTeamForId(game.awayTeamId)?.displayName
-      const homeTeam = teams.getTeamForId(game.homeTeamId)?.displayName
-      const channel = await client.createChannel(guild_id, `${awayTeam}-at-${homeTeam}${game.isGameOfTheWeek ? "⚔️" : ""}`, category)
+      const awayTeam = teams.getTeamForId(game.awayTeamId)
+      const homeTeam = teams.getTeamForId(game.homeTeamId)
+      let channel;
+      if (settings.commands.game_channel?.private_channels) {
+        const users: UserId[] = [assignments[awayTeam.teamId].discord_user, assignments[homeTeam.teamId].discord_user]
+          .flatMap(u => u ? [u] : [])
+        channel = await client.createChannel(guild_id, `${awayTeam.displayName}-at-${homeTeam.displayName}`, category, users, [settings.commands.game_channel.admin])
+      } else {
+        channel = await client.createChannel(guild_id, `${awayTeam.displayName}-at-${homeTeam.displayName}`, category,)
+      }
       gameChannels.push({ game: game, scheduleId: game.scheduleId, channel: channel })
     }
     channelsToCleanup = gameChannels.map(c => c.channel)
@@ -103,7 +111,6 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
 - ${SnallabotCommandReactions.WAITING} Creating Scoreboard
 - ${SnallabotCommandReactions.WAITING} Logging`
     })
-    const assignments = teams.getLatestTeamAssignments(settings.commands.teams?.assignments || {})
     if (!settings.commands.game_channel) {
       return
     }
