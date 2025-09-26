@@ -1,7 +1,7 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command } from "../commands_handler"
 import { respond, createMessageResponse, DiscordClient, deferMessage, formatTeamMessageName, SnallabotReactions, SnallabotDiscordError, formatGame, formatSchedule } from "../discord_utils"
-import { APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ApplicationCommandType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
+import { APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ApplicationCommandType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
 import LeagueSettingsDB, { CategoryId, ChannelId, DiscordIdType, GameChannel, GameChannelConfiguration, GameChannelState, LeagueSettings, MaddenLeagueConfiguration, MessageId, RoleId, UserId, WeekState } from "../settings_db"
 import MaddenClient, { TeamList } from "../../db/madden_db"
@@ -86,11 +86,19 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
     }
 
     const teams = await MaddenClient.getLatestTeams(leagueId)
+    const assignments = teams.getLatestTeamAssignments(settings.commands.teams?.assignments || {})
     const gameChannels = []
     for (const game of weekSchedule) {
-      const awayTeam = teams.getTeamForId(game.awayTeamId)?.displayName
-      const homeTeam = teams.getTeamForId(game.homeTeamId)?.displayName
-      const channel = await client.createChannel(guild_id, `${awayTeam}-at-${homeTeam}${game.isGameOfTheWeek ? "⚔️" : ""}`, category)
+      const awayTeam = teams.getTeamForId(game.awayTeamId)
+      const homeTeam = teams.getTeamForId(game.homeTeamId)
+      let channel;
+      if (settings.commands.game_channel?.private_channels) {
+        const users: UserId[] = [assignments?.[awayTeam.teamId]?.discord_user, assignments?.[homeTeam.teamId]?.discord_user]
+          .flatMap(u => u ? [u] : [])
+        channel = await client.createChannel(guild_id, `${awayTeam.displayName}-at-${homeTeam.displayName}`, category, users, [settings.commands.game_channel.admin])
+      } else {
+        channel = await client.createChannel(guild_id, `${awayTeam.displayName}-at-${homeTeam.displayName}`, category,)
+      }
       gameChannels.push({ game: game, scheduleId: game.scheduleId, channel: channel })
     }
     channelsToCleanup = gameChannels.map(c => c.channel)
@@ -103,7 +111,6 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
 - ${SnallabotCommandReactions.WAITING} Creating Scoreboard
 - ${SnallabotCommandReactions.WAITING} Logging`
     })
-    const assignments = teams.getLatestTeamAssignments(settings.commands.teams?.assignments || {})
     if (!settings.commands.game_channel) {
       return
     }
@@ -115,7 +122,7 @@ async function createGameChannels(client: DiscordClient, db: Firestore, token: s
       const awayTeamId = teams.getTeamForId(game.awayTeamId).teamId
       const homeTeamId = teams.getTeamForId(game.homeTeamId).teamId
       const awayUser = formatTeamMessageName(assignments?.[awayTeamId]?.discord_user?.id, teams.getTeamForId(game.awayTeamId)?.userName)
-      const homeUser = formatTeamMessageName(assignments?.[game.homeTeamId]?.discord_user?.id, teams.getTeamForId(game.homeTeamId)?.userName)
+      const homeUser = formatTeamMessageName(assignments?.[homeTeamId]?.discord_user?.id, teams.getTeamForId(game.homeTeamId)?.userName)
       const awayTeamStanding = await MaddenClient.getStandingForTeam(leagueId, awayTeamId)
       const homeTeamStanding = await MaddenClient.getStandingForTeam(leagueId, homeTeamId)
       const usersMessage = `${awayUser} (${formatRecord(awayTeamStanding)}) at ${homeUser} (${formatRecord(homeTeamStanding)})`
@@ -282,12 +289,14 @@ export default {
       const scoreboardChannel = (gameChannelsCommand.options[1] as APIApplicationCommandInteractionDataChannelOption).value
       const waitPing = (gameChannelsCommand.options[2] as APIApplicationCommandInteractionDataIntegerOption).value
       const adminRole = (gameChannelsCommand.options[3] as APIApplicationCommandInteractionDataRoleOption).value
+      const usePrivateChannels = (gameChannelsCommand?.options?.[4] as APIApplicationCommandInteractionDataBooleanOption)?.value
       const conf: GameChannelConfiguration = {
         admin: { id: adminRole, id_type: DiscordIdType.ROLE },
         default_category: { id: gameChannelCategory, id_type: DiscordIdType.CATEGORY },
         scoreboard_channel: { id: scoreboardChannel, id_type: DiscordIdType.CHANNEL },
         wait_ping: Number.parseInt(`${waitPing}`),
-        weekly_states: leagueSettings?.commands?.game_channel?.weekly_states || {}
+        weekly_states: leagueSettings?.commands?.game_channel?.weekly_states || {},
+        private_channels: !!usePrivateChannels
       }
       await LeagueSettingsDB.configureGameChannel(guild_id, conf)
       respond(ctx, createMessageResponse(`game channels commands are configured! Configuration:
@@ -295,7 +304,8 @@ export default {
 - Admin Role: <@&${adminRole}>
 - Game Channel Category: <#${gameChannelCategory}>
 - Scoreboard Channel: <#${scoreboardChannel}>
-- Notification Period: Every ${waitPing} hour(s)`))
+- Notification Period: Every ${waitPing} hour(s)
+- Private Channels: ${!!usePrivateChannels ? "Yes" : "No"}`))
     } else if (subCommand === "create" || subCommand === "wildcard" || subCommand === "divisional" || subCommand === "conference" || subCommand === "superbowl") {
       const week = (() => {
         if (subCommand === "create") {
@@ -478,6 +488,12 @@ export default {
               name: "admin_role",
               description: "admin role to confirm force wins",
               required: true,
+            },
+            {
+              type: ApplicationCommandOptionType.Boolean,
+              name: "private_channels",
+              description: "make game channels private to users and admins",
+              required: false,
             },
           ],
         },

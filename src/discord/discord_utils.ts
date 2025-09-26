@@ -1,13 +1,14 @@
 import { ParameterizedContext } from "koa"
 import { verifyKey } from "discord-interactions"
-import { APIApplicationCommand, APIChannel, APIEmoji, APIGuild, APIGuildMember, APIMessage, APIThreadChannel, APIUser, ChannelType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
-import { CategoryId, ChannelId, DiscordIdType, MessageId, UserId } from "./settings_db"
+import { APIApplicationCommand, APIChannel, APIEmoji, APIGuild, APIGuildMember, APIMessage, APIThreadChannel, APIUser, ChannelType, InteractionResponseType, OverwriteType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
+import { CategoryId, ChannelId, DiscordIdType, MessageId, RoleId, UserId } from "./settings_db"
 import { createDashboard } from "./commands/dashboard"
 import { GameResult, MADDEN_SEASON, MaddenGame, getMessageForWeek } from "../export/madden_league_types"
 import MaddenDB, { TeamList } from "../db/madden_db"
 import { LeagueLogos, leagueLogosView } from "../db/view"
 import EventDB from "../db/events_db"
 import { ConfirmedSimV2, SimResult } from "../db/events"
+import { PermissionOverwrite } from "oceanic.js"
 
 export enum CommandMode {
   INSTALL = "INSTALL",
@@ -68,7 +69,7 @@ export interface DiscordClient {
   createMessage(channel: ChannelId, content: string, allowedMentions: string[]): Promise<MessageId>,
   editMessage(channel: ChannelId, messageId: MessageId, content: string, allowedMentions: string[]): Promise<void>,
   deleteMessage(channel: ChannelId, messageId: MessageId): Promise<void>,
-  createChannel(guild_id: string, channelName: string, category: CategoryId): Promise<ChannelId>,
+  createChannel(guild_id: string, channelName: string, category: CategoryId, privateUsers?: UserId[], privateRoles?: RoleId[]): Promise<ChannelId>,
   deleteChannel(channelId: ChannelId): Promise<void>,
   getChannel(channelId: ChannelId): Promise<APIChannel>,
   reactToMessage(reaction: String, messageId: MessageId, channel: ChannelId): Promise<void>,
@@ -271,14 +272,55 @@ export function createClient(settings: DiscordSettings): DiscordClient {
         throw e
       }
     },
-    createChannel: async (guild_id: string, channelName: string, category: CategoryId): Promise<ChannelId> => {
+    createChannel: async (guild_id: string, channelName: string, category: CategoryId, privateUsers?: UserId[], privateRoles?: RoleId[]): Promise<ChannelId> => {
       try {
+        const permissionOverwrites: any[] = []
+
+        // If we have private users or roles, we need to set up permission overwrites
+        if (privateUsers?.length || privateRoles?.length) {
+          // First, deny @everyone access to the channel
+          permissionOverwrites.push({
+            id: guild_id, // @everyone role has the same ID as the guild
+            type: 0, // Role type
+            deny: "3072", // VIEW_CHANNEL (1024) + SEND_MESSAGES (2048) = 3072
+          });
+
+          // Allow specific users
+          if (privateUsers?.length) {
+            for (const user of privateUsers) {
+              permissionOverwrites.push({
+                id: user.id,
+                type: 1, // Member type
+                allow: "3072", // VIEW_CHANNEL (1024) + SEND_MESSAGES (2048) = 3072
+              });
+            }
+          }
+
+          // Allow specific roles
+          if (privateRoles?.length) {
+            for (const role of privateRoles) {
+              permissionOverwrites.push({
+                id: role.id,
+                type: 0, // Role type
+                allow: "3072", // VIEW_CHANNEL (1024) + SEND_MESSAGES (2048) = 3072
+              });
+            }
+          }
+
+          const botUserId = settings.appId
+          permissionOverwrites.push({
+            id: botUserId,
+            type: 1, // Member type
+            allow: "3072", // VIEW_CHANNEL (1024) + SEND_MESSAGES (2048) = 3072
+          });
+        }
         const res = await sendDiscordRequest(`guilds/${guild_id}/channels`, {
           method: "POST",
           body: {
             type: ChannelType.GuildText,
             name: channelName,
             parent_id: category.id,
+            permission_overwrites: permissionOverwrites
           },
         })
         const channel = await res.json() as APIChannel
