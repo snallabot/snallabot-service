@@ -91,7 +91,7 @@ async function showSeasonSims(token: string, client: DiscordClient, league: stri
       const sortedUsers = Array.from(userStatsMap.entries()).sort((a, b) => b[1].total - a[1].total)
 
       for (const [userId, stats] of sortedUsers) {
-        message += "<@${userId}> - "
+        message += `<@${userId}> - `
         const parts = []
         if (stats.forceWins > 0) {
           parts.push(`**${stats.forceWins}** FW`)
@@ -112,7 +112,7 @@ async function showSeasonSims(token: string, client: DiscordClient, league: stri
       const totalForceLosses = Array.from(userStatsMap.values()).reduce((sum, stats) => sum + stats.forceLosses, 0)
       const totalFairSims = Array.from(userStatsMap.values()).reduce((sum, stats) => sum + stats.fairSims, 0)
 
-      message += `**Season Summary:**\n`
+      message += `\n**Season Summary:**\n`
       message += `Total Sims: **${totalSims}**\n`
 
       const summaryParts = []
