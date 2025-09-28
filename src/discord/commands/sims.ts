@@ -110,8 +110,8 @@ async function showSeasonSims(token: string, client: DiscordClient, league: stri
         if (stats.fairSims > 0) {
           parts.push(` **${stats.fairSims}** FS`)
         }
-        parts.push(`\n`)
         message += parts.join(' • ')
+        message += "\n"
       }
 
       // Add summary stats
