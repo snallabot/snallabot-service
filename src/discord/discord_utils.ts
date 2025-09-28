@@ -696,14 +696,14 @@ export async function getSimsForWeek(leagueId: string, week: number, seasonIndex
   return convertedSims
 }
 
-export async function getSims(leagueId: string) {
-  const sims = await EventDB.queryEvents<ConfirmedSimV2>(leagueId, "CONFIRMED_SIM", new Date(0), {}, 5000)
+export async function getSims(leagueId: string, seasonIndex?: number) {
+  const sims = seasonIndex != null ? await EventDB.queryEvents<ConfirmedSimV2>(leagueId, "CONFIRMED_SIM", new Date(0), { seasonIndex: seasonIndex }, 5000) : await EventDB.queryEvents<ConfirmedSimV2>(leagueId, "CONFIRMED_SIM", new Date(0), {}, 5000)
   const simGames = await MaddenDB.getGamesForSchedule(leagueId, sims.map(s => ({ id: s.scheduleId, week: s.week, season: s.seasonIndex })))
   const convertedSims = sims.map((s, simIndex) => ({ ...s, scheduleId: simGames[simIndex].scheduleId }))
   return convertedSims
 }
 
-function createSimMessage(sim: ConfirmedSimV2): string {
+export function createSimMessage(sim: ConfirmedSimV2): string {
   if (sim.result === SimResult.FAIR_SIM) {
     return "Fair Sim"
   } else if (sim.result === SimResult.FORCE_WIN_AWAY) {

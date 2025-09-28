@@ -1,6 +1,6 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command, AutocompleteHandler, Autocomplete, MessageComponentHandler, MessageComponentInteraction } from "../commands_handler"
-import { respond, DiscordClient, deferMessage, formatTeamEmoji, formatGame, getSimsForWeek, formatSchedule } from "../discord_utils"
+import { respond, DiscordClient, deferMessage, formatTeamEmoji, formatGame, getSimsForWeek, formatSchedule, getSims, createSimMessage } from "../discord_utils"
 import { APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ApplicationCommandType, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
 import { GameResult, MADDEN_SEASON, getMessageForWeek } from "../../export/madden_league_types"
@@ -9,6 +9,7 @@ import LeagueSettingsDB from "../settings_db"
 import { discordLeagueView, leagueLogosView, teamSearchView } from "../../db/view"
 import { GameStatsOptions } from "./game_stats"
 import fuzzysort from "fuzzysort"
+import { ConfirmedSimV2 } from "../../db/events"
 
 export type WeekSelection = { wi: number, si: number }
 export type TeamSelection = { ti: number, si: number }
@@ -128,6 +129,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
       MaddenClient.getLatestTeams(league),
       MaddenClient.getAllWeeks(league)
     ])
+    const sims = await getSims(league, requestedSeason)
 
     const schedule = settledPromise[0].status === "fulfilled" ? settledPromise[0].value : []
     if (settledPromise[1].status !== "fulfilled") {
@@ -145,6 +147,18 @@ async function showTeamSchedule(token: string, client: DiscordClient,
     const teamSchedule = schedule.filter(game => game.awayTeamId !== 0 && game.homeTeamId !== 0).filter(game =>
       teams.getTeamForId(game.awayTeamId).teamId === teamId || teams.getTeamForId(game.homeTeamId).teamId === teamId
     ).sort((a, b) => a.scheduleId - b.scheduleId)
+
+    const scheduleKeys = new Set(
+      teamSchedule.map(game => `${game.scheduleId}-${game.seasonIndex}`)
+    )
+
+    const teamSims = sims.filter(sim =>
+      scheduleKeys.has(`${sim.scheduleId}-${sim.seasonIndex}`)
+    )
+
+    const gameToSim = new Map<number, ConfirmedSimV2>()
+    teamSims.forEach(sim => gameToSim.set(sim.scheduleId, sim))
+    console.log(teamSims)
 
 
     const selectedTeam = teams.getTeamForId(teamId)
@@ -183,14 +197,14 @@ async function showTeamSchedule(token: string, client: DiscordClient,
           const teamScore = isTeamAway ? game.awayScore : game.homeScore
           const opponentScore = isTeamAway ? game.homeScore : game.awayScore
           const teamWon = teamScore > opponentScore
-
+          const simMessage = gameToSim.has(game.scheduleId) ? `(${createSimMessage(gameToSim.get(game.scheduleId)!)})` : ""
           if (teamWon) {
-            scheduleLines.push(`**${weekLabel}:** **${teamDisplay} ${teamScore}** ${isTeamAway ? '@' : 'vs'} ${opponentScore} ${opponentDisplay}`)
+            scheduleLines.push(`**${weekLabel}:** **${teamDisplay} ${teamScore}** ${isTeamAway ? '@' : 'vs'} ${opponentScore} ${opponentDisplay} ${simMessage}`)
           } else if (teamScore < opponentScore) {
-            scheduleLines.push(`**${weekLabel}:** ${teamDisplay} ${teamScore} ${isTeamAway ? '@' : 'vs'} **${opponentScore} ${opponentDisplay}**`)
+            scheduleLines.push(`**${weekLabel}:** ${teamDisplay} ${teamScore} ${isTeamAway ? '@' : 'vs'} **${opponentScore} ${opponentDisplay}** ${simMessage}`)
           } else {
             // Tie game
-            scheduleLines.push(`**${weekLabel}:** ${teamDisplay} ${teamScore} ${isTeamAway ? '@' : 'vs'} ${opponentScore} ${opponentDisplay}`)
+            scheduleLines.push(`**${weekLabel}:** ${teamDisplay} ${teamScore} ${isTeamAway ? '@' : 'vs'} ${opponentScore} ${opponentDisplay} ${simMessage}`)
           }
         }
       }
