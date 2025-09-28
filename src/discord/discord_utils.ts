@@ -703,7 +703,7 @@ export async function getSims(leagueId: string, seasonIndex?: number) {
   return convertedSims
 }
 
-export function createSimMessage(sim: ConfirmedSimV2): string {
+function createSimMessage(sim: ConfirmedSimV2): string {
   if (sim.result === SimResult.FAIR_SIM) {
     return "Fair Sim"
   } else if (sim.result === SimResult.FORCE_WIN_AWAY) {
