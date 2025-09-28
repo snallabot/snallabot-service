@@ -158,8 +158,6 @@ async function showTeamSchedule(token: string, client: DiscordClient,
 
     const gameToSim = new Map<number, ConfirmedSimV2>()
     teamSims.forEach(sim => gameToSim.set(sim.scheduleId, sim))
-    console.log(teamSims)
-
 
     const selectedTeam = teams.getTeamForId(teamId)
     if (!selectedTeam) {
@@ -198,6 +196,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
           const opponentScore = isTeamAway ? game.homeScore : game.awayScore
           const teamWon = teamScore > opponentScore
           const simMessage = gameToSim.has(game.scheduleId) ? `(${createSimMessage(gameToSim.get(game.scheduleId)!)})` : ""
+          console.log(simMessage)
           if (teamWon) {
             scheduleLines.push(`**${weekLabel}:** **${teamDisplay} ${teamScore}** ${isTeamAway ? '@' : 'vs'} ${opponentScore} ${opponentDisplay} ${simMessage}`)
           } else if (teamScore < opponentScore) {
