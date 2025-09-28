@@ -182,6 +182,7 @@ async function showSeasonSims(token: string, client: DiscordClient, league: stri
           divider: true,
           spacing: SeparatorSpacingSize.Small
         },
+        ...paginationButtons,
         {
           type: ComponentType.ActionRow,
           components: [
