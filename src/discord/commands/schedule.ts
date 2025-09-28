@@ -1,6 +1,6 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command, AutocompleteHandler, Autocomplete, MessageComponentHandler, MessageComponentInteraction } from "../commands_handler"
-import { respond, DiscordClient, deferMessage, formatTeamEmoji, getSimsForWeek, formatSchedule, getSims, createSimMessage, createSimMessageShortened } from "../discord_utils"
+import { respond, DiscordClient, deferMessage, formatTeamEmoji, getSimsForWeek, formatSchedule, getSims, createSimMessageShortened } from "../discord_utils"
 import { APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ApplicationCommandType, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
 import { GameResult, MADDEN_SEASON, getMessageForWeek, getMessageForWeekShortened } from "../../export/madden_league_types"
