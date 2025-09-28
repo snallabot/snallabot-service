@@ -1,14 +1,13 @@
 import { ParameterizedContext } from "koa"
 import { verifyKey } from "discord-interactions"
-import { APIApplicationCommand, APIChannel, APIEmoji, APIGuild, APIGuildMember, APIMessage, APIThreadChannel, APIUser, ChannelType, InteractionResponseType, OverwriteType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
+import { APIApplicationCommand, APIChannel, APIEmoji, APIGuild, APIGuildMember, APIMessage, APIThreadChannel, APIUser, ChannelType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { CategoryId, ChannelId, DiscordIdType, MessageId, RoleId, UserId } from "./settings_db"
 import { createDashboard } from "./commands/dashboard"
 import { GameResult, MADDEN_SEASON, MaddenGame, getMessageForWeek } from "../export/madden_league_types"
 import MaddenDB, { TeamList } from "../db/madden_db"
-import { LeagueLogos, leagueLogosView } from "../db/view"
+import { LeagueLogos } from "../db/view"
 import EventDB from "../db/events_db"
 import { ConfirmedSimV2, SimResult } from "../db/events"
-import { PermissionOverwrite } from "oceanic.js"
 
 export enum CommandMode {
   INSTALL = "INSTALL",
@@ -645,6 +644,7 @@ export enum SnallabotTeamEmojis {
   LAR = "<:snallabot_lar:1364103394800701450>",
   SEA = "<:snallabot_sea:1364103391260840018>",
   SF = "<:snallabot_sf:1364106686083895336>",
+  // Default, NFL logo
   NFL = "<:snallabot_nfl:1364108784229810257>"
 }
 
@@ -687,7 +687,13 @@ export async function getSimsForWeek(leagueId: string, week: number, seasonIndex
   const simGames = await MaddenDB.getGamesForSchedule(leagueId, sims.map(s => ({ id: s.scheduleId, week: s.week, season: s.seasonIndex })))
   const convertedSims = sims.map((s, simIndex) => ({ ...s, scheduleId: simGames[simIndex].scheduleId }))
   return convertedSims
+}
 
+export async function getSims(leagueId: string) {
+  const sims = await EventDB.queryEvents<ConfirmedSimV2>(leagueId, "CONFIRMED_SIM", new Date(0), {}, 5000)
+  const simGames = await MaddenDB.getGamesForSchedule(leagueId, sims.map(s => ({ id: s.scheduleId, week: s.week, season: s.seasonIndex })))
+  const convertedSims = sims.map((s, simIndex) => ({ ...s, scheduleId: simGames[simIndex].scheduleId }))
+  return convertedSims
 }
 
 function createSimMessage(sim: ConfirmedSimV2): string {
