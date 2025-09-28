@@ -160,7 +160,13 @@ export async function handleMessageComponent(interaction: MessageComponentIntera
         ctx.status = 200
         ctx.set("Content-Type", "application/json")
         ctx.body = body
-      } else if (parsedCustomId.si != null) {
+      } else if (parsedCustomId.p != null) {
+        const body = await simsHandler.handleInteraction(interaction, client)
+        ctx.status = 200
+        ctx.set("Content-Type", "application/json")
+        ctx.body = body
+      }
+      else if (parsedCustomId.si != null) {
         const body = await schedulesHandler.handleInteraction(interaction, client)
         ctx.status = 200
         ctx.set("Content-Type", "application/json")

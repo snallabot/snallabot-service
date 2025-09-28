@@ -1,7 +1,7 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command, MessageComponentHandler, MessageComponentInteraction } from "../commands_handler"
 import { respond, DiscordClient, deferMessage } from "../discord_utils"
-import { APIMessageStringSelectInteractionData, ApplicationCommandType, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
+import { APIMessageStringSelectInteractionData, ApplicationCommandType, ButtonStyle, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
 import { MADDEN_SEASON } from "../../export/madden_league_types"
 import LeagueSettingsDB, { UserId } from "../settings_db"
@@ -9,9 +9,10 @@ import { discordLeagueView } from "../../db/view"
 import { getSims } from "../discord_utils"
 import { SimResult } from "../../db/events"
 
-export type SeasonSelection = { si: number, }
+export type SeasonSelection = { si: number, p?: number }
+const USERS_PER_PAGE = 10
 
-async function showSeasonSims(token: string, client: DiscordClient, league: string, requestedSeason?: number) {
+async function showSeasonSims(token: string, client: DiscordClient, league: string, requestedSeason?: number, paginatedIndex?: number) {
   try {
     const allSims = await getSims(league)
 
@@ -82,16 +83,23 @@ async function showSeasonSims(token: string, client: DiscordClient, league: stri
     }
 
     // Build the message
-    let message = `# Season ${currentSeason + MADDEN_SEASON} Sim Statistics\n`
+    let message = `# Season ${currentSeason + MADDEN_SEASON} Sims\n`
 
     if (userStatsMap.size === 0) {
       message += "No sims found for this season."
     } else {
       // Sort users by total sims (descending)
-      const sortedUsers = Array.from(userStatsMap.entries()).sort((a, b) => b[1].total - a[1].total)
+      const sortedUsers = Array.from(userStatsMap.entries())
+        .filter(([userId, stats]) => stats.total > 0)
+        .sort((a, b) => b[1].total - a[1].total)
 
-      for (const [userId, stats] of sortedUsers) {
-        message += `<@${userId}> - `
+      // Pagination logic
+      const startIndex = paginatedIndex || 0
+      const endIndex = Math.min(sortedUsers.length, startIndex + USERS_PER_PAGE)
+      const paginatedUsers = sortedUsers.slice(startIndex, endIndex)
+
+      for (const [userId, stats] of paginatedUsers) {
+        message += `<@${userId}>: `
         const parts = []
         if (stats.forceWins > 0) {
           parts.push(`**${stats.forceWins}** FW`)
@@ -128,9 +136,40 @@ async function showSeasonSims(token: string, client: DiscordClient, league: stri
     // Create season selector dropdown
     const seasonOptions = seasons.map(s => ({
       label: `Season ${s + MADDEN_SEASON}`,
-      value: JSON.stringify({ si: s } as SeasonSelection)
+      value: JSON.stringify({ si: s, p: 0 } as SeasonSelection)
     }))
     console.log(message.length)
+    const paginationButtons = []
+    if (userStatsMap.size > USERS_PER_PAGE) {
+      const startIndex = paginatedIndex || 0
+      const totalUsers = Array.from(userStatsMap.entries()).filter(([userId, stats]) => stats.total > 0).length
+
+      paginationButtons.push({
+        type: ComponentType.ActionRow,
+        components: [
+          {
+            type: ComponentType.Button,
+            style: ButtonStyle.Secondary,
+            label: "Back",
+            custom_id: JSON.stringify({
+              si: currentSeason,
+              p: Math.max(startIndex - USERS_PER_PAGE, 0)
+            }),
+            disabled: startIndex === 0
+          },
+          {
+            type: ComponentType.Button,
+            style: ButtonStyle.Secondary,
+            label: "Next",
+            custom_id: JSON.stringify({
+              si: currentSeason,
+              p: Math.min(startIndex + USERS_PER_PAGE, totalUsers)
+            }),
+            disabled: startIndex + USERS_PER_PAGE >= totalUsers
+          }
+        ]
+      })
+    }
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
@@ -201,9 +240,15 @@ export default {
       if (!leagueId) {
         throw new Error("No league found")
       }
-      const selectorData = interaction.data as APIMessageStringSelectInteractionData
-      const selection = JSON.parse(selectorData.values[0]) as SeasonSelection
-      showSeasonSims(interaction.token, client, leagueId, selection.si)
+      if (interaction.custom_id === "sims_season_selector") {
+
+        const selectorData = interaction.data as APIMessageStringSelectInteractionData
+        const selection = JSON.parse(selectorData.values[0]) as SeasonSelection
+        showSeasonSims(interaction.token, client, leagueId, selection.si, selection.p)
+      } else {
+        const selection = JSON.parse(interaction.custom_id) as SeasonSelection
+        showSeasonSims(interaction.token, client, leagueId, selection.si, selection.p)
+      }
     } catch (e) {
       console.error(e)
       await client.editOriginalInteraction(interaction.token, {
