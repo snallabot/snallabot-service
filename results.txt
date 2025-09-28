@@ -1,0 +1,206 @@
+Connecting to Firebase...
+Starting field change analysis...
+Fetching all MADDEN_PLAYER documents...
+Total players to analyze: 5741
+Processed 100/5741 players
+Processed 200/5741 players
+Processed 300/5741 players
+Processed 400/5741 players
+Processed 500/5741 players
+Processed 600/5741 players
+Processed 700/5741 players
+Processed 800/5741 players
+Processed 900/5741 players
+Processed 1000/5741 players
+Processed 1100/5741 players
+Processed 1200/5741 players
+Processed 1300/5741 players
+Processed 1400/5741 players
+Processed 1500/5741 players
+Processed 1600/5741 players
+Processed 1700/5741 players
+Processed 1800/5741 players
+Processed 1900/5741 players
+Processed 2000/5741 players
+Processed 2100/5741 players
+Processed 2200/5741 players
+Processed 2300/5741 players
+Processed 2400/5741 players
+Processed 2500/5741 players
+Processed 2600/5741 players
+Processed 2700/5741 players
+Processed 2800/5741 players
+Processed 2900/5741 players
+Processed 3000/5741 players
+Processed 3100/5741 players
+Processed 3200/5741 players
+Processed 3300/5741 players
+Processed 3400/5741 players
+Processed 3500/5741 players
+Processed 3600/5741 players
+Processed 3700/5741 players
+Processed 3800/5741 players
+Processed 3900/5741 players
+Processed 4000/5741 players
+Processed 4100/5741 players
+Processed 4200/5741 players
+Processed 4300/5741 players
+Processed 4400/5741 players
+Processed 4500/5741 players
+Processed 4600/5741 players
+Processed 4700/5741 players
+Processed 4800/5741 players
+Processed 4900/5741 players
+Processed 5000/5741 players
+Processed 5100/5741 players
+Processed 5200/5741 players
+Processed 5300/5741 players
+Processed 5400/5741 players
+Processed 5500/5741 players
+Processed 5600/5741 players
+Processed 5700/5741 players
+Analysis complete!
+Processed 5741 players
+Players with history: 4787
+Analyzed 37323 history documents
+Found 87 unique fields that changed
+
+============================================================
+FIELD CHANGE ANALYSIS RESULTS
+============================================================
+
+Top 30 Most Changed Fields:
+----------------------------------------
+ 1. experiencePoints          33,267 changes
+ 2. legacyScore               7,822 changes
+ 3. confRating                6,173 changes
+ 4. productionGrade           5,842 changes
+ 5. teamSchemeOvr             2,246 changes
+ 6. desiredSalary             2,029 changes
+ 7. intangibleGrade           1,805 changes
+ 8. playerBestOvr             1,695 changes
+ 9. playerSchemeOvr           1,695 changes
+10. skillPoints               1,593 changes
+11. desiredLength             1,220 changes
+12. reSignStatus              1,167 changes
+13. awareRating               871 changes
+14. teamId                    763 changes
+15. desiredBonus              740 changes
+16. capReleaseNetSavings      732 changes
+17. isFreeAgent               695 changes
+18. contractSalary            543 changes
+19. team                      535 changes
+20. capHit                    503 changes
+21. contractYearsLeft         496 changes
+22. contractLength            496 changes
+23. isOnPracticeSquad         447 changes
+24. tackleRating              429 changes
+25. playRecRating             421 changes
+26. physicalGrade             328 changes
+27. zoneCoverRating           298 changes
+28. manCoverRating            256 changes
+29. blockShedRating           249 changes
+30. sizeGrade                 235 changes
+
+----------------------------------------
+Total field changes: 80,498
+Average changes per field: 925.26
+Fields with only 1 change: 1
+
+============================================================
+FULL RESULTS (JSON FORMAT)
+============================================================
+{
+  "timestamp": "2025-09-28T21:17:09.845Z",
+  "totalUniqueFields": 87,
+  "totalChanges": 80498,
+  "fieldChangeCounts": {
+    "experiencePoints": 33267,
+    "legacyScore": 7822,
+    "confRating": 6173,
+    "productionGrade": 5842,
+    "teamSchemeOvr": 2246,
+    "desiredSalary": 2029,
+    "intangibleGrade": 1805,
+    "playerBestOvr": 1695,
+    "playerSchemeOvr": 1695,
+    "skillPoints": 1593,
+    "desiredLength": 1220,
+    "reSignStatus": 1167,
+    "awareRating": 871,
+    "teamId": 763,
+    "desiredBonus": 740,
+    "capReleaseNetSavings": 732,
+    "isFreeAgent": 695,
+    "contractSalary": 543,
+    "team": 535,
+    "capHit": 503,
+    "contractYearsLeft": 496,
+    "contractLength": 496,
+    "isOnPracticeSquad": 447,
+    "tackleRating": 429,
+    "playRecRating": 421,
+    "physicalGrade": 328,
+    "zoneCoverRating": 298,
+    "manCoverRating": 256,
+    "blockShedRating": 249,
+    "sizeGrade": 235,
+    "contractBonus": 233,
+    "routeRunMedRating": 225,
+    "releaseRating": 224,
+    "capReleasePenalty": 221,
+    "cITRating": 210,
+    "routeRunDeepRating": 201,
+    "catchRating": 180,
+    "pursuitRating": 175,
+    "bCVRating": 174,
+    "jukeMoveRating": 173,
+    "passBlockRating": 167,
+    "spinMoveRating": 162,
+    "specCatchRating": 162,
+    "runBlockRating": 159,
+    "jerseyNum": 154,
+    "routeRunShortRating": 147,
+    "powerMovesRating": 138,
+    "runBlockPowerRating": 127,
+    "finesseMovesRating": 106,
+    "breakTackleRating": 106,
+    "carryRating": 97,
+    "passBlockFinesseRating": 96,
+    "passBlockPowerRating": 95,
+    "leadBlockRating": 93,
+    "runBlockFinesseRating": 91,
+    "pressRating": 91,
+    "throwAccMidRating": 89,
+    "throwUnderPressureRating": 83,
+    "hitPowerRating": 79,
+    "truckRating": 74,
+    "impactBlockRating": 70,
+    "throwAccShortRating": 60,
+    "throwOnRunRating": 49,
+    "kickAccRating": 46,
+    "throwAccDeepRating": 45,
+    "playActionRating": 42,
+    "position": 38,
+    "changeOfDirectionRating": 35,
+    "stiffArmRating": 30,
+    "breakSackRating": 26,
+    "accelRating": 20,
+    "devTrait": 19,
+    "agilityRating": 18,
+    "jumpRating": 16,
+    "strengthRating": 13,
+    "toughRating": 8,
+    "kickPowerRating": 8,
+    "isActive": 7,
+    "injuryType": 5,
+    "longSnapRating": 5,
+    "injuryLength": 4,
+    "injuryRating": 2,
+    "portraitId": 2,
+    "isOnIR": 2,
+    "speedRating": 2,
+    "weight": 2,
+    "lastName": 1
+  }
+}

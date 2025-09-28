@@ -217,7 +217,11 @@ export const SnallabotExportDestination: MaddenExportDestination = {
   },
   teamRoster: async function(platform: string, leagueId: string, teamId: string, data: RosterExport): Promise<ExportResult> {
     const events = data.rosterInfoList.map(player => ({ key: leagueId, platform: platform, event_type: MaddenEvents.MADDEN_PLAYER, team: teamId, ...player }))
-    await sendEvents(leagueId, `roster${teamId}`, events, e => e.rosterId)
+    await sendEvents(leagueId, `roster${teamId}`, events, e => e.rosterId, e => {
+      // analysis shows that these fields change the most, and arent honestly that useful. this should cut down on the data we write
+      const { experiencePoints, legacyScore, confRating, productionGrade, teamSchemeOvr, intangibleGrade, ...rest } = e
+      return hash(rest)
+    })
     await MaddenDB.updateRosterExportStatus(leagueId, MaddenEvents.MADDEN_PLAYER, teamId)
     return ExportResult.SUCCESS
   }
@@ -231,7 +235,7 @@ export function createDestination(url: string) {
   }
 }
 const hash: (a: any) => string = require("object-hash")
-export async function sendEvents<T>(league: string, request_type: string, events: Array<SnallabotEvent<T>>, identifier: (e: T) => number | string): Promise<void> {
+export async function sendEvents<T>(league: string, request_type: string, events: Array<SnallabotEvent<T>>, identifier: (e: T) => number | string, hasher: (a: T) => string = hash): Promise<void> {
   if (events.length == 0) {
     return
   }
@@ -240,8 +244,8 @@ export async function sendEvents<T>(league: string, request_type: string, events
     throw new Error("No Event Type found for " + request_type)
   }
   const oldTree = await MaddenHash.readTree(league, request_type, eventType)
-  const hashToEvent = new Map(events.map(e => [hash(e), e]))
-  const newNodes = events.sort((e, e2) => `${identifier(e)}`.localeCompare(`${identifier(e2)}`)).map(e => ({ hash: hash(e), children: [] }))
+  const hashToEvent = new Map(events.map(e => [hasher(e), e]))
+  const newNodes = events.sort((e, e2) => `${identifier(e)}`.localeCompare(`${identifier(e2)}`)).map(e => ({ hash: hasher(e), children: [] }))
 
   const newTree = createTwoLayer(newNodes)
   const hashDifferences = findDifferences(newTree, oldTree)
