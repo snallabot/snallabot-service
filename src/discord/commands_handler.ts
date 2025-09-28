@@ -18,6 +18,7 @@ import standingsHandler from "./commands/standings"
 import playerHandler from "./commands/player"
 import gameStatsHandler from "./commands/game_stats"
 import bracketHandler from "./commands/bracket"
+import simsHandler from "./commands/sims"
 import { APIMessageComponentInteractionData } from "discord-api-types/v9"
 
 export type Command = { command_name: string, token: string, guild_id: string, data: APIChatInputApplicationCommandInteractionData, member: APIInteractionGuildMember }
@@ -52,7 +53,8 @@ const SlashCommands: CommandsHandler = {
   "test": testHandler,
   "standings": standingsHandler,
   "player": playerHandler,
-  "playoffs": bracketHandler
+  "playoffs": bracketHandler,
+  "sims": simsHandler
 }
 
 const AutocompleteCommands: AutocompleteHandlers = {
@@ -67,7 +69,8 @@ const MessageComponents: MessageComponentHandlers = {
   "season_selector": schedulesHandler,
   "team_season_selector": schedulesHandler,
   "game_stats": gameStatsHandler,
-  "standings_filter": standingsHandler
+  "standings_filter": standingsHandler,
+  "sims_season_selector": simsHandler
 }
 
 export async function handleCommand(command: Command, ctx: ParameterizedContext, discordClient: DiscordClient, db: Firestore) {
@@ -157,7 +160,13 @@ export async function handleMessageComponent(interaction: MessageComponentIntera
         ctx.status = 200
         ctx.set("Content-Type", "application/json")
         ctx.body = body
-      } else if (parsedCustomId.si != null) {
+      } else if (parsedCustomId.p != null) {
+        const body = await simsHandler.handleInteraction(interaction, client)
+        ctx.status = 200
+        ctx.set("Content-Type", "application/json")
+        ctx.body = body
+      }
+      else if (parsedCustomId.si != null) {
         const body = await schedulesHandler.handleInteraction(interaction, client)
         ctx.status = 200
         ctx.set("Content-Type", "application/json")
