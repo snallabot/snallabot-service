@@ -18,6 +18,24 @@ export function getMessageForWeek(week: number) {
   throw new Error("Unknown week " + week)
 }
 
+export function getMessageForWeekShortened(week: number) {
+  if (week < 1 || week > 23 || week === 22) {
+    throw new Error("Invalid week number. Valid weeks are week 1-18 and for playoffs: Wildcard = 19, Divisional = 20, Conference Championship = 21, Super Bowl = 23")
+  }
+  if (week <= 18) {
+    return `Wk ${week}`
+  } else if (week === 19) {
+    return "Wildcard"
+  } else if (week === 20) {
+    return "Divisional"
+  } else if (week === 21) {
+    return "Conference Championship"
+  } else if (week === 23) {
+    return "Super Bowl"
+  }
+  throw new Error("Unknown week " + week)
+}
+
 export type Team = {
   ovrRating: number,
   injuryCount: number,
