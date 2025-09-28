@@ -36,7 +36,7 @@ async function showSeasonSims(token: string, client: DiscordClient, league: stri
     const seasonSims = allSims.filter(sim => sim.seasonIndex === currentSeason)
 
     // Group sims by user and categorize by result type
-    const userStatsMap = new Map<UserId, { forceWins: number, forceLosses: number, fairSims: number, total: number }>()
+    const userStatsMap = new Map<string, { forceWins: number, forceLosses: number, fairSims: number, total: number }>()
 
     for (const sim of seasonSims) {
       // Only count homeUser and awayUser, ignore confirmed/requested users
@@ -45,15 +45,15 @@ async function showSeasonSims(token: string, client: DiscordClient, league: stri
       }
 
       // Initialize users if they don't exist
-      if (!userStatsMap.has(sim.homeUser)) {
-        userStatsMap.set(sim.homeUser, { forceWins: 0, forceLosses: 0, fairSims: 0, total: 0 })
+      if (!userStatsMap.has(sim.homeUser.id)) {
+        userStatsMap.set(sim.homeUser.id, { forceWins: 0, forceLosses: 0, fairSims: 0, total: 0 })
       }
-      if (!userStatsMap.has(sim.awayUser)) {
-        userStatsMap.set(sim.awayUser, { forceWins: 0, forceLosses: 0, fairSims: 0, total: 0 })
+      if (!userStatsMap.has(sim.awayUser.id)) {
+        userStatsMap.set(sim.awayUser.id, { forceWins: 0, forceLosses: 0, fairSims: 0, total: 0 })
       }
 
-      const homeStats = userStatsMap.get(sim.homeUser)!
-      const awayStats = userStatsMap.get(sim.awayUser)!
+      const homeStats = userStatsMap.get(sim.homeUser.id)!
+      const awayStats = userStatsMap.get(sim.awayUser.id)!
 
       // Increment totals for both users
       homeStats.total++
