@@ -196,7 +196,6 @@ async function showTeamSchedule(token: string, client: DiscordClient,
           const opponentScore = isTeamAway ? game.homeScore : game.awayScore
           const teamWon = teamScore > opponentScore
           const simMessage = gameToSim.has(game.scheduleId) ? `(${createSimMessage(gameToSim.get(game.scheduleId)!)})` : ""
-          console.log(simMessage)
           if (teamWon) {
             scheduleLines.push(`**${weekLabel}:** **${teamDisplay} ${teamScore}** ${isTeamAway ? '@' : 'vs'} ${opponentScore} ${opponentDisplay} ${simMessage}`)
           } else if (teamScore < opponentScore) {
@@ -271,6 +270,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
         value: { si: s, ti: teamId }
       }))
       .map(option => ({ ...option, value: JSON.stringify(option.value) }))
+    console.log(message.length)
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
