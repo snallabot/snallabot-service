@@ -1,14 +1,15 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command, AutocompleteHandler, Autocomplete, MessageComponentHandler, MessageComponentInteraction } from "../commands_handler"
-import { respond, DiscordClient, deferMessage, formatTeamEmoji, formatGame, getSimsForWeek, formatSchedule } from "../discord_utils"
+import { respond, DiscordClient, deferMessage, formatTeamEmoji, getSimsForWeek, formatSchedule, getSims, createSimMessageForTeam } from "../discord_utils"
 import { APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ApplicationCommandType, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
-import { GameResult, MADDEN_SEASON, getMessageForWeek } from "../../export/madden_league_types"
+import { GameResult, MADDEN_SEASON, getMessageForWeek, getMessageForWeekShortened } from "../../export/madden_league_types"
 import MaddenClient from "../../db/madden_db"
 import LeagueSettingsDB from "../settings_db"
 import { discordLeagueView, leagueLogosView, teamSearchView } from "../../db/view"
 import { GameStatsOptions } from "./game_stats"
 import fuzzysort from "fuzzysort"
+import { ConfirmedSimV2 } from "../../db/events"
 
 export type WeekSelection = { wi: number, si: number }
 export type TeamSelection = { ti: number, si: number }
@@ -128,6 +129,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
       MaddenClient.getLatestTeams(league),
       MaddenClient.getAllWeeks(league)
     ])
+    const sims = await getSims(league, requestedSeason)
 
     const schedule = settledPromise[0].status === "fulfilled" ? settledPromise[0].value : []
     if (settledPromise[1].status !== "fulfilled") {
@@ -146,6 +148,16 @@ async function showTeamSchedule(token: string, client: DiscordClient,
       teams.getTeamForId(game.awayTeamId).teamId === teamId || teams.getTeamForId(game.homeTeamId).teamId === teamId
     ).sort((a, b) => a.scheduleId - b.scheduleId)
 
+    const scheduleKeys = new Set(
+      teamSchedule.map(game => `${game.scheduleId}-${game.seasonIndex}`)
+    )
+
+    const teamSims = sims.filter(sim =>
+      scheduleKeys.has(`${sim.scheduleId}-${sim.seasonIndex}`)
+    )
+
+    const gameToSim = new Map<number, ConfirmedSimV2>()
+    teamSims.forEach(sim => gameToSim.set(sim.scheduleId, sim))
 
     const selectedTeam = teams.getTeamForId(teamId)
     if (!selectedTeam) {
@@ -167,7 +179,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
         // Only show bye week for regular season weeks (1-18)
         // its only a bye week if that week exists. if it does not, then its just a missing exported week
         if (week <= 18) {
-          scheduleLines.push(`**Week ${week}:** BYE`)
+          scheduleLines.push(`**Wk ${week}:** BYE`)
         }
       } else {
         const isTeamAway = teams.getTeamForId(game.awayTeamId).teamId === teamId
@@ -175,7 +187,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
         const opponentDisplay = `${formatTeamEmoji(logos, opponent?.abbrName)} ${opponent?.displayName}`
         const teamDisplay = `${formatTeamEmoji(logos, selectedTeam.abbrName)} ${selectedTeam.displayName}`
 
-        const weekLabel = getMessageForWeek(week)
+        const weekLabel = getMessageForWeekShortened(week)
 
         if (game.status === GameResult.NOT_PLAYED) {
           scheduleLines.push(`**${weekLabel}:** ${teamDisplay} ${isTeamAway ? '@' : 'vs'} ${opponentDisplay}`)
@@ -183,14 +195,14 @@ async function showTeamSchedule(token: string, client: DiscordClient,
           const teamScore = isTeamAway ? game.awayScore : game.homeScore
           const opponentScore = isTeamAway ? game.homeScore : game.awayScore
           const teamWon = teamScore > opponentScore
-
+          const simMessage = gameToSim.has(game.scheduleId) ? `(${createSimMessageForTeam(gameToSim.get(game.scheduleId)!, game, teamId, teams)})` : ""
           if (teamWon) {
-            scheduleLines.push(`**${weekLabel}:** **${teamDisplay} ${teamScore}** ${isTeamAway ? '@' : 'vs'} ${opponentScore} ${opponentDisplay}`)
+            scheduleLines.push(`**${weekLabel}:** **${teamDisplay} ${teamScore}** ${isTeamAway ? '@' : 'vs'} ${opponentScore} ${opponentDisplay} ${simMessage}`)
           } else if (teamScore < opponentScore) {
-            scheduleLines.push(`**${weekLabel}:** ${teamDisplay} ${teamScore} ${isTeamAway ? '@' : 'vs'} **${opponentScore} ${opponentDisplay}**`)
+            scheduleLines.push(`**${weekLabel}:** ${teamDisplay} ${teamScore} ${isTeamAway ? '@' : 'vs'} **${opponentScore} ${opponentDisplay}** ${simMessage}`)
           } else {
             // Tie game
-            scheduleLines.push(`**${weekLabel}:** ${teamDisplay} ${teamScore} ${isTeamAway ? '@' : 'vs'} ${opponentScore} ${opponentDisplay}`)
+            scheduleLines.push(`**${weekLabel}:** ${teamDisplay} ${teamScore} ${isTeamAway ? '@' : 'vs'} ${opponentScore} ${opponentDisplay} ${simMessage}`)
           }
         }
       }
