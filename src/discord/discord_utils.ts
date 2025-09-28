@@ -3,7 +3,7 @@ import { verifyKey } from "discord-interactions"
 import { APIApplicationCommand, APIChannel, APIEmoji, APIGuild, APIGuildMember, APIMessage, APIThreadChannel, APIUser, ChannelType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { CategoryId, ChannelId, DiscordIdType, MessageId, RoleId, UserId } from "./settings_db"
 import { createDashboard } from "./commands/dashboard"
-import { GameResult, MADDEN_SEASON, MaddenGame, getMessageForWeek } from "../export/madden_league_types"
+import { GameResult, MADDEN_SEASON, MaddenGame, Team, getMessageForWeek } from "../export/madden_league_types"
 import MaddenDB, { TeamList } from "../db/madden_db"
 import { LeagueLogos } from "../db/view"
 import EventDB from "../db/events_db"
@@ -714,13 +714,14 @@ export function createSimMessage(sim: ConfirmedSimV2): string {
   throw new Error("Should not have gotten here! from createSimMessage")
 }
 
-export function createSimMessageShortened(sim: ConfirmedSimV2): string {
+export function createSimMessageForTeam(sim: ConfirmedSimV2, game: MaddenGame, selectedTeamId: number, teams: TeamList): string {
+  const isTeamAway = teams.getTeamForId(game.awayTeamId).teamId === selectedTeamId
   if (sim.result === SimResult.FAIR_SIM) {
     return "FS"
   } else if (sim.result === SimResult.FORCE_WIN_AWAY) {
-    return "FW Away"
+    return isTeamAway ? "FW" : "FL"
   } else if (sim.result === SimResult.FORCE_WIN_HOME) {
-    return "FW Home"
+    return isTeamAway ? "FL" : "FW"
   }
   throw new Error("Should not have gotten here! from createSimMessage")
 }

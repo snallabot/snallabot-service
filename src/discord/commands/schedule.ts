@@ -1,6 +1,6 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command, AutocompleteHandler, Autocomplete, MessageComponentHandler, MessageComponentInteraction } from "../commands_handler"
-import { respond, DiscordClient, deferMessage, formatTeamEmoji, getSimsForWeek, formatSchedule, getSims, createSimMessageShortened } from "../discord_utils"
+import { respond, DiscordClient, deferMessage, formatTeamEmoji, getSimsForWeek, formatSchedule, getSims, createSimMessageForTeam } from "../discord_utils"
 import { APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ApplicationCommandType, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
 import { GameResult, MADDEN_SEASON, getMessageForWeek, getMessageForWeekShortened } from "../../export/madden_league_types"
@@ -195,7 +195,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
           const teamScore = isTeamAway ? game.awayScore : game.homeScore
           const opponentScore = isTeamAway ? game.homeScore : game.awayScore
           const teamWon = teamScore > opponentScore
-          const simMessage = gameToSim.has(game.scheduleId) ? `(${createSimMessageShortened(gameToSim.get(game.scheduleId)!)})` : ""
+          const simMessage = gameToSim.has(game.scheduleId) ? `(${createSimMessageForTeam(gameToSim.get(game.scheduleId)!, game, teamId, teams)})` : ""
           if (teamWon) {
             scheduleLines.push(`**${weekLabel}:** **${teamDisplay} ${teamScore}** ${isTeamAway ? '@' : 'vs'} ${opponentScore} ${opponentDisplay} ${simMessage}`)
           } else if (teamScore < opponentScore) {
