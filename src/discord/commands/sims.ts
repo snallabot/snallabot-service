@@ -91,17 +91,19 @@ async function showSeasonSims(token: string, client: DiscordClient, league: stri
       const sortedUsers = Array.from(userStatsMap.entries()).sort((a, b) => b[1].total - a[1].total)
 
       for (const [userId, stats] of sortedUsers) {
-        message += `**<@${userId}>** - ${stats.total} Sims`
+        message += "<@${userId}> - "
+        const parts = []
         if (stats.forceWins > 0) {
-          message += ` | FW **${stats.forceWins}**`
+          parts.push(`**${stats.forceWins}** FW`)
         }
         if (stats.forceLosses > 0) {
-          message += ` | FL **${stats.forceLosses}**`
+          parts.push(`**${stats.forceLosses}** FL`)
         }
         if (stats.fairSims > 0) {
-          message += `| FS **${stats.fairSims}**`
+          parts.push(` **${stats.fairSims}** FS`)
         }
-        message += "\n"
+        parts.push(`**${stats.total}** Total\n`)
+        message += parts.join(' • ')
       }
 
       // Add summary stats
@@ -128,7 +130,7 @@ async function showSeasonSims(token: string, client: DiscordClient, league: stri
       label: `Season ${s + MADDEN_SEASON}`,
       value: JSON.stringify({ si: s } as SeasonSelection)
     }))
-    console.log(message)
+    console.log(message.length)
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
