@@ -101,7 +101,7 @@ async function showSeasonSims(token: string, client: DiscordClient, league: stri
       label: `Season ${s + MADDEN_SEASON}`,
       value: JSON.stringify({ si: s } as SeasonSelection)
     }))
-
+    console.log(message.length)
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
