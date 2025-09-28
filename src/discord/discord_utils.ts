@@ -714,6 +714,17 @@ export function createSimMessage(sim: ConfirmedSimV2): string {
   throw new Error("Should not have gotten here! from createSimMessage")
 }
 
+export function createSimMessageShortened(sim: ConfirmedSimV2): string {
+  if (sim.result === SimResult.FAIR_SIM) {
+    return "FS"
+  } else if (sim.result === SimResult.FORCE_WIN_AWAY) {
+    return "FW Away"
+  } else if (sim.result === SimResult.FORCE_WIN_HOME) {
+    return "FW Home"
+  }
+  throw new Error("Should not have gotten here! from createSimMessage")
+}
+
 export function formatSchedule(week: number, seasonIndex: number, games: MaddenGame[], teams: TeamList, sims: ConfirmedSimV2[], logos: LeagueLogos) {
   const gameToSim = new Map<number, ConfirmedSimV2>()
   sims.forEach(sim => gameToSim.set(sim.scheduleId, sim))

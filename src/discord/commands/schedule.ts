@@ -1,9 +1,9 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command, AutocompleteHandler, Autocomplete, MessageComponentHandler, MessageComponentInteraction } from "../commands_handler"
-import { respond, DiscordClient, deferMessage, formatTeamEmoji, formatGame, getSimsForWeek, formatSchedule, getSims, createSimMessage } from "../discord_utils"
+import { respond, DiscordClient, deferMessage, formatTeamEmoji, , getSimsForWeek, formatSchedule, getSims, createSimMessage, createSimMessageShortened } from "../discord_utils"
 import { APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ApplicationCommandType, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
-import { GameResult, MADDEN_SEASON, getMessageForWeek } from "../../export/madden_league_types"
+import { GameResult, MADDEN_SEASON, getMessageForWeek, getMessageForWeekShortened } from "../../export/madden_league_types"
 import MaddenClient from "../../db/madden_db"
 import LeagueSettingsDB from "../settings_db"
 import { discordLeagueView, leagueLogosView, teamSearchView } from "../../db/view"
@@ -179,7 +179,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
         // Only show bye week for regular season weeks (1-18)
         // its only a bye week if that week exists. if it does not, then its just a missing exported week
         if (week <= 18) {
-          scheduleLines.push(`**Week ${week}:** BYE`)
+          scheduleLines.push(`**Wk ${week}:** BYE`)
         }
       } else {
         const isTeamAway = teams.getTeamForId(game.awayTeamId).teamId === teamId
@@ -187,7 +187,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
         const opponentDisplay = `${formatTeamEmoji(logos, opponent?.abbrName)} ${opponent?.displayName}`
         const teamDisplay = `${formatTeamEmoji(logos, selectedTeam.abbrName)} ${selectedTeam.displayName}`
 
-        const weekLabel = getMessageForWeek(week)
+        const weekLabel = getMessageForWeekShortened(week)
 
         if (game.status === GameResult.NOT_PLAYED) {
           scheduleLines.push(`**${weekLabel}:** ${teamDisplay} ${isTeamAway ? '@' : 'vs'} ${opponentDisplay}`)
@@ -195,7 +195,7 @@ async function showTeamSchedule(token: string, client: DiscordClient,
           const teamScore = isTeamAway ? game.awayScore : game.homeScore
           const opponentScore = isTeamAway ? game.homeScore : game.awayScore
           const teamWon = teamScore > opponentScore
-          const simMessage = gameToSim.has(game.scheduleId) ? `(${createSimMessage(gameToSim.get(game.scheduleId)!)})` : ""
+          const simMessage = gameToSim.has(game.scheduleId) ? `(${createSimMessageShortened(gameToSim.get(game.scheduleId)!)})` : ""
           if (teamWon) {
             scheduleLines.push(`**${weekLabel}:** **${teamDisplay} ${teamScore}** ${isTeamAway ? '@' : 'vs'} ${opponentScore} ${opponentDisplay} ${simMessage}`)
           } else if (teamScore < opponentScore) {
