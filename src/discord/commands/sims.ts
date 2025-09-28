@@ -39,33 +39,45 @@ async function showSeasonSims(token: string, client: DiscordClient, league: stri
     const userStatsMap = new Map<UserId, { forceWins: number, forceLosses: number, fairSims: number, total: number }>()
 
     for (const sim of seasonSims) {
-      // Get all users involved in the sim
-      const users = []
-      if (sim.homeUser) users.push(sim.homeUser)
-      if (sim.awayUser) users.push(sim.awayUser)
+      // Only count homeUser and awayUser, ignore confirmed/requested users
+      if (!sim.homeUser || !sim.awayUser) {
+        continue; // Skip sims without both users
+      }
 
-      for (const userId of users) {
-        if (!userStatsMap.has(userId)) {
-          userStatsMap.set(userId, { forceWins: 0, forceLosses: 0, fairSims: 0, total: 0 })
-        }
+      // Initialize users if they don't exist
+      if (!userStatsMap.has(sim.homeUser)) {
+        userStatsMap.set(sim.homeUser, { forceWins: 0, forceLosses: 0, fairSims: 0, total: 0 })
+      }
+      if (!userStatsMap.has(sim.awayUser)) {
+        userStatsMap.set(sim.awayUser, { forceWins: 0, forceLosses: 0, fairSims: 0, total: 0 })
+      }
 
-        const stats = userStatsMap.get(userId)!
-        stats.total++
+      const homeStats = userStatsMap.get(sim.homeUser)!
+      const awayStats = userStatsMap.get(sim.awayUser)!
 
-        // Categorize the sim result
-        switch (sim.result) {
-          case SimResult.FORCE_WIN_AWAY:
-          case SimResult.FORCE_WIN_HOME:
-            stats.forceWins++
-            break
-          case SimResult.FAIR_SIM:
-            stats.fairSims++
-            break
-          default:
-            // Default to fair sim for any unknown results
-            stats.fairSims++
-            break
-        }
+      // Increment totals for both users
+      homeStats.total++
+      awayStats.total++
+
+      // Categorize the sim result based on who wins/loses
+      switch (sim.result) {
+        case SimResult.FORCE_WIN_HOME:
+          homeStats.forceWins++
+          awayStats.forceLosses++
+          break
+        case SimResult.FORCE_WIN_AWAY:
+          awayStats.forceWins++
+          homeStats.forceLosses++
+          break
+        case SimResult.FAIR_SIM:
+          homeStats.fairSims++
+          awayStats.fairSims++
+          break
+        default:
+          // Default to fair sim for any unknown results
+          homeStats.fairSims++
+          awayStats.fairSims++
+          break
       }
     }
 
@@ -80,9 +92,16 @@ async function showSeasonSims(token: string, client: DiscordClient, league: stri
 
       for (const [userId, stats] of sortedUsers) {
         message += `**<@${userId}>** - ${stats.total} total sims\n`
-        message += `  • Force Wins: **${stats.forceWins}**\n`
-        message += `  • Force Losses: **${stats.forceLosses}**\n`
-        message += `  • Fair Sims: **${stats.fairSims}**\n\n`
+        if (stats.forceWins > 0) {
+          message += `  • Force Wins: **${stats.forceWins}**\n`
+        }
+        if (stats.forceLosses > 0) {
+          message += `  • Force Losses: **${stats.forceLosses}**\n`
+        }
+        if (stats.fairSims > 0) {
+          message += `  • Fair Sims: **${stats.fairSims}**\n`
+        }
+        message += "\n"
       }
 
       // Add summary stats
@@ -93,7 +112,15 @@ async function showSeasonSims(token: string, client: DiscordClient, league: stri
 
       message += `**Season Summary:**\n`
       message += `Total Sims: **${totalSims}**\n`
-      message += `Force Wins: **${totalForceWins}** • Force Losses: **${totalForceLosses}** • Fair Sims: **${totalFairSims}**`
+
+      const summaryParts = []
+      if (totalForceWins > 0) summaryParts.push(`Force Wins: **${totalForceWins}**`)
+      if (totalForceLosses > 0) summaryParts.push(`Force Losses: **${totalForceLosses}**`)
+      if (totalFairSims > 0) summaryParts.push(`Fair Sims: **${totalFairSims}**`)
+
+      if (summaryParts.length > 0) {
+        message += summaryParts.join(' • ')
+      }
     }
 
     // Create season selector dropdown
