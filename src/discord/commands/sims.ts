@@ -110,11 +110,11 @@ async function showSeasonSims(token: string, client: DiscordClient, league: stri
         if (stats.fairSims > 0) {
           parts.push(` **${stats.fairSims}** FS`)
         }
+        parts.push(`\n`)
         message += parts.join(' • ')
       }
 
       // Add summary stats
-      const totalSims = seasonSims.length
       const totalForceWins = Array.from(userStatsMap.values()).reduce((sum, stats) => sum + stats.forceWins, 0)
       const totalForceLosses = Array.from(userStatsMap.values()).reduce((sum, stats) => sum + stats.forceLosses, 0)
       const totalFairSims = Array.from(userStatsMap.values()).reduce((sum, stats) => sum + stats.fairSims, 0)
