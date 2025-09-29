@@ -158,5 +158,5 @@ if (process.env.SERVICE_ACCOUNT_FILE) {
 } else if (process.env.SERVICE_ACCOUNT) {
   serviceAccount = process.env.SERVICE_ACCOUNT
 }
-const fileHandler = serviceAccount && process.env.USE_GCS ? new GCSFileHandler(serviceAccount) : new LocalFileHandler
+const fileHandler = serviceAccount && process.env.USE_GCS === "true" ? new GCSFileHandler(serviceAccount) : new LocalFileHandler
 export default fileHandler

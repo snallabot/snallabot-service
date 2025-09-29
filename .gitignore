@@ -9,6 +9,8 @@ pinger_test.sh
 install_*_commands.sh
 discord_tester.js
 *.sh
+.dev.env
+.prod.env
 
 # Logs
 logs

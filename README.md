@@ -14,12 +14,23 @@ Snallabot welcomes contributions! To run a local version of the bot, you need th
 - Node 21 (greater should be okay)
 - Discord Application - free to register on [Discord Developer Portal](https://discord.com/developers/applications)
 
+Setup your env file by copying .base.env in a file called `.dev.env`
+
 ```sh
-npm install
-PUBLIC_KEY=??? DISCORD_TOKEN=??? APP_ID=??? DEPLOYMENT_URL=localhost:3000 npm run dev
+cp .base.env .dev.env
 ```
 
-Fill in the env variables with the ones from your Discord application. This will setup a firebase emulator, use local file storage, and make a local version of snallabot availaible at `localhost:3000`
+Then fill in the env file with the required fields. Some will be from your discord developer portal. The `.base.env` has info on each field required and optional
+
+For production, you will need similar env setup that is dependent on your deployment. 
+
+Then install all the dependencies and run the dev version!
+```sh
+npm install
+npm run dev
+```
+
+This will setup a firebase emulator, use local file storage, and make a local version of snallabot availaible at `localhost:3000`
 
 ### Other Components
 
@@ -27,7 +38,7 @@ There are 3 other runnable components in Snallabot: EA token refresher, youtube 
 
 #### EA Token Refresher
 
-There are two EA tokens: access_token and refresh_token. The access_token expires after 4 hours, and then to retrieve a new one you use the refresh_token. This will give you a new access_token and refresh_token. Seemingly, both tokens will eventually expire after around 10 days of usage. Snallabot keeps all dashboards refreshed, and exports data with [ea_refresher.ts](https://github.com/snallabot/snallabot-service/blob/main/src/dashboard/ea_refresher.ts) file. This is an example of a way to keep data fresh. I recommend using it as reference and writing your own.
+There are two EA tokens: `access_token` and `refresh_token`. The `access_token` expires after 4 hours, and then to retrieve a new one you use the `refresh_token`. This will give you a new `access_token` and `refresh_token`. Seemingly, both tokens will eventually expire after around 10 days of usage. Snallabot keeps all dashboards refreshed, and exports data with [ea_refresher.ts](https://github.com/snallabot/snallabot-service/blob/main/src/dashboard/ea_refresher.ts) file. This is an example of a way to keep data fresh. I recommend using it as reference and writing your own.
 
 #### Youtube Notifier
 
