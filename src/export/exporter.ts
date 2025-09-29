@@ -235,7 +235,7 @@ export function createDestination(url: string) {
   }
 }
 const hash: (a: any) => string = require("object-hash")
-const OPTIMIZE_WRITES = process.env.USE_WRITE_HASHES
+const OPTIMIZE_WRITES = process.env.USE_WRITE_HASHES === "true"
 export async function sendEvents<T>(league: string, request_type: string, events: Array<SnallabotEvent<T>>, identifier: (e: T) => number | string, hasher: (a: T) => string = hash): Promise<void> {
   if (events.length == 0) {
     return
