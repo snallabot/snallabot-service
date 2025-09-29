@@ -235,29 +235,35 @@ export function createDestination(url: string) {
   }
 }
 const hash: (a: any) => string = require("object-hash")
+const OPTIMIZE_WRITES = process.env.USE_WRITE_HASHES
 export async function sendEvents<T>(league: string, request_type: string, events: Array<SnallabotEvent<T>>, identifier: (e: T) => number | string, hasher: (a: T) => string = hash): Promise<void> {
   if (events.length == 0) {
     return
   }
-  const eventType = events.map(e => e.event_type).pop()
-  if (!eventType) {
-    throw new Error("No Event Type found for " + request_type)
-  }
-  const oldTree = await MaddenHash.readTree(league, request_type, eventType)
-  const hashToEvent = new Map(events.map(e => [hasher(e), e]))
-  const newNodes = events.sort((e, e2) => `${identifier(e)}`.localeCompare(`${identifier(e2)}`)).map(e => ({ hash: hasher(e), children: [] }))
+  if (OPTIMIZE_WRITES) {
+    const eventType = events.map(e => e.event_type).pop()
+    if (!eventType) {
+      throw new Error("No Event Type found for " + request_type)
+    }
+    const oldTree = await MaddenHash.readTree(league, request_type, eventType)
+    const hashToEvent = new Map(events.map(e => [hasher(e), e]))
+    const newNodes = events.sort((e, e2) => `${identifier(e)}`.localeCompare(`${identifier(e2)}`)).map(e => ({ hash: hasher(e), children: [] }))
 
-  const newTree = createTwoLayer(newNodes)
-  const hashDifferences = findDifferences(newTree, oldTree)
-  if (hashDifferences.length > 0) {
-    // if (hashDifferences.length > 0) {
-    // console.log(newNodes)
+    const newTree = createTwoLayer(newNodes)
+    const hashDifferences = findDifferences(newTree, oldTree)
+    if (hashDifferences.length > 0) {
+      // if (hashDifferences.length > 0) {
+      // console.log(newNodes)
+      // }
+      const finalEvents = hashDifferences.map(h => hashToEvent.get(h)).filter(e => e) as SnallabotEvent<T>[]
+      await MaddenDB.appendEvents(finalEvents, (e: T) => `${identifier(e)}`)
+      await MaddenHash.writeTree(league, request_type, eventType, newTree)
+    }
+
+    // else {
+    //     console.debug("skipped writing!")
     // }
-    const finalEvents = hashDifferences.map(h => hashToEvent.get(h)).filter(e => e) as SnallabotEvent<T>[]
-    await MaddenDB.appendEvents(finalEvents, (e: T) => `${identifier(e)}`)
-    await MaddenHash.writeTree(league, request_type, eventType, newTree)
+  } else {
+    await MaddenDB.appendEvents(events, (e: T) => `${identifier(e)}`)
   }
-  // else {
-  //     console.debug("skipped writing!")
-  // }
 }
