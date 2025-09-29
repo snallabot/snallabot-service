@@ -689,7 +689,8 @@ function getPositionalTraits(player: Player) {
 
 
 function getDevTraitName(devTrait: DevTrait, yearsPro: number): string {
-  if (yearsPro === 0) {
+  // non normal dev rookies get hidden dev
+  if (yearsPro === 0 && devTrait !== DevTrait.NORMAL) {
     return SnallabotDevEmojis.HIDDEN
   }
   switch (devTrait) {
