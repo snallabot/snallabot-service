@@ -1,3 +1,3 @@
 # Architecture
 
-[Snallabot Architecture Diagram](./arch.png)
+![Snallabot Architecture Diagram](./arch.png)
