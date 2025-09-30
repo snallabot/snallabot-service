@@ -4,6 +4,7 @@ import MaddenHash, { createTwoLayer, findDifferences } from "../db/madden_hash_s
 import { DefensiveExport, KickingExport, PassingExport, PuntingExport, ReceivingExport, RosterExport, RushingExport, SchedulesExport, StandingExport, TeamExport, TeamStatsExport } from "./madden_league_types";
 import { Stage } from "../dashboard/ea_client";
 import { DEPLOYMENT_URL } from "../config";
+import FileHandler, { defaultSerializer } from "../file_handlers"
 
 export enum ExportResult {
   SUCCESS = 0,
@@ -229,7 +230,7 @@ export const SnallabotExportDestination: MaddenExportDestination = {
 
 export function createDestination(url: string) {
   if (url.includes(DEPLOYMENT_URL)) {
-    return SnallabotExportDestination
+    return FileExportDestination
   } else {
     return MaddenUrlDestination(url)
   }
@@ -267,3 +268,78 @@ export async function sendEvents<T>(league: string, request_type: string, events
     await MaddenDB.appendEvents(events, (e: T) => `${identifier(e)}`)
   }
 }
+
+// used to write Madden data to files 
+const FileExportDestination: MaddenExportDestination = {
+  async leagueTeams(platform: string, leagueId: string, data: TeamExport): Promise<ExportResult> {
+    const path = `${platform}_${leagueId}_leagueTeams.json`;
+    await FileHandler.writeFile(data, path, defaultSerializer());
+    return ExportResult.SUCCESS;
+  },
+
+  async standings(platform: string, leagueId: string, data: StandingExport): Promise<ExportResult> {
+    const path = `${platform}_${leagueId}_standings.json`;
+    await FileHandler.writeFile(data, path, defaultSerializer());
+    return ExportResult.SUCCESS;
+  },
+
+  async schedules(platform: string, leagueId: string, week: number, stage: Stage, data: SchedulesExport): Promise<ExportResult> {
+    const path = `${platform}_${leagueId}_week${week}_${stage}_schedules.json`;
+    await FileHandler.writeFile(data, path, defaultSerializer());
+    return ExportResult.SUCCESS;
+  },
+
+  async punting(platform: string, leagueId: string, week: number, stage: Stage, data: PuntingExport): Promise<ExportResult> {
+    const path = `${platform}_${leagueId}_week${week}_${stage}_punting.json`;
+    await FileHandler.writeFile(data, path, defaultSerializer());
+    return ExportResult.SUCCESS;
+  },
+
+  async teamStats(platform: string, leagueId: string, week: number, stage: Stage, data: TeamStatsExport): Promise<ExportResult> {
+    const path = `${platform}_${leagueId}_week${week}_${stage}_teamStats.json`;
+    await FileHandler.writeFile(data, path, defaultSerializer());
+    return ExportResult.SUCCESS;
+  },
+
+  async passing(platform: string, leagueId: string, week: number, stage: Stage, data: PassingExport): Promise<ExportResult> {
+    const path = `${platform}_${leagueId}_week${week}_${stage}_passing.json`;
+    await FileHandler.writeFile(data, path, defaultSerializer());
+    return ExportResult.SUCCESS;
+  },
+
+  async kicking(platform: string, leagueId: string, week: number, stage: Stage, data: KickingExport): Promise<ExportResult> {
+    const path = `${platform}_${leagueId}_week${week}_${stage}_kicking.json`;
+    await FileHandler.writeFile(data, path, defaultSerializer());
+    return ExportResult.SUCCESS;
+  },
+
+  async rushing(platform: string, leagueId: string, week: number, stage: Stage, data: RushingExport): Promise<ExportResult> {
+    const path = `${platform}_${leagueId}_week${week}_${stage}_rushing.json`;
+    await FileHandler.writeFile(data, path, defaultSerializer());
+    return ExportResult.SUCCESS;
+  },
+
+  async defense(platform: string, leagueId: string, week: number, stage: Stage, data: DefensiveExport): Promise<ExportResult> {
+    const path = `${platform}_${leagueId}_week${week}_${stage}_defense.json`;
+    await FileHandler.writeFile(data, path, defaultSerializer());
+    return ExportResult.SUCCESS;
+  },
+
+  async receiving(platform: string, leagueId: string, week: number, stage: Stage, data: ReceivingExport): Promise<ExportResult> {
+    const path = `${platform}_${leagueId}_week${week}_${stage}_receiving.json`;
+    await FileHandler.writeFile(data, path, defaultSerializer());
+    return ExportResult.SUCCESS;
+  },
+
+  async freeagents(platform: string, leagueId: string, data: RosterExport): Promise<ExportResult> {
+    const path = `${platform}_${leagueId}_freeagents.json`;
+    await FileHandler.writeFile(data, path, defaultSerializer());
+    return ExportResult.SUCCESS;
+  },
+
+  async teamRoster(platform: string, leagueId: string, teamId: string, data: RosterExport): Promise<ExportResult> {
+    const path = `${platform}_${leagueId}_${teamId}_teamRoster.json`;
+    await FileHandler.writeFile(data, path, defaultSerializer());
+    return ExportResult.SUCCESS;
+  }
+};
