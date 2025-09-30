@@ -230,7 +230,7 @@ export const SnallabotExportDestination: MaddenExportDestination = {
 
 export function createDestination(url: string) {
   if (url.includes(DEPLOYMENT_URL)) {
-    return FileExportDestination
+    return SnallabotExportDestination
   } else {
     return MaddenUrlDestination(url)
   }
