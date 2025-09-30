@@ -69,6 +69,15 @@ Certain queries on MaddenDB have to be super fast or are expensive to run. Autoc
 
 The cache updates by listening to events from MaddenDB so we do not have to do TTL invalidation. 
 
+### Duplicates
+
+Madden will send duplicate data when a title update happens. This looks like:
+- all team ids have been changed
+- all player ids have been changed
+- schedules and stats will be duplicated, new data will have new ids
+
+Snallabot handles all these duplicates gracefully in MaddenDB, but properly deduplicating data and mapping ids back to the **latest** id. Therefore, all the logic is handled in one place. This is one pro of the maximal approach to data. 
+
 ### Firebase
 
 Firebase is the backing DB for MaddenDB (and other parts of Snallabot). In the future, this may change. However, all access points of Madden data go through MaddenDB, therefore it is a matter of implementing the interface again with a different underlying storage option
@@ -86,6 +95,6 @@ Twitch has EventSub that sends events to Snallabot. These are their own separate
 
 Youtube has no such API, therefore Snallabot has a script that runs every 5 minutes that checks all Youtube channels to see if they are currently streaming or not. If they are, Snallabot will notify for those channels if they apply to the broadcast configuration. 
 
-#### Firebase
+### Firebase
 
 Snallabot keeps track of which channels (both Youtube and Twitch) in Firebase. Both are stored in separate collections. 
