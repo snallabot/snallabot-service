@@ -51,42 +51,42 @@ Playoffs are weeks 19, 20, 21, 23 (skip Pro Bowl)
 
 `/{platform}/{leagueId}/{week}/{stage}/schedules`
 
-[Example Response](./api_data/pc_2890093_week9_1_schedules.json)
+[Example Response](./api_data/pc_2890093_week1_1_schedules.json)
 
 > [!CAUTION]
 > Schedule Ids are not unique! they will be reused over seasons. Use weekIndex, seasonIndex, scheduleId for a unique key. However, during Title updates, there may be duplicates as well (with new team ids)
 
 `/{platform}/{leagueId}/{week}/{stage}/punting`
 
-[Example Response](./api_data/pc_2890093_week9_1_punting.json)
+[Example Response](./api_data/pc_2890093_week1_1_punting.json)
 
 > [!CAUTION]
 > Stat Ids are not unique! they will be reused over seasons. Use weekIndex, seasonIndex, statId for a unique key. However, during Title updates, there may be duplicates as well (with new team ids)
 
 `/{platform}/{leagueId}/{week}/{stage}/kicking`
 
-[Example Response](./api_data/pc_2890093_week9_1_kicking.json)
+[Example Response](./api_data/pc_2890093_week1_1_kicking.json)
 
 > [!CAUTION]
 > Stat Ids are not unique! they will be reused over seasons. Use weekIndex, seasonIndex, statId for a unique key. However, during Title updates, there may be duplicates as well (with new team ids)
 
 `/{platform}/{leagueId}/{week}/{stage}/rushing`
 
-[Example Response](./api_data/pc_2890093_week9_1_rushing.json)
+[Example Response](./api_data/pc_2890093_week1_1_rushing.json)
 
 > [!CAUTION]
 > Stat Ids are not unique! they will be reused over seasons. Use weekIndex, seasonIndex, statId for a unique key. However, during Title updates, there may be duplicates as well (with new team ids)
 
 `/{platform}/{leagueId}/{week}/{stage}/defense`
 
-[Example Response](./api_data/pc_2890093_week9_1_defense.json)
+[Example Response](./api_data/pc_2890093_week1_1_defense.json)
 
 > [!CAUTION]
 > Stat Ids are not unique! they will be reused over seasons. Use weekIndex, seasonIndex, statId for a unique key. However, during Title updates, there may be duplicates as well (with new team ids)
 
 `/{platform}/{leagueId}/{week}/{stage}/receiving`
 
-[Example Response](./api_data/pc_2890093_week9_1_receiving.json)
+[Example Response](./api_data/pc_2890093_week1_1_receiving.json)
 
 > [!CAUTION]
 > Stat Ids are not unique! they will be reused over seasons. Use weekIndex, seasonIndex, statId for a unique key. However, during Title updates, there may be duplicates as well (with new team ids)

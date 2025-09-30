@@ -4,3 +4,8 @@ I want to keep up to date documentation on all my Madden journey, so this will i
 ## Snallabot
 
 - [Architecture](./snallabot/architecture.md)
+
+## Madden
+
+- [Madden Export API](./madden/export_api.md)
+- [Madden EA API](./madden/ea_api.md)
