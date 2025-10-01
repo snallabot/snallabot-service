@@ -409,14 +409,8 @@ const MaddenDB: MaddenDB = {
     EventDB.on(event_type, notifier)
   },
   getLatestTeams: async function(leagueId: string): Promise<TeamList> {
-    let e = new Error();
-    let frame = e?.stack?.split("\n")[2]; // change to 3 for grandparent func
-    let lineNumber = frame?.split(":")?.reverse()[1];
-    let functionName = frame?.split(" ")[5];
-    console.log(functionName + ":" + lineNumber + " ")
     const cachedTeamDocs = teamCache.get(leagueId) as Record<string, StoredEvent<Team>>
     if (cachedTeamDocs) {
-      console.log(`used cached data ${cachedTeamDocs}`)
       return createTeamList(Object.values(cachedTeamDocs))
     } else {
       const teamDocs = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_TEAM).get()
