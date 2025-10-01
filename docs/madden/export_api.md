@@ -102,8 +102,8 @@ Rosters are sent per team, and then one endpoint for Free Agents
 > RosterId is not unique! Retired player ids will be reused, also during Title update duplicates will be generated. Generate a unique id using the following fields: presentationId, birthYear, birthMonth, birthDay. These fields are not editable in game
 > Retired Players are not marked in anyway. They will just not be exported anymore
 
-`/{platform}/{leagueId}/team/{teamId}/roster`
-`/{platform}/{leagueId}/freeagents/roster`
+#### `/{platform}/{leagueId}/team/{teamId}/roster`
+#### `/{platform}/{leagueId}/freeagents/roster`
 
 [Example Responses](./api_data/team_data)
 
