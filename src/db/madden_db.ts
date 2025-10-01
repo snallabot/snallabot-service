@@ -4,6 +4,10 @@ import db from "./firebase"
 import EventDB, { EventNotifier, SnallabotEvent, StoredEvent, notifiers } from "./events_db"
 import { DefensiveStats, GameResult, KickingStats, MADDEN_SEASON, MaddenGame, POSITION_GROUP, PassingStats, Player, PuntingStats, ReceivingStats, RushingStats, Standing, Team, TeamStats, dLinePositions, dbPositions, oLinePositions } from "../export/madden_league_types"
 import { TeamAssignments } from "../discord/settings_db"
+import NodeCache from "node-cache"
+
+// getting Teams is a high request rate, by caching we can avoid calling the data when it hasnt changed
+const teamCache = new NodeCache()
 
 type HistoryUpdate<ValueType> = { oldValue: ValueType, newValue: ValueType }
 type History = { [key: string]: HistoryUpdate<any>, }
@@ -405,8 +409,15 @@ const MaddenDB: MaddenDB = {
     EventDB.on(event_type, notifier)
   },
   getLatestTeams: async function(leagueId: string): Promise<TeamList> {
-    const teamDocs = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_TEAM).get()
-    return createTeamList(teamDocs.docs.map(d => convertDate(d.data()) as StoredEvent<Team>))
+    const cachedTeamDocs = teamCache.get(leagueId) as Record<string, StoredEvent<Team>>
+    if (cachedTeamDocs) {
+      return createTeamList(Object.values(cachedTeamDocs))
+    } else {
+      const teamDocs = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_TEAM).get()
+      const teams = teamDocs.docs.map(d => convertDate(d.data()) as StoredEvent<Team>)
+      teamCache.set(leagueId, Object.fromEntries(teams.map(t => [`${t.teamId}`, t])))
+      return createTeamList(teams)
+    }
   },
   getLatestWeekSchedule: async function(leagueId: string, week: number) {
     const [weekDocs, teamList] = await Promise.all([db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_SCHEDULE).where("weekIndex", "==", week - 1)
@@ -818,3 +829,12 @@ const MaddenDB: MaddenDB = {
 }
 
 export default MaddenDB
+
+// when teams are updated, just delete the entry in the cache for now.
+// simple is best? can revisit if we want to do event driven updates to it
+MaddenDB.on<Team>(MaddenEvents.MADDEN_TEAM, async events => {
+  const leagueId = events?.[0].key
+  if (leagueId) {
+    teamCache.del(leagueId)
+  }
+})

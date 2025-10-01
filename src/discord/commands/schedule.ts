@@ -129,7 +129,6 @@ async function showTeamSchedule(token: string, client: DiscordClient,
       MaddenClient.getLatestTeams(league),
       MaddenClient.getAllWeeks(league)
     ])
-    const sims = await getSims(league, requestedSeason)
 
     const schedule = settledPromise[0].status === "fulfilled" ? settledPromise[0].value : []
     if (settledPromise[1].status !== "fulfilled") {
@@ -148,16 +147,6 @@ async function showTeamSchedule(token: string, client: DiscordClient,
       teams.getTeamForId(game.awayTeamId).teamId === teamId || teams.getTeamForId(game.homeTeamId).teamId === teamId
     ).sort((a, b) => a.scheduleId - b.scheduleId)
 
-    const scheduleKeys = new Set(
-      teamSchedule.map(game => `${game.scheduleId}-${game.seasonIndex}`)
-    )
-
-    const teamSims = sims.filter(sim =>
-      scheduleKeys.has(`${sim.scheduleId}-${sim.seasonIndex}`)
-    )
-
-    const gameToSim = new Map<number, ConfirmedSimV2>()
-    teamSims.forEach(sim => gameToSim.set(sim.scheduleId, sim))
 
     const selectedTeam = teams.getTeamForId(teamId)
     if (!selectedTeam) {
@@ -169,6 +158,17 @@ async function showTeamSchedule(token: string, client: DiscordClient,
       weekToGameMap.set(game.weekIndex + 1, game)
     })
     const season = teamSchedule?.[0]?.seasonIndex >= 0 ? teamSchedule[0].seasonIndex : requestedSeason != null ? requestedSeason : 0
+    const sims = await getSims(league, season)
+    const scheduleKeys = new Set(
+      teamSchedule.map(game => `${game.scheduleId}-${game.seasonIndex}`)
+    )
+
+    const teamSims = sims.filter(sim =>
+      scheduleKeys.has(`${sim.scheduleId}-${sim.seasonIndex}`)
+    )
+
+    const gameToSim = new Map<number, ConfirmedSimV2>()
+    teamSims.forEach(sim => gameToSim.set(sim.scheduleId, sim))
 
     const scheduleLines = []
     const weeksToShow = allWeeks.filter(ws => ws.seasonIndex === season).map(ws => ws.weekIndex + 1).sort((a, b) => a - b)
