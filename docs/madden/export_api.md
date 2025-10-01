@@ -12,7 +12,7 @@ Key:
 
 ### League Info
 
-`/{platform}/{leagueId}/leagueTeams`
+#### `/{platform}/{leagueId}/leagueTeams`
 
 [Example Response](./api_data/pc_2890093_leagueTeams.json)
 
