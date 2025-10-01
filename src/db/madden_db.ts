@@ -416,7 +416,7 @@ const MaddenDB: MaddenDB = {
     } else {
       const teamDocs = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_TEAM).get()
       const teams = teamDocs.docs.map(d => convertDate(d.data()) as StoredEvent<Team>)
-      teamCache.set(leagueId, Object.fromEntries(teams.map(t => [t.teamId, t])))
+      teamCache.set(leagueId, Object.fromEntries(teams.map(t => [`${t.teamId}`, t])))
       return createTeamList(teams)
     }
   },
