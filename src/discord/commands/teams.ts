@@ -270,7 +270,8 @@ export default {
       const assignedTeam = results[0].obj
       const role = (teamsCommand?.options?.[2] as APIApplicationCommandInteractionDataRoleOption)?.value
       const roleAssignment = role ? { discord_role: { id: role, id_type: DiscordIdType.ROLE } } : {}
-      const assignments = { ...leagueSettings.commands.teams?.assignments, [teams.getTeamForId(assignedTeam.id).teamId]: { discord_user: { id: user, id_type: DiscordIdType.USER }, ...roleAssignment } }
+      const oldAssignments = teams.getLatestTeamAssignments(leagueSettings.commands.teams?.assignments || {})
+      const assignments = { ...oldAssignments, [teams.getTeamForId(assignedTeam.id).teamId]: { discord_user: { id: user, id_type: DiscordIdType.USER }, ...roleAssignment } }
       leagueSettings.commands.teams.assignments = assignments
       await LeagueSettingsDB.updateAssignment(guild_id, assignments)
       const message = createTeamsMessage(leagueSettings, teams)
@@ -314,10 +315,10 @@ export default {
       }
       const assignedTeam = results[0].obj
       const teamIdToDelete = teams.getTeamForId(assignedTeam.id).teamId
-      const currentAssignments = { ...leagueSettings.commands.teams.assignments }
+      const currentAssignments = { ...teams.getLatestTeamAssignments(leagueSettings.commands.teams.assignments) }
       delete currentAssignments[`${teamIdToDelete}`]
       leagueSettings.commands.teams.assignments = currentAssignments
-      await LeagueSettingsDB.removeAssignment(guild_id, teamIdToDelete)
+      await LeagueSettingsDB.updateAssignment(guild_id, currentAssignments)
       const message = createTeamsMessage(leagueSettings, teams)
       try {
         await client.editMessage(leagueSettings.commands.teams.channel, leagueSettings.commands.teams.messageId, message, [])
