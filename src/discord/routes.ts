@@ -77,7 +77,7 @@ EventDB.on<MaddenBroadcastEvent>("MADDEN_BROADCAST", async (events) => {
       const channel = configuration.channel
       const role = configuration.role ? `<@&${configuration.role.id}>` : ""
       try {
-        prodClient.createMessage(channel, `${role} ${broadcastEvent.title}\n\n${broadcastEvent.video}`, ["roles"])
+        await prodClient.createMessage(channel, `${role} ${broadcastEvent.title}\n\n${broadcastEvent.video}`, ["roles"])
       } catch (e) {
         console.error("could not send broacast")
       }
