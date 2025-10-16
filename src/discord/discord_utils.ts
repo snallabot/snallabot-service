@@ -78,7 +78,8 @@ export interface DiscordClient {
   checkMessageExists(channel: ChannelId, messageId: MessageId): Promise<boolean>,
   getUsers(guild_id: string): Promise<APIGuildMember[]>,
   getGuildInformation(guild_id: string): Promise<APIGuild>,
-  uploadEmoji(imageData: string, name: string): Promise<APIEmoji>
+  uploadEmoji(imageData: string, name: string): Promise<APIEmoji>,
+  getBotUser(): UserId
 }
 
 type DiscordSettings = { publicKey: string, botToken: string, appId: string }
@@ -377,7 +378,7 @@ export function createClient(settings: DiscordSettings): DiscordClient {
           { method: "GET" }
         )
         const reactedUsers = await res.json() as APIUser[]
-        return reactedUsers.filter(u => u.id !== SNALLABOT_USER && u.id !== SNALLABOT_TEST_USER).map(u => ({ id: u.id, id_type: DiscordIdType.USER }))
+        return reactedUsers.filter(u => u.id !== settings.appId).map(u => ({ id: u.id, id_type: DiscordIdType.USER }))
       } catch (e) {
         if (e instanceof DiscordRequestError) {
           if (e.isPermissionError()) {
@@ -527,6 +528,9 @@ export function createClient(settings: DiscordSettings): DiscordClient {
         // If it's a different error, throw it
         throw new Error(`Discord API Error: ${e}`);
       }
+    },
+    getBotUser: function() {
+      return { id: settings.appId, id_type: DiscordIdType.USER }
     }
   }
 }
@@ -571,9 +575,6 @@ export function formatTeamMessageName(discordId: string | undefined, gamerTag: s
   }
   return "CPU"
 }
-
-export const SNALLABOT_USER = "970091866450198548"
-export const SNALLABOT_TEST_USER = "1099768386352840807"
 
 export enum SnallabotReactions {
   SCHEDULE = "%E2%8F%B0",
