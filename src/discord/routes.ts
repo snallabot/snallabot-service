@@ -1,6 +1,6 @@
 import { ParameterizedContext } from "koa"
 import Router from "@koa/router"
-import { CommandMode, DiscordClient, SNALLABOT_TEST_USER, SNALLABOT_USER, createProdClient, getSimsForWeek, formatSchedule } from "./discord_utils"
+import { CommandMode, DiscordClient, createProdClient, getSimsForWeek, formatSchedule } from "./discord_utils"
 import { APIInteraction, InteractionType, InteractionResponseType, APIChatInputApplicationCommandGuildInteraction, APIApplicationCommandAutocompleteInteraction, APIMessageComponentInteraction } from "discord-api-types/payloads"
 import db from "../db/firebase"
 import EventDB from "../db/events_db"
@@ -141,7 +141,7 @@ MaddenDB.on<MaddenGame>("MADDEN_SCHEDULE", async (events) => {
         await Promise.all(Object.values(settings.commands.game_channel?.weekly_states?.[createWeekKey(season, week)]?.channel_states || {}).map(async channelState => {
           if (gameIds.has(channelState.scheduleId)) {
             try {
-              await notifier.deleteGameChannel(channelState, season, week, [{ id: SNALLABOT_USER, id_type: DiscordIdType.USER }])
+              await notifier.deleteGameChannel(channelState, season, week, [prodClient.getBotUser()])
             } catch (e) {
 
             }
@@ -222,8 +222,7 @@ function getRandomInt(max: number) {
 
 discordClient.on("messageReactionAdd", async (msg, reactor, reaction) => {
   // don't respond when bots react!
-  if (reactor.id === SNALLABOT_USER || reactor.id === SNALLABOT_TEST_USER
-  ) {
+  if (reactor.id === prodClient.getBotUser().id) {
     return
   }
   const guild = msg.guildID
@@ -254,7 +253,7 @@ discordClient.on("messageReactionAdd", async (msg, reactor, reaction) => {
     }))
   }))
 })
-if (process.env.APP_ID !== SNALLABOT_TEST_USER) {
+if (process.env.NO_CLIENT !== "true") {
   discordClient.connect()
 }
 
