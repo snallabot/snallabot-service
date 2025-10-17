@@ -294,10 +294,10 @@ export default {
 
         const selectorData = interaction.data as APIMessageStringSelectInteractionData
         const selection = JSON.parse(selectorData.values[0]) as SeasonSelection
-        showSeasonSims(interaction.token, client, leagueId, selection.si, selection.p)
+        showSeasonSims(interaction.token, client, leagueId, selection.si, selection.p, selection.so)
       } else {
         const selection = JSON.parse(interaction.custom_id) as SeasonSelection
-        showSeasonSims(interaction.token, client, leagueId, selection.si, selection.p)
+        showSeasonSims(interaction.token, client, leagueId, selection.si, selection.p, selection.so)
       }
     } catch (e) {
       console.error(e)
