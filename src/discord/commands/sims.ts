@@ -9,10 +9,15 @@ import { discordLeagueView } from "../../db/view"
 import { getSims } from "../discord_utils"
 import { SimResult } from "../../db/events"
 
-export type SeasonSelection = { si: number, p?: number }
+enum SortOrder {
+  BY_TOTAL = "bt",
+  BY_FW = "bw",
+  BY_FL = "bs"
+}
+export type SeasonSelection = { si: number, p?: number, so?: SortOrder }
 const USERS_PER_PAGE = 10
 
-async function showSeasonSims(token: string, client: DiscordClient, league: string, requestedSeason?: number, paginatedIndex?: number) {
+async function showSeasonSims(token: string, client: DiscordClient, league: string, requestedSeason?: number, paginatedIndex?: number, sortOrder: SortOrder = SortOrder.BY_TOTAL) {
   try {
     const allSims = await getSims(league)
 
@@ -91,7 +96,15 @@ async function showSeasonSims(token: string, client: DiscordClient, league: stri
       // Sort users by total sims (descending)
       const sortedUsers = Array.from(userStatsMap.entries())
         .filter(([userId, stats]) => stats.total > 0)
-        .sort((a, b) => b[1].total - a[1].total)
+        .sort((a, b) => {
+          if (sortOrder === SortOrder.BY_TOTAL) {
+            return b[1].total - a[1].total
+          } else if (sortOrder === SortOrder.BY_FL) {
+            return b[1].forceLosses - a[1].forceLosses
+          } else {
+            return b[1].forceWins - a[1].forceWins
+          }
+        })
 
       // Pagination logic
       const startIndex = paginatedIndex || 0
@@ -180,6 +193,44 @@ async function showSeasonSims(token: string, client: DiscordClient, league: stri
           divider: true,
           spacing: SeparatorSpacingSize.Small
         },
+        {
+          type: ComponentType.ActionRow,
+          components: [
+            {
+              type: ComponentType.Button,
+              style: ButtonStyle.Secondary,
+              label: "By Total",
+              custom_id: JSON.stringify({
+                si: currentSeason,
+                p: 0,
+                so: SortOrder.BY_TOTAL
+              }),
+              disabled: SortOrder.BY_TOTAL === sortOrder
+            },
+            {
+              type: ComponentType.Button,
+              style: ButtonStyle.Secondary,
+              label: "By FW",
+              custom_id: JSON.stringify({
+                si: currentSeason,
+                p: 0,
+                so: SortOrder.BY_FW
+              }),
+              disabled: SortOrder.BY_FW === sortOrder
+            },
+            {
+              type: ComponentType.Button,
+              style: ButtonStyle.Secondary,
+              label: "By FL",
+              custom_id: JSON.stringify({
+                si: currentSeason,
+                p: 0,
+                so: SortOrder.BY_FL
+              }),
+              disabled: SortOrder.BY_FL === sortOrder
+            },
+          ]
+        },
         ...paginationButtons,
         {
           type: ComponentType.ActionRow,
@@ -243,10 +294,10 @@ export default {
 
         const selectorData = interaction.data as APIMessageStringSelectInteractionData
         const selection = JSON.parse(selectorData.values[0]) as SeasonSelection
-        showSeasonSims(interaction.token, client, leagueId, selection.si, selection.p)
+        showSeasonSims(interaction.token, client, leagueId, selection.si, selection.p, selection.so)
       } else {
         const selection = JSON.parse(interaction.custom_id) as SeasonSelection
-        showSeasonSims(interaction.token, client, leagueId, selection.si, selection.p)
+        showSeasonSims(interaction.token, client, leagueId, selection.si, selection.p, selection.so)
       }
     } catch (e) {
       console.error(e)
