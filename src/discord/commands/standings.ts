@@ -1,7 +1,7 @@
 import { ParameterizedContext } from "koa"
 import { CommandHandler, Command, MessageComponentHandler, MessageComponentInteraction } from "../commands_handler"
 import { respond, DiscordClient, deferMessage } from "../discord_utils"
-import { APIMessageStringSelectInteractionData, ApplicationCommandType, ButtonStyle, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
+import { APIApplicationCommandInteractionDataStringOption, APIApplicationCommandOptionChoice, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ApplicationCommandType, ButtonStyle, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
 import LeagueSettingsDB from "../settings_db"
 import MaddenDB from "../../db/madden_db"
@@ -185,15 +185,24 @@ export default {
       throw new Error("No madden league linked. Setup snallabot with your Madden league first")
     }
     const league = leagueSettings.commands.madden_league.league_id
+    const scope = (command?.data?.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.value
     respond(ctx, deferMessage())
-    handleCommand(client, token, league)
+    handleCommand(client, token, league, scope)
   },
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
     return {
       name: "standings",
       description: "display the current team standings",
       type: ApplicationCommandType.ChatInput,
-      options: []
+      options: [
+        {
+          type: ApplicationCommandOptionType.String,
+          name: "scope",
+          description: "conference or division",
+          required: false,
+          choices: filterOptions.map(f => ({ name: f.label, value: f.value }))
+        },
+      ]
     }
   },
   async handleInteraction(interaction: MessageComponentInteraction, client: DiscordClient) {
