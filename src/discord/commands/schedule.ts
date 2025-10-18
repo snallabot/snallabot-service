@@ -1,8 +1,6 @@
-import { ParameterizedContext } from "koa"
-import { CommandHandler, Command, AutocompleteHandler, Autocomplete, MessageComponentHandler, MessageComponentInteraction } from "../commands_handler"
-import { respond, DiscordClient, deferMessage, formatTeamEmoji, getSimsForWeek, formatSchedule, getSims, createSimMessageForTeam } from "../discord_utils"
+import { Command, Autocomplete, MessageComponentInteraction } from "../commands_handler"
+import { DiscordClient, deferMessage, formatTeamEmoji, getSimsForWeek, formatSchedule, getSims, createSimMessageForTeam } from "../discord_utils"
 import { APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ApplicationCommandType, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
-import { Firestore } from "firebase-admin/firestore"
 import { GameResult, MADDEN_SEASON, getMessageForWeek, getMessageForWeekShortened } from "../../export/madden_league_types"
 import MaddenClient from "../../db/madden_db"
 import LeagueSettingsDB from "../settings_db"
@@ -365,7 +363,7 @@ function getTeamSelection(interaction: MessageComponentInteraction) {
 
 
 export default {
-  async handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext) {
+  async handleCommand(command: Command, client: DiscordClient) {
     const { guild_id } = command
 
     const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
@@ -385,7 +383,7 @@ export default {
       }
       const season = (scheduleCommand.options?.[1] as APIApplicationCommandInteractionDataIntegerOption)?.value
       showSchedule(command.token, client, league, week != null ? Number(week) : undefined, season != null ? Number(season) : undefined)
-      respond(ctx, deferMessage())
+      return deferMessage()
     } else if (scheduleCommand.name === "team") {
       if (!scheduleCommand.options || !scheduleCommand.options[0]) {
         throw new Error("teams free misconfigured")
@@ -410,7 +408,7 @@ export default {
       const foundTeam = results[0].obj
       const teamIdToShowSchedule = teams.getTeamForId(foundTeam.id).teamId
       showTeamSchedule(command.token, client, leagueId, teamIdToShowSchedule, season ? Number(season) : undefined)
-      respond(ctx, deferMessage())
+      return deferMessage()
     }
   },
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
@@ -512,4 +510,4 @@ export default {
     }
     return []
   }
-} as CommandHandler & MessageComponentHandler & AutocompleteHandler
+}

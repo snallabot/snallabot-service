@@ -68,7 +68,7 @@ function listBroadcasts(broadcasts: BroadcastChannel[], broadcastType: Broadcast
 
 
 export default {
-  async handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext) {
+  async handleCommand(command: Command, client: DiscordClient) {
     const { guild_id } = command
     if (!command.data.options) {
       throw new Error("misconfigured broadcast")
@@ -91,7 +91,7 @@ export default {
         conf.role = { id: role, id_type: DiscordIdType.ROLE }
       }
       await LeagueSettingsDB.configureBroadcast(guild_id, conf)
-      respond(ctx, createMessageResponse("Broadcast is configured!"))
+      return createMessageResponse("Broadcast is configured!")
     } else if (subCommandName === "youtube") {
       const subCommandGroup = subCommand as APIApplicationCommandInteractionDataSubcommandGroupOption
       if (!subCommandGroup || !subCommandGroup.options) {
@@ -101,22 +101,21 @@ export default {
       const groupCommandName = groupCommand.name
       if (groupCommandName === "list") {
         const youtubeUrls = await youtubeNotifierHandler.listYoutubeChannels(guild_id)
-
-        respond(ctx, listBroadcasts(youtubeUrls.map(y => ({ name: y.channelName, url: y.channelUri })), BroadcastType.YOUTUBE, ResponseType.COMMAND))
+        return listBroadcasts(youtubeUrls.map(y => ({ name: y.channelName, url: y.channelUri })), BroadcastType.YOUTUBE, ResponseType.COMMAND)
       } else if (groupCommandName === "add") {
         if (!groupCommand.options || !groupCommand.options[0]) {
           throw new Error(`broadcast youtube ${groupCommandName} misconfigured`)
         }
         const youtubeUrl = (groupCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value
         await youtubeNotifierHandler.addYoutubeChannel(guild_id, youtubeUrl)
-        respond(ctx, createMessageResponse("Channel updated successfully"))
+        return createMessageResponse("Channel updated successfully")
       } else if (groupCommandName === "remove") {
         if (!groupCommand.options || !groupCommand.options[0]) {
           throw new Error(`broadcast youtube ${groupCommandName} misconfigured`)
         }
         const youtubeUrl = (groupCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value
         await youtubeNotifierHandler.removeYoutubeChannel(guild_id, youtubeUrl)
-        respond(ctx, createMessageResponse("Channel updated successfully"))
+        return createMessageResponse("Channel updated successfully")
       }
       else {
         throw new Error(`broadcast youtube ${groupCommandName}`)
@@ -130,21 +129,21 @@ export default {
       const groupCommandName = groupCommand.name
       if (groupCommandName === "list") {
         const twitchUrls = await twitchNotifierHandler.listTwitchChannels(guild_id)
-        respond(ctx, listBroadcasts(twitchUrls.map(t => ({ name: t.name, url: t.url })), BroadcastType.TWITCH, ResponseType.COMMAND))
+        return listBroadcasts(twitchUrls.map(t => ({ name: t.name, url: t.url })), BroadcastType.TWITCH, ResponseType.COMMAND)
       } else if (groupCommandName === "add") {
         if (!groupCommand.options || !groupCommand.options[0]) {
           throw new Error(`broadcast twitch ${groupCommandName} misconfigured`)
         }
         const twitchUrl = (groupCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value
         await twitchNotifierHandler.addTwitchChannel(guild_id, twitchUrl)
-        respond(ctx, createMessageResponse("Channel updated successfully"))
+        return createMessageResponse("Channel updated successfully")
       } else if (groupCommandName === "remove") {
         if (!groupCommand.options || !groupCommand.options[0]) {
           throw new Error(`broadcast twitch ${groupCommandName} misconfigured`)
         }
         const twitchUrl = (groupCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value
         await twitchNotifierHandler.removeTwitchChannel(guild_id, twitchUrl)
-        respond(ctx, createMessageResponse("Channel updated successfully"))
+        return createMessageResponse("Channel updated successfully")
       }
       else {
         throw new Error(`broadcast twitch ${groupCommandName} misconfigured`)
@@ -280,4 +279,4 @@ export default {
       ]
     }
   }
-} as CommandHandler & MessageComponentHandler
+} 

@@ -1,16 +1,14 @@
-import { ParameterizedContext } from "koa"
-import { CommandHandler, Command } from "../commands_handler"
-import { respond, createMessageResponse, DiscordClient, deferMessage, formatTeamMessageName, SnallabotReactions, SnallabotDiscordError, formatGame, formatSchedule } from "../discord_utils"
+import { Command } from "../commands_handler"
+import { createMessageResponse, DiscordClient, deferMessage, formatTeamMessageName, SnallabotReactions, SnallabotDiscordError, formatSchedule } from "../discord_utils"
 import { APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ApplicationCommandType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
-import { Firestore } from "firebase-admin/firestore"
 import LeagueSettingsDB, { CategoryId, ChannelId, DiscordIdType, GameChannel, GameChannelConfiguration, GameChannelState, LeagueSettings, MaddenLeagueConfiguration, MessageId, RoleId, UserId, WeekState } from "../settings_db"
-import MaddenClient, { TeamList } from "../../db/madden_db"
-import { formatRecord, getMessageForWeek, MADDEN_SEASON, MaddenGame } from "../../export/madden_league_types"
+import MaddenClient from "../../db/madden_db"
+import { formatRecord } from "../../export/madden_league_types"
 import createLogger from "../logging"
-import { ConfirmedSim, ConfirmedSimV2, SimResult } from "../../db/events"
 import createNotifier from "../notifier"
 import { ExportContext, Stage, exporterForLeague, EAAccountError } from "../../dashboard/ea_client"
-import { LeagueLogos, leagueLogosView } from "../../db/view"
+import { leagueLogosView } from "../../db/view"
+import db from "../../db/firebase"
 
 async function react(client: DiscordClient, channel: ChannelId, message: MessageId, reaction: SnallabotReactions) {
   await client.reactToMessage(`${reaction}`, message, channel)
@@ -27,7 +25,7 @@ enum SnallabotCommandReactions {
   ERROR = "<:snallabot_error:1288692698320076820>"
 }
 
-async function createGameChannels(client: DiscordClient, db: Firestore, token: string, guild_id: string, settings: LeagueSettings, week: number, category: CategoryId, author: UserId) {
+async function createGameChannels(client: DiscordClient, token: string, guild_id: string, settings: LeagueSettings, week: number, category: CategoryId, author: UserId) {
   let channelsToCleanup: ChannelId[] = []
   try {
     const leagueId = (settings.commands.madden_league as Required<MaddenLeagueConfiguration>).league_id
@@ -206,7 +204,7 @@ ${errorMessage}
   }
 }
 
-async function clearGameChannels(client: DiscordClient, db: Firestore, token: string, guild_id: string, settings: LeagueSettings, author: UserId, weekToClear?: number) {
+async function clearGameChannels(client: DiscordClient, token: string, guild_id: string, settings: LeagueSettings, author: UserId, weekToClear?: number) {
   try {
     await client.editOriginalInteraction(token, { content: `Clearing Game Channels...` })
     const weekStates = settings.commands.game_channel?.weekly_states || {}
@@ -271,7 +269,7 @@ async function notifyGameChannels(client: DiscordClient, token: string, guild_id
 }
 
 export default {
-  async handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext) {
+  async handleCommand(command: Command, client: DiscordClient) {
     const { guild_id, token, member } = command
     const author: UserId = { id: member.user.id, id_type: DiscordIdType.USER }
     if (!command.data.options) {
@@ -299,13 +297,13 @@ export default {
         private_channels: !!usePrivateChannels
       }
       await LeagueSettingsDB.configureGameChannel(guild_id, conf)
-      respond(ctx, createMessageResponse(`game channels commands are configured! Configuration:
+      return createMessageResponse(`game channels commands are configured! Configuration:
 
 - Admin Role: <@&${adminRole}>
 - Game Channel Category: <#${gameChannelCategory}>
 - Scoreboard Channel: <#${scoreboardChannel}>
 - Notification Period: Every ${waitPing} hour(s)
-- Private Channels: ${!!usePrivateChannels ? "Yes" : "No"}`))
+- Private Channels: ${!!usePrivateChannels ? "Yes" : "No"}`)
     } else if (subCommand === "create" || subCommand === "wildcard" || subCommand === "divisional" || subCommand === "conference" || subCommand === "superbowl") {
       const week = (() => {
         if (subCommand === "create") {
@@ -348,17 +346,17 @@ export default {
         throw new Error("No madden league linked. Setup snallabot with your Madden league first")
       }
       const category = categoryOverride ? categoryOverride : leagueSettings.commands.game_channel.default_category.id
-      respond(ctx, deferMessage())
-      createGameChannels(client, db, token, guild_id, leagueSettings, week, { id: category, id_type: DiscordIdType.CATEGORY }, author)
+      createGameChannels(client, token, guild_id, leagueSettings, week, { id: category, id_type: DiscordIdType.CATEGORY }, author)
+      return deferMessage()
     } else if (subCommand === "clear") {
       const gameChannelsCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
       const gameChannelWeekToClear = (gameChannelsCommand?.options?.[0] as APIApplicationCommandInteractionDataIntegerOption)?.value
       const weekToClear = gameChannelWeekToClear ? Number(gameChannelWeekToClear) : undefined
-      respond(ctx, deferMessage())
-      clearGameChannels(client, db, token, guild_id, leagueSettings, author, weekToClear)
+      clearGameChannels(client, token, guild_id, leagueSettings, author, weekToClear)
+      return deferMessage()
     } else if (subCommand === "notify") {
-      respond(ctx, deferMessage())
       notifyGameChannels(client, token, guild_id, leagueSettings)
+      return deferMessage()
     } else {
       throw new Error(`game_channels ${subCommand} not implemented`)
     }
@@ -507,4 +505,4 @@ export default {
       ]
     }
   }
-} as CommandHandler
+}

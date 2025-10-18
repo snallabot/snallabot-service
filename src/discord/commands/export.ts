@@ -1,8 +1,6 @@
-import { ParameterizedContext } from "koa"
-import { CommandHandler, Command } from "../commands_handler"
-import { respond, DiscordClient, deferMessageInvisible } from "../discord_utils"
+import { Command } from "../commands_handler"
+import { DiscordClient, deferMessageInvisible } from "../discord_utils"
 import { APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ApplicationCommandType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
-import { Firestore } from "firebase-admin/firestore"
 import { ExportContext, exporterForLeague } from "../../dashboard/ea_client"
 import { discordLeagueView } from "../../db/view"
 
@@ -42,7 +40,7 @@ async function handleExport(guildId: string, week: number, token: string, client
 }
 
 export default {
-  async handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext) {
+  async handleCommand(command: Command, client: DiscordClient) {
     const { guild_id, token } = command
     if (!command.data.options) {
       throw new Error("export command not defined properly")
@@ -73,8 +71,8 @@ export default {
     if (!week) {
       throw new Error("export week mising")
     }
-    respond(ctx, deferMessageInvisible())
     handleExport(guild_id, week, token, client)
+    return deferMessageInvisible()
   },
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
     return {
@@ -110,4 +108,4 @@ export default {
       ],
     }
   }
-} as CommandHandler
+}

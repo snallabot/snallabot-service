@@ -25,7 +25,7 @@ export type Command = { command_name: string, token: string, guild_id: string, d
 export type Autocomplete = { command_name: string, guild_id: string, data: APIAutocompleteApplicationCommandInteractionData }
 export type MessageComponentInteraction = { custom_id: string, token: string, data: APIMessageComponentInteractionData, guild_id: string }
 export interface CommandHandler {
-  handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext): Promise<void>
+  handleCommand(command: Command, client: DiscordClient): Promise<any>
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody
 }
 
@@ -78,7 +78,8 @@ export async function handleCommand(command: Command, ctx: ParameterizedContext,
   const handler = SlashCommands[commandName]
   if (handler) {
     try {
-      await handler.handleCommand(command, discordClient, db, ctx)
+      const res = await handler.handleCommand(command, discordClient)
+      respond(ctx, res)
     } catch (e) {
       const error = e as Error
       ctx.status = 200
