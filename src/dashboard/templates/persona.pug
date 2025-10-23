@@ -17,4 +17,7 @@ html
         select#selectedPersona(class="form-select" name="selected_persona")
           each persona in personas
             option(value=`${JSON.stringify(persona)}`) #{persona.displayName} - #{namespaces[persona.namespaceName]} - #{persona.maddenEntitlement}
+        select#consoleOverride(class="form-select" name="console_override")
+          each cons in all_consoles
+            option(value=`${cons}`) cons
         button#submit(type="submit" class="btn btn-primary") Submit EA Account
