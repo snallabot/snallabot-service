@@ -2,7 +2,7 @@ import Router from "@koa/router"
 import Pug from "pug"
 import path from "path"
 import { Next, ParameterizedContext } from "koa"
-import { EA_LOGIN_URL, AUTH_SOURCE, CLIENT_SECRET, REDIRECT_URL, CLIENT_ID, AccountToken, TokenInfo, Entitlements, VALID_ENTITLEMENTS, Persona, MACHINE_KEY, Personas, ENTITLEMENT_TO_VALID_NAMESPACE, NAMESPACES, ENTITLEMENT_TO_SYSTEM, SystemConsole, exportOptions, seasonType } from "./ea_constants"
+import { EA_LOGIN_URL, AUTH_SOURCE, CLIENT_SECRET, REDIRECT_URL, CLIENT_ID, AccountToken, TokenInfo, Entitlements, VALID_ENTITLEMENTS, Persona, MACHINE_KEY, Personas, ENTITLEMENT_TO_VALID_NAMESPACE, NAMESPACES, ENTITLEMENT_TO_SYSTEM, SystemConsole, exportOptions, seasonType, ALL_CONSOLES, ConsoleOverride, CONSOLE_OVERRIDE_TO_ENTITLEMENT, CONSOLE_OVERRIDE_TO_VALID_NAMESPACE } from "./ea_constants"
 import { BlazeError, ExportContext, ExportDestination, unlinkLeague, ephemeralClientFromToken, exporterForLeague, storeToken, storedTokenClient, EAAccountError } from "./ea_client"
 import { removeLeague, setLeague } from "../connections/routes"
 import { discordLeagueView } from "../db/view"
@@ -22,7 +22,7 @@ const router = new Router({ prefix: "/dashboard" })
 const client = createProdClient()
 
 type RetrievePersonasRequest = { code: string, discord?: string }
-type LinkPersona = { selected_persona: string, access_token: string, discord?: string }
+type LinkPersona = { selected_persona: string, access_token: string, discord?: string, console_override: ConsoleOverride }
 type RequestPersona = Persona & { maddenEntitlement: string }
 type ConnectLeague = { access_token: string, refresh_token: string, expiry: string, console: SystemConsole, selected_league: string, blaze_id: string, discord?: string }
 
@@ -161,10 +161,14 @@ router.get("/", async (ctx) => {
   if (finalPersonas.length === 0) {
     throw new EAAccountError("There are no Madden accounts associated with this EA account!", `This may happen because the EA account used to login is not the right one or is not connected to Madden. One potential fix is to try connecting this EA account to your Madden one, or checking if it is the right one. You can do this at this at this link <a href="https://myaccount.ea.com/cp-ui/connectaccounts/index" target="_blank">https://myaccount.ea.com/cp-ui/connectaccounts/index</a>`)
   }
-  ctx.body = personaRender({ personas: finalPersonas, namespaces: NAMESPACES, access_token, discord: discord })
+  ctx.body = personaRender({ personas: finalPersonas, namespaces: NAMESPACES, access_token, discord: discord, all_consoles: ALL_CONSOLES })
 }).post("/selectLeague", renderErrorsMiddleware, async (ctx, next) => {
-  const { selected_persona, access_token, discord } = ctx.request.body as LinkPersona
+  const { selected_persona, access_token, discord, console_override } = ctx.request.body as LinkPersona
   const persona = JSON.parse(selected_persona) as RequestPersona
+  if (console_override !== ConsoleOverride.NONE) {
+    persona.maddenEntitlement = CONSOLE_OVERRIDE_TO_ENTITLEMENT[console_override]
+    persona.namespaceName = CONSOLE_OVERRIDE_TO_VALID_NAMESPACE[console_override]
+  }
   const locationUrlResponse = await fetch(`https://accounts.ea.com/connect/auth?hide_create=true&release_type=prod&response_type=code&redirect_uri=${REDIRECT_URL}&client_id=${CLIENT_ID}&machineProfileKey=${MACHINE_KEY}&authentication_source=${AUTH_SOURCE}&access_token=${access_token}&persona_id=${persona.personaId}&persona_namespace=${persona.namespaceName}`, {
     redirect: "manual", // this fetch resolves to localhost address with a code as a query string. if we follow the redirect, it won't be able to connect. Just take the location from the manual redirect
     headers: {

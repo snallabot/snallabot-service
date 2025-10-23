@@ -27,6 +27,18 @@ export enum SystemConsole {
   STADIA = "stadia"
 }
 
+export enum ConsoleOverride {
+  NONE = "Default",
+  XBOX_ONE = "Xbox One",
+  PS4 = "PS4",
+  PC = "PC",
+  PS5 = "PS5",
+  XBOX_X = "XBOX Series X",
+  STADIA = "Stadia"
+}
+
+export const ALL_CONSOLES = Object.values(ConsoleOverride)
+
 export const ENTITLEMENT_TO_SYSTEM = ((a: string) => ({
   [`MADDEN_${a}XONE`]: SystemConsole.XBOX_ONE,
   [`MADDEN_${a}PS4`]: SystemConsole.PS4,
@@ -44,6 +56,24 @@ export const ENTITLEMENT_TO_VALID_NAMESPACE = ((a: string) => ({
   [`MADDEN_${a}XBSX`]: "xbox",
   [`MADDEN_${a}SDA`]: "stadia",
 }))(TWO_DIGIT_YEAR)
+
+export const CONSOLE_OVERRIDE_TO_ENTITLEMENT = ((a: string) => ({
+  [ConsoleOverride.XBOX_ONE]: `MADDEN_${a}XONE`,
+  [ConsoleOverride.PS4]: `MADDEN_${a}PS4`,
+  [ConsoleOverride.PC]: `MADDEN_${a}PC`,
+  [ConsoleOverride.PS5]: `MADDEN_${a}PS5`,
+  [ConsoleOverride.XBOX_X]: `MADDEN_${a}XBSX`,
+  [ConsoleOverride.STADIA]: `MADDEN_${a}SDA`,
+}))(TWO_DIGIT_YEAR)
+
+export const CONSOLE_OVERRIDE_TO_VALID_NAMESPACE: { [key: string]: Namespace } = {
+  [ConsoleOverride.XBOX_ONE]: "xbox",
+  [ConsoleOverride.PS4]: "ps3",
+  [ConsoleOverride.PC]: "cem_ea_id",
+  [ConsoleOverride.PS5]: "ps3",
+  [ConsoleOverride.XBOX_X]: "xbox",
+  [ConsoleOverride.STADIA]: "stadia",
+}
 
 export const SYSTEM_MAP = (a: string) => ({
   xone: `MADDEN_${a}_XONE_BLZ_SERVER`,
