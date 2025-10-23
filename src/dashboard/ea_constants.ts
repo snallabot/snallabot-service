@@ -61,7 +61,7 @@ export const CONSOLE_OVERRIDE_TO_ENTITLEMENT = ((a: string) => ({
   [ConsoleOverride.XBOX_ONE]: `MADDEN_${a}XONE`,
   [ConsoleOverride.PS4]: `MADDEN_${a}PS4`,
   [ConsoleOverride.PC]: `MADDEN_${a}PC`,
-  [ConsoleOverride.PS5]: `MADDEN_${a}PS4`,
+  [ConsoleOverride.PS5]: `MADDEN_${a}PS5`,
   [ConsoleOverride.XBOX_X]: `MADDEN_${a}XBSX`,
   [ConsoleOverride.STADIA]: `MADDEN_${a}SDA`,
 }))(TWO_DIGIT_YEAR)
