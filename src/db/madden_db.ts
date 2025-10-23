@@ -617,9 +617,9 @@ const MaddenDB: MaddenDB = {
     let playersQuery;
     // flip the query for going backwards by ordering opposite and using start after
     if (endBefore) {
-      playersQuery = db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).orderBy("playerBestOvr", "asc").orderBy("presentationId", "desc").orderBy("birthYear", "desc").orderBy("birthMonth", "desc").orderBy("birthDay", "desc").limit(limit * 2)
+      playersQuery = db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).orderBy("playerBestOvr", "asc").orderBy("presentationId", "desc").orderBy("birthYear", "desc").orderBy("birthMonth", "desc").orderBy("birthDay", "desc").limit(limit * 3)
     } else {
-      playersQuery = db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).orderBy("playerBestOvr", "desc").orderBy("presentationId", "asc").orderBy("birthYear", "asc").orderBy("birthMonth", "asc").orderBy("birthDay", "asc").limit(limit * 2)
+      playersQuery = db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).orderBy("playerBestOvr", "desc").orderBy("presentationId", "asc").orderBy("birthYear", "asc").orderBy("birthMonth", "asc").orderBy("birthDay", "asc").limit(limit * 3)
     }
     if ((query.teamId && query.teamId !== -1) || query.teamId === 0) {
       const teams = await this.getLatestTeams(leagueId)
