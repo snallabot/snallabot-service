@@ -623,7 +623,7 @@ const MaddenDB: MaddenDB = {
     }
     if ((query.teamId && query.teamId !== -1) || query.teamId === 0) {
       const teams = await this.getLatestTeams(leagueId)
-      playersQuery = playersQuery.where("teamId", "==", teams.getTeamForId(query.teamId).teamId);
+      playersQuery = playersQuery.where("teamId", "==", query.teamId != 0 ? teams.getTeamForId(query.teamId).teamId : 0);
     }
 
     if (query.position) {
