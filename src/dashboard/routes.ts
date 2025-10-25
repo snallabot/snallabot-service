@@ -27,6 +27,7 @@ type RetrievePersonasRequest = { code: string, discord?: string }
 type LinkPersona = { selected_persona: string, access_token: string, discord?: string, console_override: ConsoleOverride }
 type RequestPersona = Persona & { maddenEntitlement: string }
 type ConnectLeague = { access_token: string, refresh_token: string, expiry: string, console: SystemConsole, selected_league: string, blaze_id: string, discord?: string }
+type ConnnectDiscord = { guildId: string, leagueId: number }
 
 async function renderErrorsMiddleware(ctx: ParameterizedContext, next: Next) {
   try {
@@ -233,7 +234,8 @@ router.get("/", async (ctx) => {
   }
   ctx.redirect(`/dashboard/league/${leagueId}`)
 }).get("/league/:leagueId", renderConnectedLeagueErrorsMiddleware, async (ctx) => {
-  const { leagueId: rawLeagueId, discord_token } = ctx.params
+  const { leagueId: rawLeagueId } = ctx.params
+  const { discord_token } = ctx.query as { discord_token?: string }
   const leagueId = Number(rawLeagueId)
   if (isNaN(leagueId)) {
     throw Error(`Invalid League ${leagueId}`)
@@ -324,9 +326,16 @@ router.get("/", async (ctx) => {
   }))
   ctx.status = 200
 }).get("/guilds", async (ctx, next) => {
-  const { code, state } = ctx.params
-  const token = await client.retrieveAccessToken(code, DISCORD_REDIRECT_URL)
+  const { code, state } = ctx.query
+  if (!code || !state) {
+    throw new Error("Invalid discord oauth, if errors seek support")
+  }
+  const token = await client.retrieveAccessToken(code as string, DISCORD_REDIRECT_URL)
   ctx.redirect(`/dashboard/league/${state}?discord_token=${token}`)
+}).post("/connectDiscord", async (ctx, next) => {
+  const connectRequest = ctx.request.body as ConnnectDiscord
+  await setLeague(connectRequest.guildId, `${connectRequest.leagueId}`)
+  ctx.redirect(`/dashboard/league/${connectRequest.leagueId}`)
 })
 
 export default router

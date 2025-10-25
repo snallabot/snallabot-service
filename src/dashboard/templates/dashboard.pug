@@ -156,7 +156,7 @@ body
         h5(class="mb-0") Connect Discord Server
       div(class="card-body")
         if discordsToConnect && discordsToConnect.length > 0
-          form(action="/connectDiscord" method="POST")
+          form(action="/dashboard/connectDiscord" method="POST")
             div(class="mb-3")
               label(for="discordServerSelect" class="form-label") Select Discord Server
               select(class="form-select" id="discordServerSelect" name="guildId" required)
@@ -164,13 +164,11 @@ body
                 each discord in discordsToConnect
                   option(value=discord.guildId) #{discord.name}
             div(class="mb-3")
-              label(for="leagueIdInput" class="form-label") League ID
-              input(type="text" class="form-control" id="leagueIdInput" value=leagueId disabled)
               input(type="hidden" name="leagueId" value=leagueId)
             button(type="submit" class="btn btn-primary") Connect Discord
         else
           div(class="text-center")
-            p(class="mb-3") No Discord servers available. Please authorize with Discord first.
+            p(class="mb-3") Authorize Discord to connect your league
             a(href=oauthUrl class="btn btn-primary")
               | Connect to Discord
     div(class="d-flex flex-column mt-3")
