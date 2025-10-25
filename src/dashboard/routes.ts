@@ -10,6 +10,7 @@ import LeagueSettingsDB from "../discord/settings_db"
 import MaddenDB, { MaddenEvents, parseExportStatusWeekKey } from "../db/madden_db"
 import { MADDEN_SEASON, getMessageForWeek } from "../export/madden_league_types"
 import { createProdClient } from "../discord/discord_utils"
+import { DEPLOYMENT_URL } from "../config"
 
 const startRender = Pug.compileFile(path.join(__dirname, "/templates/start.pug"))
 const errorRender = Pug.compileFile(path.join(__dirname, "/templates/error.pug"))
@@ -20,6 +21,7 @@ const dashboardRender = Pug.compileFile(path.join(__dirname, "/templates/dashboa
 const router = new Router({ prefix: "/dashboard" })
 
 const client = createProdClient()
+const DISCORD_REDIRECT_URL = `${DEPLOYMENT_URL}/dashboard/guilds`
 
 type RetrievePersonasRequest = { code: string, discord?: string }
 type LinkPersona = { selected_persona: string, access_token: string, discord?: string, console_override: ConsoleOverride }
@@ -231,7 +233,7 @@ router.get("/", async (ctx) => {
   }
   ctx.redirect(`/dashboard/league/${leagueId}`)
 }).get("/league/:leagueId", renderConnectedLeagueErrorsMiddleware, async (ctx) => {
-  const { leagueId: rawLeagueId } = ctx.params
+  const { leagueId: rawLeagueId, discord_token } = ctx.params
   const leagueId = Number(rawLeagueId)
   if (isNaN(leagueId)) {
     throw Error(`Invalid League ${leagueId}`)
@@ -276,10 +278,13 @@ router.get("/", async (ctx) => {
     const g = await client.getGuildInformation(l.guildId)
     return { name: g.name, icon: g.icon, settings: l }
   }))
+  const userGuilds = discord_token ? await client.getUserGuilds(discord_token) : []
+  const discordsToConnect = userGuilds.map(d => ({ name: d.name, guildId: d.id }))
+  const oauthUrl = client.generateOAuthRedirect(DISCORD_REDIRECT_URL, "guilds", rawLeagueId)
+
   const discordSettings = settledSettings.flatMap(s => s.status === "fulfilled" ? [s.value] : [])
   ctx.body = dashboardRender({
-    gameScheduleHubInfo: gameScheduleHubInfo, teamIdInfoList: teamIdInfoList, seasonInfo: seasonInfo, leagueName: leagueName, exports: exports, exportOptions: exportOptions, seasonWeekType: seasonType(seasonInfo), lastAdvance, exportStatus: displayableExportStatus, discordSettings
-
+    gameScheduleHubInfo: gameScheduleHubInfo, teamIdInfoList: teamIdInfoList, seasonInfo: seasonInfo, leagueName: leagueName, exports: exports, exportOptions: exportOptions, seasonWeekType: seasonType(seasonInfo), lastAdvance, exportStatus: displayableExportStatus, discordSettings, discordsToConnect, oauthUrl, leagueId: rawLeagueId
   })
 }).post("/league/:leagueId/updateExport", async (ctx, next) => {
   const { leagueId: rawLeagueId } = ctx.params
@@ -318,6 +323,10 @@ router.get("/", async (ctx) => {
     await removeLeague(d.guildId)
   }))
   ctx.status = 200
+}).get("/guilds", async (ctx, next) => {
+  const { code, state } = ctx.params
+  const token = await client.retrieveAccessToken(code, DISCORD_REDIRECT_URL)
+  ctx.redirect(`/dashboard/league/${state}?discord_token=${token}`)
 })
 
 export default router
