@@ -151,6 +151,26 @@ body
                           strong Roster: 
                           span(class="badge ms-1 bg-success") OK
                           small(class="text-muted d-block") Last: #{rosterData["MADDEN_PLAYER"].lastExported.toLocaleString()}
+    div(class="card mb-3 shadow-sm")
+      div(class="card-header bg-primary text-white")
+        h5(class="mb-0") Connect Discord Server
+      div(class="card-body")
+        if discordsToConnect && discordsToConnect.length > 0
+          form(action="/dashboard/connectDiscord" method="POST")
+            div(class="mb-3")
+              label(for="discordServerSelect" class="form-label") Select Discord Server
+              select(class="form-select" id="discordServerSelect" name="guildId" required)
+                option(value="" selected disabled) Choose a server...
+                each discord in discordsToConnect
+                  option(value=discord.guildId) #{discord.name}
+            div(class="mb-3")
+              input(type="hidden" name="leagueId" value=leagueId)
+            button(type="submit" class="btn btn-primary") Connect Discord
+        else
+          div(class="text-center")
+            p(class="mb-3") Authorize Discord to connect your league
+            a(href=oauthUrl class="btn btn-primary")
+              | Connect to Discord
     div(class="d-flex flex-column mt-3")
       div(class="flex-grow-1")
         each league in discordSettings

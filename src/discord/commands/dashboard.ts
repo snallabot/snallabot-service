@@ -79,7 +79,7 @@ async function getDashboardInfo(client: DiscordClient, token: string, guild_id: 
 }
 
 export function createDashboard(guild_id: string) {
-  return `Snallabot Dashboard: https://${DEPLOYMENT_URL}/dashboard?discord_connection=${guild_id}`
+  return `Snallabot Dashboard: ${DEPLOYMENT_URL}/dashboard?discord_connection=${guild_id}`
 }
 
 export default {
