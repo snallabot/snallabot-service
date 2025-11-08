@@ -232,9 +232,9 @@ export function createClient(settings: DiscordSettings): DiscordClient {
             throw new SnallabotDiscordError(e, `Snallabot does not have permission to create a message in <#${channel.id}>`)
           }
           else if (e.code === UNKNOWN_MESSAGE) {
-            throw new SnallabotDiscordError(e, `Snallabot cannot delete message, it may have been deleted? Full discord error ${e.message}`)
+            throw new SnallabotDiscordError(e, `Snallabot cannot create message, it may have been deleted? Try to re-configure the featuer you just used. Full discord error ${e.message}`)
           } else if (e.code === UNKNOWN_CHANNEL) {
-            throw new SnallabotDiscordError(e, `Snallabot cannot delete message in channel because the channel (<#${channel.id}>) may have been deleted? Full discord error: ${e.message}`)
+            throw new SnallabotDiscordError(e, `Snallabot cannot create message in channel because the channel (<#${channel.id}>) may have been deleted? Try to re-configure the feature you just used. Full discord error: ${e.message}`)
           }
         }
         throw e
