@@ -348,7 +348,7 @@ type StoredTokenInformation = {
   token: TokenInformation,
   session?: SessionInformation
 }
-export type ExportDestination = { autoUpdate: boolean, leagueInfo: boolean, rosters: boolean, weeklyStats: boolean, url: string, lastExportAttempt?: Date, lastSuccessfulExport?: Date, editable: boolean }
+export type ExportDestination = { autoUpdate: boolean, leagueInfo: boolean, rosters: boolean, weeklyStats: boolean, url: string, lastExportAttempt?: Date, lastSuccessfulExport?: Date, editable: boolean, extraInfo?: boolean }
 const DEFAULT_EXPORT = `${DEPLOYMENT_URL}`
 
 export async function storeToken(token: TokenInformation, leagueId: number) {
@@ -493,6 +493,12 @@ type TeamData = {
   }
 }
 
+export type ExtraData = {
+  leagueName: string,
+  calendarYear: number,
+  numMembers: number
+} & LeagueResponse
+
 const STAGGERED_MAX_MS = 75 // to stagger requests to EA and other outbound services
 const PRESEASON_WEEKS = Array.from({ length: 4 }, (v, index) => index)
 const SEASON_WEEKS = Array.from({ length: 23 }, (v, index) => index).filter(i => i !== 21) // filters out pro bowl
@@ -536,6 +542,16 @@ async function exportTeamData(data: TeamData, destinations: { [key: string]: Exp
     }))
   }
 }
+
+async function exportExtraData(data: ExtraData, destinations: { [key: string]: ExportDestination }, leagueId: string, platform: string) {
+  const extraDataDestinations = Object.values(destinations).filter(d => d.extraInfo).map(d => createDestination(d.url))
+  if (extraDataDestinations.length > 0) {
+    await Promise.all(extraDataDestinations.map(async d => {
+      await d.extra(platform, leagueId, data)
+    }))
+  }
+}
+
 const staggeringCall = async <T>(p: Promise<T>, waitTime: number = STAGGERED_MAX_MS): Promise<T> => {
   await new Promise(r => setTimeout(r, randomIntFromInterval(1, waitTime)))
   return await p
@@ -553,7 +569,7 @@ export async function exporterForLeague(leagueId: number, context: ExportContext
       return true
     }
   }))
-  const leagueInfo = await client.getLeagueInfo(leagueId)
+  const [leagueInfo, allLeagues] = await Promise.all([client.getLeagueInfo(leagueId), client.getLeagues()])
   return {
     exportCurrentWeek: async function() {
       const weekIndex = leagueInfo.careerHubInfo.seasonInfo.seasonWeek
@@ -653,6 +669,15 @@ export async function exporterForLeague(leagueId: number, context: ExportContext
           teamRequests = []
           teamData = { roster: {} }
         }
+      }
+      if (destinations.some(e => e.extraInfo)) {
+        const {
+          leagueName,
+          numMembers,
+          calendarYear
+        } = allLeagues.filter(l => l.leagueId === leagueId)[0]
+        const extraData = { ...leagueInfo, leagueName, numMembers, calendarYear }
+        await exportExtraData(extraData, contextualExports, `${leagueId}`, client.getSystemConsole())
       }
     }
   } as MaddenExporter

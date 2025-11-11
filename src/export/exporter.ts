@@ -2,7 +2,7 @@ import { SnallabotEvent } from "./../db/events_db"
 import MaddenDB, { MaddenEvents, idWeeklyEvents } from "../db/madden_db"
 import MaddenHash, { createTwoLayer, findDifferences } from "../db/madden_hash_storage"
 import { DefensiveExport, KickingExport, PassingExport, PuntingExport, ReceivingExport, RosterExport, RushingExport, SchedulesExport, StandingExport, TeamExport, TeamStatsExport } from "./madden_league_types";
-import { Stage } from "../dashboard/ea_client";
+import { ExtraData, Stage } from "../dashboard/ea_client";
 import { DEPLOYMENT_URL } from "../config";
 import FileHandler, { defaultSerializer } from "../file_handlers"
 
@@ -22,7 +22,8 @@ export interface MaddenExportDestination {
   defense(platform: string, leagueId: string, week: number, stage: Stage, data: DefensiveExport): Promise<ExportResult>,
   receiving(platform: string, leagueId: string, week: number, stage: Stage, data: ReceivingExport): Promise<ExportResult>,
   freeagents(platform: string, leagueId: string, data: RosterExport): Promise<ExportResult>,
-  teamRoster(platform: string, leagueId: string, teamId: string, data: RosterExport): Promise<ExportResult>
+  teamRoster(platform: string, leagueId: string, teamId: string, data: RosterExport): Promise<ExportResult>,
+  extra(platform: string, leagueId: string, data: ExtraData): Promise<ExportResult>
 }
 
 export function MaddenUrlDestination(baseUrl: string): MaddenExportDestination {
@@ -95,6 +96,16 @@ export function MaddenUrlDestination(baseUrl: string): MaddenExportDestination {
     },
     teamRoster: async function(platform: string, leagueId: string, teamId: string, data: RosterExport) {
       const res = await fetch(`${url}/${platform}/${leagueId}/team/${teamId}/roster`, {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: {
+          "Content-Type": "application/json",
+        }
+      })
+      return res.ok ? ExportResult.SUCCESS : ExportResult.FAILURE
+    },
+    extra: async function(platform: string, leagueId: string, data: ExtraData) {
+      const res = await fetch(`${url}/${platform}/${leagueId}/extra`, {
         method: "POST",
         body: JSON.stringify(data),
         headers: {
@@ -225,6 +236,10 @@ export const SnallabotExportDestination: MaddenExportDestination = {
     })
     await MaddenDB.updateRosterExportStatus(leagueId, MaddenEvents.MADDEN_PLAYER, teamId)
     return ExportResult.SUCCESS
+  },
+  extra: async function(platform: string, leagueId: string, data: ExtraData) {
+    // don't care
+    return ExportResult.SUCCESS
   }
 }
 
@@ -339,6 +354,11 @@ const FileExportDestination: MaddenExportDestination = {
 
   async teamRoster(platform: string, leagueId: string, teamId: string, data: RosterExport): Promise<ExportResult> {
     const path = `${platform}_${leagueId}_${teamId}_teamRoster.json`;
+    await FileHandler.writeFile(data, path, defaultSerializer());
+    return ExportResult.SUCCESS;
+  },
+  extra: async function(platform: string, leagueId: string, data: ExtraData) {
+    const path = `${platform}_${leagueId}_extraData.json`;
     await FileHandler.writeFile(data, path, defaultSerializer());
     return ExportResult.SUCCESS;
   }
