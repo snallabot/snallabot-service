@@ -172,6 +172,7 @@ function createTeamList(teams: StoredEvent<Team>[]): TeamList {
   const latestTeamMap = new Map<number, Team>()
   const latestTeams: Team[] = []
   Object.entries(Object.groupBy(teams, t => t.divName)).forEach(divisionTeams => {
+
     const [_, divTeams] = divisionTeams
     if (!divTeams) {
       return
@@ -185,11 +186,21 @@ function createTeamList(teams: StoredEvent<Team>[]): TeamList {
       matchedTeams.forEach(team => latestTeamMap.set(team.teamId, latestTeam))
     })
     if (unMatched.length > 0) {
-      // lets just assume the unmatched are normal teams
-      unMatched.forEach(unmatched => {
-        latestTeams.push(unmatched)
-        latestTeamMap.set(unmatched.teamId, unmatched)
-      })
+      // if there are just two teams left unmatched, and only one spot left, then they must be a match
+      if (unMatched.length === 2 && matched.length === 3) {
+        // lets just assume the unmatched are normal teams
+        const [team1, team2] = unMatched
+        const latestTeam = team1.timestamp > team2.timestamp ? team1 : team2
+        latestTeams.push(latestTeam)
+        latestTeamMap.set(team1.teamId, latestTeam)
+        latestTeamMap.set(team2.teamId, latestTeam)
+      } else {
+        // lets just assume the unmatched are normal teams
+        unMatched.forEach(unmatched => {
+          latestTeams.push(unmatched)
+          latestTeamMap.set(unmatched.teamId, unmatched)
+        })
+      }
     }
   })
   return {
