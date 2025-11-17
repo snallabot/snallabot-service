@@ -31,7 +31,8 @@ body
             th Url
             th(style="text-align: center;") League Info
             th(style="text-align: center;") Weekly Stats
-            th(style="text-align: center;") Rosters
+            th(style="text-align: center;") Roster
+            th(style="text-align: center;") Extra Data
             th(style="text-align: center;") Auto Update
             th(style="text-align: center;")
               button#addExportBtn.btn.btn-success(type="button") Add Export Url
@@ -45,6 +46,8 @@ body
                   input(type="checkbox", disabled=true, checked=exportDestination.weeklyStats)
                 td(style="text-align: center;")
                   input(type="checkbox", disabled=true, checked=exportDestination.rosters)
+                td(style="text-align: center;")
+                  input(type="checkbox", disabled=true, checked=exportDestination.extraData)
                 td(style="text-align: center;")
                   input(type="checkbox", disabled=true, checked=exportDestination.autoUpdate)
                 td(style="text-align: center;")
@@ -260,6 +263,7 @@ script.
     <td style="text-align: center;"><input class="leagueInfo" type="checkbox"></td>
     <td style="text-align: center;"><input class="weeklyStats" type="checkbox"></td>
     <td style="text-align: center;"><input class="rosters" type="checkbox"></td>
+    <td style="text-align: center;"><input class="extraData" type="checkbox"></td>
     <td style="text-align: center;"><input class="autoUpdate" type="checkbox"></td>
     <td style="text-align: center;">
       <button class="add-export-btn btn btn-outline-primary btn-sm">Add</button>
@@ -271,6 +275,7 @@ script.
   const leagueInfo = newRow.querySelector('.leagueInfo').checked;
   const weeklyStats = newRow.querySelector('.weeklyStats').checked;
   const rosters = newRow.querySelector('.rosters').checked;
+  const extraData = newRow.querySelector('.extraData').checked;
   const autoUpdate = newRow.querySelector('.autoUpdate').checked;
 
   try {
@@ -284,8 +289,9 @@ script.
         leagueInfo,
         weeklyStats,
         rosters,
+        extraData,
         autoUpdate,
-        editable: true
+        editable: true,
       })
     });
     location.reload()
