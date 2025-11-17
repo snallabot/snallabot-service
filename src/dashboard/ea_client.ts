@@ -348,7 +348,7 @@ type StoredTokenInformation = {
   token: TokenInformation,
   session?: SessionInformation
 }
-export type ExportDestination = { autoUpdate: boolean, leagueInfo: boolean, rosters: boolean, weeklyStats: boolean, url: string, lastExportAttempt?: Date, lastSuccessfulExport?: Date, editable: boolean, extraInfo?: boolean }
+export type ExportDestination = { autoUpdate: boolean, leagueInfo: boolean, rosters: boolean, weeklyStats: boolean, url: string, lastExportAttempt?: Date, lastSuccessfulExport?: Date, editable: boolean, extraData?: boolean }
 const DEFAULT_EXPORT = `${DEPLOYMENT_URL}`
 
 export async function storeToken(token: TokenInformation, leagueId: number) {
@@ -544,7 +544,7 @@ async function exportTeamData(data: TeamData, destinations: { [key: string]: Exp
 }
 
 async function exportExtraData(data: ExtraData, destinations: { [key: string]: ExportDestination }, leagueId: string, platform: string) {
-  const extraDataDestinations = Object.values(destinations).filter(d => d.extraInfo).map(d => createDestination(d.url))
+  const extraDataDestinations = Object.values(destinations).filter(d => d.extraData).map(d => createDestination(d.url))
   if (extraDataDestinations.length > 0) {
     await Promise.all(extraDataDestinations.map(async d => {
       await d.extra(platform, leagueId, data)
@@ -670,7 +670,7 @@ export async function exporterForLeague(leagueId: number, context: ExportContext
           teamData = { roster: {} }
         }
       }
-      if (destinations.some(e => e.extraInfo)) {
+      if (destinations.some(e => e.extraData)) {
         const {
           leagueName,
           numMembers,
