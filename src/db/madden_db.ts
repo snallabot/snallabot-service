@@ -522,16 +522,19 @@ const MaddenDB: MaddenDB = {
     return findLatestScheduleId(scheduleId, weekDocs.docs.map(d => convertDate(d.data()) as StoredEvent<MaddenGame>), teamList)
   },
   getAllWeeks: async function(leagueId: string) {
-    const status = await this.getExportStatus(leagueId)
-    if (status) {
-      return Object.entries(status.weeklyStatus).flatMap(e => {
-        const [weekKey, weekStatus] = e
-        const weekSeason = parseExportStatusWeekKey(weekKey)
-        weekSeason.weekIndex = weekSeason.weekIndex - 1
-        return weekStatus[MaddenEvents.MADDEN_SCHEDULE]?.lastExported != null ? [weekSeason] : []
-      })
-    }
-    return []
+    const schedules = await db.collection("madden_data26")
+      .doc(leagueId)
+      .collection(MaddenEvents.MADDEN_SCHEDULE)
+      .where("stageIndex", "==", 1)
+      .select("seasonIndex", "weekIndex")
+      .get()
+    const games = schedules.docs.map(d => d.data() as { seasonIndex: number, weekIndex: number })
+    const distinctWeekSeason = Object.entries(Object.groupBy(games, g => `${g.seasonIndex}_${g.weekIndex}`)).flatMap(e => {
+      const [_, gamesInWeek] = e
+      return gamesInWeek ? [gamesInWeek[0]] : []
+    })
+    return distinctWeekSeason
+
   }
   ,
   getStandingForTeam: async function(leagueId: string, teamId: number) {
