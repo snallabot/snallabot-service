@@ -1,8 +1,6 @@
-import { ParameterizedContext } from "koa"
-import { CommandHandler, Command, AutocompleteHandler, Autocomplete, MessageComponentHandler, MessageComponentInteraction } from "../commands_handler"
-import { respond, DiscordClient, deferMessage, getTeamEmoji, SnallabotTeamEmojis } from "../discord_utils"
+import { Command, Autocomplete, MessageComponentInteraction } from "../commands_handler"
+import { DiscordClient, deferMessage, getTeamEmoji, SnallabotTeamEmojis } from "../discord_utils"
 import { APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ButtonStyle, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
-import { Firestore } from "firebase-admin/firestore"
 import { playerSearchIndex, discordLeagueView, teamSearchView, LeagueLogos, leagueLogosView } from "../../db/view"
 import fuzzysort from "fuzzysort"
 import MaddenDB, { PlayerListQuery, PlayerStatType, PlayerStats, TeamList } from "../../db/madden_db"
@@ -1602,7 +1600,7 @@ async function searchPlayerListForQuery(textQuery: string, leagueId: string): Pr
 }
 
 export default {
-  async handleCommand(command: Command, client: DiscordClient, _: Firestore, ctx: ParameterizedContext) {
+  async handleCommand(command: Command, client: DiscordClient) {
     const { guild_id, token } = command
     if (!command.data.options) {
       throw new Error("logger command not defined properly")
@@ -1615,15 +1613,16 @@ export default {
         throw new Error("player get misconfigured")
       }
       const playerSearch = (playerCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value
-      respond(ctx, deferMessage())
       showPlayerCard(playerSearch, client, token, guild_id)
+      return deferMessage()
+
     } else if (subCommand === "list") {
       if (!playerCommand.options || !playerCommand.options[0]) {
         throw new Error("player get misconfigured")
       }
       const playerSearch = (playerCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value
-      respond(ctx, deferMessage())
       showPlayerList(playerSearch, client, token, guild_id)
+      return deferMessage()
     } else {
       throw new Error(`Missing player command ${subCommand}`)
     }
@@ -1766,4 +1765,4 @@ export default {
       type: InteractionResponseType.DeferredMessageUpdate,
     }
   }
-} as CommandHandler & AutocompleteHandler & MessageComponentHandler
+}

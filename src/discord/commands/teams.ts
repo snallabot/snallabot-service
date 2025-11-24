@@ -1,8 +1,7 @@
-import { ParameterizedContext } from "koa"
-import { CommandHandler, Command, AutocompleteHandler, Autocomplete } from "../commands_handler"
-import { respond, createMessageResponse, DiscordClient, SnallabotDiscordError, NoConnectedLeagueError, deferMessage } from "../discord_utils"
+
+import { Command, Autocomplete } from "../commands_handler"
+import { createMessageResponse, DiscordClient, SnallabotDiscordError, NoConnectedLeagueError, deferMessage } from "../discord_utils"
 import { APIApplicationCommandInteractionDataAttachmentOption, APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIApplicationCommandInteractionDataUserOption, ApplicationCommandOptionType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
-import { Firestore } from "firebase-admin/firestore"
 import LeagueSettingsDB, { ChannelId, DiscordIdType, LeagueSettings, MessageId, TeamAssignments } from "../settings_db"
 import MaddenClient, { TeamList } from "../../db/madden_db"
 import { Team } from "../../export/madden_league_types"
@@ -182,7 +181,7 @@ async function handleCustomLogo(guild_id: string, league_id: string, client: Dis
 }
 
 export default {
-  async handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext) {
+  async handleCommand(command: Command, client: DiscordClient) {
     const { guild_id } = command
     if (!command.data.options) {
       throw new Error("logger command not defined properly")
@@ -212,7 +211,7 @@ export default {
           assignments: leagueSettings?.commands?.teams?.assignments || {},
         })
 
-        respond(ctx, createMessageResponse("Teams Configured"))
+        return createMessageResponse("Teams Configured")
       } else {
         const oldMessageId = leagueSettings?.commands?.teams?.messageId
         if (leagueSettings.commands.teams && oldMessageId) {
@@ -226,9 +225,8 @@ export default {
               })
               const message = await fetchTeamsMessage(leagueSettings)
               await client.editMessage(channel, oldMessageId, message, [])
-              respond(ctx, createMessageResponse("Teams Configured"))
+              return createMessageResponse("Teams Configured")
             }
-            return
           } catch (e) {
             console.debug(e)
           }
@@ -241,7 +239,7 @@ export default {
           useRoleUpdates: useRoleUpdates,
           assignments: leagueSettings?.commands?.teams?.assignments || {},
         })
-        respond(ctx, createMessageResponse("Teams Configured"))
+        return createMessageResponse("Teams Configured")
       }
     } else if (subCommand === "assign") {
       if (!teamsCommand.options || !teamsCommand.options[0] || !teamsCommand.options[1]) {
@@ -277,18 +275,18 @@ export default {
       const message = createTeamsMessage(leagueSettings, teams)
       try {
         await client.editMessage(leagueSettings.commands.teams.channel, leagueSettings.commands.teams.messageId, message, [])
-        respond(ctx, createMessageResponse("Team Assigned"))
+        return createMessageResponse("Team Assigned")
       } catch (e) {
         if (e instanceof SnallabotDiscordError) {
           if (e.isDeletedChannel()) {
-            respond(ctx, createMessageResponse("The assignment was saved, but the channel the teams message was in got deleted. Do /teams configure again to pick a new one Error: " + e))
+            return createMessageResponse("The assignment was saved, but the channel the teams message was in got deleted. Do /teams configure again to pick a new one Error: " + e)
           } else if (e.isDeletedMessage()) {
-            respond(ctx, createMessageResponse("The assignment was saved, but my original message was deleted. do /teams configure for me to resend it Error: " + e))
+            return createMessageResponse("The assignment was saved, but my original message was deleted. do /teams configure for me to resend it Error: " + e)
           } else {
-            respond(ctx, createMessageResponse(`The assignment was saved, but I could not edit my message. Guidance: ${e.guidance} Error: ${e}`))
+            return createMessageResponse(`The assignment was saved, but I could not edit my message. Guidance: ${e.guidance} Error: ${e}`)
           }
         } else {
-          respond(ctx, createMessageResponse("Could not update teams message. The assignment was saved, Error: " + e))
+          return createMessageResponse("Could not update teams message. The assignment was saved, Error: " + e)
         }
       }
     } else if (subCommand === "free") {
@@ -322,18 +320,18 @@ export default {
       const message = createTeamsMessage(leagueSettings, teams)
       try {
         await client.editMessage(leagueSettings.commands.teams.channel, leagueSettings.commands.teams.messageId, message, [])
-        respond(ctx, createMessageResponse("Team Freed"))
+        return createMessageResponse("Team Freed")
       } catch (e) {
         if (e instanceof SnallabotDiscordError) {
           if (e.isDeletedChannel()) {
-            respond(ctx, createMessageResponse("The assignment was freed, but the channel the teams message was in got deleted. Do /teams configure again to pick a new one Error: " + e))
+            return createMessageResponse("The assignment was freed, but the channel the teams message was in got deleted. Do /teams configure again to pick a new one Error: " + e)
           } else if (e.isDeletedMessage()) {
-            respond(ctx, createMessageResponse("The assignment was freed, but my original message was deleted. do /teams configure for me to resend it Error: " + e))
+            return createMessageResponse("The assignment was freed, but my original message was deleted. do /teams configure for me to resend it Error: " + e)
           } else {
-            respond(ctx, createMessageResponse(`The assignment was freed, but I could not edit my message. Guidance: ${e.guidance} Error: ${e}`))
+            return createMessageResponse(`The assignment was freed, but I could not edit my message. Guidance: ${e.guidance} Error: ${e}`)
           }
         } else {
-          respond(ctx, createMessageResponse("Could not update teams message. The assignment was freed, Error: " + e))
+          return createMessageResponse("Could not update teams message. The assignment was freed, Error: " + e)
         }
       }
     } else if (subCommand === "reset") {
@@ -347,18 +345,18 @@ export default {
       const message = await fetchTeamsMessage(leagueSettings)
       try {
         await client.editMessage(leagueSettings.commands.teams.channel, leagueSettings.commands.teams.messageId, message, [])
-        respond(ctx, createMessageResponse("Team Assignments Reset"))
+        return createMessageResponse("Team Assignments Reset")
       } catch (e) {
         if (e instanceof SnallabotDiscordError) {
           if (e.isDeletedChannel()) {
-            respond(ctx, createMessageResponse("The assignment was reset, but the channel the teams message was in got deleted. Do /teams configure again to pick a new one Error: " + e))
+            return createMessageResponse("The assignment was reset, but the channel the teams message was in got deleted. Do /teams configure again to pick a new one Error: " + e)
           } else if (e.isDeletedMessage()) {
-            respond(ctx, createMessageResponse("The assignment was reset, but my original message was deleted. do /teams configure for me to resend it Error: " + e))
+            return createMessageResponse("The assignment was reset, but my original message was deleted. do /teams configure for me to resend it Error: " + e)
           } else {
-            respond(ctx, createMessageResponse(`The assignment was reset, but I could not edit my message. Guidance: ${e.guidance} Error: ${e}`))
+            return createMessageResponse(`The assignment was reset, but I could not edit my message. Guidance: ${e.guidance} Error: ${e}`)
           }
         } else {
-          respond(ctx, createMessageResponse("Could not update teams message. The assignment was reset, Error: " + e))
+          return createMessageResponse("Could not update teams message. The assignment was reset, Error: " + e)
         }
 
       }
@@ -386,10 +384,8 @@ export default {
       const assignedTeam = results[0].obj
       const teamToCustomize = teams.getTeamForId(assignedTeam.id)
       const { url } = command.data.resolved.attachments[image.value]
-
       handleCustomLogo(guild_id, leagueId, client, command.token, url, teamToCustomize)
-      respond(ctx, deferMessage())
-      return
+      return deferMessage()
     }
     else {
       throw new Error(`teams ${subCommand} misconfigured`)
@@ -513,4 +509,4 @@ export default {
     }
     return []
   }
-} as CommandHandler & AutocompleteHandler
+}

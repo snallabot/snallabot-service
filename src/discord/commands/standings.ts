@@ -1,8 +1,6 @@
-import { ParameterizedContext } from "koa"
-import { CommandHandler, Command, MessageComponentHandler, MessageComponentInteraction } from "../commands_handler"
-import { respond, DiscordClient, deferMessage } from "../discord_utils"
-import { APIApplicationCommandInteractionDataStringOption, APIApplicationCommandOptionChoice, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ApplicationCommandType, ButtonStyle, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
-import { Firestore } from "firebase-admin/firestore"
+import { Command, MessageComponentInteraction } from "../commands_handler"
+import { DiscordClient, deferMessage } from "../discord_utils"
+import { APIApplicationCommandInteractionDataStringOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ApplicationCommandType, ButtonStyle, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import LeagueSettingsDB from "../settings_db"
 import MaddenDB from "../../db/madden_db"
 import { Standing, formatRecord } from "../../export/madden_league_types"
@@ -178,7 +176,7 @@ function getStandingsFilter(interaction: MessageComponentInteraction) {
 }
 
 export default {
-  async handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext) {
+  async handleCommand(command: Command, client: DiscordClient) {
     const { guild_id, token } = command
     const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
     if (!leagueSettings?.commands?.madden_league?.league_id) {
@@ -186,8 +184,8 @@ export default {
     }
     const league = leagueSettings.commands.madden_league.league_id
     const scope = (command?.data?.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.value
-    respond(ctx, deferMessage())
     handleCommand(client, token, league, scope)
+    return deferMessage()
   },
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
     return {
@@ -231,4 +229,4 @@ export default {
     }
 
   }
-} as CommandHandler & MessageComponentHandler
+}

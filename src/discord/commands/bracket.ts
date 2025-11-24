@@ -1,11 +1,9 @@
-import { ParameterizedContext } from "koa"
-import { CommandHandler, Command } from "../commands_handler"
-import { respond, createMessageResponse, DiscordClient, NoConnectedLeagueError, formatTeamEmoji, deferMessage } from "../discord_utils"
+import { Command } from "../commands_handler"
+import { DiscordClient, NoConnectedLeagueError, deferMessage } from "../discord_utils"
 import { ApplicationCommandType, ComponentType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
-import { Firestore } from "firebase-admin/firestore"
 import { LeagueLogos, discordLeagueView, leagueLogosView } from "../../db/view"
 import MaddenDB, { TeamList } from "../../db/madden_db"
-import { GameResult, MaddenGame, PlayoffStatus, Standing, formatRecord } from "../../export/madden_league_types"
+import { GameResult, MaddenGame, PlayoffStatus, Standing, } from "../../export/madden_league_types"
 import { CanvasRenderingContext2D, Image, createCanvas, loadImage } from "canvas"
 import FileHandler, { imageSerializer } from "../../file_handlers"
 
@@ -365,13 +363,13 @@ async function formatPlayoffBracket(client: DiscordClient, token: string, standi
 
 
 export default {
-  async handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext) {
+  async handleCommand(command: Command, client: DiscordClient) {
     const { guild_id } = command
     const view = await discordLeagueView.createView(guild_id)
     if (view) {
       const [standings, games, teams, logos] = await Promise.all([MaddenDB.getLatestStandings(view.leagueId), MaddenDB.getPlayoffSchedule(view.leagueId), MaddenDB.getLatestTeams(view.leagueId), leagueLogosView.createView(view.leagueId)])
       formatPlayoffBracket(client, command.token, standings, games, teams, logos)
-      respond(ctx, deferMessage())
+      return deferMessage()
     } else {
       throw new NoConnectedLeagueError(guild_id)
     }
@@ -383,4 +381,4 @@ export default {
       type: ApplicationCommandType.ChatInput,
     }
   }
-} as CommandHandler
+}

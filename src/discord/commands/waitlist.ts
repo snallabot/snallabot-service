@@ -12,16 +12,16 @@ function createWaitlistMessage(waitlist: UserId[]) {
   )
 }
 
-function respondWithWaitlist(ctx: ParameterizedContext, waitlist: UserId[]) {
+function respondWithWaitlist(waitlist: UserId[]): any {
   if (waitlist.length === 0) {
-    respond(ctx, createMessageResponse("Waitlist is empty"))
+    return createMessageResponse("Waitlist is empty")
   } else {
-    respond(ctx, createMessageResponse(createWaitlistMessage(waitlist)))
+    return createMessageResponse(createWaitlistMessage(waitlist))
   }
 }
 
 export default {
-  async handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext) {
+  async handleCommand(command: Command, client: DiscordClient) {
     const { guild_id } = command
     const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
     if (!command.data.options) {
@@ -31,7 +31,7 @@ export default {
     const subCommandName = subCommand.name
     if (subCommandName === "list") {
       const waitlist = leagueSettings.commands.waitlist?.current_waitlist ?? []
-      respondWithWaitlist(ctx, waitlist)
+      return respondWithWaitlist(waitlist)
     } else if (subCommandName === "add") {
       if (!subCommand.options) {
         throw new Error("misconfigured waitlist add")
@@ -40,7 +40,7 @@ export default {
       const waitlist = leagueSettings.commands.waitlist?.current_waitlist ?? []
       const position = Number(((subCommand.options?.[1] as APIApplicationCommandInteractionDataIntegerOption)?.value || waitlist.length + 1)) - 1
       if (position > waitlist.length) {
-        respond(ctx, createMessageResponse("invalid position, beyond waitlist length"))
+        return createMessageResponse("invalid position, beyond waitlist length")
       } else {
         waitlist.splice(position, 0, { id: user, id_type: DiscordIdType.USER })
         const conf: WaitlistConfiguration = {
@@ -48,7 +48,7 @@ export default {
 
         }
         await LeagueSettingsDB.configureWaitlist(guild_id, conf)
-        respondWithWaitlist(ctx, waitlist)
+        return respondWithWaitlist(waitlist)
       }
     } else if (subCommandName === "remove") {
       if (!subCommand.options) {
@@ -62,7 +62,7 @@ export default {
 
       }
       await LeagueSettingsDB.configureWaitlist(guild_id, conf)
-      respondWithWaitlist(ctx, newWaitlist)
+      return respondWithWaitlist(newWaitlist)
     } else if (subCommandName === "pop") {
       if (!subCommand.options) {
         throw new Error("misconfigured waitlist pop")
@@ -75,9 +75,9 @@ export default {
 
       }
       await LeagueSettingsDB.configureWaitlist(guild_id, conf)
-      respondWithWaitlist(ctx, newWaitlist)
+      return respondWithWaitlist(newWaitlist)
     } else {
-      respond(ctx, createMessageResponse(`waitlist ${subCommandName} not found`))
+      return createMessageResponse(`waitlist ${subCommandName} not found`)
     }
   },
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
@@ -141,4 +141,4 @@ export default {
       ]
     }
   }
-} as CommandHandler
+}

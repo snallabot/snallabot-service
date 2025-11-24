@@ -1,8 +1,6 @@
-import { ParameterizedContext } from "koa"
-import { CommandHandler, Command } from "../commands_handler"
-import { respond, DiscordClient, deferMessage } from "../discord_utils"
+import { Command } from "../commands_handler"
+import { DiscordClient, deferMessage } from "../discord_utils"
 import { ApplicationCommandType, ComponentType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
-import { Firestore } from "firebase-admin/firestore"
 import { DEPLOYMENT_URL } from "../../config"
 import { discordLeagueView } from "../../db/view"
 import { storedTokenClient } from "../../dashboard/ea_client"
@@ -83,11 +81,9 @@ export function createDashboard(guild_id: string) {
 }
 
 export default {
-  async handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext) {
-    const { guild_id } = command
-
+  async handleCommand(command: Command, client: DiscordClient) {
     getDashboardInfo(client, command.token, command.guild_id)
-    respond(ctx, deferMessage())
+    return deferMessage()
   },
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
     return {
@@ -96,4 +92,4 @@ export default {
       type: ApplicationCommandType.ChatInput,
     }
   }
-} as CommandHandler
+}

@@ -362,4 +362,4 @@ export default {
     }
     throw new Error(`Invalid interaction on schedule`)
   }
-} as MessageComponentHandler
+}

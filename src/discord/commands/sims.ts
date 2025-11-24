@@ -1,8 +1,6 @@
-import { ParameterizedContext } from "koa"
-import { CommandHandler, Command, MessageComponentHandler, MessageComponentInteraction } from "../commands_handler"
-import { respond, DiscordClient, deferMessage } from "../discord_utils"
+import { Command, MessageComponentInteraction } from "../commands_handler"
+import { DiscordClient, deferMessage } from "../discord_utils"
 import { APIMessageStringSelectInteractionData, ApplicationCommandType, ButtonStyle, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
-import { Firestore } from "firebase-admin/firestore"
 import { MADDEN_SEASON } from "../../export/madden_league_types"
 import LeagueSettingsDB, { UserId } from "../settings_db"
 import { discordLeagueView } from "../../db/view"
@@ -260,7 +258,7 @@ async function showSeasonSims(token: string, client: DiscordClient, league: stri
 }
 
 export default {
-  async handleCommand(command: Command, client: DiscordClient, db: Firestore, ctx: ParameterizedContext) {
+  async handleCommand(command: Command, client: DiscordClient) {
     const { guild_id } = command
 
     const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
@@ -270,7 +268,7 @@ export default {
     const league = leagueSettings.commands.madden_league.league_id
 
     showSeasonSims(command.token, client, league)
-    respond(ctx, deferMessage())
+    return deferMessage()
   },
 
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
@@ -316,4 +314,4 @@ export default {
       type: InteractionResponseType.DeferredMessageUpdate,
     }
   }
-} as CommandHandler & MessageComponentHandler
+}
