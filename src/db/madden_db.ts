@@ -528,7 +528,13 @@ const MaddenDB: MaddenDB = {
       .where("stageIndex", "==", 1)
       .select("seasonIndex", "weekIndex")
       .get()
-    return schedules.docs.map(d => d.data() as { seasonIndex: number, weekIndex: number })
+    const games = schedules.docs.map(d => d.data() as { seasonIndex: number, weekIndex: number })
+    const distinctWeekSeason = Object.entries(Object.groupBy(games, g => `${g.seasonIndex}_${g.weekIndex}`)).flatMap(e => {
+      const [_, gamesInWeek] = e
+      return gamesInWeek ? [gamesInWeek[0]] : []
+    })
+    return distinctWeekSeason
+
   }
   ,
   getStandingForTeam: async function(leagueId: string, teamId: number) {
