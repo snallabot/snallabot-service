@@ -186,7 +186,7 @@ function createTeamList(teams: StoredEvent<Team>[]): TeamList {
     })
     // checking if matched teams is 4 gets rid of dupes, but we have no way of knowing what the unmatched team matches with, losing their stats
     // TODO (snallapa): revist this
-    if (unMatched.length > 0 && matched.length !== 4) {
+    if (unMatched.length > 0) {
       // if there are just two teams left unmatched, and only one spot left, then they must be a match
       if (unMatched.length === 2 && matched.length === 3) {
         // lets just assume the unmatched are normal teams

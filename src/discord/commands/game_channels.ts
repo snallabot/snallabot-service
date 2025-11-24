@@ -8,7 +8,6 @@ import createLogger from "../logging"
 import createNotifier from "../notifier"
 import { ExportContext, Stage, exporterForLeague, EAAccountError } from "../../dashboard/ea_client"
 import { leagueLogosView } from "../../db/view"
-import db from "../../db/firebase"
 
 async function react(client: DiscordClient, channel: ChannelId, message: MessageId, reaction: SnallabotReactions) {
   await client.reactToMessage(`${reaction}`, message, channel)
