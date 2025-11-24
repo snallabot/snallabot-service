@@ -54,7 +54,7 @@ const EventDB: EventDB = {
       })
       await batch.commit()
     }
-    Object.entries(Object.groupBy(events, e => e.event_type)).map(async entry => {
+    await Promise.all(Object.entries(Object.groupBy(events, e => e.event_type)).map(async entry => {
       const [eventType, specificTypeEvents] = entry
       if (specificTypeEvents) {
         const eventTypeNotifiers = notifiers[eventType]
@@ -68,7 +68,7 @@ const EventDB: EventDB = {
           }))
         }
       }
-    })
+    }))
   },
   async queryEvents<Event>(key: string, event_type: string, after: Date, filters: Filters, limit: number) {
     const events = await db.collection("events").doc(key).collection(event_type).where(

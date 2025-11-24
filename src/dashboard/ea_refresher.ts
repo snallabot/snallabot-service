@@ -23,7 +23,7 @@ async function checkLeague(leagueId: string) {
   const newHash = hash(leagueHash)
   if (newHash !== changeCache.get(leagueId)) {
     console.log(`Detected change in ${leagueId}`)
-    await fetch(`https://${DEPLOYMENT_URL}/dashboard/league/${leagueId}/export`,
+    await fetch(`${DEPLOYMENT_URL}/dashboard/league/${leagueId}/export`,
       {
         method: 'POST',
         headers: {

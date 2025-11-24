@@ -4,7 +4,7 @@ import LeagueSettingsDB, { ChannelId, GameChannel, GameChannelState, LeagueSetti
 import createLogger from "./logging"
 import MaddenDB from "../db/madden_db"
 import { ConfirmedSimV2, SimResult } from "../db/events"
-import { ExportContext, exporterForLeague } from "../dashboard/ea_client"
+import { ExportContext, Stage, exporterForLeague } from "../dashboard/ea_client"
 import { GameResult } from "../export/madden_league_types"
 
 interface SnallabotNotifier {
@@ -133,7 +133,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
       if (ggUsers.length > 0) {
         try {
           const exporter = await exporterForLeague(Number(leagueId), ExportContext.AUTO)
-          await exporter.exportCurrentWeek()
+          await exporter.exportSpecificWeeks([{ weekIndex: week - 1, stage: Stage.SEASON }])
         } catch (e) {
         }
         try {

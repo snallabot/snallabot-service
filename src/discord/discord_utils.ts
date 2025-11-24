@@ -79,10 +79,13 @@ export interface DiscordClient {
   getUsers(guild_id: string): Promise<APIGuildMember[]>,
   getGuildInformation(guild_id: string): Promise<APIGuild>,
   uploadEmoji(imageData: string, name: string): Promise<APIEmoji>,
-  getBotUser(): UserId
+  getBotUser(): UserId,
+  retrieveAccessToken(code: string, redirect: string): Promise<string>,
+  getUserGuilds(accessToken: string): Promise<APIGuild[]>,
+  generateOAuthRedirect(redirct: string, scope: string, state: string): string
 }
 
-type DiscordSettings = { publicKey: string, botToken: string, appId: string }
+type DiscordSettings = { publicKey: string, botToken: string, appId: string, clientSecret?: string }
 export function createClient(settings: DiscordSettings): DiscordClient {
   async function sendDiscordRequest(endpoint: string, options: { [key: string]: any }, maxTries: number = 10) {
     // append endpoint to root API URL
@@ -229,9 +232,9 @@ export function createClient(settings: DiscordSettings): DiscordClient {
             throw new SnallabotDiscordError(e, `Snallabot does not have permission to create a message in <#${channel.id}>`)
           }
           else if (e.code === UNKNOWN_MESSAGE) {
-            throw new SnallabotDiscordError(e, `Snallabot cannot delete message, it may have been deleted? Full discord error ${e.message}`)
+            throw new SnallabotDiscordError(e, `Snallabot cannot create message, it may have been deleted? Try to re-configure the featuer you just used. Full discord error ${e.message}`)
           } else if (e.code === UNKNOWN_CHANNEL) {
-            throw new SnallabotDiscordError(e, `Snallabot cannot delete message in channel because the channel (<#${channel.id}>) may have been deleted? Full discord error: ${e.message}`)
+            throw new SnallabotDiscordError(e, `Snallabot cannot create message in channel because the channel (<#${channel.id}>) may have been deleted? Try to re-configure the feature you just used. Full discord error: ${e.message}`)
           }
         }
         throw e
@@ -531,6 +534,40 @@ export function createClient(settings: DiscordSettings): DiscordClient {
     },
     getBotUser: function() {
       return { id: settings.appId, id_type: DiscordIdType.USER }
+    },
+    retrieveAccessToken: async function(code: string, redirectUrl: string) {
+      const secret = settings.clientSecret
+      if (!secret) {
+        throw new Error(`Missing Client Secret`)
+      }
+      const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          client_id: settings.appId,
+          client_secret: secret,
+          grant_type: 'authorization_code',
+          code: code,
+          redirect_uri: redirectUrl,
+        }),
+      });
+
+      const { access_token } = await tokenResponse.json();
+      return access_token
+    },
+    getUserGuilds: async function(accessToken: string) {
+      const userGuildsResponse = await fetch('https://discord.com/api/users/@me/guilds', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      const userGuilds = await userGuildsResponse.json() as APIGuild[]
+      return userGuilds
+    },
+    generateOAuthRedirect: function(redirect: string, scope: string, state: string) {
+      return `https://discord.com/api/oauth2/authorize?client_id=${settings.appId}&redirect_uri=${encodeURIComponent(redirect)}&response_type=code&scope=${encodeURIComponent(scope)}&state=${encodeURIComponent(state)}`;
     }
   }
 }
@@ -600,7 +637,7 @@ export function createProdClient() {
     throw new Error("No App Id passed for interaction verification")
   }
 
-  const prodSettings = { publicKey: process.env.PUBLIC_KEY, botToken: process.env.DISCORD_TOKEN, appId: process.env.APP_ID }
+  const prodSettings = { publicKey: process.env.PUBLIC_KEY, botToken: process.env.DISCORD_TOKEN, appId: process.env.APP_ID, clientSecret: process.env.CLIENT_SECRET }
   return createClient(prodSettings)
 }
 

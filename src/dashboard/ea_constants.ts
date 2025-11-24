@@ -1,12 +1,12 @@
 export const AUTH_SOURCE = 317239
-export const CLIENT_SECRET = "wfGAWnrxLroZOwwELYA2ZrAuaycuF2WDb00zOLv48Sb79viJDGlyD6OyK8pM5eIiv_20240731135155"
+export const CLIENT_SECRET = "teJpJ9cSXFqZAuKNW8IuHpy8D4dwWPoVrPoek38iCnrGbrUSfjqnHMBAv8iCVjeSm_20250910175618"
 export const REDIRECT_URL = "http://127.0.0.1/success"
-export const CLIENT_ID = "MCA_25_COMP_APP"
+export const CLIENT_ID = "MCA_26_COMP_APP"
 export const MACHINE_KEY = "444d362e8e067fe2"
 export const EA_LOGIN_URL = `https://accounts.ea.com/connect/auth?hide_create=true&release_type=prod&response_type=code&redirect_uri=${REDIRECT_URL}&client_id=${CLIENT_ID}&machineProfileKey=${MACHINE_KEY}&authentication_source=${AUTH_SOURCE}`
 
 
-export const TWO_DIGIT_YEAR = "25"
+export const TWO_DIGIT_YEAR = "26"
 export const YEAR = "2026"
 
 export const VALID_ENTITLEMENTS = ((a: string) => ({
@@ -27,6 +27,18 @@ export enum SystemConsole {
   STADIA = "stadia"
 }
 
+export enum ConsoleOverride {
+  NONE = "Default",
+  XBOX_ONE = "Xbox One",
+  PS4 = "PS4",
+  PC = "PC",
+  PS5 = "PS5",
+  XBOX_X = "XBOX Series X",
+  STADIA = "Stadia"
+}
+
+export const ALL_CONSOLES = Object.values(ConsoleOverride)
+
 export const ENTITLEMENT_TO_SYSTEM = ((a: string) => ({
   [`MADDEN_${a}XONE`]: SystemConsole.XBOX_ONE,
   [`MADDEN_${a}PS4`]: SystemConsole.PS4,
@@ -44,6 +56,24 @@ export const ENTITLEMENT_TO_VALID_NAMESPACE = ((a: string) => ({
   [`MADDEN_${a}XBSX`]: "xbox",
   [`MADDEN_${a}SDA`]: "stadia",
 }))(TWO_DIGIT_YEAR)
+
+export const CONSOLE_OVERRIDE_TO_ENTITLEMENT = ((a: string) => ({
+  [ConsoleOverride.XBOX_ONE]: `MADDEN_${a}XONE`,
+  [ConsoleOverride.PS4]: `MADDEN_${a}PS4`,
+  [ConsoleOverride.PC]: `MADDEN_${a}PC`,
+  [ConsoleOverride.PS5]: `MADDEN_${a}PS5`,
+  [ConsoleOverride.XBOX_X]: `MADDEN_${a}XBSX`,
+  [ConsoleOverride.STADIA]: `MADDEN_${a}SDA`,
+}))(TWO_DIGIT_YEAR)
+
+export const CONSOLE_OVERRIDE_TO_VALID_NAMESPACE: { [key: string]: Namespace } = {
+  [ConsoleOverride.XBOX_ONE]: "xbox",
+  [ConsoleOverride.PS4]: "ps3",
+  [ConsoleOverride.PC]: "cem_ea_id",
+  [ConsoleOverride.PS5]: "ps3",
+  [ConsoleOverride.XBOX_X]: "xbox",
+  [ConsoleOverride.STADIA]: "stadia",
+}
 
 export const SYSTEM_MAP = (a: string) => ({
   xone: `MADDEN_${a}_XONE_BLZ_SERVER`,

@@ -184,12 +184,24 @@ function createTeamList(teams: StoredEvent<Team>[]): TeamList {
       latestTeams.push(latestTeam)
       matchedTeams.forEach(team => latestTeamMap.set(team.teamId, latestTeam))
     })
-    if (unMatched.length > 0) {
-      // lets just assume the unmatched are normal teams
-      unMatched.forEach(unmatched => {
-        latestTeams.push(unmatched)
-        latestTeamMap.set(unmatched.teamId, unmatched)
-      })
+    // checking if matched teams is 4 gets rid of dupes, but we have no way of knowing what the unmatched team matches with, losing their stats
+    // TODO (snallapa): revist this
+    if (unMatched.length > 0 && matched.length !== 4) {
+      // if there are just two teams left unmatched, and only one spot left, then they must be a match
+      if (unMatched.length === 2 && matched.length === 3) {
+        // lets just assume the unmatched are normal teams
+        const [team1, team2] = unMatched
+        const latestTeam = team1.timestamp > team2.timestamp ? team1 : team2
+        latestTeams.push(latestTeam)
+        latestTeamMap.set(team1.teamId, latestTeam)
+        latestTeamMap.set(team2.teamId, latestTeam)
+      } else {
+        // lets just assume the unmatched are normal teams
+        unMatched.forEach(unmatched => {
+          latestTeams.push(unmatched)
+          latestTeamMap.set(unmatched.teamId, unmatched)
+        })
+      }
     }
   })
   return {
@@ -389,7 +401,7 @@ const MaddenDB: MaddenDB = {
         }
       }
     }
-    Object.entries(Object.groupBy(events, e => e.event_type)).map(async entry => {
+    await Promise.all(Object.entries(Object.groupBy(events, e => e.event_type)).map(async entry => {
       const [eventType, specificTypeEvents] = entry
       if (specificTypeEvents) {
         const eventTypeNotifiers = notifiers[eventType]
@@ -403,7 +415,7 @@ const MaddenDB: MaddenDB = {
           }))
         }
       }
-    })
+    }))
   },
   on<Event>(event_type: string, notifier: EventNotifier<Event>) {
     EventDB.on(event_type, notifier)
@@ -617,13 +629,13 @@ const MaddenDB: MaddenDB = {
     let playersQuery;
     // flip the query for going backwards by ordering opposite and using start after
     if (endBefore) {
-      playersQuery = db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).orderBy("playerBestOvr", "asc").orderBy("presentationId", "desc").orderBy("birthYear", "desc").orderBy("birthMonth", "desc").orderBy("birthDay", "desc").limit(limit * 2)
+      playersQuery = db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).orderBy("playerBestOvr", "asc").orderBy("presentationId", "desc").orderBy("birthYear", "desc").orderBy("birthMonth", "desc").orderBy("birthDay", "desc").limit(limit * 3)
     } else {
-      playersQuery = db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).orderBy("playerBestOvr", "desc").orderBy("presentationId", "asc").orderBy("birthYear", "asc").orderBy("birthMonth", "asc").orderBy("birthDay", "asc").limit(limit * 2)
+      playersQuery = db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).orderBy("playerBestOvr", "desc").orderBy("presentationId", "asc").orderBy("birthYear", "asc").orderBy("birthMonth", "asc").orderBy("birthDay", "asc").limit(limit * 3)
     }
     if ((query.teamId && query.teamId !== -1) || query.teamId === 0) {
       const teams = await this.getLatestTeams(leagueId)
-      playersQuery = playersQuery.where("teamId", "==", teams.getTeamForId(query.teamId).teamId);
+      playersQuery = playersQuery.where("teamId", "==", query.teamId != 0 ? teams.getTeamForId(query.teamId).teamId : 0);
     }
 
     if (query.position) {
