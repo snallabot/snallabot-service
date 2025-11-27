@@ -632,6 +632,7 @@ const MaddenDB: MaddenDB = {
     let playersQuery;
     // flip the query for going backwards by ordering opposite and using start after
     console.log(query)
+    console.log(startAfter)
     if (endBefore) {
       playersQuery = db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).orderBy("playerBestOvr", "asc").orderBy("presentationId", "desc").orderBy("birthYear", "desc").orderBy("birthMonth", "desc").orderBy("birthDay", "desc").limit(limit * 3)
     } else {
