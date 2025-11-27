@@ -1,5 +1,5 @@
 import { Command } from "../commands_handler"
-import { createMessageResponse, DiscordClient, deferMessage, formatTeamMessageName, SnallabotReactions, SnallabotDiscordError, formatSchedule } from "../discord_utils"
+import { createMessageResponse, DiscordClient, deferMessage, formatTeamMessageName, SnallabotReactions, SnallabotDiscordError, formatSchedule, NoConnectedLeagueError } from "../discord_utils"
 import { APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ApplicationCommandType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import LeagueSettingsDB, { CategoryId, ChannelId, DiscordIdType, GameChannel, GameChannelConfiguration, GameChannelState, LeagueSettings, MaddenLeagueConfiguration, MessageId, RoleId, UserId, WeekState } from "../settings_db"
 import MaddenClient from "../../db/madden_db"
@@ -342,7 +342,7 @@ export default {
         throw new Error("Game channels are not configured! run /game_channels configure first")
       }
       if (!leagueSettings.commands?.madden_league?.league_id) {
-        throw new Error("No madden league linked. Setup snallabot with your Madden league first")
+        throw new NoConnectedLeagueError(guild_id)
       }
       const category = categoryOverride ? categoryOverride : leagueSettings.commands.game_channel.default_category.id
       createGameChannels(client, token, guild_id, leagueSettings, week, { id: category, id_type: DiscordIdType.CATEGORY }, author)

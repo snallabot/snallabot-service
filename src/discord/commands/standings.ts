@@ -1,5 +1,5 @@
 import { Command, MessageComponentInteraction } from "../commands_handler"
-import { DiscordClient, deferMessage } from "../discord_utils"
+import { DiscordClient, NoConnectedLeagueError, deferMessage } from "../discord_utils"
 import { APIApplicationCommandInteractionDataStringOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ApplicationCommandType, ButtonStyle, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import LeagueSettingsDB from "../settings_db"
 import MaddenDB from "../../db/madden_db"
@@ -180,7 +180,7 @@ export default {
     const { guild_id, token } = command
     const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
     if (!leagueSettings?.commands?.madden_league?.league_id) {
-      throw new Error("No madden league linked. Setup snallabot with your Madden league first")
+      throw new NoConnectedLeagueError(guild_id)
     }
     const league = leagueSettings.commands.madden_league.league_id
     const scope = (command?.data?.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.value

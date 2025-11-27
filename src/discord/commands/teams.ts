@@ -1,4 +1,3 @@
-
 import { Command, Autocomplete } from "../commands_handler"
 import { createMessageResponse, DiscordClient, SnallabotDiscordError, NoConnectedLeagueError, deferMessage } from "../discord_utils"
 import { APIApplicationCommandInteractionDataAttachmentOption, APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIApplicationCommandInteractionDataUserOption, ApplicationCommandOptionType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"

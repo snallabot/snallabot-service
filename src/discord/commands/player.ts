@@ -1,5 +1,5 @@
 import { Command, Autocomplete, MessageComponentInteraction } from "../commands_handler"
-import { DiscordClient, deferMessage, getTeamEmoji, SnallabotTeamEmojis } from "../discord_utils"
+import { DiscordClient, deferMessage, getTeamEmoji, SnallabotTeamEmojis, NoConnectedLeagueError } from "../discord_utils"
 import { APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ButtonStyle, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { playerSearchIndex, discordLeagueView, teamSearchView, LeagueLogos, leagueLogosView } from "../../db/view"
 import fuzzysort from "fuzzysort"
@@ -63,7 +63,7 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, token
     const discordLeague = await discordLeagueView.createView(guild_id)
     const leagueId = discordLeague?.leagueId
     if (!leagueId) {
-      throw new Error(`No League connected to snallabot`)
+      throw new NoConnectedLeagueError(guild_id)
     }
     let searchRosterId = Number(playerSearch)
     if (isNaN(searchRosterId)) {
@@ -138,7 +138,7 @@ async function showPlayerFullRatings(rosterId: number, client: DiscordClient, to
   const discordLeague = await discordLeagueView.createView(guild_id)
   const leagueId = discordLeague?.leagueId
   if (!leagueId) {
-    throw new Error(`No League connected to snallabot`)
+    throw new NoConnectedLeagueError(guild_id)
   }
   const [player, teamList] = await Promise.all([MaddenDB.getPlayer(leagueId, `${rosterId}`), MaddenDB.getLatestTeams(leagueId)])
   // 0 team id means the player is a free agent
@@ -194,7 +194,7 @@ async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, to
   const discordLeague = await discordLeagueView.createView(guild_id)
   const leagueId = discordLeague?.leagueId
   if (!leagueId) {
-    throw new Error(`No League connected to snallabot`)
+    throw new NoConnectedLeagueError(guild_id)
   }
   const [player, teamList] = await Promise.all([MaddenDB.getPlayer(leagueId, `${rosterId}`), MaddenDB.getLatestTeams(leagueId)])
   const playerStats = await MaddenDB.getPlayerStats(leagueId, player)
@@ -253,7 +253,7 @@ async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, to
   const discordLeague = await discordLeagueView.createView(guild_id)
   const leagueId = discordLeague?.leagueId
   if (!leagueId) {
-    throw new Error(`No League connected to snallabot`)
+    throw new NoConnectedLeagueError(guild_id)
   }
   const [player, teamList] = await Promise.all([MaddenDB.getPlayer(leagueId, `${rosterId}`), MaddenDB.getLatestTeams(leagueId)])
   const playerStats = await MaddenDB.getPlayerStats(leagueId, player)
@@ -350,7 +350,7 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
     const discordLeague = await discordLeagueView.createView(guild_id)
     const leagueId = discordLeague?.leagueId
     if (!leagueId) {
-      throw new Error(`No League connected to snallabot`)
+      throw new NoConnectedLeagueError(guild_id)
     }
     let query: PlayerListQuery;
     try {
