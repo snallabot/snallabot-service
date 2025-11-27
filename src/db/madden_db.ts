@@ -52,7 +52,7 @@ export enum MaddenEvents {
 
 export type PlayerListQuery = { teamId?: number, position?: string, rookie?: boolean }
 // for every title update there are duplicate players, we need to account for that in player queries
-const PLAYER_QUERY_DUPLICATE_MULTIPLIER = 5
+const PLAYER_QUERY_DUPLICATE_MULTIPLIER = 6
 type IndividualStatus = { lastExported: Date }
 export type ExportStatus = {
   [MaddenEvents.MADDEN_TEAM]?: IndividualStatus,
