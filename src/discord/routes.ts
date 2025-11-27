@@ -75,9 +75,17 @@ EventDB.on<MaddenBroadcastEvent>("MADDEN_BROADCAST", async (events) => {
       console.error(`${discordServer} is not configured for Broadcasts`)
     } else {
       const channel = configuration.channel
-      const role = configuration.role ? `<@&${configuration.role.id}>` : ""
+      let roleTag = ""
+      if (configuration.role) {
+        // its an @everyone tag if the server id matches the role id
+        if (configuration.role.id === discordServer) {
+          roleTag = "@everyone"
+        } else {
+          roleTag = `<@&${configuration.role.id}>`
+        }
+      }
       try {
-        await prodClient.createMessage(channel, `${role} ${broadcastEvent.title}\n\n${broadcastEvent.video}`, ["roles", "everyone"])
+        await prodClient.createMessage(channel, `${roleTag} ${broadcastEvent.title}\n\n${broadcastEvent.video}`, ["roles", "everyone"])
       } catch (e) {
         console.error("could not send broacast")
       }
