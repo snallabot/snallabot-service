@@ -1,5 +1,5 @@
 import { Command, MessageComponentInteraction } from "../commands_handler"
-import { DiscordClient, deferMessage } from "../discord_utils"
+import { DiscordClient, NoConnectedLeagueError, deferMessage } from "../discord_utils"
 import { APIMessageStringSelectInteractionData, ApplicationCommandType, ButtonStyle, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { MADDEN_SEASON } from "../../export/madden_league_types"
 import LeagueSettingsDB, { UserId } from "../settings_db"
@@ -263,7 +263,7 @@ export default {
 
     const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
     if (!leagueSettings.commands.madden_league?.league_id) {
-      throw new Error("Could not find a linked Madden league, link a league first")
+      throw new NoConnectedLeagueError(guild_id)
     }
     const league = leagueSettings.commands.madden_league.league_id
 

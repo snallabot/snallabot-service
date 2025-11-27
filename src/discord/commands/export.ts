@@ -1,7 +1,7 @@
 import { Command } from "../commands_handler"
 import { DiscordClient, deferMessageInvisible } from "../discord_utils"
 import { APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ApplicationCommandType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
-import { ExportContext, exporterForLeague } from "../../dashboard/ea_client"
+import { EAAccountError, ExportContext, exporterForLeague } from "../../dashboard/ea_client"
 import { discordLeagueView } from "../../db/view"
 
 
@@ -32,10 +32,18 @@ async function handleExport(guildId: string, week: number, token: string, client
       flags: 64
     })
   } catch (e) {
-    await client.editOriginalInteraction(token, {
-      content: `Export failed :(, error: ${e}`,
-      flags: 64
-    })
+    if (e instanceof EAAccountError) {
+      await client.editOriginalInteraction(token, {
+        content: `Export failed :(, error: ${e} Guidance: ${e.troubleshoot}`,
+        flags: 64
+      })
+    } else {
+      await client.editOriginalInteraction(token, {
+        content: `Export failed :(, error: ${e}`,
+        flags: 64
+      })
+    }
+
   }
 }
 
