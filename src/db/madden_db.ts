@@ -51,6 +51,8 @@ export enum MaddenEvents {
 }
 
 export type PlayerListQuery = { teamId?: number, position?: string, rookie?: boolean }
+// for every title update there are duplicate players, we need to account for that in player queries
+const PLAYER_QUERY_DUPLICATE_MULTIPLIER = 5
 type IndividualStatus = { lastExported: Date }
 export type ExportStatus = {
   [MaddenEvents.MADDEN_TEAM]?: IndividualStatus,
@@ -632,9 +634,9 @@ const MaddenDB: MaddenDB = {
     let playersQuery;
     // flip the query for going backwards by ordering opposite and using start after
     if (endBefore) {
-      playersQuery = db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).orderBy("playerBestOvr", "asc").orderBy("presentationId", "desc").orderBy("birthYear", "desc").orderBy("birthMonth", "desc").orderBy("birthDay", "desc").limit(limit * 5)
+      playersQuery = db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).orderBy("playerBestOvr", "asc").orderBy("presentationId", "desc").orderBy("birthYear", "desc").orderBy("birthMonth", "desc").orderBy("birthDay", "desc").limit(limit * PLAYER_QUERY_DUPLICATE_MULTIPLIER)
     } else {
-      playersQuery = db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).orderBy("playerBestOvr", "desc").orderBy("presentationId", "asc").orderBy("birthYear", "asc").orderBy("birthMonth", "asc").orderBy("birthDay", "asc").limit(limit * 5)
+      playersQuery = db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).orderBy("playerBestOvr", "desc").orderBy("presentationId", "asc").orderBy("birthYear", "asc").orderBy("birthMonth", "asc").orderBy("birthDay", "asc").limit(limit * PLAYER_QUERY_DUPLICATE_MULTIPLIER)
     }
     if ((query.teamId && query.teamId !== -1) || query.teamId === 0) {
       const teams = await this.getLatestTeams(leagueId)
