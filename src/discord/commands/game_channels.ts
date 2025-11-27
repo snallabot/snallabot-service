@@ -257,7 +257,7 @@ async function notifyGameChannels(client: DiscordClient, token: string, guild_id
       const weekState = entry[1]
       const season = weekState.seasonIndex
       const week = weekState.week
-      return await Promise.all(Object.values(weekState.channel_states).map(async channel => {
+      return await Promise.all(Object.values(weekState?.channel_states || {}).map(async channel => {
         await notifier.ping(channel, season, week)
       }))
     }))
