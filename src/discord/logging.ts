@@ -11,9 +11,13 @@ async function getMessages(channelId: ChannelId, client: DiscordClient): Promise
   let page = 0
   while (newMessages.length === 100 && page < MAX_PAGES) {
     const lastMessage = messages[messages.length - 1]
-    newMessages = await client.getMessagesInChannel(channelId, { id: lastMessage.id, id_type: DiscordIdType.MESSAGE })
-    messages = messages.concat(newMessages)
-    page = page + 1
+    if (lastMessage) {
+      newMessages = await client.getMessagesInChannel(channelId, { id: lastMessage.id, id_type: DiscordIdType.MESSAGE })
+      messages = messages.concat(newMessages)
+      page = page + 1
+    } else {
+      break
+    }
   }
   return messages.reverse()
 }
