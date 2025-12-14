@@ -1,9 +1,9 @@
 import { Command, Autocomplete, MessageComponentInteraction } from "../commands_handler"
 import { DiscordClient, deferMessage, getTeamEmoji, SnallabotTeamEmojis, NoConnectedLeagueError } from "../discord_utils"
 import { APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ButtonStyle, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
-import { playerSearchIndex, discordLeagueView, teamSearchView, LeagueLogos, leagueLogosView } from "../../db/view"
+import { discordLeagueView, LeagueLogos, leagueLogosView } from "../../db/view"
 import fuzzysort from "fuzzysort"
-import MaddenDB, { PlayerListQuery, PlayerStatType, PlayerStats, TeamList } from "../../db/madden_db"
+import MaddenDB, { PlayerListQuery, PlayerStatType, PlayerStats, TeamList, teamSearchView } from "../../db/madden_db"
 import { DevTrait, LBStyleTrait, MADDEN_SEASON, MaddenGame, POSITIONS, POSITION_GROUP, PlayBallTrait, Player, QBStyleTrait, SensePressureTrait, YesNoTrait } from "../../export/madden_league_types"
 
 enum PlayerSelection {
@@ -72,7 +72,7 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, token
       if (results.length === 0) {
         throw new Error(`No player results for ${playerSearch} in ${leagueId}`)
       }
-      searchRosterId = results[0].rosterId
+      searchRosterId = Number(results[0].rosterId)
     }
     const [player, teamList] = await Promise.all([MaddenDB.getPlayer(leagueId, `${searchRosterId}`), MaddenDB.getLatestTeams(leagueId)])
     const backToSearch = pagination ? [
@@ -1535,15 +1535,14 @@ function formatPlayerList(players: Player[], teams: TeamList, logos: LeagueLogos
 
 }
 
-type PlayerFound = { teamAbbr: string, rosterId: number, firstName: string, lastName: string, teamId: number, position: string }
+type PlayerFound = { teamAbbr: string, rosterId: string, firstName: string, lastName: string, teamId: string, position: string }
 
 async function searchPlayerForRosterId(query: string, leagueId: string): Promise<PlayerFound[]> {
-  const [playersToSearch, teamsIndex] = await Promise.all([playerSearchIndex.createView(leagueId), teamSearchView.createView(leagueId)])
-  if (playersToSearch && teamsIndex) {
-    const players = Object.fromEntries(Object.entries(playersToSearch).map(entry => {
-      const [rosterId, roster] = entry
-      const abbr = roster.teamId === 0 ? "FA" : teamsIndex?.[roster.teamId]?.abbrName
-      return [rosterId, { teamAbbr: abbr, ...roster }]
+  const [playersToSearch, teamsIndex] = await Promise.all([MaddenDB.getLatestPlayers(leagueId), teamSearchView.createView(leagueId)])
+  if (teamsIndex) {
+    const players = Object.fromEntries(playersToSearch.map(roster => {
+      const abbr = roster.teamId === "0" ? "FA" : teamsIndex?.[roster.teamId]?.abbrName
+      return [roster.rosterId, { teamAbbr: abbr, ...roster }]
     }))
     const results = fuzzysort.go(query, Object.values(players), {
       keys: ["firstName", "lastName", "position", "teamAbbr"], threshold: 0.4, limit: 25
