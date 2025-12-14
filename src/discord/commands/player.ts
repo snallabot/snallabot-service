@@ -1626,10 +1626,20 @@ async function retirePlayers(leagueId: string, token: string, client: DiscordCli
     const leagueInfo = await eaClient.getLeagueInfo(league)
     const teams = leagueInfo.teamIdInfoList
     const playersInLeague = new Set<string>()
-    await Promise.all(teams.map(async (team, idx) => {
-      const roster = await eaClient.getTeamRoster(league, team.teamId, idx)
-      roster.rosterInfoList.forEach(player => playersInLeague.add(createPlayerKey(player)))
-    }))
+    for (let idx = 0; idx < teams.length; idx++) {
+      const team = teams[idx];
+      const roster = await eaClient.getTeamRoster(league, team.teamId, idx);
+      roster.rosterInfoList.forEach(player => playersInLeague.add(createPlayerKey(player)));
+      await client.editOriginalInteraction(token, {
+        flags: 32768,
+        components: [
+          {
+            type: ComponentType.TextDisplay,
+            content: `Players updated. Finding retired players... Checked ${team.displayName}`
+          }
+        ]
+      })
+    }
     const latestPlayers = await MaddenDB.getLatestPlayers(leagueId)
     const retiredPlayers = latestPlayers.filter(player => {
       return !playersInLeague.has(createPlayerKey(player))
