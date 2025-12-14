@@ -1539,6 +1539,7 @@ type PlayerFound = { teamAbbr: string, rosterId: string, firstName: string, last
 
 async function searchPlayerForRosterId(query: string, leagueId: string): Promise<PlayerFound[]> {
   const [playersToSearch, teamsIndex] = await Promise.all([MaddenDB.getLatestPlayers(leagueId), teamSearchView.createView(leagueId)])
+  console.log(playersToSearch)
   if (teamsIndex) {
     const players = Object.fromEntries(playersToSearch.map(roster => {
       const abbr = roster.teamId === "0" ? "FA" : teamsIndex?.[roster.teamId]?.abbrName
