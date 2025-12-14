@@ -774,42 +774,43 @@ const MaddenDB: MaddenDB = {
       players = players.filter(p => p.yearsPro === 0);
     }
 
-    players = players.sort((a, b) => {
-      if (endBefore) {
-        // Ascending order for backwards pagination
-        return a.playerBestOvr - b.playerBestOvr;
-      } else {
-        // Descending order for normal pagination
-        return b.playerBestOvr - a.playerBestOvr;
-      }
-    });
-    // Handle pagination
-    if (startAfter || endBefore) {
-      const cursor = startAfter || endBefore!;
+    players.sort((a, b) => b.playerBestOvr - a.playerBestOvr);
+    let resultPlayers;
+    if (startAfter) {
       const cursorIndex = players.findIndex(p =>
-        p.presentationId === cursor.presentationId &&
-        p.birthYear === cursor.birthYear &&
-        p.birthMonth === cursor.birthMonth &&
-        p.birthDay === cursor.birthDay
+        p.presentationId === startAfter.presentationId &&
+        p.birthYear === startAfter.birthYear &&
+        p.birthMonth === startAfter.birthMonth &&
+        p.birthDay === startAfter.birthDay
       );
 
       if (cursorIndex !== -1) {
-        players = players.slice(cursorIndex + 1);
+        resultPlayers = players.slice(cursorIndex + 1, Math.min(cursorIndex + 1 + limit, players.length));
+      } else {
+        resultPlayers = players.slice(0, limit);
       }
-    }
+    } else if (endBefore) {
+      const cursorIndex = players.findIndex(p =>
+        p.presentationId === endBefore.presentationId &&
+        p.birthYear === endBefore.birthYear &&
+        p.birthMonth === endBefore.birthMonth &&
+        p.birthDay === endBefore.birthDay
+      );
 
-    // Limit results
-    const resultPlayers = players.slice(0, limit);
+      if (cursorIndex !== -1) {
+        const startIndex = Math.max(0, Math.max(cursorIndex - limit, 0));
+        resultPlayers = players.slice(startIndex, cursorIndex);
+      } else {
+        resultPlayers = players.slice(0, limit);
+      }
+    } else {
+      resultPlayers = players.slice(0, limit);
+    }
 
     // Fetch full player data
     const fullPlayers = await Promise.all(
       resultPlayers.map(p => this.getPlayer(leagueId, p.rosterId))
     );
-
-    // Reverse if paginating backwards
-    if (endBefore) {
-      return fullPlayers.reverse();
-    }
 
     return fullPlayers;
 
