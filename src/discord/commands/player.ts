@@ -3,8 +3,9 @@ import { DiscordClient, deferMessage, getTeamEmoji, SnallabotTeamEmojis, NoConne
 import { APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ButtonStyle, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { discordLeagueView, LeagueLogos, leagueLogosView } from "../../db/view"
 import fuzzysort from "fuzzysort"
-import MaddenDB, { PlayerListQuery, PlayerStatType, PlayerStats, TeamList, teamSearchView } from "../../db/madden_db"
+import MaddenDB, { PlayerListQuery, PlayerStatType, PlayerStats, TeamList, createPlayerKey, teamSearchView } from "../../db/madden_db"
 import { DevTrait, LBStyleTrait, MADDEN_SEASON, MaddenGame, POSITIONS, POSITION_GROUP, PlayBallTrait, Player, QBStyleTrait, SensePressureTrait, YesNoTrait } from "../../export/madden_league_types"
+import { ExportContext, exporterForLeague, storedTokenClient } from "../../dashboard/ea_client"
 
 enum PlayerSelection {
   PLAYER_OVERVIEW = "po",
@@ -1598,6 +1599,54 @@ async function searchPlayerListForQuery(textQuery: string, leagueId: string): Pr
   return []
 }
 
+async function retirePlayers(leagueId: string, token: string, client: DiscordClient) {
+  await client.editOriginalInteraction(token, {
+    flags: 32768,
+    components: [
+      {
+        type: ComponentType.TextDisplay,
+        content: `Updating latest players...`
+      }
+    ]
+  })
+  const league = Number(leagueId)
+  const eaClient = await storedTokenClient(league)
+  const exporter = await exporterForLeague(league, ExportContext.MANUAL)
+  await exporter.exportCurrentWeek()
+  await client.editOriginalInteraction(token, {
+    flags: 32768,
+    components: [
+      {
+        type: ComponentType.TextDisplay,
+        content: `Players updated. Finding retired players`
+      }
+    ]
+  })
+  const leagueInfo = await eaClient.getLeagueInfo(league)
+  const teams = leagueInfo.teamIdInfoList
+  const playersInLeague = new Set<string>()
+  await Promise.all(teams.map(async (team, idx) => {
+    const roster = await eaClient.getTeamRoster(league, team.teamId, idx)
+    roster.rosterInfoList.forEach(player => playersInLeague.add(createPlayerKey(player)))
+  }))
+  const latestPlayers = await MaddenDB.getLatestPlayers(leagueId)
+  const retiredPlayers = latestPlayers.filter(player => {
+    return !playersInLeague.has(createPlayerKey(player))
+  }).sort((a, b) => b.playerBestOvr - a.playerBestOvr)
+  const retiredPlayersMessage = retiredPlayers.map(p => `- ${p.position} ${p.firstName} ${p.lastName}`)
+    .join("\n")
+  await
+    client.editOriginalInteraction(token, {
+      flags: 32768,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: `Found retired players:\n${retiredPlayersMessage}`
+        }
+      ]
+    })
+}
+
 export default {
   async handleCommand(command: Command, client: DiscordClient) {
     const { guild_id, token } = command
@@ -1622,7 +1671,17 @@ export default {
       const playerSearch = (playerCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value
       showPlayerList(playerSearch, client, token, guild_id)
       return deferMessage()
-    } else {
+    } else if (subCommand === "retire") {
+      const discordLeague = await discordLeagueView.createView(guild_id)
+      const leagueId = discordLeague?.leagueId
+      if (!leagueId) {
+        throw new NoConnectedLeagueError(guild_id)
+      }
+      retirePlayers(leagueId, token, client)
+      return deferMessage()
+    }
+
+    else {
       throw new Error(`Missing player command ${subCommand}`)
     }
 
@@ -1661,6 +1720,12 @@ export default {
               autocomplete: true
             },
           ],
+        },
+        {
+          type: ApplicationCommandOptionType.Subcommand,
+          name: "retire",
+          description: "Finds and retires all players who are no longer in the league",
+          options: [],
         }
       ],
       type: 1,

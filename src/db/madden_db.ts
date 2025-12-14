@@ -319,6 +319,9 @@ function deduplicateSchedule(games: StoredEvent<MaddenGame>[], teams: TeamList):
   }
 }
 
+export function createPlayerKey(player: { presentationId: number, birthYear: number, birthMonth: number, birthDay: number }) {
+  return `${player.presentationId}-${player.birthYear}-${player.birthMonth}-${player.birthDay}`
+}
 
 function deduplicatePlayers(players: StoredEvent<Player>[]): StoredEvent<Player>[] {
   const playerMap = new Map<string, StoredEvent<Player>>();
