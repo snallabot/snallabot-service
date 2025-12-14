@@ -1600,51 +1600,65 @@ async function searchPlayerListForQuery(textQuery: string, leagueId: string): Pr
 }
 
 async function retirePlayers(leagueId: string, token: string, client: DiscordClient) {
-  await client.editOriginalInteraction(token, {
-    flags: 32768,
-    components: [
-      {
-        type: ComponentType.TextDisplay,
-        content: `Updating latest players...`
-      }
-    ]
-  })
-  const league = Number(leagueId)
-  const eaClient = await storedTokenClient(league)
-  const exporter = await exporterForLeague(league, ExportContext.MANUAL)
-  await exporter.exportCurrentWeek()
-  await client.editOriginalInteraction(token, {
-    flags: 32768,
-    components: [
-      {
-        type: ComponentType.TextDisplay,
-        content: `Players updated. Finding retired players`
-      }
-    ]
-  })
-  const leagueInfo = await eaClient.getLeagueInfo(league)
-  const teams = leagueInfo.teamIdInfoList
-  const playersInLeague = new Set<string>()
-  await Promise.all(teams.map(async (team, idx) => {
-    const roster = await eaClient.getTeamRoster(league, team.teamId, idx)
-    roster.rosterInfoList.forEach(player => playersInLeague.add(createPlayerKey(player)))
-  }))
-  const latestPlayers = await MaddenDB.getLatestPlayers(leagueId)
-  const retiredPlayers = latestPlayers.filter(player => {
-    return !playersInLeague.has(createPlayerKey(player))
-  }).sort((a, b) => b.playerBestOvr - a.playerBestOvr)
-  const retiredPlayersMessage = retiredPlayers.map(p => `- ${p.position} ${p.firstName} ${p.lastName}`)
-    .join("\n")
-  await
-    client.editOriginalInteraction(token, {
+  try {
+    await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
         {
           type: ComponentType.TextDisplay,
-          content: `Found retired players:\n${retiredPlayersMessage}`
+          content: `Updating latest players...`
         }
       ]
     })
+    const league = Number(leagueId)
+    const eaClient = await storedTokenClient(league)
+    const exporter = await exporterForLeague(league, ExportContext.MANUAL)
+    await exporter.exportCurrentWeek()
+    await client.editOriginalInteraction(token, {
+      flags: 32768,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: `Players updated. Finding retired players`
+        }
+      ]
+    })
+    const leagueInfo = await eaClient.getLeagueInfo(league)
+    const teams = leagueInfo.teamIdInfoList
+    const playersInLeague = new Set<string>()
+    await Promise.all(teams.map(async (team, idx) => {
+      const roster = await eaClient.getTeamRoster(league, team.teamId, idx)
+      roster.rosterInfoList.forEach(player => playersInLeague.add(createPlayerKey(player)))
+    }))
+    const latestPlayers = await MaddenDB.getLatestPlayers(leagueId)
+    const retiredPlayers = latestPlayers.filter(player => {
+      return !playersInLeague.has(createPlayerKey(player))
+    }).sort((a, b) => b.playerBestOvr - a.playerBestOvr)
+    const retiredPlayersMessage = retiredPlayers.map(p => `- ${p.position} ${p.firstName} ${p.lastName}`)
+      .join("\n")
+    await
+      client.editOriginalInteraction(token, {
+        flags: 32768,
+        components: [
+          {
+            type: ComponentType.TextDisplay,
+            content: `Found retired players:\n${retiredPlayersMessage}`
+          }
+        ]
+      })
+  } catch (e) {
+    await
+      client.editOriginalInteraction(token, {
+        flags: 32768,
+        components: [
+          {
+            type: ComponentType.TextDisplay,
+            content: `Could not finish retiring players, ${e}`
+          }
+        ]
+      })
+    console.error(e)
+  }
 }
 
 export default {
