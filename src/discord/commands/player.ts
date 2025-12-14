@@ -1644,6 +1644,7 @@ async function retirePlayers(leagueId: string, token: string, client: DiscordCli
     const retiredPlayers = latestPlayers.filter(player => {
       return !playersInLeague.has(createPlayerKey(player))
     }).sort((a, b) => b.playerBestOvr - a.playerBestOvr)
+    console.log(retiredPlayers.length)
     const retiredPlayersMessage = retiredPlayers.map(p => `- ${p.position} ${p.firstName} ${p.lastName}`)
       .join("\n")
     await
