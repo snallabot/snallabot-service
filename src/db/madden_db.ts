@@ -774,27 +774,15 @@ const MaddenDB: MaddenDB = {
       players = players.filter(p => p.yearsPro === 0);
     }
 
-    // Sort (ascending for endBefore, descending for normal)
-    const sortDirection = endBefore ? 1 : -1;
     players.sort((a, b) => {
-      // Primary sort by playerBestOvr
-      if (a.playerBestOvr !== b.playerBestOvr) {
-        return sortDirection * (a.playerBestOvr - b.playerBestOvr);
+      if (endBefore) {
+        // Ascending order for backwards pagination
+        return a.playerBestOvr - b.playerBestOvr;
+      } else {
+        // Descending order for normal pagination
+        return b.playerBestOvr - a.playerBestOvr;
       }
-      // Secondary sort by presentationId
-      if (a.presentationId !== b.presentationId) {
-        return sortDirection * (a.presentationId - b.presentationId);
-      }
-      // Tertiary sorts by birth date
-      if (a.birthYear !== b.birthYear) {
-        return sortDirection * (a.birthYear - b.birthYear);
-      }
-      if (a.birthMonth !== b.birthMonth) {
-        return sortDirection * (a.birthMonth - b.birthMonth);
-      }
-      return sortDirection * (a.birthDay - b.birthDay);
     });
-
     // Handle pagination
     if (startAfter || endBefore) {
       const cursor = startAfter || endBefore!;
