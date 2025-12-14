@@ -774,7 +774,7 @@ const MaddenDB: MaddenDB = {
       players = players.filter(p => p.yearsPro === 0);
     }
 
-    players.sort((a, b) => {
+    players = players.sort((a, b) => {
       if (endBefore) {
         // Ascending order for backwards pagination
         return a.playerBestOvr - b.playerBestOvr;
