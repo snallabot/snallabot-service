@@ -1653,7 +1653,7 @@ async function retirePlayers(leagueId: string, token: string, client: DiscordCli
         components: [
           {
             type: ComponentType.TextDisplay,
-            content: `Found retired players:\n${retiredPlayersMessage}`
+            content: `Found retired players:\n${retiredPlayersMessage.slice(0, 1000)}`
           }
         ]
       })
