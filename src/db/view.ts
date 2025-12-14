@@ -1,14 +1,14 @@
 import NodeCache from "node-cache"
 import EventDB, { SnallabotEvent, StoredEvent } from "./events_db"
 import MaddenDB, { MaddenEvents } from "./madden_db"
-import { Player, Team } from "../export/madden_league_types"
+import { Team } from "../export/madden_league_types"
 import LeagueSettingsDB from "../discord/settings_db"
 import { DiscordLeagueConnectionEvent, TeamLogoCustomizedEvent } from "./events"
 import FileHandler, { defaultSerializer } from "../file_handlers"
 
 const TTL = 10800 // 3 hours in seconds
 
-abstract class View<T> {
+export abstract class View<T> {
   id: string
   constructor(id: string) {
     this.id = id
@@ -22,7 +22,7 @@ export function getViewCacheStats() {
   return viewCache.getStats()
 }
 
-abstract class CachedUpdatingView<T> extends View<T> {
+export abstract class CachedUpdatingView<T> extends View<T> {
   view: View<T>
 
   constructor(view: View<T>) {
@@ -118,44 +118,6 @@ abstract class StorageBackedCachedView<T> extends View<T> {
   }
 }
 
-type TeamSearch = {
-  [key: string]: {
-    cityName: string,
-    abbrName: string,
-    nickName: string,
-    displayName: string,
-    id: number
-  }
-}
-class TeamSearchIndex extends View<TeamSearch> {
-  constructor() {
-    super("team_search_index")
-  }
-  async createView(key: string) {
-    const teams = await MaddenDB.getLatestTeams(key)
-    return Object.fromEntries(teams.getLatestTeams().map(t => { return [`${t.teamId}`, { cityName: t.cityName, abbrName: t.abbrName, nickName: t.nickName, displayName: t.displayName, id: t.teamId }] }))
-  }
-}
-
-class CacheableTeamSearchIndex extends CachedUpdatingView<TeamSearch> {
-  constructor() {
-    super(new TeamSearchIndex())
-  }
-
-  update(event: { [key: string]: any[] }, currentView: TeamSearch): TeamSearch {
-    if (event[MaddenEvents.MADDEN_TEAM]) {
-      const updatedTeams = event[MaddenEvents.MADDEN_TEAM] as SnallabotEvent<Team>[]
-      updatedTeams.forEach(t => {
-        currentView[t.teamId] = { cityName: t.cityName, abbrName: t.abbrName, nickName: t.nickName, displayName: t.displayName, id: t.teamId }
-      })
-    }
-    return currentView
-  }
-}
-
-export const teamSearchView = new CacheableTeamSearchIndex()
-teamSearchView.listen(MaddenEvents.MADDEN_TEAM)
-
 
 class DiscordLeagueConnection extends View<DiscordLeagueConnectionEvent> {
   constructor() {
@@ -184,42 +146,6 @@ class CacheableDiscordLeagueConnection extends CachedUpdatingView<DiscordLeagueC
 }
 export const discordLeagueView = new CacheableDiscordLeagueConnection()
 discordLeagueView.listen("DISCORD_LEAGUE_CONNECTION")
-
-type PlayerSearch = {
-  [key: string]: {
-    rosterId: number,
-    firstName: string,
-    lastName: string,
-    teamId: number,
-    position: string,
-  }
-}
-class PlayerSearchIndex extends View<PlayerSearch> {
-  constructor() {
-    super("player_search_index")
-  }
-  async createView(key: string) {
-    const players = await MaddenDB.getLatestPlayers(key)
-    return Object.fromEntries(players.map(p => [p.rosterId + "", { rosterId: p.rosterId, firstName: p.firstName, lastName: p.lastName, teamId: p.teamId, position: p.position }]))
-  }
-}
-
-class CacheablePlayerSearchIndex extends StorageBackedCachedView<PlayerSearch> {
-  constructor() {
-    super(new PlayerSearchIndex())
-  }
-  update(event: { [key: string]: any[] }, currentView: PlayerSearch) {
-    if (event[MaddenEvents.MADDEN_PLAYER]) {
-      const playerUpdates = event[MaddenEvents.MADDEN_PLAYER] as SnallabotEvent<Player>[]
-      playerUpdates.forEach(p => {
-        currentView[p.rosterId] = { rosterId: p.rosterId, firstName: p.firstName, lastName: p.lastName, teamId: p.teamId, position: p.position }
-      })
-    }
-    return currentView
-  }
-}
-export const playerSearchIndex = new CacheablePlayerSearchIndex()
-playerSearchIndex.listen(MaddenEvents.MADDEN_PLAYER)
 
 export type LeagueLogos = {
   [key: string]: TeamLogoCustomizedEvent

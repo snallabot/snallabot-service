@@ -5,6 +5,7 @@ import EventDB, { EventNotifier, SnallabotEvent, StoredEvent, notifiers } from "
 import { DefensiveStats, GameResult, KickingStats, MADDEN_SEASON, MaddenGame, POSITION_GROUP, PassingStats, Player, PuntingStats, ReceivingStats, RushingStats, Standing, Team, TeamStats, dLinePositions, dbPositions, oLinePositions } from "../export/madden_league_types"
 import { TeamAssignments } from "../discord/settings_db"
 import NodeCache from "node-cache"
+import { CachedUpdatingView, View } from "./view"
 
 // getting Teams is a high request rate, by caching we can avoid calling the data when it hasnt changed
 const teamCache = new NodeCache()
@@ -98,7 +99,19 @@ export function parseExportStatusWeekKey(weekKey: string): SeasonWeek {
 }
 
 export type SeasonWeek = { seasonIndex: number, weekIndex: number }
-
+type SmallPlayerIndex = {
+  rosterId: string,
+  firstName: string,
+  lastName: string,
+  teamId: string,
+  yearsPro: number,
+  playerBestOvr: number,
+  position: string,
+  birthYear: number,
+  birthMonth: number,
+  birthDay: number,
+  presentationId: number
+}
 interface MaddenDB {
   appendEvents<Event>(event: SnallabotEvent<Event>[], idFn: (event: Event) => string): Promise<void>,
   on<Event>(event_type: string, notifier: EventNotifier<Event>): void,
@@ -111,7 +124,7 @@ interface MaddenDB {
   getGameForSchedule(leagueId: string, scheduleId: number, week: number, season: number): Promise<MaddenGame>,
   getStandingForTeam(leagueId: string, teamId: number): Promise<Standing>,
   getLatestStandings(leagueId: string): Promise<Standing[]>,
-  getLatestPlayers(leagueId: string): Promise<Player[]>,
+  getLatestPlayers(leagueId: string): Promise<SmallPlayerIndex[]>,
   getPlayer(leagueId: string, rosterId: string): Promise<Player>,
   getPlayerStats(leagueId: string, player: Player): Promise<PlayerStats>,
   getGamesForSchedule(leagueId: string, scheduleIds: Iterable<{ id: number, week: number, season: number }>): Promise<MaddenGame[]>,
@@ -363,6 +376,106 @@ function findLatestScheduleId(scheduleId: number, games: StoredEvent<MaddenGame>
   )
 }
 
+type PlayerListIndex = {
+  [key: string]: SmallPlayerIndex
+}
+
+class PlayerListView extends View<PlayerListIndex> {
+  constructor() {
+    super("player_list")
+  }
+
+  async createView(key: string) {
+    const playerSnapshot = await db.collection("madden_data26").doc(key).collection(MaddenEvents.MADDEN_PLAYER).select("rosterId", "firstName", "lastName", "teamId", "position", "birthYear", "birthMonth", "birthDay", "presentationId", "timestamp").get()
+    const players = deduplicatePlayers(playerSnapshot.docs.map(doc => {
+      return convertDate(doc.data()) as StoredEvent<Player>
+    }))
+    return Object.fromEntries(players.map(player => {
+      return [`${player.presentationId}-${player.birthYear}-${player.birthMonth}-${player.birthDay}`, {
+        rosterId: `${player.rosterId}`,
+        firstName: player.firstName,
+        lastName: player.lastName,
+        teamId: `${player.teamId}`,
+        yearsPro: player.yearsPro,
+        playerBestOvr: player.playerBestOvr,
+        position: player.position,
+        birthYear: player.birthYear,
+        birthMonth: player.birthMonth,
+        birthDay: player.birthDay,
+        presentationId: player.presentationId
+      }]
+    }))
+  }
+}
+
+class CacheablePlayerListView extends CachedUpdatingView<PlayerListIndex> {
+  constructor() {
+    super(new PlayerListView())
+  }
+
+  update(events: { [key: string]: any[] }, currentView: PlayerListIndex) {
+    if (events[MaddenEvents.MADDEN_PLAYER]) {
+      const playersToUpdate = events[MaddenEvents.MADDEN_PLAYER]
+      playersToUpdate.map(player => {
+        currentView[`${player.presentationId}-${player.birthYear}-${player.birthMonth}-${player.birthDay}`] = {
+          rosterId: `${player.rosterId}`,
+          firstName: player.firstName,
+          lastName: player.lastName,
+          teamId: `${player.teamId}`,
+          playerBestOvr: player.playerBestOvr,
+          yearsPro: player.yearsPro,
+          position: player.position,
+          birthYear: player.birthYear,
+          birthMonth: player.birthMonth,
+          birthDay: player.birthDay,
+          presentationId: player.presentationId
+        }
+      })
+    }
+    return currentView
+  }
+}
+
+const playerListIndex = new CacheablePlayerListView()
+playerListIndex.listen(MaddenEvents.MADDEN_PLAYER)
+
+type TeamSearch = {
+  [key: string]: {
+    cityName: string,
+    abbrName: string,
+    nickName: string,
+    displayName: string,
+    id: number
+  }
+}
+class TeamSearchIndex extends View<TeamSearch> {
+  constructor() {
+    super("team_search_index")
+  }
+  async createView(key: string) {
+    const teams = await MaddenDB.getLatestTeams(key)
+    return Object.fromEntries(teams.getLatestTeams().map(t => { return [`${t.teamId}`, { cityName: t.cityName, abbrName: t.abbrName, nickName: t.nickName, displayName: t.displayName, id: t.teamId }] }))
+  }
+}
+
+class CacheableTeamSearchIndex extends CachedUpdatingView<TeamSearch> {
+  constructor() {
+    super(new TeamSearchIndex())
+  }
+
+  update(event: { [key: string]: any[] }, currentView: TeamSearch): TeamSearch {
+    if (event[MaddenEvents.MADDEN_TEAM]) {
+      const updatedTeams = event[MaddenEvents.MADDEN_TEAM] as SnallabotEvent<Team>[]
+      updatedTeams.forEach(t => {
+        currentView[t.teamId] = { cityName: t.cityName, abbrName: t.abbrName, nickName: t.nickName, displayName: t.displayName, id: t.teamId }
+      })
+    }
+    return currentView
+  }
+}
+
+export const teamSearchView = new CacheableTeamSearchIndex()
+teamSearchView.listen(MaddenEvents.MADDEN_TEAM)
 
 const MaddenDB: MaddenDB = {
   async appendEvents<Event>(events: SnallabotEvent<Event>[], idFn: (event: Event) => string) {
@@ -553,10 +666,11 @@ const MaddenDB: MaddenDB = {
     }).filter(s => latestTeams.has(s.teamId))
   },
   getLatestPlayers: async function(leagueId: string) {
-    const playerSnapshot = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).select("rosterId", "firstName", "lastName", "teamId", "position", "birthYear", "birthMonth", "birthDay", "presentationId", "timestamp").get()
-    return deduplicatePlayers(playerSnapshot.docs.map(doc => {
-      return convertDate(doc.data()) as StoredEvent<Player>
-    }))
+    const view = await playerListIndex.createView(leagueId)
+    if (view) {
+      return Object.values(view)
+    }
+    return []
   },
   getPlayer: async function(leagueId: string, rosterId: string) {
     const playerDoc = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).doc(rosterId).get()
@@ -629,52 +743,87 @@ const MaddenDB: MaddenDB = {
     return await Promise.all(scheduleIds.map(s => this.getGameForSchedule(leagueId, s.id, s.week, s.season)))
   },
   getPlayers: async function(leagueId: string, query: PlayerListQuery, limit: number, startAfter?: Player, endBefore?: Player) {
-    let playersQuery;
-    // flip the query for going backwards by ordering opposite and using start after
-    if (endBefore) {
-      playersQuery = db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).orderBy("playerBestOvr", "asc").orderBy("presentationId", "desc").orderBy("birthYear", "desc").orderBy("birthMonth", "desc").orderBy("birthDay", "desc").limit(limit * 3)
-    } else {
-      playersQuery = db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_PLAYER).orderBy("playerBestOvr", "desc").orderBy("presentationId", "asc").orderBy("birthYear", "asc").orderBy("birthMonth", "asc").orderBy("birthDay", "asc").limit(limit * 3)
-    }
+    const playerIndex = await playerListIndex.createView(leagueId)
+
+
+    // Convert index object to array
+    let players = playerIndex ? Object.values(playerIndex) : []
+
+    // Apply filters
     if ((query.teamId && query.teamId !== -1) || query.teamId === 0) {
       const teams = await this.getLatestTeams(leagueId)
-      playersQuery = playersQuery.where("teamId", "==", query.teamId != 0 ? teams.getTeamForId(query.teamId).teamId : 0);
+      const targetTeamId = query.teamId != 0 ? teams.getTeamForId(query.teamId).teamId : 0;
+      players = players.filter(p => p.teamId === `${targetTeamId}`);
     }
 
     if (query.position) {
       if (POSITION_GROUP.includes(query.position)) {
         if (query.position === "OL") {
-          playersQuery = playersQuery.where("position", "in", oLinePositions)
+          players = players.filter(p => oLinePositions.includes(p.position));
         } else if (query.position === "DL") {
-          playersQuery = playersQuery.where("position", "in", dLinePositions)
+          players = players.filter(p => dLinePositions.includes(p.position));
         } else if (query.position === "DB") {
-          playersQuery = playersQuery.where("position", "in", dbPositions)
+          players = players.filter(p => dbPositions.includes(p.position));
         }
       } else {
-        playersQuery = playersQuery.where("position", "==", query.position);
+        players = players.filter(p => p.position === query.position);
       }
     }
 
     if (query.rookie) {
-      playersQuery = playersQuery.where("yearsPro", "==", 0);
+      players = players.filter(p => p.yearsPro === 0);
     }
 
-    if (startAfter) {
-      playersQuery = playersQuery.startAfter(startAfter.playerBestOvr, startAfter.presentationId, startAfter.birthYear, startAfter.birthMonth, startAfter.birthDay)
+    // Sort (ascending for endBefore, descending for normal)
+    const sortDirection = endBefore ? 1 : -1;
+    players.sort((a, b) => {
+      // Primary sort by playerBestOvr
+      if (a.playerBestOvr !== b.playerBestOvr) {
+        return sortDirection * (a.playerBestOvr - b.playerBestOvr);
+      }
+      // Secondary sort by presentationId
+      if (a.presentationId !== b.presentationId) {
+        return sortDirection * (a.presentationId - b.presentationId);
+      }
+      // Tertiary sorts by birth date
+      if (a.birthYear !== b.birthYear) {
+        return sortDirection * (a.birthYear - b.birthYear);
+      }
+      if (a.birthMonth !== b.birthMonth) {
+        return sortDirection * (a.birthMonth - b.birthMonth);
+      }
+      return sortDirection * (a.birthDay - b.birthDay);
+    });
+
+    // Handle pagination
+    if (startAfter || endBefore) {
+      const cursor = startAfter || endBefore!;
+      const cursorIndex = players.findIndex(p =>
+        p.presentationId === cursor.presentationId &&
+        p.birthYear === cursor.birthYear &&
+        p.birthMonth === cursor.birthMonth &&
+        p.birthDay === cursor.birthDay
+      );
+
+      if (cursorIndex !== -1) {
+        players = players.slice(cursorIndex + 1);
+      }
     }
 
+    // Limit results
+    const resultPlayers = players.slice(0, limit);
+
+    // Fetch full player data
+    const fullPlayers = await Promise.all(
+      resultPlayers.map(p => this.getPlayer(leagueId, p.rosterId))
+    );
+
+    // Reverse if paginating backwards
     if (endBefore) {
-      playersQuery = playersQuery.startAfter(endBefore.playerBestOvr, endBefore.presentationId, endBefore.birthYear, endBefore.birthMonth, endBefore.birthDay)
+      return fullPlayers.reverse();
     }
 
-    const snapshot = await playersQuery.get();
-
-    const players = deduplicatePlayers(snapshot.docs.map(d => convertDate(d.data()) as StoredEvent<Player>)).slice(0, limit)
-    if (endBefore) {
-      return players.reverse()
-    } else {
-      return players
-    }
+    return fullPlayers;
 
   },
   updateLeagueExportStatus: async function(leagueId: string, eventType: MaddenEvents) {
