@@ -6,6 +6,8 @@ import fuzzysort from "fuzzysort"
 import MaddenDB, { PlayerListQuery, PlayerStatType, PlayerStats, TeamList, createPlayerKey, teamSearchView } from "../../db/madden_db"
 import { DevTrait, LBStyleTrait, MADDEN_SEASON, MaddenGame, POSITIONS, POSITION_GROUP, PlayBallTrait, Player, QBStyleTrait, SensePressureTrait, YesNoTrait } from "../../export/madden_league_types"
 import { ExportContext, exporterForLeague, storedTokenClient } from "../../dashboard/ea_client"
+import EventDB, { EventDelivery } from "../../db/events_db"
+import { EventTypes, RetiredPlayersEvent } from "../../db/events"
 
 enum PlayerSelection {
   PLAYER_OVERVIEW = "po",
@@ -1644,28 +1646,48 @@ async function retirePlayers(leagueId: string, token: string, client: DiscordCli
             type: ComponentType.TextDisplay,
             content: `Retiring Players:
 - ${SnallabotCommandReactions.FINISHED} Updating current players
-- ${SnallabotCommandReactions.LOADING} Finding Retired Players - Checking ${team.displayName}`
+- ${SnallabotCommandReactions.LOADING} Finding Retired Players - Checking ${team.displayName}
+- ${SnallabotCommandReactions.WAITING} Finding New Retired Players`
           }
         ]
       })
     }
+    await client.editOriginalInteraction(token, {
+      flags: 32768,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: `Retiring Players:
+- ${SnallabotCommandReactions.FINISHED} Updating current players
+- ${SnallabotCommandReactions.FINISHED} Finding Retired Players
+- ${SnallabotCommandReactions.LOADING} Finding New Retired Players`
+        }
+      ]
+    })
     const latestPlayers = await MaddenDB.getLatestPlayers(leagueId)
+    const alreadyRetiredPlayerEvents = await EventDB.queryEvents<RetiredPlayersEvent>(leagueId, EventTypes.RETIRED_PLAYERS, new Date(0), {}, 1000000)
+    const alreadyRetiredPlayers = new Set(alreadyRetiredPlayerEvents.flatMap(e => e.retiredPlayers).map(e => createPlayerKey(e)))
     const retiredPlayers = latestPlayers.filter(player => {
-      return !playersInLeague.has(createPlayerKey(player))
+      const playerKey = createPlayerKey(player)
+      return !playersInLeague.has(playerKey) && !alreadyRetiredPlayers.has(playerKey)
     }).sort((a, b) => b.playerBestOvr - a.playerBestOvr)
-    console.log(retiredPlayers.length)
-    const retiredPlayersMessage = retiredPlayers.map(p => `- ${p.position} ${p.firstName} ${p.lastName}`)
-      .join("\n")
-    await
-      client.editOriginalInteraction(token, {
-        flags: 32768,
-        components: [
-          {
-            type: ComponentType.TextDisplay,
-            content: `Found retired players:\n${retiredPlayersMessage.slice(0, 1000)}`
-          }
-        ]
-      })
+    await client.editOriginalInteraction(token, {
+      flags: 32768,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: `Retiring Players:
+- ${SnallabotCommandReactions.FINISHED} Updating current players
+- ${SnallabotCommandReactions.FINISHED} Finding Retired Players
+- ${SnallabotCommandReactions.FINISHED} Finding New Retired Players\n
+Snallabot found ${retiredPlayers.length} newly retired players. :saluting_face: hope they had a great career! use /player list to view them`
+        }
+      ]
+    })
+    if (retiredPlayers.length > 0) {
+      const newRetiredPlayers = retiredPlayers.map(p => ({ presentationId: p.presentationId, birthYear: p.birthYear, birthMonth: p.birthMonth, birthDay: p.birthDay, rosterId: p.rosterId }))
+      await EventDB.appendEvents<RetiredPlayersEvent>([{ key: leagueId, event_type: EventTypes.RETIRED_PLAYERS, retiredPlayers: newRetiredPlayers }], EventDelivery.EVENT_SOURCE)
+    }
   } catch (e) {
     await
       client.editOriginalInteraction(token, {

@@ -1,4 +1,8 @@
 import { UserId } from "../discord/settings_db"
+// TODO: move all event types to here
+export enum EventTypes {
+  RETIRED_PLAYERS = "RETIRED_PLAYERS"
+}
 export enum SimResult {
   FORCE_WIN_AWAY = "FORCE_WIN_AWAY",
   FORCE_WIN_HOME = "FORCE_WIN_HOME",
@@ -13,4 +17,4 @@ export type ConfirmedSimV2 = { confirmedUsers: UserId[], requestedUsers: UserId[
 export type DiscordLeagueConnectionEvent = { guildId: string, leagueId: string }
 export type TeamLogoCustomizedEvent = { emoji_id: string, emoji_name: string, teamAbbr: string, teamLogoPath: string }
 // TODO: will I regret this? only time will tell. Making this a list of players instead of just one
-export type RetiredPlayer = { retiredPlayers: [{ presentationId: number, birthYear: number, birthMonth: number, birthDay: number, rosterId: number }] }
+export type RetiredPlayersEvent = { retiredPlayers: { presentationId: number, birthYear: number, birthMonth: number, birthDay: number, rosterId: string }[] }
