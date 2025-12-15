@@ -307,12 +307,13 @@ async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, to
     ]
   })
 }
-type ShortPlayerListQuery = { t?: number, p?: string, r?: boolean }
+type ShortPlayerListQuery = { t?: number, p?: string, r?: boolean, e?: boolean }
 function toShortQuery(q: PlayerListQuery) {
   const query: ShortPlayerListQuery = {}
   if (q.teamId === 0 || (q.teamId && q.teamId !== -1)) query.t = q.teamId
   if (q.position) query.p = q.position
   if (q.rookie) query.r = q.rookie
+  if (q.retired) query.e = q.retired
   return query
 }
 
@@ -321,6 +322,7 @@ function fromShortQuery(q: ShortPlayerListQuery) {
   if (q.t === 0 || (q.t && q.t !== -1)) query.teamId = q.t
   if (q.p) query.position = q.p
   if (q.r) query.rookie = q.r
+  if (q.e) query.retired = q.e
   return query
 }
 type PlayerPagination = { q: ShortPlayerListQuery, s?: number, b?: number }
@@ -1554,42 +1556,51 @@ async function searchPlayerForRosterId(query: string, leagueId: string): Promise
   }
   return []
 }
-const positions = POSITIONS.concat(POSITION_GROUP).map(p => ({ teamDisplayName: "", teamId: -1, teamNickName: "", position: p, rookie: "" }))
+const positions = POSITIONS.concat(POSITION_GROUP).map(p => ({ teamDisplayName: "", teamId: -1, teamNickName: "", position: p, rookie: "", retired: "" }))
 const rookies = [{
-  teamDisplayName: "", teamId: -1, teamNickName: "", position: "", rookie: "Rookies"
+  teamDisplayName: "", teamId: -1, teamNickName: "", position: "", rookie: "Rookies", retired: ""
 }]
 const rookiePositions = positions.map(p => ({ ...p, rookie: "Rookies" }))
-type PlayerListSearchQuery = { teamDisplayName: string, teamId: number, teamNickName: string, position: string, rookie: string }
+const retired = [{
+  teamDisplayName: "", teamId: -1, teamNickName: "", position: "", rookie: "Rookies", retired: "Retired"
+}]
+const retiredPositions = positions.map(p => ({ ...p, retired: "Retired" }))
+type PlayerListSearchQuery = { teamDisplayName: string, teamId: number, teamNickName: string, position: string, rookie: string, retired: string }
 
 
-// to boost top level queries like team names, position groups, and rookies
+// to boost top level queries like team names, position groups, rookies, retired
 function isTopLevel(q: PlayerListSearchQuery) {
-  if (q.teamDisplayName && !q.position && !q.rookie) {
+  if (q.teamDisplayName && !q.position && !q.rookie && !q.retired) {
     return true
   }
-  if (!q.teamDisplayName && q.position && !q.rookie) {
+  if (!q.teamDisplayName && q.position && !q.rookie && !q.retired) {
     return true
   }
-  if (!q.teamDisplayName && !q.position && q.rookie) {
+  if (!q.teamDisplayName && !q.position && q.rookie && !q.retired) {
+    return true
+  }
+  if (!q.teamDisplayName && !q.position && !q.rookie && q.retired) {
     return true
   }
   return false
 }
 
 function formatQuery(q: PlayerListSearchQuery) {
+  const retired = q.retired ? [q.retired] : []
   const teamName = q.teamDisplayName ? [q.teamDisplayName] : []
   const position = q.position ? [q.position] : []
   const rookie = q.rookie ? [q.rookie] : []
-  return [teamName, rookie, position].join(" ")
+  return [retired, teamName, rookie, position].join(" ")
 }
 
 async function searchPlayerListForQuery(textQuery: string, leagueId: string): Promise<PlayerListSearchQuery[]> {
   const teamIndex = await teamSearchView.createView(leagueId)
   if (teamIndex) {
-    const fullTeams = Object.values(teamIndex).map(t => ({ teamDisplayName: t.displayName, teamId: t.id, teamNickName: t.nickName, position: "", rookie: "" })).concat([{ teamDisplayName: "Free Agents", teamId: 0, teamNickName: "FA", position: "", rookie: "" }])
-    const teamPositions = fullTeams.flatMap(t => positions.map(p => ({ teamDisplayName: t.teamDisplayName, teamId: t.teamId, teamNickName: t.teamNickName, position: p.position, rookie: "" })))
+    const fullTeams = Object.values(teamIndex).map(t => ({ teamDisplayName: t.displayName, teamId: t.id, teamNickName: t.nickName, position: "", rookie: "", retired: "" })).concat([{ teamDisplayName: "Free Agents", teamId: 0, teamNickName: "FA", position: "", rookie: "", retired: "" }])
+    const teamPositions = fullTeams.flatMap(t => positions.map(p => ({ teamDisplayName: t.teamDisplayName, teamId: t.teamId, teamNickName: t.teamNickName, position: p.position, rookie: "", retired: "" })))
     const teamRookies = fullTeams.map(t => ({ ...t, rookie: "Rookies" }))
-    const allQueries: PlayerListSearchQuery[] = fullTeams.concat(positions).concat(rookies).concat(rookiePositions).concat(teamPositions).concat(teamRookies)
+    const teamRetired = fullTeams.map(t => ({ ...t, retired: "Retired" }))
+    const allQueries: PlayerListSearchQuery[] = fullTeams.concat(positions).concat(rookies).concat(rookiePositions).concat(teamPositions).concat(teamRookies).concat(retired).concat(retiredPositions).concat(teamRetired)
     const results = fuzzysort.go(textQuery, allQueries, {
       keys: ["teamDisplayName", "teamNickName", "position", "rookie"],
       scoreFn: r => r.score * (isTopLevel(r.obj) ? 2 : 1),
@@ -1667,27 +1678,40 @@ async function retirePlayers(leagueId: string, token: string, client: DiscordCli
     const latestPlayers = await MaddenDB.getLatestPlayers(leagueId)
     const alreadyRetiredPlayerEvents = await EventDB.queryEvents<RetiredPlayersEvent>(leagueId, EventTypes.RETIRED_PLAYERS, new Date(0), {}, 1000000)
     const alreadyRetiredPlayers = new Set(alreadyRetiredPlayerEvents.flatMap(e => e.retiredPlayers).map(e => createPlayerKey(e)))
-    console.log(alreadyRetiredPlayers.size)
     const retiredPlayers = latestPlayers.filter(player => {
       const playerKey = createPlayerKey(player)
       return !playersInLeague.has(playerKey) && !alreadyRetiredPlayers.has(playerKey)
     }).sort((a, b) => b.playerBestOvr - a.playerBestOvr)
-    await client.editOriginalInteraction(token, {
-      flags: 32768,
-      components: [
-        {
-          type: ComponentType.TextDisplay,
-          content: `Retiring Players:
+    if (retiredPlayers.length > 0) {
+      await client.editOriginalInteraction(token, {
+        flags: 32768,
+        components: [
+          {
+            type: ComponentType.TextDisplay,
+            content: `Retiring Players:
 - ${SnallabotCommandReactions.FINISHED} Updating Current players
 - ${SnallabotCommandReactions.FINISHED} Finding Retired Players
 - ${SnallabotCommandReactions.FINISHED} Finding New Retired Players\n
 Snallabot found ${retiredPlayers.length} newly retired players. :saluting_face: hope they had a great career! use /player list to view them`
-        }
-      ]
-    })
-    if (retiredPlayers.length > 0) {
+          }
+        ]
+      })
       const newRetiredPlayers = retiredPlayers.map(p => ({ presentationId: p.presentationId, birthYear: p.birthYear, birthMonth: p.birthMonth, birthDay: p.birthDay, rosterId: p.rosterId }))
       await EventDB.appendEvents<RetiredPlayersEvent>([{ key: leagueId, event_type: EventTypes.RETIRED_PLAYERS, retiredPlayers: newRetiredPlayers }], EventDelivery.EVENT_SOURCE)
+    } else {
+      await client.editOriginalInteraction(token, {
+        flags: 32768,
+        components: [
+          {
+            type: ComponentType.TextDisplay,
+            content: `Retiring Players:
+- ${SnallabotCommandReactions.FINISHED} Updating Current players
+- ${SnallabotCommandReactions.FINISHED} Finding Retired Players
+- ${SnallabotCommandReactions.FINISHED} Finding New Retired Players\n
+Snallabot did not find anymore retired players...`
+          }
+        ]
+      })
     }
   } catch (e) {
     await
