@@ -1602,7 +1602,7 @@ async function searchPlayerListForQuery(textQuery: string, leagueId: string): Pr
     const teamRetired = fullTeams.map(t => ({ ...t, retired: "Retired" }))
     const allQueries: PlayerListSearchQuery[] = fullTeams.concat(positions).concat(rookies).concat(rookiePositions).concat(teamPositions).concat(teamRookies).concat(retired).concat(retiredPositions).concat(teamRetired)
     const results = fuzzysort.go(textQuery, allQueries, {
-      keys: ["teamDisplayName", "teamNickName", "position", "rookie"],
+      keys: ["teamDisplayName", "teamNickName", "position", "rookie", "retired"],
       scoreFn: r => r.score * (isTopLevel(r.obj) ? 2 : 1),
       threshold: 0.4,
       limit: 25
