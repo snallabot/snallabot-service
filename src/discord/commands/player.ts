@@ -383,13 +383,13 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
           style: ButtonStyle.Secondary,
           label: "Back",
           disabled: backDisabled,
-          custom_id: `${JSON.stringify({ q: toShortQuery(query), b: previousPagination })}`
+          custom_id: `${JSON.stringify({ q: toShortQuery(query), b: previousPagination ? -1 : previousPagination })}`
         },
         {
           type: ComponentType.Button,
           style: ButtonStyle.Secondary,
           label: "Next",
-          custom_id: `${JSON.stringify({ q: toShortQuery(query), s: nextPagination })}`,
+          custom_id: `${JSON.stringify({ q: toShortQuery(query), s: nextPagination ? -1 : nextPagination })}`,
           disabled: nextDisabled
         }
       ]
