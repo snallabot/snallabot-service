@@ -750,6 +750,7 @@ const MaddenDB: MaddenDB = {
     const playerIndex = await playerListIndex.createView(leagueId)
     const retiredPlayerEvents = await EventDB.queryEvents<RetiredPlayersEvent>(leagueId, EventTypes.RETIRED_PLAYERS, new Date(0), {}, 1000000)
     const retiredPlayers = new Set(retiredPlayerEvents.flatMap(e => e.retiredPlayers).map(e => createPlayerKey(e)))
+    console.log(query)
 
 
     // Convert index object to array
