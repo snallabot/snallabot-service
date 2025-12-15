@@ -783,6 +783,7 @@ const MaddenDB: MaddenDB = {
     }
 
     if (query.retired) {
+      console.log(players.length)
       players = players.filter(p => p.isRetired)
     } else {
       players = players.filter(p => !p.isRetired)
@@ -825,7 +826,6 @@ const MaddenDB: MaddenDB = {
     const fullPlayers = await Promise.all(
       resultPlayers.map(p => this.getPlayer(leagueId, p.rosterId))
     );
-    console.log(fullPlayers.map(p => `${p.firstName} ${p.lastName}`))
 
     return fullPlayers;
 
