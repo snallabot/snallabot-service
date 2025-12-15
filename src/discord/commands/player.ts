@@ -375,6 +375,50 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
     const nextDisabled = players.length < PAGINATION_LIMIT ? true : false
     const nextPagination = players.length === 0 ? startAfterPlayer : players[players.length - 1].rosterId
     const previousPagination = players.length === 0 ? endBeforePlayer : players[0].rosterId
+    console.log({
+      flags: 32768,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: message
+        },
+        {
+          type: ComponentType.ActionRow,
+          components: [
+            {
+              type: ComponentType.Button,
+              style: ButtonStyle.Secondary,
+              label: "Back",
+              disabled: backDisabled,
+              custom_id: `${JSON.stringify({ q: toShortQuery(query), b: previousPagination })}`
+            },
+            {
+              type: ComponentType.Button,
+              style: ButtonStyle.Secondary,
+              label: "Next",
+              custom_id: `${JSON.stringify({ q: toShortQuery(query), s: nextPagination })}`,
+              disabled: nextDisabled
+            }
+          ]
+        },
+        {
+          type: ComponentType.Separator,
+          divider: true,
+          spacing: SeparatorSpacingSize.Large
+        },
+        {
+          type: ComponentType.ActionRow,
+          components: [
+            {
+              type: ComponentType.StringSelect,
+              custom_id: "player_card",
+              placeholder: `Show Player Card`,
+              options: generatePlayerZoomOptions(players, { q: toShortQuery(query), s: startAfterPlayer, b: endBeforePlayer })
+            }
+          ]
+        }
+      ]
+    })
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
