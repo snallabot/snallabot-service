@@ -375,25 +375,6 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
     const nextDisabled = players.length < PAGINATION_LIMIT ? true : false
     const nextPagination = players.length === 0 ? startAfterPlayer : players[players.length - 1].rosterId
     const previousPagination = players.length === 0 ? endBeforePlayer : players[0].rosterId
-    console.dir({
-      type: ComponentType.ActionRow,
-      components: [
-        {
-          type: ComponentType.Button,
-          style: ButtonStyle.Secondary,
-          label: "Back",
-          disabled: backDisabled,
-          custom_id: `${JSON.stringify({ q: toShortQuery(query), b: previousPagination ? -1 : previousPagination })}`
-        },
-        {
-          type: ComponentType.Button,
-          style: ButtonStyle.Secondary,
-          label: "Next",
-          custom_id: `${JSON.stringify({ q: toShortQuery(query), s: nextPagination ? -1 : nextPagination })}`,
-          disabled: nextDisabled
-        }
-      ]
-    })
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
@@ -409,13 +390,13 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
               style: ButtonStyle.Secondary,
               label: "Back",
               disabled: backDisabled,
-              custom_id: `${JSON.stringify({ q: toShortQuery(query), b: previousPagination })}`
+              custom_id: `${JSON.stringify({ q: toShortQuery(query), b: previousPagination ? -1 : previousPagination })}`
             },
             {
               type: ComponentType.Button,
               style: ButtonStyle.Secondary,
               label: "Next",
-              custom_id: `${JSON.stringify({ q: toShortQuery(query), s: nextPagination })}`,
+              custom_id: `${JSON.stringify({ q: toShortQuery(query), s: nextPagination ? -1 : nextPagination })}`,
               disabled: nextDisabled
             }
           ]
