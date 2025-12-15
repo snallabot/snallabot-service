@@ -172,6 +172,11 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
     checkPing: async function(currentState: GameChannel, season: number, week: number) {
       const channelId = currentState.channel
       const messageId = currentState.message
+      const messageExists = await client.checkMessageExists(channelId, messageId)
+      if (!messageExists) {
+        await deleteTracking(currentState, season, week)
+        return
+      }
       const scheduledUsers = await getReactedUsers(channelId, messageId, SnallabotReactions.SCHEDULE)
       if (scheduledUsers.length === 0 && currentState.state !== GameChannelState.FORCE_WIN_REQUESTED) {
         const waitPing = settings.commands.game_channel?.wait_ping || 12
