@@ -360,7 +360,6 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
     let query: PlayerListQuery;
     try {
       query = JSON.parse(playerSearch) as PlayerListQuery
-      console.log(query)
     } catch (e) {
       const results = await searchPlayerListForQuery(playerSearch, leagueId)
       if (results.length === 0) {
