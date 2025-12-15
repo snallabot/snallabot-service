@@ -1562,7 +1562,7 @@ const rookies = [{
 }]
 const rookiePositions = positions.map(p => ({ ...p, rookie: "Rookies" }))
 const retired = [{
-  teamDisplayName: "", teamId: -1, teamNickName: "", position: "", rookie: "Rookies", retired: "Retired"
+  teamDisplayName: "", teamId: -1, teamNickName: "", position: "", rookie: "", retired: "Retired"
 }]
 const retiredPositions = positions.map(p => ({ ...p, retired: "Retired" }))
 type PlayerListSearchQuery = { teamDisplayName: string, teamId: number, teamNickName: string, position: string, rookie: string, retired: string }
