@@ -750,19 +750,21 @@ const MaddenDB: MaddenDB = {
     const playerIndex = await playerListIndex.createView(leagueId)
     const retiredPlayerEvents = await EventDB.queryEvents<RetiredPlayersEvent>(leagueId, EventTypes.RETIRED_PLAYERS, new Date(0), {}, 1000000)
     const retiredPlayers = new Set(retiredPlayerEvents.flatMap(e => e.retiredPlayers).map(e => createPlayerKey(e)))
-    console.log(query)
+    const teams = await this.getLatestTeams(leagueId)
 
 
     // Convert index object to array
     let players = playerIndex ? Object.values(playerIndex).map(p => {
-      return { ...p, isRetired: retiredPlayers.has(createPlayerKey(p)) }
+      return {
+        ...p, isRetired: retiredPlayers.has(createPlayerKey(p)), teamId: p.teamId !== "0" ? `${teams.getTeamForId(Number(p.teamId)).teamId}` : "0"
+      }
     }) : []
 
     // Apply filters
     if ((query.teamId && query.teamId !== -1) || query.teamId === 0) {
-      const teams = await this.getLatestTeams(leagueId)
+
       const targetTeamId = query.teamId != 0 ? teams.getTeamForId(query.teamId).teamId : 0;
-      players = players.filter(p => p.teamId === `${targetTeamId}`);
+      players = players.filter(p => p.teamId === `${targetTeamId} `);
     }
 
     if (query.position) {
@@ -840,7 +842,7 @@ const MaddenDB: MaddenDB = {
     }, { merge: true })
   },
   updateWeeklyExportStatus: async function(leagueId: string, eventType: MaddenEvents, weekIndex: number, season: number) {
-    const weekKey = `season${String(season).padStart(2, '0')}_week${String(weekIndex).padStart(2, '0')}`
+    const weekKey = `season${String(season).padStart(2, '0')}_week${String(weekIndex).padStart(2, '0')} `
     await db.collection("madden_data26").doc(leagueId).set({
       exportStatus: {
         weeklyStatus: {
@@ -869,7 +871,7 @@ const MaddenDB: MaddenDB = {
     if (data) {
       return data
     } else {
-      throw new Error(`Missing Team Stats for ${MADDEN_SEASON + seasonIndex} Week ${week} for ${teamId}. Try exporting this week again`)
+      throw new Error(`Missing Team Stats for ${MADDEN_SEASON + seasonIndex} Week ${week} for ${teamId}.Try exporting this week again`)
     }
   },
   getExportStatus: async function(leagueId: string) {
