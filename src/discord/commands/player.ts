@@ -406,7 +406,7 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
           divider: true,
           spacing: SeparatorSpacingSize.Large
         },
-        {
+        ...(players.length === 0 ? [] : [{
           type: ComponentType.ActionRow,
           components: [
             {
@@ -416,7 +416,7 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
               options: generatePlayerZoomOptions(players, { q: toShortQuery(query), s: startAfterPlayer, b: endBeforePlayer })
             }
           ]
-        }
+        }])
       ]
     })
   } catch (e) {
