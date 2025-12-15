@@ -21,7 +21,7 @@ async function updateEachLeagueNotifier() {
           const [channelId, channelState] = channelEntry
           try {
             await new Promise((r) => setTimeout(r, 500 + jitter * 100));
-            await notifier.update(channelState, weeklyState.seasonIndex, weeklyState.week)
+            await notifier.checkPing(channelState, weeklyState.seasonIndex, weeklyState.week)
           } catch (e) {
           }
 
