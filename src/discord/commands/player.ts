@@ -1,5 +1,5 @@
 import { Command, Autocomplete, MessageComponentInteraction } from "../commands_handler"
-import { DiscordClient, deferMessage, getTeamEmoji, SnallabotTeamEmojis, NoConnectedLeagueError } from "../discord_utils"
+import { DiscordClient, deferMessage, getTeamEmoji, SnallabotTeamEmojis, NoConnectedLeagueError, SnallabotCommandReactions } from "../discord_utils"
 import { APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ButtonStyle, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { discordLeagueView, LeagueLogos, leagueLogosView } from "../../db/view"
 import fuzzysort from "fuzzysort"
@@ -1601,12 +1601,16 @@ async function searchPlayerListForQuery(textQuery: string, leagueId: string): Pr
 
 async function retirePlayers(leagueId: string, token: string, client: DiscordClient) {
   try {
+
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
         {
           type: ComponentType.TextDisplay,
-          content: `Updating latest players...`
+          content: `Retiring Players:
+- ${SnallabotCommandReactions.LOADING} Updating current players
+- ${SnallabotCommandReactions.WAITING} Finding Retired Players
+- ${SnallabotCommandReactions.WAITING} Finding New Retired Players`
         }
       ]
     })
@@ -1619,7 +1623,10 @@ async function retirePlayers(leagueId: string, token: string, client: DiscordCli
       components: [
         {
           type: ComponentType.TextDisplay,
-          content: `Players updated. Finding retired players`
+          content: `Retiring Players:
+- ${SnallabotCommandReactions.FINISHED} Updating current players
+- ${SnallabotCommandReactions.LOADING} Finding Retired Players
+- ${SnallabotCommandReactions.WAITING} Finding New Retired Players`
         }
       ]
     })
@@ -1635,7 +1642,9 @@ async function retirePlayers(leagueId: string, token: string, client: DiscordCli
         components: [
           {
             type: ComponentType.TextDisplay,
-            content: `Players updated. Finding retired players... Checked ${team.displayName}`
+            content: `Retiring Players:
+- ${SnallabotCommandReactions.FINISHED} Updating current players
+- ${SnallabotCommandReactions.LOADING} Finding Retired Players - Checking ${team.displayName}`
           }
         ]
       })

@@ -9,8 +9,8 @@ export type MaddenBroadcastEvent = { title: string, video: string }
 export type YoutubeBroadcastEvent = { video: string }
 export type AddChannelEvent = { channel_id: string, discord_server: string }
 export type RemoveChannelEvent = { channel_id: string, discord_server: string }
-// [March 8 2025] league id was added later once we found out that schedule ids can be shared between leagues
-export type ConfirmedSim = { confirmedUsers: UserId[], requestedUsers: UserId[], result: SimResult, scheduleId: number, seasonIndex: number, week: number, homeUser?: UserId, awayUser?: UserId, leagueId?: string }
 export type ConfirmedSimV2 = { confirmedUsers: UserId[], requestedUsers: UserId[], result: SimResult, scheduleId: number, seasonIndex: number, week: number, homeUser?: UserId, awayUser?: UserId }
 export type DiscordLeagueConnectionEvent = { guildId: string, leagueId: string }
 export type TeamLogoCustomizedEvent = { emoji_id: string, emoji_name: string, teamAbbr: string, teamLogoPath: string }
+// TODO: will I regret this? only time will tell. Making this a list of players instead of just one
+export type RetiredPlayer = { retiredPlayers: [{ presentationId: number, birthYear: number, birthMonth: number, birthDay: number, rosterId: number }] }
