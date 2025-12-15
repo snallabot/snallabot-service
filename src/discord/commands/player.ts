@@ -1835,8 +1835,8 @@ export default {
         const playerListSearchPhrase = playerCommand.options[0].value as string
         const results = await searchPlayerListForQuery(playerListSearchPhrase, leagueId)
         return results.map(r => {
-          const { teamId, rookie, position } = r
-          return { name: formatQuery(r), value: JSON.stringify({ teamId: teamId, rookie: !!rookie, position: position }) }
+          const { teamId, rookie, position, retired } = r
+          return { name: formatQuery(r), value: JSON.stringify({ teamId: teamId, rookie: !!rookie, position: position, e: !!retired }) }
         })
       }
     }
