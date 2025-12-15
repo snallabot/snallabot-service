@@ -825,6 +825,7 @@ const MaddenDB: MaddenDB = {
     const fullPlayers = await Promise.all(
       resultPlayers.map(p => this.getPlayer(leagueId, p.rosterId))
     );
+    console.log(fullPlayers.map(p => `${p.firstName} ${p.lastName}`))
 
     return fullPlayers;
 
