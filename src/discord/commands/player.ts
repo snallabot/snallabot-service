@@ -1610,7 +1610,7 @@ async function retirePlayers(leagueId: string, token: string, client: DiscordCli
         {
           type: ComponentType.TextDisplay,
           content: `Retiring Players:
-- ${SnallabotCommandReactions.LOADING} Updating current players
+- ${SnallabotCommandReactions.LOADING} Updating Current players
 - ${SnallabotCommandReactions.WAITING} Finding Retired Players
 - ${SnallabotCommandReactions.WAITING} Finding New Retired Players`
         }
@@ -1626,7 +1626,7 @@ async function retirePlayers(leagueId: string, token: string, client: DiscordCli
         {
           type: ComponentType.TextDisplay,
           content: `Retiring Players:
-- ${SnallabotCommandReactions.FINISHED} Updating current players
+- ${SnallabotCommandReactions.FINISHED} Updating Current players
 - ${SnallabotCommandReactions.LOADING} Finding Retired Players
 - ${SnallabotCommandReactions.WAITING} Finding New Retired Players`
         }
@@ -1645,7 +1645,7 @@ async function retirePlayers(leagueId: string, token: string, client: DiscordCli
           {
             type: ComponentType.TextDisplay,
             content: `Retiring Players:
-- ${SnallabotCommandReactions.FINISHED} Updating current players
+- ${SnallabotCommandReactions.FINISHED} Updating Current players
 - ${SnallabotCommandReactions.LOADING} Finding Retired Players - Checking ${team.displayName}
 - ${SnallabotCommandReactions.WAITING} Finding New Retired Players`
           }
@@ -1658,7 +1658,7 @@ async function retirePlayers(leagueId: string, token: string, client: DiscordCli
         {
           type: ComponentType.TextDisplay,
           content: `Retiring Players:
-- ${SnallabotCommandReactions.FINISHED} Updating current players
+- ${SnallabotCommandReactions.FINISHED} Updating Current players
 - ${SnallabotCommandReactions.FINISHED} Finding Retired Players
 - ${SnallabotCommandReactions.LOADING} Finding New Retired Players`
         }
@@ -1667,6 +1667,7 @@ async function retirePlayers(leagueId: string, token: string, client: DiscordCli
     const latestPlayers = await MaddenDB.getLatestPlayers(leagueId)
     const alreadyRetiredPlayerEvents = await EventDB.queryEvents<RetiredPlayersEvent>(leagueId, EventTypes.RETIRED_PLAYERS, new Date(0), {}, 1000000)
     const alreadyRetiredPlayers = new Set(alreadyRetiredPlayerEvents.flatMap(e => e.retiredPlayers).map(e => createPlayerKey(e)))
+    console.log(alreadyRetiredPlayers.size)
     const retiredPlayers = latestPlayers.filter(player => {
       const playerKey = createPlayerKey(player)
       return !playersInLeague.has(playerKey) && !alreadyRetiredPlayers.has(playerKey)
@@ -1677,7 +1678,7 @@ async function retirePlayers(leagueId: string, token: string, client: DiscordCli
         {
           type: ComponentType.TextDisplay,
           content: `Retiring Players:
-- ${SnallabotCommandReactions.FINISHED} Updating current players
+- ${SnallabotCommandReactions.FINISHED} Updating Current players
 - ${SnallabotCommandReactions.FINISHED} Finding Retired Players
 - ${SnallabotCommandReactions.FINISHED} Finding New Retired Players\n
 Snallabot found ${retiredPlayers.length} newly retired players. :saluting_face: hope they had a great career! use /player list to view them`
