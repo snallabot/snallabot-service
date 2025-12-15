@@ -10,7 +10,8 @@ import { GameResult } from "../export/madden_league_types"
 interface SnallabotNotifier {
   update(currentState: GameChannel, season: number, week: number,): Promise<void>
   deleteGameChannel(currentState: GameChannel, season: number, week: number, origin: UserId[]): Promise<void>
-  ping(currentState: GameChannel, season: number, week: number): Promise<void>
+  ping(currentState: GameChannel, season: number, week: number): Promise<void>,
+  checkPing(currentState: GameChannel, season: number, week: number): Promise<void>,
 }
 
 
@@ -126,7 +127,6 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
         return
       }
       const ggUsers = await getReactedUsers(channelId, messageId, SnallabotReactions.GG)
-      const scheduledUsers = await getReactedUsers(channelId, messageId, SnallabotReactions.SCHEDULE)
       const homeUsers = await getReactedUsers(channelId, messageId, SnallabotReactions.HOME)
       const awayUsers = await getReactedUsers(channelId, messageId, SnallabotReactions.AWAY)
       const fwUsers = await getReactedUsers(channelId, messageId, SnallabotReactions.SIM)
@@ -167,7 +167,18 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
           } catch (e) {
           }
         }
-      } else if (scheduledUsers.length === 0 && currentState.state !== GameChannelState.FORCE_WIN_REQUESTED) {
+      }
+    },
+    checkPing: async function(currentState: GameChannel, season: number, week: number) {
+      const channelId = currentState.channel
+      const messageId = currentState.message
+      const messageExists = await client.checkMessageExists(channelId, messageId)
+      if (!messageExists) {
+        await deleteTracking(currentState, season, week)
+        return
+      }
+      const scheduledUsers = await getReactedUsers(channelId, messageId, SnallabotReactions.SCHEDULE)
+      if (scheduledUsers.length === 0 && currentState.state !== GameChannelState.FORCE_WIN_REQUESTED) {
         const waitPing = settings.commands.game_channel?.wait_ping || 12
         const now = new Date()
         const last = new Date(currentState.notifiedTime)
