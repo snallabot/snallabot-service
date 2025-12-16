@@ -764,6 +764,7 @@ const MaddenDB: MaddenDB = {
 
     // Apply filters
     if ((query.teamId && query.teamId !== -1) || query.teamId === 0) {
+      console.log("filtering")
       const targetTeamId = query.teamId != 0 ? teams.getTeamForId(query.teamId).teamId : 0;
       players = players.filter(p => p.teamId === `${targetTeamId}`);
     }
