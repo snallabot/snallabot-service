@@ -755,16 +755,17 @@ const MaddenDB: MaddenDB = {
 
     // Convert index object to array
     let players = playerIndex ? Object.values(playerIndex).map(p => {
+      const teamId = Number(p.teamId)
+      const latestTeam = teamId === 0 ? 0 : teams.getTeamForId(teamId).teamId
       return {
-        ...p, isRetired: retiredPlayers.has(createPlayerKey(p)), teamId: p.teamId !== "0" ? `${teams.getTeamForId(Number(p.teamId)).teamId}` : "0"
+        ...p, isRetired: retiredPlayers.has(createPlayerKey(p)), teamId: `${latestTeam}`
       }
     }) : []
 
     // Apply filters
     if ((query.teamId && query.teamId !== -1) || query.teamId === 0) {
-
       const targetTeamId = query.teamId != 0 ? teams.getTeamForId(query.teamId).teamId : 0;
-      players = players.filter(p => p.teamId === `${targetTeamId} `);
+      players = players.filter(p => p.teamId === `${targetTeamId}`);
     }
 
     if (query.position) {
