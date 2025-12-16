@@ -757,9 +757,6 @@ const MaddenDB: MaddenDB = {
     let players = playerIndex ? Object.values(playerIndex).map(p => {
       const teamId = Number(p.teamId)
       const latestTeam = teamId === 0 ? 0 : teams.getTeamForId(teamId).teamId
-      if (latestTeam === 0) {
-        console.log("free agent found")
-      }
       return {
         ...p, isRetired: retiredPlayers.has(createPlayerKey(p)), teamId: `${latestTeam}`
       }
@@ -784,8 +781,6 @@ const MaddenDB: MaddenDB = {
         players = players.filter(p => p.position === query.position);
       }
     }
-
-    console.log(query)
 
     if (query.rookie) {
       players = players.filter(p => p.yearsPro === 0);
@@ -991,7 +986,6 @@ const MaddenDB: MaddenDB = {
       const allGamesSnapshot = await scheduleCollection.get();
 
       if (allGamesSnapshot.empty) {
-        console.log("no games")
         return [];
       }
 

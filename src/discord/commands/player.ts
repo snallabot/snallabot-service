@@ -1648,8 +1648,6 @@ async function retirePlayers(leagueId: string, token: string, client: DiscordCli
     const playersInLeague = new Set<string>()
     for (let idx = 0; idx < teams.length; idx++) {
       const team = teams[idx];
-      const roster = await eaClient.getTeamRoster(league, team.teamId, idx);
-      roster.rosterInfoList.forEach(player => playersInLeague.add(createPlayerKey(player)));
       await client.editOriginalInteraction(token, {
         flags: 32768,
         components: [
@@ -1662,7 +1660,23 @@ async function retirePlayers(leagueId: string, token: string, client: DiscordCli
           }
         ]
       })
+      const roster = await eaClient.getTeamRoster(league, team.teamId, idx);
+      roster.rosterInfoList.forEach(player => playersInLeague.add(createPlayerKey(player)))
     }
+    await client.editOriginalInteraction(token, {
+      flags: 32768,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: `Retiring Players:
+- ${SnallabotCommandReactions.FINISHED} Updating Current players
+- ${SnallabotCommandReactions.LOADING} Finding Retired Players - Checking Free Agents
+- ${SnallabotCommandReactions.WAITING} Finding New Retired Players`
+        }
+      ]
+    })
+    const freeAgents = await eaClient.getFreeAgents(league)
+    freeAgents.rosterInfoList.forEach(player => playersInLeague.add(createPlayerKey(player)));
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
