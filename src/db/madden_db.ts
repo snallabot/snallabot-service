@@ -782,13 +782,13 @@ const MaddenDB: MaddenDB = {
       }
     }
 
+    console.log(query)
+
     if (query.rookie) {
       players = players.filter(p => p.yearsPro === 0);
-      console.log(players.length)
     }
 
     if (query.retired) {
-      console.log(players.length)
       players = players.filter(p => p.isRetired)
     } else {
       players = players.filter(p => !p.isRetired)
