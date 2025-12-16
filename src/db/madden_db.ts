@@ -845,7 +845,7 @@ const MaddenDB: MaddenDB = {
     }, { merge: true })
   },
   updateWeeklyExportStatus: async function(leagueId: string, eventType: MaddenEvents, weekIndex: number, season: number) {
-    const weekKey = `season${String(season).padStart(2, '0')}_week${String(weekIndex).padStart(2, '0')} `
+    const weekKey = `season${String(season).padStart(2, '0')}_week${String(weekIndex).padStart(2, '0')}`
     await db.collection("madden_data26").doc(leagueId).set({
       exportStatus: {
         weeklyStatus: {
@@ -874,7 +874,7 @@ const MaddenDB: MaddenDB = {
     if (data) {
       return data
     } else {
-      throw new Error(`Missing Team Stats for ${MADDEN_SEASON + seasonIndex} Week ${week} for ${teamId}.Try exporting this week again`)
+      throw new Error(`Missing Team Stats for ${MADDEN_SEASON + seasonIndex} Week ${week} for ${teamId}. Try exporting this week again`)
     }
   },
   getExportStatus: async function(leagueId: string) {
