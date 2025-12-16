@@ -670,9 +670,13 @@ const MaddenDB: MaddenDB = {
     }).filter(s => latestTeams.has(s.teamId))
   },
   getLatestPlayers: async function(leagueId: string) {
-    const view = await playerListIndex.createView(leagueId)
+    const [view, teams] = await Promise.all([playerListIndex.createView(leagueId), this.getLatestTeams(leagueId)])
     if (view) {
-      return Object.values(view)
+      return Object.values(view).map(p => {
+        const teamId = Number(p.teamId)
+        const latestTeamId = teamId === 0 ? 0 : teams.getTeamForId(teamId).teamId
+        return { ...p, teamId: `${latestTeamId}` }
+      })
     }
     return []
   },
