@@ -201,6 +201,7 @@ export function createClient(settings: DiscordSettings): DiscordClient {
       try {
         await sendDiscordRequest(`webhooks/${settings.appId}/${token}/messages/@original`, { method: "PATCH", body })
       } catch (e) {
+        throw e
       }
     },
     editOriginalInteractionWithForm: async (token: string, body: FormData) => {
@@ -619,6 +620,13 @@ export enum SnallabotReactions {
   HOME = "%F0%9F%8F%A0",
   AWAY = "%F0%9F%9B%AB",
   SIM = "%E2%8F%AD%EF%B8%8F",
+}
+
+export enum SnallabotCommandReactions {
+  LOADING = "<a:snallabot_loading:1288662414191104111>",
+  WAITING = "<a:snallabot_waiting:1288664321781399584>",
+  FINISHED = "<a:snallabot_done:1288666730595618868>",
+  ERROR = "<:snallabot_error:1288692698320076820>"
 }
 
 export enum ResponseType {

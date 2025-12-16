@@ -1,5 +1,5 @@
 import { Command } from "../commands_handler"
-import { createMessageResponse, DiscordClient, deferMessage, formatTeamMessageName, SnallabotReactions, SnallabotDiscordError, formatSchedule, NoConnectedLeagueError } from "../discord_utils"
+import { createMessageResponse, DiscordClient, deferMessage, formatTeamMessageName, SnallabotReactions, SnallabotDiscordError, formatSchedule, NoConnectedLeagueError, SnallabotCommandReactions } from "../discord_utils"
 import { APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ApplicationCommandType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import LeagueSettingsDB, { CategoryId, ChannelId, DiscordIdType, GameChannel, GameChannelConfiguration, GameChannelState, LeagueSettings, MaddenLeagueConfiguration, MessageId, RoleId, UserId, WeekState } from "../settings_db"
 import MaddenClient from "../../db/madden_db"
@@ -17,12 +17,6 @@ function notifierMessage(users: string, waitPing: number, role: RoleId): string 
   return `${users}\nTime to schedule your game! Once your game is scheduled, hit the ⏰. Otherwise, You will be notified again every ${waitPing} hours.\nWhen you're done playing, let me know with 🏆 and I will clean up the channel.\nNeed to sim this game? React with ⏭ AND the home/away request a force win from <@&${role.id}>. Choose both home and away to fair sim! <@&${role.id}> hit the ⏭ to confirm it!`
 }
 
-enum SnallabotCommandReactions {
-  LOADING = "<a:snallabot_loading:1288662414191104111>",
-  WAITING = "<a:snallabot_waiting:1288664321781399584>",
-  FINISHED = "<a:snallabot_done:1288666730595618868>",
-  ERROR = "<:snallabot_error:1288692698320076820>"
-}
 
 async function createGameChannels(client: DiscordClient, token: string, guild_id: string, settings: LeagueSettings, week: number, category: CategoryId, author: UserId) {
   let channelsToCleanup: ChannelId[] = []

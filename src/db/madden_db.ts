@@ -6,6 +6,7 @@ import { DefensiveStats, GameResult, KickingStats, MADDEN_SEASON, MaddenGame, PO
 import { TeamAssignments } from "../discord/settings_db"
 import NodeCache from "node-cache"
 import { CachedUpdatingView, View } from "./view"
+import { EventTypes, RetiredPlayersEvent } from "./events"
 
 // getting Teams is a high request rate, by caching we can avoid calling the data when it hasnt changed
 const teamCache = new NodeCache()
@@ -51,7 +52,7 @@ export enum MaddenEvents {
   MADDEN_PLAYER = "MADDEN_PLAYER"
 }
 
-export type PlayerListQuery = { teamId?: number, position?: string, rookie?: boolean }
+export type PlayerListQuery = { teamId?: number, position?: string, rookie?: boolean, retired?: boolean }
 type IndividualStatus = { lastExported: Date }
 export type ExportStatus = {
   [MaddenEvents.MADDEN_TEAM]?: IndividualStatus,
@@ -319,6 +320,9 @@ function deduplicateSchedule(games: StoredEvent<MaddenGame>[], teams: TeamList):
   }
 }
 
+export function createPlayerKey(player: { presentationId: number, birthYear: number, birthMonth: number, birthDay: number }) {
+  return `${player.presentationId}-${player.birthYear}-${player.birthMonth}-${player.birthDay}`
+}
 
 function deduplicatePlayers(players: StoredEvent<Player>[]): StoredEvent<Player>[] {
   const playerMap = new Map<string, StoredEvent<Player>>();
@@ -666,9 +670,13 @@ const MaddenDB: MaddenDB = {
     }).filter(s => latestTeams.has(s.teamId))
   },
   getLatestPlayers: async function(leagueId: string) {
-    const view = await playerListIndex.createView(leagueId)
+    const [view, teams] = await Promise.all([playerListIndex.createView(leagueId), this.getLatestTeams(leagueId)])
     if (view) {
-      return Object.values(view)
+      return Object.values(view).map(p => {
+        const teamId = Number(p.teamId)
+        const latestTeamId = teamId === 0 ? 0 : teams.getTeamForId(teamId).teamId
+        return { ...p, teamId: `${latestTeamId}` }
+      })
     }
     return []
   },
@@ -744,14 +752,22 @@ const MaddenDB: MaddenDB = {
   },
   getPlayers: async function(leagueId: string, query: PlayerListQuery, limit: number, startAfter?: Player, endBefore?: Player) {
     const playerIndex = await playerListIndex.createView(leagueId)
+    const retiredPlayerEvents = await EventDB.queryEvents<RetiredPlayersEvent>(leagueId, EventTypes.RETIRED_PLAYERS, new Date(0), {}, 1000000)
+    const retiredPlayers = new Set(retiredPlayerEvents.flatMap(e => e.retiredPlayers).map(e => createPlayerKey(e)))
+    const teams = await this.getLatestTeams(leagueId)
 
 
     // Convert index object to array
-    let players = playerIndex ? Object.values(playerIndex) : []
+    let players = playerIndex ? Object.values(playerIndex).map(p => {
+      const teamId = Number(p.teamId)
+      const latestTeam = teamId === 0 ? 0 : teams.getTeamForId(teamId).teamId
+      return {
+        ...p, isRetired: retiredPlayers.has(createPlayerKey(p)), teamId: `${latestTeam}`
+      }
+    }) : []
 
     // Apply filters
     if ((query.teamId && query.teamId !== -1) || query.teamId === 0) {
-      const teams = await this.getLatestTeams(leagueId)
       const targetTeamId = query.teamId != 0 ? teams.getTeamForId(query.teamId).teamId : 0;
       players = players.filter(p => p.teamId === `${targetTeamId}`);
     }
@@ -772,6 +788,12 @@ const MaddenDB: MaddenDB = {
 
     if (query.rookie) {
       players = players.filter(p => p.yearsPro === 0);
+    }
+
+    if (query.retired) {
+      players = players.filter(p => p.isRetired)
+    } else {
+      players = players.filter(p => !p.isRetired)
     }
 
     players.sort((a, b) => b.playerBestOvr - a.playerBestOvr);
@@ -968,7 +990,6 @@ const MaddenDB: MaddenDB = {
       const allGamesSnapshot = await scheduleCollection.get();
 
       if (allGamesSnapshot.empty) {
-        console.log("no games")
         return [];
       }
 
