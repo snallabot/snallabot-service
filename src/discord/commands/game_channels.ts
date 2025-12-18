@@ -71,11 +71,10 @@ async function createGameChannels(client: DiscordClient, token: string, guild_id
         await exporter.exportSpecificWeeks([{ weekIndex: week, stage: Stage.SEASON }])
         weekSchedule = (await MaddenClient.getLatestWeekSchedule(leagueId, week)).sort((g, g2) => g.scheduleId - g2.scheduleId)
       } catch (e) {
-        await client.editOriginalInteraction(token, { content: "This week is not exported! Export it via dashboard or companion app" })
+        await client.editOriginalInteraction(token, { content: `Could not retrieve this weeks schedule ${e}` })
         return
       }
     }
-
     const teams = await MaddenClient.getLatestTeams(leagueId)
     const assignments = teams.getLatestTeamAssignments(settings.commands.teams?.assignments || {})
     const gameChannels = []
