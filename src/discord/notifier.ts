@@ -113,6 +113,12 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
       const awayTag = formatTeamMessageName(assignments[`${awayTeam.teamId}`]?.discord_user?.id, awayTeam.userName)
       const homeTag = formatTeamMessageName(assignments[`${homeTeam.teamId}`]?.discord_user?.id, homeTeam.userName)
       await LeagueSettingsDB.updateGameChannelPingTime(guildId, week, season, gameChannel.channel)
+      
+      // Skip pinging if both teams are CPU-controlled
+      if (awayTag === "CPU" && homeTag === "CPU") {
+      return;
+      }
+      
       try {
         await client.createMessage(gameChannel.channel, `${awayTag} ${homeTag} is your game scheduled? Schedule it! or react to my first message to set it as scheduled! Hit the trophy if its done already`, ["users"])
       } catch (e) {
