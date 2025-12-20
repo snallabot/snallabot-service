@@ -71,7 +71,7 @@ export const viewCacheMisses = new client.Counter(
     name: "view_cache_misses_total",
     help: "Cache misses on views",
     registers: [register],
-    labelNames: "view_id"
+    labelNames: ["view_id"]
   }
 )
 
