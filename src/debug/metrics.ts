@@ -77,7 +77,7 @@ export const viewCacheMisses = new client.Counter(
 
 export const viewCacheSize = new client.Gauge(
   {
-    name: "madden_hash_cache_size_bytes_total",
+    name: "view_cache_size_bytes_total",
     help: "View cache size in bytes",
     registers: [register]
   }
