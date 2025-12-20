@@ -95,6 +95,7 @@ export abstract class StorageBackedCachedView<T> extends View<T> {
           await FileHandler.writeFile<T>(view, viewFile, defaultSerializer<T>())
         }
         catch (e2) {
+          console.log(e2)
         }
       }
       return view
