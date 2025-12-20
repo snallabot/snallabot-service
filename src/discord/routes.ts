@@ -72,7 +72,7 @@ EventDB.on<MaddenBroadcastEvent>("MADDEN_BROADCAST", async (events) => {
     const leagueSettings = await LeagueSettingsDB.getLeagueSettings(discordServer)
     const configuration = leagueSettings.commands?.broadcast
     if (!configuration) {
-      console.error(`${discordServer} is not configured for Broadcasts`)
+
     } else {
       const channel = configuration.channel
       let roleTag = ""
@@ -87,7 +87,7 @@ EventDB.on<MaddenBroadcastEvent>("MADDEN_BROADCAST", async (events) => {
       try {
         await prodClient.createMessage(channel, `${roleTag} ${broadcastEvent.title}\n\n${broadcastEvent.video}`, ["roles", "everyone"])
       } catch (e) {
-        console.error("could not send broacast")
+        console.error(`${discordServer} could not send broadcast, ${e}`)
       }
     }
   })

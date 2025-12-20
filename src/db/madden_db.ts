@@ -7,6 +7,7 @@ import { TeamAssignments } from "../discord/settings_db"
 import NodeCache from "node-cache"
 import { CachedUpdatingView, View } from "./view"
 import { EventTypes, RetiredPlayersEvent } from "./events"
+import { maddenEventsDistribution } from "../debug/metrics"
 
 // getting Teams is a high request rate, by caching we can avoid calling the data when it hasnt changed
 const teamCache = new NodeCache()
@@ -483,6 +484,7 @@ teamSearchView.listen(MaddenEvents.MADDEN_TEAM)
 
 const MaddenDB: MaddenDB = {
   async appendEvents<Event>(events: SnallabotEvent<Event>[], idFn: (event: Event) => string) {
+
     const BATCH_SIZE = 500;
     const timestamp = new Date();
     const totalBatches = Math.ceil(events.length / BATCH_SIZE);
@@ -521,6 +523,7 @@ const MaddenDB: MaddenDB = {
     await Promise.all(Object.entries(Object.groupBy(events, e => e.event_type)).map(async entry => {
       const [eventType, specificTypeEvents] = entry
       if (specificTypeEvents) {
+        maddenEventsDistribution.observe({ event_type: eventType }, specificTypeEvents.length)
         const eventTypeNotifiers = notifiers[eventType]
         if (eventTypeNotifiers) {
           await Promise.all(eventTypeNotifiers.map(async notifier => {

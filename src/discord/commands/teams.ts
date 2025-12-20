@@ -227,7 +227,6 @@ export default {
               return createMessageResponse("Teams Configured")
             }
           } catch (e) {
-            console.debug(e)
           }
         }
         const message = await fetchTeamsMessage(leagueSettings)

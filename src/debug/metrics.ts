@@ -41,10 +41,10 @@ export const maddenHashCacheHits = new client.Counter(
   }
 )
 
-export const maddenHashCacheMisses = new client.Counter(
+export const maddenHashCacheTotalRequests = new client.Counter(
   {
-    name: "madden_hash_cache_misses_total",
-    help: "Cache misses on madden hash write optimization",
+    name: "madden_hash_cache_requests_total",
+    help: "Total cache requests on madden hash write optimization",
     registers: [register]
   }
 )
@@ -66,10 +66,10 @@ export const viewCacheHits = new client.Counter(
   }
 )
 
-export const viewCacheMisses = new client.Counter(
+export const viewCacheTotalRequests = new client.Counter(
   {
-    name: "view_cache_misses_total",
-    help: "Cache misses on views",
+    name: "view_cache_requests_total",
+    help: "Total Requests on view cache",
     registers: [register],
     labelNames: ["view_id"]
   }
@@ -83,6 +83,12 @@ export const viewCacheSize = new client.Gauge(
   }
 )
 
+export const maddenEventsDistribution = new client.Summary({
+  name: "madden_events_size_distribution",
+  help: "Distribution of madden writes",
+  registers: [register],
+  labelNames: ["event_type"]
+})
 
 
 export const contentType = register.contentType

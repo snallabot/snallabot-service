@@ -1,4 +1,4 @@
-import { maddenHashCacheHits, maddenHashCacheMisses } from "../debug/metrics"
+import { maddenHashCacheHits, maddenHashCacheTotalRequests } from "../debug/metrics"
 import FileHandler, { defaultSerializer } from "../file_handlers"
 import NodeCache from "node-cache"
 
@@ -58,11 +58,11 @@ function filePath(leagueId: string, event_type: string, request_type: string) {
 const HashStorage: MaddenHashStorage = {
   readTree: async function(league: string, request_type: string, event_type: string): Promise<MerkleTree> {
     const cachedTree = treeCache.get(createCacheKey(league, request_type)) as MerkleTree
+    maddenHashCacheTotalRequests.inc()
     if (cachedTree) {
       maddenHashCacheHits.inc()
       return cachedTree
     } else {
-      maddenHashCacheMisses.inc()
       try {
         const tree = await FileHandler.readFile<MerkleTree>(filePath(league, event_type, request_type), defaultSerializer<MerkleTree>())
         try {
