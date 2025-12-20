@@ -5,7 +5,7 @@ import EventDB, { EventNotifier, SnallabotEvent, StoredEvent, notifiers } from "
 import { DefensiveStats, GameResult, KickingStats, MADDEN_SEASON, MaddenGame, POSITION_GROUP, PassingStats, Player, PuntingStats, ReceivingStats, RushingStats, Standing, Team, TeamStats, dLinePositions, dbPositions, oLinePositions } from "../export/madden_league_types"
 import { TeamAssignments } from "../discord/settings_db"
 import NodeCache from "node-cache"
-import { CachedUpdatingView, View } from "./view"
+import { CachedUpdatingView, StorageBackedCachedView, View } from "./view"
 import { EventTypes, RetiredPlayersEvent } from "./events"
 
 // getting Teams is a high request rate, by caching we can avoid calling the data when it hasnt changed
@@ -412,7 +412,7 @@ class PlayerListView extends View<PlayerListIndex> {
   }
 }
 
-class CacheablePlayerListView extends CachedUpdatingView<PlayerListIndex> {
+class CacheablePlayerListView extends StorageBackedCachedView<PlayerListIndex> {
   constructor() {
     super(new PlayerListView())
   }
