@@ -22,7 +22,6 @@ router.get("/cacheStats", async (ctx) => {
   })
   .get("/metrics", async (ctx) => {
     const metrics = await scrapeMetrics()
-    console.log(contentType)
     ctx.set("Content-Type", contentType)
     ctx.body = metrics
     ctx.status = 200
