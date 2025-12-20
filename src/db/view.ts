@@ -5,6 +5,7 @@ import { Team } from "../export/madden_league_types"
 import LeagueSettingsDB from "../discord/settings_db"
 import { DiscordLeagueConnectionEvent, TeamLogoCustomizedEvent } from "./events"
 import FileHandler, { defaultSerializer } from "../file_handlers"
+import { viewCacheHits, viewCacheMisses } from "../debug/metrics"
 
 const TTL = 10800 // 3 hours in seconds
 
@@ -37,8 +38,10 @@ export abstract class CachedUpdatingView<T> extends View<T> {
   async createView(key: string) {
     const cachedView = viewCache.get(this.createCacheKey(key)) as T | undefined
     if (cachedView) {
+      viewCacheHits.inc({ view_id: this.view.id })
       return cachedView
     }
+    viewCacheMisses.inc({ view_id: this.view.id })
     const view = await this.view.createView(key)
     viewCache.set(this.createCacheKey(key), view, TTL)
     return view
