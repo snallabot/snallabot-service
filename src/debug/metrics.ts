@@ -52,7 +52,7 @@ export const maddenHashCacheMisses = new client.Counter(
 export const maddenHashCacheSize = new client.Gauge(
   {
     name: "madden_hash_cache_size_bytes_total",
-    help: "Madden hash cgache size in bytes",
+    help: "Madden hash cache size in bytes",
     registers: [register]
   }
 )
@@ -62,7 +62,7 @@ export const viewCacheHits = new client.Counter(
     name: "view_cache_hits_total",
     help: "Cache hits on views",
     registers: [register],
-    labelNames: "view_id"
+    labelNames: ["view_id"]
   }
 )
 
