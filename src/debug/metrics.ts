@@ -9,7 +9,7 @@ export async function scrapeMetrics() {
 
 export const exportCounter = new client.Counter(
   {
-    name: "madden_exports",
+    name: "madden_exports_total",
     help: "number of exports",
     labelNames: ["export_context", "export_type"],
     registers: [register]
@@ -18,7 +18,7 @@ export const exportCounter = new client.Counter(
 
 export const debugCounter = new client.Counter(
   {
-    name: "debug_counter",
+    name: "debug_counter_total",
     help: "tests metrics in bot",
     registers: [register]
   }
