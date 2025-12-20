@@ -11,7 +11,16 @@ export const exportCounter = new client.Counter(
   {
     name: "madden_exports_total",
     help: "number of exports",
-    labelNames: ["export_context", "export_type"],
+    labelNames: ["export_type"],
+    registers: [register]
+  }
+)
+
+export const discordCommandsCounter = new client.Counter(
+  {
+    name: "discord_commands",
+    help: "number of commands",
+    labelNames: ["command_name", "command_type"],
     registers: [register]
   }
 )

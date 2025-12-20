@@ -7,6 +7,7 @@ import db from "../db/firebase"
 import { createDestination } from "../export/exporter";
 import { DEPLOYMENT_URL } from "../config";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
+import { exportCounter } from "../debug/metrics";
 
 
 export enum LeagueData {
@@ -574,6 +575,7 @@ export async function exporterForLeague(leagueId: number, context: ExportContext
     exportCurrentWeek: async function() {
       const weekIndex = leagueInfo.careerHubInfo.seasonInfo.seasonWeek
       const stage = leagueInfo.careerHubInfo.seasonInfo.seasonWeekType === 0 ? 0 : 1
+      exportCounter.inc({ export_type: "CURRENT_WEEK" })
       await this.exportSpecificWeeks([{ weekIndex, stage }])
     },
     exportSurroundingWeek: async function() {
@@ -591,6 +593,7 @@ export async function exporterForLeague(leagueId: number, context: ExportContext
         currentWeek,
         nextWeek === 21 ? 22 : nextWeek,
       ].filter((c) => c >= 0 && c <= maxWeekIndex)
+      exportCounter.inc({ export_type: "SURROUNDING_WEEK" })
       await this.exportSpecificWeeks(weeksToExport.map(w => ({ weekIndex: w, stage: stage })))
     },
     exportAllWeeks: async function() {
@@ -601,6 +604,7 @@ export async function exporterForLeague(leagueId: number, context: ExportContext
           SEASON_WEEKS.map(weekIndex => ({
             weekIndex: weekIndex, stage: 1
           })))
+      exportCounter.inc({ export_type: "ALL_WEEKS" })
       await this.exportSpecificWeeks(weeksToExport)
     },
     exportSpecificWeeks: async function(weeks: { weekIndex: number, stage: number }[]) {
