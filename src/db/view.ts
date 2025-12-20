@@ -60,7 +60,7 @@ export abstract class CachedUpdatingView<T> extends View<T> {
   }
 }
 
-abstract class StorageBackedCachedView<T> extends View<T> {
+export abstract class StorageBackedCachedView<T> extends View<T> {
   view: View<T>
 
   constructor(view: View<T>) {
