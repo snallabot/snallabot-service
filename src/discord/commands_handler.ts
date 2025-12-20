@@ -20,6 +20,7 @@ import gameStatsHandler from "./commands/game_stats"
 import bracketHandler from "./commands/bracket"
 import simsHandler from "./commands/sims"
 import { APIMessageComponentInteractionData } from "discord-api-types/v9"
+import { discordCommandsCounter } from "../debug/metrics"
 
 export type Command = { command_name: string, token: string, guild_id: string, data: APIChatInputApplicationCommandInteractionData, member: APIInteractionGuildMember }
 export type Autocomplete = { command_name: string, guild_id: string, data: APIAutocompleteApplicationCommandInteractionData }
@@ -78,6 +79,7 @@ export async function handleCommand(command: Command, ctx: ParameterizedContext,
   const handler = SlashCommands[commandName]
   if (handler) {
     try {
+      discordCommandsCounter.inc({ command_name: command.command_name, command_type: "SLASH" })
       const res = await handler.handleCommand(command, discordClient)
       respond(ctx, res)
     } catch (e) {
@@ -103,6 +105,7 @@ export async function handleAutocomplete(command: Autocomplete, ctx: Parameteriz
   const handler = AutocompleteCommands[commandName]
   if (handler) {
     try {
+      discordCommandsCounter.inc({ command_name: command.command_name, command_type: "AUTOCOMPLETE" })
       const choices = await handler.choices(command)
       ctx.status = 200
       ctx.set("Content-Type", "application/json")
@@ -139,6 +142,7 @@ export async function handleMessageComponent(interaction: MessageComponentIntera
   const handler = MessageComponents[custom_id]
   if (handler) {
     try {
+      discordCommandsCounter.inc({ command_name: custom_id, command_type: "MESSAGE_COMPONENT" })
       const body = await handler.handleInteraction(interaction, client)
       ctx.status = 200
       ctx.set("Content-Type", "application/json")
@@ -152,27 +156,32 @@ export async function handleMessageComponent(interaction: MessageComponentIntera
     try {
       const parsedCustomId = JSON.parse(custom_id)
       if (parsedCustomId.q != null) {
+        discordCommandsCounter.inc({ command_name: "PLAYER_LIST", command_type: "MESSAGE_COMPONENT" })
         const body = await playerHandler.handleInteraction(interaction, client)
         ctx.status = 200
         ctx.set("Content-Type", "application/json")
         ctx.body = body
       } else if (parsedCustomId.t != null) {
+        discordCommandsCounter.inc({ command_name: "BROADCAST", command_type: "MESSAGE_COMPONENT" })
         const body = await broadcastsHandler.handleInteraction(interaction, client)
         ctx.status = 200
         ctx.set("Content-Type", "application/json")
         ctx.body = body
       } else if (parsedCustomId.p != null && parsedCustomId.si != null) {
+        discordCommandsCounter.inc({ command_name: "SIMS", command_type: "MESSAGE_COMPONENT" })
         const body = await simsHandler.handleInteraction(interaction, client)
         ctx.status = 200
         ctx.set("Content-Type", "application/json")
         ctx.body = body
       }
       else if (parsedCustomId.si != null) {
+        discordCommandsCounter.inc({ command_name: "SCHEDULE", command_type: "MESSAGE_COMPONENT" })
         const body = await schedulesHandler.handleInteraction(interaction, client)
         ctx.status = 200
         ctx.set("Content-Type", "application/json")
         ctx.body = body
       } else if (parsedCustomId.f != null) {
+        discordCommandsCounter.inc({ command_name: "STANDINGS", command_type: "MESSAGE_COMPONENT" })
         const body = await standingsHandler.handleInteraction(interaction, client)
         ctx.status = 200
         ctx.set("Content-Type", "application/json")
