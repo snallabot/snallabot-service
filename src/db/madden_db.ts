@@ -535,6 +535,7 @@ const MaddenDB: MaddenDB = {
   getLatestTeams: async function(leagueId: string): Promise<TeamList> {
     const view = await teamView.createView(leagueId)
     if (view) {
+      console.log(view)
       return createTeamList(Object.values(view))
     }
     throw new Error(`No teams were found`)
