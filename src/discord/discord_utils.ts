@@ -693,6 +693,8 @@ export enum SnallabotTeamEmojis {
   ATL = "<:snallabot_atl:1364106360383471737>",
 
   // NFC West
+  // not sure why but Madden has set both to AZ and ARI before
+  AZ = "<:snallabot_ari:1364106640315646013>",
   ARI = "<:snallabot_ari:1364106640315646013>",
   LAR = "<:snallabot_lar:1364103394800701450>",
   SEA = "<:snallabot_sea:1364103391260840018>",
