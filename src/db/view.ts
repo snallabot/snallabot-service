@@ -79,7 +79,9 @@ export abstract class StorageBackedCachedView<T> extends View<T> {
 
   async createView(key: string) {
     const cachedView = viewCache.get(this.createCacheKey(key)) as T | undefined
+    viewCacheTotalRequests.inc({ view_id: this.view.id })
     if (cachedView) {
+      viewCacheHits.inc({ view_id: this.view.id })
       return cachedView
     }
     const viewFile = this.createStorageDirectory(key)
