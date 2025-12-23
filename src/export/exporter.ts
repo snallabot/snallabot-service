@@ -5,6 +5,7 @@ import { DefensiveExport, KickingExport, PassingExport, PuntingExport, Receiving
 import { ExtraData, Stage } from "../dashboard/ea_client";
 import { DEPLOYMENT_URL } from "../config";
 import FileHandler, { defaultSerializer } from "../file_handlers"
+import { maddenHashEventChanged, maddenHashEventsTotal } from "../debug/metrics";
 
 export enum ExportResult {
   SUCCESS = 0,
@@ -257,6 +258,7 @@ export async function sendEvents<T>(league: string, request_type: string, events
     return
   }
   if (OPTIMIZE_WRITES) {
+    maddenHashEventsTotal.inc({ event_type: request_type }, events.length)
     const eventType = events.map(e => e.event_type).pop()
     if (!eventType) {
       throw new Error("No Event Type found for " + request_type)
@@ -268,17 +270,11 @@ export async function sendEvents<T>(league: string, request_type: string, events
     const newTree = createTwoLayer(newNodes)
     const hashDifferences = findDifferences(newTree, oldTree)
     if (hashDifferences.length > 0) {
-      // if (hashDifferences.length > 0) {
-      // console.log(newNodes)
-      // }
       const finalEvents = hashDifferences.map(h => hashToEvent.get(h)).filter(e => e) as SnallabotEvent<T>[]
+      maddenHashEventChanged.inc({ request_type }, finalEvents.length)
       await MaddenDB.appendEvents(finalEvents, (e: T) => `${identifier(e)}`)
       await MaddenHash.writeTree(league, request_type, eventType, newTree)
     }
-
-    // else {
-    //     console.debug("skipped writing!")
-    // }
   } else {
     await MaddenDB.appendEvents(events, (e: T) => `${identifier(e)}`)
   }

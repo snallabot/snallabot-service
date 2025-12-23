@@ -2,11 +2,10 @@ import { Command, Autocomplete } from "../commands_handler"
 import { createMessageResponse, DiscordClient, SnallabotDiscordError, NoConnectedLeagueError, deferMessage } from "../discord_utils"
 import { APIApplicationCommandInteractionDataAttachmentOption, APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIApplicationCommandInteractionDataUserOption, ApplicationCommandOptionType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import LeagueSettingsDB, { ChannelId, DiscordIdType, LeagueSettings, MessageId, TeamAssignments } from "../settings_db"
-import MaddenClient, { TeamList, teamSearchView } from "../../db/madden_db"
 import { Team } from "../../export/madden_league_types"
 import { discordLeagueView } from "../../db/view"
 import fuzzysort from "fuzzysort"
-import MaddenDB from "../../db/madden_db"
+import MaddenDB, { TeamList } from "../../db/madden_db"
 import { createCanvas, loadImage } from "canvas"
 import FileHandler, { imageSerializer } from "../../file_handlers"
 import EventDB, { EventDelivery } from "../../db/events_db"
@@ -38,7 +37,7 @@ function formatTeamMessage(teams: Team[], teamAssignments: TeamAssignments): str
 
 export async function fetchTeamsMessage(settings: LeagueSettings): Promise<string> {
   if (settings?.commands?.madden_league?.league_id) {
-    const teams = await MaddenClient.getLatestTeams(settings.commands.madden_league.league_id)
+    const teams = await MaddenDB.getLatestTeams(settings.commands.madden_league.league_id)
     return createTeamsMessage(settings, teams)
   } else {
     return "# Teams\nNo Madden League connected. Connect Snallabot to your league and reconfigure"
@@ -253,11 +252,7 @@ export default {
       }
       const leagueId = leagueSettings.commands.madden_league.league_id
       const teams = await MaddenDB.getLatestTeams(leagueId)
-      const teamsToSearch = await teamSearchView.createView(leagueId)
-      if (!teamsToSearch) {
-        throw new Error("no teams found")
-      }
-      const results = fuzzysort.go(teamSearchPhrase, Object.values(teamsToSearch), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.9 })
+      const results = fuzzysort.go(teamSearchPhrase, Object.values(teams), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.9 })
       if (results.length < 1) {
         throw new Error(`Could not find team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs`)
       } else if (results.length > 1) {
@@ -299,11 +294,8 @@ export default {
         throw new Error("Teams not configured, run /teams configure first")
       }
       const leagueId = leagueSettings.commands.madden_league.league_id
-      const [teams, teamsToSearch] = await Promise.all([MaddenClient.getLatestTeams(leagueId), teamSearchView.createView(leagueId)])
-      if (!teamsToSearch) {
-        throw new Error("no teams found")
-      }
-      const results = fuzzysort.go(teamSearchPhrase, Object.values(teamsToSearch), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.9 })
+      const teams = await MaddenDB.getLatestTeams(leagueId)
+      const results = fuzzysort.go(teamSearchPhrase, Object.values(teams), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.9 })
       if (results.length < 1) {
         throw new Error(`Could not find team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs`)
       } else if (results.length > 1) {
@@ -369,11 +361,8 @@ export default {
         throw new NoConnectedLeagueError(guild_id)
       }
       const leagueId = leagueSettings.commands.madden_league.league_id
-      const [teams, teamsToSearch] = await Promise.all([MaddenClient.getLatestTeams(leagueId), teamSearchView.createView(leagueId)])
-      if (!teamsToSearch) {
-        throw new Error("no teams found")
-      }
-      const results = fuzzysort.go(teamSearchPhrase, Object.values(teamsToSearch), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.9 })
+      const teams = await MaddenDB.getLatestTeams(leagueId)
+      const results = fuzzysort.go(teamSearchPhrase, Object.values(teams), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.9 })
       if (results.length < 1) {
         throw new Error(`Could not find team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs`)
       } else if (results.length > 1) {
@@ -494,12 +483,11 @@ export default {
     }
     const options = command.data.options
     const teamsCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
-    const subCommand = teamsCommand.name
     const view = await discordLeagueView.createView(guild_id)
     const leagueId = view?.leagueId
     if (leagueId && (teamsCommand?.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.focused && teamsCommand?.options?.[0]?.value) {
       const teamSearchPhrase = teamsCommand.options[0].value as string
-      const teamsToSearch = await teamSearchView.createView(leagueId)
+      const teamsToSearch = await MaddenDB.getLatestTeams(leagueId)
       if (teamsToSearch) {
         const results = fuzzysort.go(teamSearchPhrase, Object.values(teamsToSearch), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.4, limit: 25 })
         return results.map(r => ({ name: r.obj.displayName, value: r.obj.displayName }))

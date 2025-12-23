@@ -57,6 +57,24 @@ export const maddenHashCacheSize = new client.Gauge(
   }
 )
 
+export const maddenHashEventChanged = new client.Counter(
+  {
+    name: "madden_hash_event_changed_total",
+    help: "Total events that did not pass the hash check",
+    registers: [register],
+    labelNames: ["event_type"]
+  }
+)
+
+export const maddenHashEventsTotal = new client.Counter(
+  {
+    name: "madden_hash_events_exported_total",
+    help: "Total events that were exported",
+    registers: [register],
+    labelNames: ["event_type"]
+  }
+)
+
 export const viewCacheHits = new client.Counter(
   {
     name: "view_cache_hits_total",
