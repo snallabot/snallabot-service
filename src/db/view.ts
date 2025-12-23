@@ -1,10 +1,9 @@
 import NodeCache from "node-cache"
 import EventDB, { SnallabotEvent, StoredEvent } from "./events_db"
-import MaddenDB, { MaddenEvents } from "./madden_db"
-import { Team } from "../export/madden_league_types"
 import LeagueSettingsDB from "../discord/settings_db"
 import { DiscordLeagueConnectionEvent, TeamLogoCustomizedEvent } from "./events"
 import FileHandler, { defaultSerializer } from "../file_handlers"
+import { viewCacheHits, viewCacheTotalRequests } from "../debug/metrics"
 
 const TTL = 10800 // 3 hours in seconds
 
@@ -36,7 +35,9 @@ export abstract class CachedUpdatingView<T> extends View<T> {
 
   async createView(key: string) {
     const cachedView = viewCache.get(this.createCacheKey(key)) as T | undefined
+    viewCacheTotalRequests.inc({ view_id: this.view.id })
     if (cachedView) {
+      viewCacheHits.inc({ view_id: this.view.id })
       return cachedView
     }
     const view = await this.view.createView(key)
@@ -87,7 +88,6 @@ export abstract class StorageBackedCachedView<T> extends View<T> {
       viewCache.set(this.createCacheKey(key), storedView, TTL)
       return storedView
     } catch (e) {
-      console.log("doing a full recompute on a stored view")
       const view = await this.view.createView(key)
       if (view) {
         viewCache.set(this.createCacheKey(key), view, TTL)

@@ -150,7 +150,6 @@ export async function handleMessageComponent(interaction: MessageComponentIntera
     } catch (e) {
       const error = e as Error
       ctx.status = 500
-      console.error(error)
     }
   } else {
     try {
@@ -192,7 +191,7 @@ export async function handleMessageComponent(interaction: MessageComponentIntera
       }
     } catch (e) {
       ctx.status = 500
-      console.error(e)
+
     }
   }
 }

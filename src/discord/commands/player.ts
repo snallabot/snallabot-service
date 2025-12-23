@@ -1875,7 +1875,7 @@ export default {
         } else if (selected === PlayerSelection.PLAYER_SEASON_STATS) {
           showPlayerYearlyStats(rosterId, client, interaction.token, interaction.guild_id, pagination)
         } else {
-          console.error("should not have gotten here")
+          throw new Error(`Invalid Player Selection ${selected}`)
         }
       } catch (e) {
         await client.editOriginalInteraction(interaction.token, {
