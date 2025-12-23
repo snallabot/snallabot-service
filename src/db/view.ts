@@ -5,7 +5,7 @@ import { DiscordLeagueConnectionEvent, TeamLogoCustomizedEvent } from "./events"
 import FileHandler, { defaultSerializer } from "../file_handlers"
 import { viewCacheHits, viewCacheTotalRequests } from "../debug/metrics"
 
-const TTL = 10800 // 3 hours in seconds
+const TTL = 259200 // 72 hours in seconds
 
 export abstract class View<T> {
   id: string

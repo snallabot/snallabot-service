@@ -9,9 +9,6 @@ import { CachedUpdatingView, StorageBackedCachedView, View } from "./view"
 import { EventTypes, RetiredPlayersEvent } from "./events"
 import { maddenEventsDistribution } from "../debug/metrics"
 
-// getting Teams is a high request rate, by caching we can avoid calling the data when it hasnt changed
-const teamCache = new NodeCache()
-
 type HistoryUpdate<ValueType> = { oldValue: ValueType, newValue: ValueType }
 type History = { [key: string]: HistoryUpdate<any>, }
 type StoredHistory = { timestamp: Date } & History
@@ -444,43 +441,38 @@ class CacheablePlayerListView extends StorageBackedCachedView<PlayerListIndex> {
 const playerListIndex = new CacheablePlayerListView()
 playerListIndex.listen(MaddenEvents.MADDEN_PLAYER)
 
-type TeamSearch = {
-  [key: string]: {
-    cityName: string,
-    abbrName: string,
-    nickName: string,
-    displayName: string,
-    id: number
-  }
+type TeamIndex = {
+  [key: string]: StoredEvent<Team>
 }
-class TeamSearchIndex extends View<TeamSearch> {
+
+class TeamView extends View<TeamIndex> {
   constructor() {
-    super("team_search_index")
+    super("team_view")
   }
   async createView(key: string) {
-    const teams = await MaddenDB.getLatestTeams(key)
-    return Object.fromEntries(teams.getLatestTeams().map(t => { return [`${t.teamId}`, { cityName: t.cityName, abbrName: t.abbrName, nickName: t.nickName, displayName: t.displayName, id: t.teamId }] }))
+    const teamDocs = await db.collection("madden_data26").doc(key).collection(MaddenEvents.MADDEN_TEAM).get()
+    const teams = teamDocs.docs.map(d => convertDate(d.data()) as StoredEvent<Team>)
+    return Object.fromEntries(teams.map(t => [`${t.teamId}`, t]))
   }
 }
 
-class CacheableTeamSearchIndex extends CachedUpdatingView<TeamSearch> {
+class CacheableTeamView extends CachedUpdatingView<TeamIndex> {
   constructor() {
-    super(new TeamSearchIndex())
+    super(new TeamView)
   }
-
-  update(event: { [key: string]: any[] }, currentView: TeamSearch): TeamSearch {
+  update(event: { [key: string]: any[] }, currentView: TeamIndex): TeamIndex {
     if (event[MaddenEvents.MADDEN_TEAM]) {
       const updatedTeams = event[MaddenEvents.MADDEN_TEAM] as SnallabotEvent<Team>[]
       updatedTeams.forEach(t => {
-        currentView[t.teamId] = { cityName: t.cityName, abbrName: t.abbrName, nickName: t.nickName, displayName: t.displayName, id: t.teamId }
+        currentView[t.teamId] = { ...currentView[t.teamId], ...t }
       })
     }
     return currentView
   }
 }
 
-export const teamSearchView = new CacheableTeamSearchIndex()
-teamSearchView.listen(MaddenEvents.MADDEN_TEAM)
+export const teamView = new CacheableTeamView
+teamView.listen(MaddenEvents.MADDEN_TEAM)
 
 const MaddenDB: MaddenDB = {
   async appendEvents<Event>(events: SnallabotEvent<Event>[], idFn: (event: Event) => string) {
@@ -541,15 +533,11 @@ const MaddenDB: MaddenDB = {
     EventDB.on(event_type, notifier)
   },
   getLatestTeams: async function(leagueId: string): Promise<TeamList> {
-    const cachedTeamDocs = teamCache.get(leagueId) as Record<string, StoredEvent<Team>>
-    if (cachedTeamDocs) {
-      return createTeamList(Object.values(cachedTeamDocs))
-    } else {
-      const teamDocs = await db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_TEAM).get()
-      const teams = teamDocs.docs.map(d => convertDate(d.data()) as StoredEvent<Team>)
-      teamCache.set(leagueId, Object.fromEntries(teams.map(t => [`${t.teamId}`, t])))
-      return createTeamList(teams)
+    const view = await teamView.createView(leagueId)
+    if (view) {
+      return createTeamList(Object.values(view))
     }
+    throw new Error(`No teams were found`)
   },
   getLatestWeekSchedule: async function(leagueId: string, week: number) {
     const [weekDocs, teamList] = await Promise.all([db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_SCHEDULE).where("weekIndex", "==", week - 1)
@@ -1006,12 +994,3 @@ const MaddenDB: MaddenDB = {
 }
 
 export default MaddenDB
-
-// when teams are updated, just delete the entry in the cache for now.
-// simple is best? can revisit if we want to do event driven updates to it
-MaddenDB.on<Team>(MaddenEvents.MADDEN_TEAM, async events => {
-  const leagueId = events?.[0].key
-  if (leagueId) {
-    teamCache.del(leagueId)
-  }
-})

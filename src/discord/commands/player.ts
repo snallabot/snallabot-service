@@ -3,7 +3,7 @@ import { DiscordClient, deferMessage, getTeamEmoji, SnallabotTeamEmojis, NoConne
 import { APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ButtonStyle, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { discordLeagueView, LeagueLogos, leagueLogosView } from "../../db/view"
 import fuzzysort from "fuzzysort"
-import MaddenDB, { PlayerListQuery, PlayerStatType, PlayerStats, TeamList, createPlayerKey, teamSearchView } from "../../db/madden_db"
+import MaddenDB, { PlayerListQuery, PlayerStatType, PlayerStats, TeamList, createPlayerKey } from "../../db/madden_db"
 import { DevTrait, LBStyleTrait, MADDEN_SEASON, MaddenGame, POSITIONS, POSITION_GROUP, PlayBallTrait, Player, QBStyleTrait, SensePressureTrait, YesNoTrait } from "../../export/madden_league_types"
 import { ExportContext, exporterForLeague, storedTokenClient } from "../../dashboard/ea_client"
 import EventDB, { EventDelivery } from "../../db/events_db"
@@ -1543,17 +1543,15 @@ function formatPlayerList(players: Player[], teams: TeamList, logos: LeagueLogos
 type PlayerFound = { teamAbbr: string, rosterId: string, firstName: string, lastName: string, teamId: string, position: string }
 
 async function searchPlayerForRosterId(query: string, leagueId: string): Promise<PlayerFound[]> {
-  const [playersToSearch, teamsIndex] = await Promise.all([MaddenDB.getLatestPlayers(leagueId), teamSearchView.createView(leagueId)])
-  if (teamsIndex) {
-    const players = Object.fromEntries(playersToSearch.map(roster => {
-      const abbr = roster.teamId === "0" ? "FA" : teamsIndex?.[roster.teamId]?.abbrName
-      return [roster.rosterId, { teamAbbr: abbr, ...roster }]
-    }))
-    const results = fuzzysort.go(query, Object.values(players), {
-      keys: ["firstName", "lastName", "position", "teamAbbr"], threshold: 0.4, limit: 25
-    })
-    return results.map(r => r.obj)
-  }
+  const [playersToSearch, teams] = await Promise.all([MaddenDB.getLatestPlayers(leagueId), MaddenDB.getLatestTeams(leagueId)])
+  const players = Object.fromEntries(playersToSearch.map(roster => {
+    const abbr = roster.teamId === "0" ? "FA" : teams.getTeamForId(Number(roster.teamId)).abbrName
+    return [roster.rosterId, { teamAbbr: abbr, ...roster }]
+  }))
+  const results = fuzzysort.go(query, Object.values(players), {
+    keys: ["firstName", "lastName", "position", "teamAbbr"], threshold: 0.4, limit: 25
+  })
+  return results.map(r => r.obj)
   return []
 }
 const positions = POSITIONS.concat(POSITION_GROUP).map(p => ({ teamDisplayName: "", teamId: -1, teamNickName: "", position: p, rookie: "", retired: "" }))
@@ -1594,22 +1592,19 @@ function formatQuery(q: PlayerListSearchQuery) {
 }
 
 async function searchPlayerListForQuery(textQuery: string, leagueId: string): Promise<PlayerListSearchQuery[]> {
-  const teamIndex = await teamSearchView.createView(leagueId)
-  if (teamIndex) {
-    const fullTeams = Object.values(teamIndex).map(t => ({ teamDisplayName: t.displayName, teamId: t.id, teamNickName: t.nickName, position: "", rookie: "", retired: "" })).concat([{ teamDisplayName: "Free Agents", teamId: 0, teamNickName: "FA", position: "", rookie: "", retired: "" }])
-    const teamPositions = fullTeams.flatMap(t => positions.map(p => ({ teamDisplayName: t.teamDisplayName, teamId: t.teamId, teamNickName: t.teamNickName, position: p.position, rookie: "", retired: "" })))
-    const teamRookies = fullTeams.map(t => ({ ...t, rookie: "Rookies" }))
-    const teamRetired = fullTeams.map(t => ({ ...t, retired: "Retired" }))
-    const allQueries: PlayerListSearchQuery[] = fullTeams.concat(positions).concat(rookies).concat(rookiePositions).concat(teamPositions).concat(teamRookies).concat(retired).concat(retiredPositions).concat(teamRetired)
-    const results = fuzzysort.go(textQuery, allQueries, {
-      keys: ["teamDisplayName", "teamNickName", "position", "rookie", "retired"],
-      scoreFn: r => r.score * (isTopLevel(r.obj) ? 2 : 1),
-      threshold: 0.4,
-      limit: 25
-    })
-    return results.map(r => r.obj)
-  }
-  return []
+  const teams = await MaddenDB.getLatestTeams(leagueId)
+  const fullTeams = teams.getLatestTeams().map(t => ({ teamDisplayName: t.displayName, teamId: t.teamId, teamNickName: t.nickName, position: "", rookie: "", retired: "" })).concat([{ teamDisplayName: "Free Agents", teamId: 0, teamNickName: "FA", position: "", rookie: "", retired: "" }])
+  const teamPositions = fullTeams.flatMap(t => positions.map(p => ({ teamDisplayName: t.teamDisplayName, teamId: t.teamId, teamNickName: t.teamNickName, position: p.position, rookie: "", retired: "" })))
+  const teamRookies = fullTeams.map(t => ({ ...t, rookie: "Rookies" }))
+  const teamRetired = fullTeams.map(t => ({ ...t, retired: "Retired" }))
+  const allQueries: PlayerListSearchQuery[] = fullTeams.concat(positions).concat(rookies).concat(rookiePositions).concat(teamPositions).concat(teamRookies).concat(retired).concat(retiredPositions).concat(teamRetired)
+  const results = fuzzysort.go(textQuery, allQueries, {
+    keys: ["teamDisplayName", "teamNickName", "position", "rookie", "retired"],
+    scoreFn: r => r.score * (isTopLevel(r.obj) ? 2 : 1),
+    threshold: 0.4,
+    limit: 25
+  })
+  return results.map(r => r.obj)
 }
 
 async function retirePlayers(leagueId: string, token: string, client: DiscordClient) {

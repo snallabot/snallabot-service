@@ -2,19 +2,19 @@ import { Command, Autocomplete, MessageComponentInteraction } from "../commands_
 import { DiscordClient, deferMessage, formatTeamEmoji, getSimsForWeek, formatSchedule, getSims, createSimMessageForTeam } from "../discord_utils"
 import { APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ApplicationCommandType, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { GameResult, MADDEN_SEASON, getMessageForWeek, getMessageForWeekShortened } from "../../export/madden_league_types"
-import MaddenClient, { teamSearchView } from "../../db/madden_db"
 import LeagueSettingsDB from "../settings_db"
 import { discordLeagueView, leagueLogosView } from "../../db/view"
 import { GameStatsOptions } from "./game_stats"
 import fuzzysort from "fuzzysort"
 import { ConfirmedSimV2 } from "../../db/events"
+import MaddenDB from "../../db/madden_db"
 
 export type WeekSelection = { wi: number, si: number }
 export type TeamSelection = { ti: number, si: number }
 async function showSchedule(token: string, client: DiscordClient,
   league: string, requestedWeek?: number, requestedSeason?: number) {
   try {
-    const settledPromise = await Promise.allSettled([getWeekSchedule(league, requestedWeek != null ? Number(requestedWeek) : undefined, requestedSeason != null ? Number(requestedSeason) : undefined), MaddenClient.getLatestTeams(league)])
+    const settledPromise = await Promise.allSettled([getWeekSchedule(league, requestedWeek != null ? Number(requestedWeek) : undefined, requestedSeason != null ? Number(requestedSeason) : undefined), MaddenDB.getLatestTeams(league)])
     const schedule = settledPromise[0].status === "fulfilled" ? settledPromise[0].value : []
     if (settledPromise[1].status !== "fulfilled") {
       throw new Error("No Teams setup, setup the bot and export")
@@ -49,7 +49,7 @@ async function showSchedule(token: string, client: DiscordClient,
         spacing: SeparatorSpacingSize.Large
       },
     ] : []
-    const allWeeks = await MaddenClient.getAllWeeks(league)
+    const allWeeks = await MaddenDB.getAllWeeks(league)
     if (allWeeks.length === 0) {
       throw new Error(`No Weeks availaible. Try exporting from the dashboard`)
     }
@@ -123,9 +123,9 @@ async function showTeamSchedule(token: string, client: DiscordClient,
   league: string, requestedTeamId: number, requestedSeason?: number) {
   try {
     const settledPromise = await Promise.allSettled([
-      MaddenClient.getTeamSchedule(league, requestedSeason),
-      MaddenClient.getLatestTeams(league),
-      MaddenClient.getAllWeeks(league)
+      MaddenDB.getTeamSchedule(league, requestedSeason),
+      MaddenDB.getLatestTeams(league),
+      MaddenDB.getAllWeeks(league)
     ])
 
     const schedule = settledPromise[0].status === "fulfilled" ? settledPromise[0].value : []
@@ -313,13 +313,13 @@ async function getWeekSchedule(league: string, week?: number, season?: number) {
   if (season != null) {
     if (week != null) {
       const seasonIndex = season < 100 ? season : season - MADDEN_SEASON
-      return await MaddenClient.getWeekScheduleForSeason(league, week, seasonIndex)
+      return await MaddenDB.getWeekScheduleForSeason(league, week, seasonIndex)
     }
     throw new Error("If you specified Season please also specify the week")
   } else if (week) {
-    return await MaddenClient.getLatestWeekSchedule(league, week)
+    return await MaddenDB.getLatestWeekSchedule(league, week)
   } else {
-    return await MaddenClient.getLatestSchedule(league)
+    return await MaddenDB.getLatestSchedule(league)
   }
 }
 
@@ -394,19 +394,15 @@ export default {
       }
       const leagueId = leagueSettings.commands.madden_league.league_id
       const season = (scheduleCommand.options?.[1] as APIApplicationCommandInteractionDataIntegerOption)?.value
-      const teams = await MaddenClient.getLatestTeams(leagueId)
-      const teamsToSearch = await teamSearchView.createView(leagueId)
-      if (!teamsToSearch) {
-        throw new Error("no teams found")
-      }
-      const results = fuzzysort.go(teamSearchPhrase, Object.values(teamsToSearch), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.9 })
+      const teams = await MaddenDB.getLatestTeams(leagueId)
+      const results = fuzzysort.go(teamSearchPhrase, teams.getLatestTeams(), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.9 })
       if (results.length < 1) {
         throw new Error(`Could not find team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs`)
       } else if (results.length > 1) {
         throw new Error(`Found more than one  team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs.Found teams: ${results.map(t => t.obj.displayName).join(", ")}`)
       }
       const foundTeam = results[0].obj
-      const teamIdToShowSchedule = teams.getTeamForId(foundTeam.id).teamId
+      const teamIdToShowSchedule = teams.getTeamForId(foundTeam.teamId).teamId
       showTeamSchedule(command.token, client, leagueId, teamIdToShowSchedule, season ? Number(season) : undefined)
       return deferMessage()
     }
@@ -502,9 +498,9 @@ export default {
     const leagueId = view?.leagueId
     if (leagueId && (scheduleCommand?.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.focused && scheduleCommand?.options?.[0]?.value) {
       const teamSearchPhrase = scheduleCommand.options[0].value as string
-      const teamsToSearch = await teamSearchView.createView(leagueId)
+      const teamsToSearch = await MaddenDB.getLatestTeams(leagueId)
       if (teamsToSearch) {
-        const results = fuzzysort.go(teamSearchPhrase, Object.values(teamsToSearch), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.4, limit: 25 })
+        const results = fuzzysort.go(teamSearchPhrase, teamsToSearch.getLatestTeams(), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.4, limit: 25 })
         return results.map(r => ({ name: r.obj.displayName, value: r.obj.displayName }))
       }
     }

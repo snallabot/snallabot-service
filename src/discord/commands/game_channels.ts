@@ -237,6 +237,7 @@ async function clearGameChannels(client: DiscordClient, token: string, guild_id:
     }))
     await client.editOriginalInteraction(token, { content: `Game Channels Cleared` })
   } catch (e) {
+    console.error(e)
     await client.editOriginalInteraction(token, { content: `Game Channels could not be cleared properly . Error: ${e}` })
   }
 }
