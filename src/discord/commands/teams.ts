@@ -252,7 +252,7 @@ export default {
       }
       const leagueId = leagueSettings.commands.madden_league.league_id
       const teams = await MaddenDB.getLatestTeams(leagueId)
-      const results = fuzzysort.go(teamSearchPhrase, Object.values(teams), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.9 })
+      const results = fuzzysort.go(teamSearchPhrase, teams.getLatestTeams(), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.9 })
       if (results.length < 1) {
         throw new Error(`Could not find team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs`)
       } else if (results.length > 1) {
@@ -262,7 +262,7 @@ export default {
       const role = (teamsCommand?.options?.[2] as APIApplicationCommandInteractionDataRoleOption)?.value
       const roleAssignment = role ? { discord_role: { id: role, id_type: DiscordIdType.ROLE } } : {}
       const oldAssignments = teams.getLatestTeamAssignments(leagueSettings.commands.teams?.assignments || {})
-      const assignments = { ...oldAssignments, [teams.getTeamForId(assignedTeam.id).teamId]: { discord_user: { id: user, id_type: DiscordIdType.USER }, ...roleAssignment } }
+      const assignments = { ...oldAssignments, [teams.getTeamForId(assignedTeam.teamId).teamId]: { discord_user: { id: user, id_type: DiscordIdType.USER }, ...roleAssignment } }
       leagueSettings.commands.teams.assignments = assignments
       await LeagueSettingsDB.updateAssignment(guild_id, assignments)
       const message = createTeamsMessage(leagueSettings, teams)
