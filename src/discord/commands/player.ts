@@ -1592,8 +1592,8 @@ function formatQuery(q: PlayerListSearchQuery) {
 }
 
 async function searchPlayerListForQuery(textQuery: string, leagueId: string): Promise<PlayerListSearchQuery[]> {
-  const teams = MaddenDB.getLatestTeams(leagueId)
-  const fullTeams = Object.values(teams).map(t => ({ teamDisplayName: t.displayName, teamId: t.id, teamNickName: t.nickName, position: "", rookie: "", retired: "" })).concat([{ teamDisplayName: "Free Agents", teamId: 0, teamNickName: "FA", position: "", rookie: "", retired: "" }])
+  const teams = await MaddenDB.getLatestTeams(leagueId)
+  const fullTeams = teams.getLatestTeams().map(t => ({ teamDisplayName: t.displayName, teamId: t.teamId, teamNickName: t.nickName, position: "", rookie: "", retired: "" })).concat([{ teamDisplayName: "Free Agents", teamId: 0, teamNickName: "FA", position: "", rookie: "", retired: "" }])
   const teamPositions = fullTeams.flatMap(t => positions.map(p => ({ teamDisplayName: t.teamDisplayName, teamId: t.teamId, teamNickName: t.teamNickName, position: p.position, rookie: "", retired: "" })))
   const teamRookies = fullTeams.map(t => ({ ...t, rookie: "Rookies" }))
   const teamRetired = fullTeams.map(t => ({ ...t, retired: "Retired" }))
