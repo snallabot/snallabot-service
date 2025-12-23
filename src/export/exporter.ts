@@ -258,11 +258,11 @@ export async function sendEvents<T>(league: string, request_type: string, events
     return
   }
   if (OPTIMIZE_WRITES) {
-    maddenHashEventsTotal.inc({ event_type: request_type }, events.length)
     const eventType = events.map(e => e.event_type).pop()
     if (!eventType) {
       throw new Error("No Event Type found for " + request_type)
     }
+    maddenHashEventsTotal.inc({ event_type: eventType }, events.length)
     const oldTree = await MaddenHash.readTree(league, request_type, eventType)
     const hashToEvent = new Map(events.map(e => [hasher(e), e]))
     const newNodes = events.sort((e, e2) => `${identifier(e)}`.localeCompare(`${identifier(e2)}`)).map(e => ({ hash: hasher(e), children: [] }))
@@ -271,7 +271,7 @@ export async function sendEvents<T>(league: string, request_type: string, events
     const hashDifferences = findDifferences(newTree, oldTree)
     if (hashDifferences.length > 0) {
       const finalEvents = hashDifferences.map(h => hashToEvent.get(h)).filter(e => e) as SnallabotEvent<T>[]
-      maddenHashEventChanged.inc({ request_type }, finalEvents.length)
+      maddenHashEventChanged.inc({ event_type: eventType }, finalEvents.length)
       await MaddenDB.appendEvents(finalEvents, (e: T) => `${identifier(e)}`)
       await MaddenHash.writeTree(league, request_type, eventType, newTree)
     }
