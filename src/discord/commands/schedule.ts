@@ -500,7 +500,7 @@ export default {
       const teamSearchPhrase = scheduleCommand.options[0].value as string
       const teamsToSearch = await MaddenDB.getLatestTeams(leagueId)
       if (teamsToSearch) {
-        const results = fuzzysort.go(teamSearchPhrase, Object.values(teamsToSearch), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.4, limit: 25 })
+        const results = fuzzysort.go(teamSearchPhrase, teamsToSearch.getLatestTeams(), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.4, limit: 25 })
         return results.map(r => ({ name: r.obj.displayName, value: r.obj.displayName }))
       }
     }
