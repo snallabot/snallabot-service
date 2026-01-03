@@ -18,7 +18,7 @@ async function checkLeague(leagueId: string) {
   const leagueData = await client.getLeagueInfo(Number(leagueId))
   const leagueHash = {
     currentWeek: leagueData.careerHubInfo.seasonInfo.seasonWeek,
-    currentGames: leagueData.gameScheduleHubInfo.leagueSchedule.map(game => game.seasonGameInfo.result),
+    currentGamesPlayed: leagueData.gameScheduleHubInfo.leagueSchedule.filter(game => game.seasonGameInfo.isGamePlayed).length,
   }
   const newHash = hash(leagueHash)
   if (newHash !== changeCache.get(leagueId)) {
