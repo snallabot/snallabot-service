@@ -20,6 +20,10 @@ const STATS_CHANNEL: ChannelId = { id: "1207476843373010984", id_type: DiscordId
 
 async function calculateLeagueStats() {
   const allLeagues = await LeagueSettingsDB.getAllLeagueSettings()
+  const guildsBotIsIn = await prodClient.getAllGuilds()
+  const guildSet = new Set(guildsBotIsIn)
+  const settingsToDelete = allLeagues.filter(l => !guildSet.has(l.guildId))
+  await Promise.all(settingsToDelete.map(async g => await LeagueSettingsDB.deleteLeagueSetting(g.guildId)))
   const stats = {
     totalLeagues: allLeagues.length,
     configurationUsage: {
@@ -46,7 +50,7 @@ async function calculateLeagueStats() {
     const [conf, stat] = e
     return `Total ${conf} leagues: ${stat}`
   }).join("\n")
-  const message = `# Snallabot Daily League Settings Stats\nTotal Leagues: ${stats.totalLeagues}\n${individualConfigurationStats}`
+  const message = `# Snallabot Daily League Settings Stats\nTotal Leagues: ${stats.totalLeagues}\nExpired Leagues: ${settingsToDelete.length}\n${individualConfigurationStats}`
   await prodClient.createMessage(STATS_CHANNEL, message, [])
 }
 

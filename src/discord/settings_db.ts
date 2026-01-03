@@ -72,7 +72,8 @@ interface LeagueSettingsDB {
   updateAssignment(guildId: string, assignments: TeamAssignments): Promise<void>,
   removeAssignment(guildId: string, teamId: number | string): Promise<void>,
   removeAllAssignments(guildId: string): Promise<void>,
-  getLeagueSettingsForLeagueId(leagueId: string): Promise<LeagueSettings[]>
+  getLeagueSettingsForLeagueId(leagueId: string): Promise<LeagueSettings[]>,
+  deleteLeagueSetting(guildId: string): Promise<void>
 }
 
 export function createWeekKey(season: number, week: number) {
@@ -237,6 +238,9 @@ const LeagueSettingsDB: LeagueSettingsDB = {
       .where('commands.madden_league.league_id', '==', leagueId)
       .get()
     return snapshot.docs.map(doc => ({ guildId: doc.id, ...doc.data() }) as LeagueSettings)
+  },
+  async deleteLeagueSetting(guildId: string): Promise<void> {
+    await db.collection('league_settings').doc(guildId).delete()
   }
 }
 
