@@ -210,8 +210,8 @@ async function clearGameChannels(client: DiscordClient, token: string, guild_id:
     const channelsToClear = Object.entries(weekStatesWithChannels).flatMap(entry => {
       const weekState = entry[1]
       return Object.values(weekState?.channel_states || {})
-    }).map(channelStates => {
-      return channelStates.channel
+    }).flatMap(channelStates => {
+      return channelStates.channel ? [channelStates.channel] : []
     })
     if (settings.commands.logger?.channel) {
       await client.editOriginalInteraction(token, { content: `Logging Game Channels...` })

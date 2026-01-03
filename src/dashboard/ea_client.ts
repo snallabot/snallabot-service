@@ -621,8 +621,8 @@ export async function exporterForLeague(leagueId: number, context: ExportContext
       await Promise.all(leagueInfoRequests)
       await exportData(leagueData as ExportData, contextualExports, `${leagueId}`, client.getSystemConsole())
       if (destinations.some(e => e.weeklyStats)) {
-        // Process weeks in batches of 4 to reduce memory usage on big exports
-        const batchSize = 4;
+        // Process weeks in batches of 8 to reduce memory usage on big exports
+        const batchSize = 8;
         for (let i = 0; i < weeks.length; i += batchSize) {
           const weeklyData = { weeks: [] } as any
           const weekBatch = weeks.slice(i, i + batchSize);
@@ -660,7 +660,7 @@ export async function exporterForLeague(leagueId: number, context: ExportContext
               teamData.roster[`${team.teamId}`] = roster
             )
           )
-          if ((idx + 1) % 4 == 0) {
+          if ((idx + 1) % 8 == 0) {
             await Promise.all(teamRequests)
             await exportTeamData(teamData, contextualExports, `${leagueId}`, client.getSystemConsole())
             teamRequests = []

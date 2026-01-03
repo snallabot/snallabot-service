@@ -82,7 +82,8 @@ export interface DiscordClient {
   getBotUser(): UserId,
   retrieveAccessToken(code: string, redirect: string): Promise<string>,
   getUserGuilds(accessToken: string): Promise<APIGuild[]>,
-  generateOAuthRedirect(redirct: string, scope: string, state: string): string
+  generateOAuthRedirect(redirct: string, scope: string, state: string): string,
+  getAllGuilds(): Promise<string[]>
 }
 
 type DiscordSettings = { publicKey: string, botToken: string, appId: string, clientSecret?: string }
@@ -568,6 +569,37 @@ export function createClient(settings: DiscordSettings): DiscordClient {
     },
     generateOAuthRedirect: function(redirect: string, scope: string, state: string) {
       return `https://discord.com/api/oauth2/authorize?client_id=${settings.appId}&redirect_uri=${encodeURIComponent(redirect)}&response_type=code&scope=${encodeURIComponent(scope)}&state=${encodeURIComponent(state)}`;
+    },
+    getAllGuilds: async function() {
+      const allGuilds: APIGuild[] = []
+      let after: string | undefined = undefined
+
+      while (true) {
+        const url = after
+          ? `users/@me/guilds?limit=200&after=${after}`
+          : `users/@me/guilds?limit=200`
+
+        const guildsRes = await sendDiscordRequest(url, {
+          method: "GET",
+        })
+        const guilds = (await guildsRes.json()) as APIGuild[]
+
+        if (guilds.length === 0) {
+          break
+        }
+
+        allGuilds.push(...guilds)
+
+        // If we got less than 200, we've reached the end
+        if (guilds.length < 200) {
+          break
+        }
+
+        // Use the last guild's ID for the next page
+        after = guilds[guilds.length - 1].id
+      }
+
+      return allGuilds.map(g => g.id)
     }
   }
 }
