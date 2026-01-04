@@ -30,10 +30,11 @@ async function getStaleDocuments() {
   const staleLeagues = stale.flat()
 
   console.log(`Found ${staleLeagues.length} documents not modified in 30 days and not connected to Discord`)
-  // Delete stale leagues in chunks of 20
-  for (let i = 0; i < staleLeagues.length; i += 20) {
-    const chunk = staleLeagues.slice(i, i + 20)
-    console.log(`\nDeleting chunk ${Math.floor(i / 20) + 1} of ${Math.ceil(staleLeagues.length / 20)} (${chunk.length} leagues)`)
+  const chunkSize = 10
+  // Delete stale leagues in chunks
+  for (let i = 0; i < staleLeagues.length; i += chunkSize) {
+    const chunk = staleLeagues.slice(i, i + chunkSize)
+    console.log(`\nDeleting chunk ${Math.floor(i / chunkSize) + 1} of ${Math.ceil(staleLeagues.length / chunkSize)} (${chunk.length} leagues)`)
 
     await Promise.all(chunk.map(async leagueId => {
       try {
@@ -43,7 +44,7 @@ async function getStaleDocuments() {
       }
     }))
 
-    console.log(`✓ Completed chunk ${Math.floor(i / 20) + 1}`)
+    console.log(`✓ Completed chunk ${Math.floor(i / chunkSize) + 1}`)
   }
 
   console.log(`\n✓ Successfully deleted all ${staleLeagues.length} stale leagues`)
