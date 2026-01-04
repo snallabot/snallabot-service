@@ -66,7 +66,7 @@ async function deleteLeague(leagueId: string) {
         try {
           // Delete all documents in this subcollection
           while (true) {
-            const subcollectionSnapshot = await subcollectionRef.limit(500).get();
+            const subcollectionSnapshot = await subcollectionRef.limit(50).get();
             if (subcollectionSnapshot.empty) {
               break;
             }
