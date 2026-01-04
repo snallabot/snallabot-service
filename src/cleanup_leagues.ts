@@ -29,7 +29,7 @@ async function getStaleDocuments() {
 
   const staleLeagues = stale.flat()
 
-  console.log(`Found ${staleLeagues.length} documents not modified in 30 days`)
+  console.log(`Found ${staleLeagues.length} documents not modified in 30 days and not connected to Discord`)
   // Delete stale leagues in chunks of 20
   for (let i = 0; i < staleLeagues.length; i += 20) {
     const chunk = staleLeagues.slice(i, i + 20)
@@ -66,7 +66,7 @@ async function deleteLeague(leagueId: string) {
         try {
           // Delete all documents in this subcollection
           while (true) {
-            const subcollectionSnapshot = await subcollectionRef.limit(200).get();
+            const subcollectionSnapshot = await subcollectionRef.limit(500).get();
             if (subcollectionSnapshot.empty) {
               break;
             }
