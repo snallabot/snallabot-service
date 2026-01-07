@@ -721,9 +721,10 @@ const exportQueue: queueAsPromised<ExportJobTask> = fastq.promise(handleExportTa
 async function addTaskToQueue(task: ExportJobTask) {
   tasks.set(task.id, task)
   return exportQueue.push(task).catch(e => {
-    task.status.leagueInfo = TaskStatus.ERROR
-    task.status.rosters = TaskStatus.ERROR
-    task.status.weeklyData.forEach(w => w.status = TaskStatus.ERROR)
+    // update status with all the ones that failed
+    task.status.leagueInfo = task.status.leagueInfo != TaskStatus.FINISHED ? TaskStatus.ERROR : task.status.leagueInfo
+    task.status.rosters = task.status.leagueInfo != TaskStatus.FINISHED ? TaskStatus.ERROR : task.status.rosters
+    task.status.weeklyData.forEach(w => w.status != TaskStatus.FINISHED ? w.status = TaskStatus.ERROR : w.status)
     return Promise.reject(e)
   })
 }
