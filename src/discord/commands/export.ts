@@ -19,13 +19,16 @@ async function handleExport(guildId: string, week: number, token: string, client
     return
   }
   try {
-    const exporter = await exporterForLeague(Number(league.leagueId), ExportContext.MANUAL)
+    const exporter = exporterForLeague(Number(league.leagueId), ExportContext.MANUAL)
     if (week === 100) {
-      await exporter.exportCurrentWeek()
+      const { waitUntilDone } = exporter.exportCurrentWeek()
+      await waitUntilDone.catch(e => { throw e })
     } else if (week === 101) {
-      await exporter.exportAllWeeks()
+      const { waitUntilDone } = exporter.exportAllWeeks()
+      await waitUntilDone.catch(e => { throw e })
     } else {
-      await exporter.exportSpecificWeeks([{ weekIndex: week - 1, stage: 1 }])
+      const { waitUntilDone } = exporter.exportSpecificWeeks([{ weekIndex: week - 1, stage: 1 }])
+      await waitUntilDone.catch(e => { throw e })
     }
     await client.editOriginalInteraction(token, {
       content: "finished exporting!",
