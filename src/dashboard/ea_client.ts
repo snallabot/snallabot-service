@@ -1,13 +1,15 @@
 import { Agent, fetch } from "undici";
 import { CLIENT_ID, CLIENT_SECRET, AUTH_SOURCE, AccountToken, BLAZE_SERVICE, SystemConsole, BLAZE_PRODUCT_NAME, BlazeAuthenticatedResponse, MACHINE_KEY, League, GetMyLeaguesResponse, LeagueResponse, BlazeLeagueResponse } from "./ea_constants"
-import { constants, randomBytes, createHash } from "crypto"
+import { constants, randomBytes, createHash, randomUUID } from "crypto"
 import { Buffer } from "buffer"
 import { TeamExport, StandingExport, SchedulesExport, RushingExport, TeamStatsExport, PuntingExport, ReceivingExport, DefensiveExport, KickingExport, PassingExport, RosterExport } from "../export/madden_league_types"
 import db from "../db/firebase"
 import { createDestination } from "../export/exporter";
-import { DEPLOYMENT_URL } from "../config";
+import { DEPLOYMENT_URL, QUEUE_CONCURRENCY } from "../config";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { exportCounter } from "../debug/metrics";
+import fastq, { queueAsPromised } from "fastq"
+import NodeCache from "node-cache";
 
 
 export enum LeagueData {
@@ -461,12 +463,30 @@ export async function storedTokenClient(leagueId: number): Promise<StoredEAClien
     ...eaClient
   }
 }
+enum ExportType {
+  CURRENT = 0,
+  SURROUNDING = 1,
+  ALL = 2,
+  SPECIFIC = 3
+}
+type ExportRequest = { exportType: ExportType, weeks?: { weekIndex: number, stage: number }[] }
 
+enum TaskStatus {
+  NOT_STARTED = 0,
+  STARTED = 1,
+  FINISHED = 2,
+  ERROR = 3
+}
+// save tasks for 1 hour
+const tasks = new NodeCache({ stdTTL: 3600, useClones: false })
+type ExportStatus = { leagueInfo: TaskStatus, weeklyData: { weekIndex: number, stage: number, status: TaskStatus }[], rosters: TaskStatus }
+type ExportJobTask = { id: string, leagueId: number, context: ExportContext, request: ExportRequest, status: ExportStatus }
+type ExportResult = { task: ExportJobTask, waitUntilDone: Promise<void> }
 interface MaddenExporter {
-  exportCurrentWeek(): Promise<void>,
-  exportAllWeeks(): Promise<void>,
-  exportSpecificWeeks(weeks: { weekIndex: number, stage: number }[]): Promise<void>,
-  exportSurroundingWeek(): Promise<void>
+  exportCurrentWeek(): ExportResult,
+  exportAllWeeks(): ExportResult,
+  exportSpecificWeeks(weeks: { weekIndex: number, stage: number }[]): ExportResult,
+  exportSurroundingWeek(): ExportResult
 }
 export enum ExportContext {
   UNKNOWN = "UNKNOWN",
@@ -476,9 +496,6 @@ export enum ExportContext {
   AUTO = "AUTO"
 }
 
-function randomIntFromInterval(min: number, max: number) {
-  return Math.floor(Math.random() * (max - min + 1) + min);
-}
 
 type WeeklyExportData = {
   weekIndex: number, stage: Stage, passing: PassingExport, schedules: SchedulesExport, teamstats: TeamStatsExport, defense: DefensiveExport, punting: PuntingExport, receiving: ReceivingExport, kicking: KickingExport, rushing: RushingExport
@@ -500,7 +517,6 @@ export type ExtraData = {
   numMembers: number
 } & LeagueResponse
 
-const STAGGERED_MAX_MS = 75 // to stagger requests to EA and other outbound services
 const PRESEASON_WEEKS = Array.from({ length: 4 }, (v, index) => index)
 const SEASON_WEEKS = Array.from({ length: 23 }, (v, index) => index).filter(i => i !== 21) // filters out pro bowl
 
@@ -553,11 +569,8 @@ async function exportExtraData(data: ExtraData, destinations: { [key: string]: E
   }
 }
 
-const staggeringCall = async <T>(p: Promise<T>, waitTime: number = STAGGERED_MAX_MS): Promise<T> => {
-  await new Promise(r => setTimeout(r, randomIntFromInterval(1, waitTime)))
-  return await p
-}
-export async function exporterForLeague(leagueId: number, context: ExportContext): Promise<MaddenExporter> {
+async function handleExportTask(task: ExportJobTask): Promise<void> {
+  const { leagueId, context, request } = task
   const client = await storedTokenClient(leagueId)
   const exports = client.getExports()
   const contextualExports = Object.fromEntries(Object.entries(exports).filter(e => {
@@ -571,118 +584,183 @@ export async function exporterForLeague(leagueId: number, context: ExportContext
     }
   }))
   const [leagueInfo, allLeagues] = await Promise.all([client.getLeagueInfo(leagueId), client.getLeagues()])
-  return {
-    exportCurrentWeek: async function() {
-      const weekIndex = leagueInfo.careerHubInfo.seasonInfo.seasonWeek
-      const stage = leagueInfo.careerHubInfo.seasonInfo.seasonWeekType === 0 ? 0 : 1
-      exportCounter.inc({ export_type: "CURRENT_WEEK" })
-      await this.exportSpecificWeeks([{ weekIndex, stage }])
-    },
-    exportSurroundingWeek: async function() {
-      const currentWeek =
-        leagueInfo.careerHubInfo.seasonInfo.seasonWeekType === 8
-          ? 22
-          : leagueInfo.careerHubInfo.seasonInfo.seasonWeek
-      const stage =
-        leagueInfo.careerHubInfo.seasonInfo.seasonWeekType == 0 ? 0 : 1
-      const maxWeekIndex = stage === 0 ? 3 : 22
-      const previousWeek = currentWeek - 1
-      const nextWeek = currentWeek + 1
-      const weeksToExport = [
-        previousWeek === 21 ? 20 : previousWeek,
-        currentWeek,
-        nextWeek === 21 ? 22 : nextWeek,
-      ].filter((c) => c >= 0 && c <= maxWeekIndex)
-      exportCounter.inc({ export_type: "SURROUNDING_WEEK" })
-      await this.exportSpecificWeeks(weeksToExport.map(w => ({ weekIndex: w, stage: stage })))
-    },
-    exportAllWeeks: async function() {
-      const weeksToExport =
-        PRESEASON_WEEKS.map(weekIndex => ({
-          weekIndex: weekIndex, stage: 0
-        })).concat(
-          SEASON_WEEKS.map(weekIndex => ({
-            weekIndex: weekIndex, stage: 1
-          })))
-      exportCounter.inc({ export_type: "ALL_WEEKS" })
-      await this.exportSpecificWeeks(weeksToExport)
-    },
-    exportSpecificWeeks: async function(weeks: { weekIndex: number, stage: number }[]) {
-      const destinations = Object.values(contextualExports)
-      const leagueData = { weeks: [] } as any
-      const leagueInfoRequests = [] as Promise<any>[]
-      function toStage(stage: number): Stage {
-        return stage === 0 ? Stage.PRESEASON : Stage.SEASON
-      }
-      if (destinations.some(e => e.leagueInfo)) {
-        leagueInfoRequests.push(client.getTeams(leagueId).then(t => leagueData.leagueTeams = t))
-        leagueInfoRequests.push(client.getStandings(leagueId).then(t => leagueData.standings = t))
-      }
-      await Promise.all(leagueInfoRequests)
-      await exportData(leagueData as ExportData, contextualExports, `${leagueId}`, client.getSystemConsole())
-      if (destinations.some(e => e.weeklyStats)) {
-        // Process weeks in batches of 8 to reduce memory usage on big exports
-        const batchSize = 8;
-        for (let i = 0; i < weeks.length; i += batchSize) {
-          const weeklyData = { weeks: [] } as any
-          const weekBatch = weeks.slice(i, i + batchSize);
-          const batchDataRequests = [] as Promise<any>[]
+  const weeksToExport: { weekIndex: number, stage: number }[] = []
+  if (request.exportType === ExportType.CURRENT) {
+    const weekIndex = leagueInfo.careerHubInfo.seasonInfo.seasonWeek
+    const stage = leagueInfo.careerHubInfo.seasonInfo.seasonWeekType === 0 ? 0 : 1
+    exportCounter.inc({ export_type: "CURRENT_WEEK" })
+    weeksToExport.push({ weekIndex, stage })
+  } else if (request.exportType === ExportType.SURROUNDING) {
+    const currentWeek =
+      leagueInfo.careerHubInfo.seasonInfo.seasonWeekType === 8
+        ? 22
+        : leagueInfo.careerHubInfo.seasonInfo.seasonWeek
+    const stage =
+      leagueInfo.careerHubInfo.seasonInfo.seasonWeekType == 0 ? 0 : 1
+    const maxWeekIndex = stage === 0 ? 3 : 22
+    const previousWeek = currentWeek - 1
+    const nextWeek = currentWeek + 1
+    const surrounding = [
+      previousWeek === 21 ? 20 : previousWeek,
+      currentWeek,
+      nextWeek === 21 ? 22 : nextWeek,
+    ].filter((c) => c >= 0 && c <= maxWeekIndex)
+    exportCounter.inc({ export_type: "SURROUNDING_WEEK" })
+    surrounding.forEach(w => weeksToExport.push({ weekIndex: w, stage: stage }))
+  } else if (request.exportType === ExportType.ALL) {
+    const allWeeks =
+      PRESEASON_WEEKS.map(weekIndex => ({
+        weekIndex: weekIndex, stage: 0
+      })).concat(
+        SEASON_WEEKS.map(weekIndex => ({
+          weekIndex: weekIndex, stage: 1
+        })))
+    exportCounter.inc({ export_type: "ALL_WEEKS" })
+    allWeeks.forEach(w => weeksToExport.push(w))
+  } else if (request.exportType === ExportType.SPECIFIC && request.weeks) {
+    exportCounter.inc({ export_type: "SPECIFIC_WEEKS" })
+    request.weeks.forEach(w => weeksToExport.push(w))
+  } else {
+    throw new Error(`Invalid Export Task Request! ${request}`)
+  }
+  const destinations = Object.values(contextualExports)
+  const leagueData = { weeks: [] } as any
+  const leagueInfoRequests = [] as Promise<any>[]
+  function toStage(stage: number): Stage {
+    return stage === 0 ? Stage.PRESEASON : Stage.SEASON
+  }
+  task.status.leagueInfo = TaskStatus.STARTED
+  if (destinations.some(e => e.leagueInfo)) {
+    leagueInfoRequests.push(client.getTeams(leagueId).then(t => leagueData.leagueTeams = t))
+    leagueInfoRequests.push(client.getStandings(leagueId).then(t => leagueData.standings = t))
+  }
+  await Promise.all(leagueInfoRequests)
+  await exportData(leagueData as ExportData, contextualExports, `${leagueId}`, client.getSystemConsole())
+  task.status.leagueInfo = TaskStatus.FINISHED
+  task.status.weeklyData = weeksToExport.map(w => ({ ...w, status: TaskStatus.NOT_STARTED }))
+  if (destinations.some(e => e.weeklyStats)) {
+    // Process weeks in batches of 8 to reduce memory usage on big exports
+    const batchSize = 8;
+    for (let i = 0; i < weeksToExport.length; i += batchSize) {
 
-          weekBatch.forEach(week => {
-            const stage = toStage(week.stage)
-            const weekData = { weekIndex: week.weekIndex, stage: stage } as WeeklyExportData
-            batchDataRequests.push(client.getPassingStats(leagueId, stage, week.weekIndex).then(s => weekData.passing = s))
-            batchDataRequests.push(client.getSchedules(leagueId, stage, week.weekIndex).then(s => weekData.schedules = s))
-            batchDataRequests.push(client.getTeamStats(leagueId, stage, week.weekIndex).then(s => weekData.teamstats = s))
-            batchDataRequests.push(client.getDefensiveStats(leagueId, stage, week.weekIndex).then(s => weekData.defense = s))
-            batchDataRequests.push(client.getPuntingStats(leagueId, stage, week.weekIndex).then(s => weekData.punting = s))
-            batchDataRequests.push(client.getReceivingStats(leagueId, stage, week.weekIndex).then(s => weekData.receiving = s))
-            batchDataRequests.push(client.getKickingStats(leagueId, stage, week.weekIndex).then(s => weekData.kicking = s))
-            batchDataRequests.push(client.getRushingStats(leagueId, stage, week.weekIndex).then(s => weekData.rushing = s))
-            weeklyData.weeks.push(weekData)
-          })
+      const weeklyData = { weeks: [] } as any
+      const weekBatch = weeksToExport.slice(i, i + batchSize);
+      task.status.weeklyData.forEach(w => {
+        if (weekBatch.some(b => w.weekIndex === b.weekIndex && w.stage === b.stage)) {
+          w.status = TaskStatus.STARTED
+        }
+      })
+      const batchDataRequests = [] as Promise<any>[]
 
-          // Process this batch and wait for completion before moving to next batch
-          await Promise.all(batchDataRequests.map(request => staggeringCall(request, 50)))
-          await exportData(weeklyData as ExportData, contextualExports, `${leagueId}`, client.getSystemConsole())
-        }
-      }
-      if (destinations.some(e => e.rosters)) {
-        let teamRequests = [] as Promise<any>[]
-        let teamData: TeamData = { roster: {} }
-        const teamList = leagueInfo.teamIdInfoList
-        teamRequests.push(client.getFreeAgents(leagueId).then(freeAgents => teamData.roster["freeagents"] = freeAgents))
+      weekBatch.forEach(week => {
+        const stage = toStage(week.stage)
+        const weekData = { weekIndex: week.weekIndex, stage: stage } as WeeklyExportData
+        batchDataRequests.push(client.getPassingStats(leagueId, stage, week.weekIndex).then(s => weekData.passing = s))
+        batchDataRequests.push(client.getSchedules(leagueId, stage, week.weekIndex).then(s => weekData.schedules = s))
+        batchDataRequests.push(client.getTeamStats(leagueId, stage, week.weekIndex).then(s => weekData.teamstats = s))
+        batchDataRequests.push(client.getDefensiveStats(leagueId, stage, week.weekIndex).then(s => weekData.defense = s))
+        batchDataRequests.push(client.getPuntingStats(leagueId, stage, week.weekIndex).then(s => weekData.punting = s))
+        batchDataRequests.push(client.getReceivingStats(leagueId, stage, week.weekIndex).then(s => weekData.receiving = s))
+        batchDataRequests.push(client.getKickingStats(leagueId, stage, week.weekIndex).then(s => weekData.kicking = s))
+        batchDataRequests.push(client.getRushingStats(leagueId, stage, week.weekIndex).then(s => weekData.rushing = s))
+        weeklyData.weeks.push(weekData)
+      })
 
-        for (let idx = 0; idx < teamList.length; idx++) {
-          const team = teamList[idx];
-          teamRequests.push(
-            client.getTeamRoster(leagueId, team.teamId, idx).then(roster =>
-              teamData.roster[`${team.teamId}`] = roster
-            )
-          )
-          if ((idx + 1) % 8 == 0) {
-            await Promise.all(teamRequests)
-            await exportTeamData(teamData, contextualExports, `${leagueId}`, client.getSystemConsole())
-            teamRequests = []
-            teamData = { roster: {} }
-          }
+      // Process this batch and wait for completion before moving to next batch
+      await Promise.all(batchDataRequests.map(request => request, 50))
+      await exportData(weeklyData as ExportData, contextualExports, `${leagueId}`, client.getSystemConsole())
+      task.status.weeklyData.forEach(w => {
+        if (weekBatch.some(b => w.weekIndex === b.weekIndex && w.stage === b.stage)) {
+          w.status = TaskStatus.FINISHED
         }
-        if (teamRequests.length > 0) {
-          await Promise.all(teamRequests)
-          await exportTeamData(teamData, contextualExports, `${leagueId}`, client.getSystemConsole())
-          teamRequests = []
-          teamData = { roster: {} }
-        }
-      }
-      if (destinations.some(e => e.extraData)) {
-        const {
-          leagueName,
-          numMembers,
-          calendarYear
-        } = allLeagues.filter(l => l.leagueId === leagueId)[0]
-        const extraData = { ...leagueInfo, leagueName, numMembers, calendarYear }
-        await exportExtraData(extraData, contextualExports, `${leagueId}`, client.getSystemConsole())
+      })
+    }
+  }
+  if (destinations.some(e => e.rosters)) {
+    task.status.rosters = TaskStatus.STARTED
+    let teamRequests = [] as Promise<any>[]
+    let teamData: TeamData = { roster: {} }
+    const teamList = leagueInfo.teamIdInfoList
+    teamRequests.push(client.getFreeAgents(leagueId).then(freeAgents => teamData.roster["freeagents"] = freeAgents))
+
+    for (let idx = 0; idx < teamList.length; idx++) {
+      const team = teamList[idx];
+      teamRequests.push(
+        client.getTeamRoster(leagueId, team.teamId, idx).then(roster =>
+          teamData.roster[`${team.teamId}`] = roster
+        )
+      )
+      if ((idx + 1) % 8 == 0) {
+        await Promise.all(teamRequests)
+        await exportTeamData(teamData, contextualExports, `${leagueId}`, client.getSystemConsole())
+        teamRequests = []
+        teamData = { roster: {} }
       }
     }
-  } as MaddenExporter
+    if (teamRequests.length > 0) {
+      await Promise.all(teamRequests)
+      await exportTeamData(teamData, contextualExports, `${leagueId}`, client.getSystemConsole())
+      teamRequests = []
+      teamData = { roster: {} }
+    }
+    task.status.rosters = TaskStatus.FINISHED
+  }
+  if (destinations.some(e => e.extraData)) {
+    const {
+      leagueName,
+      numMembers,
+      calendarYear
+    } = allLeagues.filter(l => l.leagueId === leagueId)[0]
+    const extraData = { ...leagueInfo, leagueName, numMembers, calendarYear }
+    await exportExtraData(extraData, contextualExports, `${leagueId}`, client.getSystemConsole())
+  }
+}
+
+const exportQueue: queueAsPromised<ExportJobTask> = fastq.promise(handleExportTask, QUEUE_CONCURRENCY)
+
+async function addTaskToQueue(task: ExportJobTask) {
+  tasks.set(task.id, task)
+  return exportQueue.push(task).catch(e => {
+    // update status with all the ones that failed
+    task.status.leagueInfo = task.status.leagueInfo != TaskStatus.FINISHED ? TaskStatus.ERROR : task.status.leagueInfo
+    task.status.rosters = task.status.leagueInfo != TaskStatus.FINISHED ? TaskStatus.ERROR : task.status.rosters
+    task.status.weeklyData.forEach(w => w.status != TaskStatus.FINISHED ? w.status = TaskStatus.ERROR : w.status)
+    return Promise.reject(e)
+  })
+}
+
+export function getTask(taskId: string): ExportJobTask {
+  const task = tasks.get(taskId) as ExportJobTask
+  if (!task) {
+    throw new Error(`Task not found ${taskId}`)
+  }
+  return task
+}
+
+export function getQueueSize() {
+  return exportQueue.length()
+}
+
+export function exporterForLeague(leagueId: number, context: ExportContext): MaddenExporter {
+  const taskId = randomUUID()
+  const status = { leagueInfo: TaskStatus.NOT_STARTED, weeklyData: [], rosters: TaskStatus.NOT_STARTED }
+  return {
+    exportCurrentWeek: function() {
+      const task = { id: taskId, request: { exportType: ExportType.CURRENT }, leagueId: leagueId, context: context, status: status }
+      return { task: task, waitUntilDone: addTaskToQueue(task) }
+    },
+    exportSurroundingWeek: function() {
+      const task = { id: taskId, request: { exportType: ExportType.SURROUNDING }, leagueId: leagueId, context: context, status: status }
+      return { task: task, waitUntilDone: addTaskToQueue(task) }
+    },
+    exportAllWeeks: function() {
+      const task = { id: taskId, request: { exportType: ExportType.ALL }, leagueId: leagueId, context: context, status: status }
+      return { task: task, waitUntilDone: addTaskToQueue(task) }
+    },
+    exportSpecificWeeks: function(weeks: { weekIndex: number, stage: number }[]) {
+      const task = { id: taskId, request: { exportType: ExportType.SPECIFIC, weeks: weeks }, leagueId: leagueId, context: context, status: status }
+      return { task: task, waitUntilDone: addTaskToQueue(task) }
+
+    }
+  }
 }

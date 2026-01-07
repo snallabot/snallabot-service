@@ -1624,8 +1624,9 @@ async function retirePlayers(leagueId: string, token: string, client: DiscordCli
     })
     const league = Number(leagueId)
     const eaClient = await storedTokenClient(league)
-    const exporter = await exporterForLeague(league, ExportContext.MANUAL)
-    await exporter.exportCurrentWeek()
+    const exporter = exporterForLeague(league, ExportContext.MANUAL)
+    const { waitUntilDone } = exporter.exportCurrentWeek()
+    await waitUntilDone.catch(e => { throw e })
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [

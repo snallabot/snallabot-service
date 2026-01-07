@@ -10,3 +10,9 @@ if (process.env.DEPLOYMENT_URL.startsWith("localhost")) {
   deployment = process.env.DEPLOYMENT_URL
 }
 export const DEPLOYMENT_URL = deployment
+
+let queueConcurrency = 1
+if (process.env.QUEUE_CONCURRENCY) {
+  queueConcurrency = Number(process.env.QUEUE_CONCURRENCY)
+}
+export const QUEUE_CONCURRENCY = queueConcurrency

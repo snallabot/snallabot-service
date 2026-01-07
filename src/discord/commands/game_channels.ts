@@ -34,8 +34,9 @@ async function createGameChannels(client: DiscordClient, token: string, guild_id
     let exportEmoji = SnallabotCommandReactions.FINISHED
     let errorMessage = ""
     try {
-      const exporter = await exporterForLeague(Number(leagueId), ExportContext.AUTO)
-      await exporter.exportSurroundingWeek()
+      const exporter = exporterForLeague(Number(leagueId), ExportContext.AUTO)
+      const { waitUntilDone } = exporter.exportSurroundingWeek()
+      await waitUntilDone.catch(e => { throw e })
     } catch (e) {
       exportEmoji = SnallabotCommandReactions.ERROR
       if (e instanceof EAAccountError) {
@@ -67,8 +68,10 @@ async function createGameChannels(client: DiscordClient, token: string, guild_id
 - ${SnallabotCommandReactions.WAITING} Logging`
       })
       try {
-        const exporter = await exporterForLeague(Number(leagueId), ExportContext.AUTO)
-        await exporter.exportSpecificWeeks([{ weekIndex: week - 1, stage: Stage.SEASON }])
+        const exporter = exporterForLeague(Number(leagueId), ExportContext.AUTO)
+        const { waitUntilDone } = exporter.exportSpecificWeeks([{ weekIndex: week - 1, stage: Stage.SEASON }])
+        await waitUntilDone
+          .catch(e => { throw e })
         weekSchedule = (await MaddenClient.getLatestWeekSchedule(leagueId, week)).sort((g, g2) => g.scheduleId - g2.scheduleId)
       } catch (e) {
         await client.editOriginalInteraction(token, { content: `Could not retrieve this weeks schedule ${e}` })

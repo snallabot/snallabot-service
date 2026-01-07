@@ -20,9 +20,9 @@ body
            each key in Object.keys(exportOptions)
              option(value=key) #{key}
          button.btn.btn-primary#exportBtn(type="button") Export
-       div#exportFeedback
      .col-auto.text-center
        button.btn.btn-danger#unlinkBtn(type="button") Unlink League
+    div#exportFeedback
     .table-responsive
       table.table.table-hover.table-sm.caption-top
         caption List of Export Url's
@@ -254,128 +254,4 @@ body
               td #{game.isAwayHuman ? game.awayUserName : 'CPU'} #{game.awayCityName} #{game.awayName} (#{game.awayWin} - #{game.awayLoss}#{game.awayTie > 0 ? ' - ' + game.awayTie : ''}) at #{game.isHomeHuman ? game.homeUserName : 'CPU'} #{game.homeCityName} #{game.homeName} (#{game.homeWin} - #{game.homeLoss}#{game.homeTie > 0 ? ' - ' + game.homeTie : ''})
               td #{game.result || 'Not Played'}
               td #{game.numberTimesPlayed || 0}
-script.
-  document.getElementById('addExportBtn').addEventListener('click', function () {
-  const tableBody = document.getElementById('exportTableBody');
-  const newRow = document.createElement('tr');
-  newRow.innerHTML = `
-    <td><input type="text" class="form-control url-input" placeholder="Enter URL"></td>
-    <td style="text-align: center;"><input class="leagueInfo" type="checkbox"></td>
-    <td style="text-align: center;"><input class="weeklyStats" type="checkbox"></td>
-    <td style="text-align: center;"><input class="rosters" type="checkbox"></td>
-    <td style="text-align: center;"><input class="extraData" type="checkbox"></td>
-    <td style="text-align: center;"><input class="autoUpdate" type="checkbox"></td>
-    <td style="text-align: center;">
-      <button class="add-export-btn btn btn-outline-primary btn-sm">Add</button>
-    </td>
-  `;
-  tableBody.appendChild(newRow);
-  newRow.querySelector('.add-export-btn').addEventListener('click', async function () {
-  const url = newRow.querySelector('.url-input').value;
-  const leagueInfo = newRow.querySelector('.leagueInfo').checked;
-  const weeklyStats = newRow.querySelector('.weeklyStats').checked;
-  const rosters = newRow.querySelector('.rosters').checked;
-  const extraData = newRow.querySelector('.extraData').checked;
-  const autoUpdate = newRow.querySelector('.autoUpdate').checked;
-
-  try {
-    const response = await fetch(window.location.pathname + '/updateExport', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        url,
-        leagueInfo,
-        weeklyStats,
-        rosters,
-        extraData,
-        autoUpdate,
-        editable: true,
-      })
-    });
-    location.reload()
-  } catch (error) {
-    console.error('Error:', error);
-    alert('An error occurred while adding the export URL.');
-  }
-  });
-  })
-  document.querySelectorAll('.remove-export-btn').forEach(btn => {
-  btn.addEventListener('click', async function () {
-    const row = this.closest('tr');
-    const urlCell = row.querySelector('.export-url');
-    const url = urlCell.textContent.trim();
-
-    try {
-      const response = await fetch(window.location.pathname + '/deleteExport', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({url})
-      });
-
-      if (response.ok) {
-        location.reload();
-      } else {
-        alert('Failed to remove export URL.');
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('An error occurred while removing the export URL.');
-    }
-  });
-  });
-  document.getElementById('exportBtn').addEventListener('click', async function () {
-  const selectedOption = document.getElementById('exportSelect').value;
-
-  try {
-    const feedbackDiv = document.getElementById('exportFeedback');
-    feedbackDiv.innerHTML = '';
-
-    const badge = document.createElement('span');
-    badge.className = "badge text-bg-info"
-    badge.textContent = "Exporting..."
-    feedbackDiv.appendChild(badge);
-    const response = await fetch(window.location.pathname + '/export', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ exportOption: selectedOption })
-    });
-    feedbackDiv.innerHTML = '';
-
-    const responseBadge = document.createElement('span');
-    responseBadge.className = response.ok
-      ? 'badge text-bg-success'
-      : 'badge text-bg-danger';
-    responseBadge.textContent = response.ok ? 'Export Successful :)' : 'Export failed :(';
-
-    feedbackDiv.appendChild(responseBadge);
-  } catch (error) {
-    console.error('Error exporting:', error);
-    alert('An error occurred while exporting.');
-  }
-  });
-
-  document.getElementById('unlinkBtn').addEventListener('click', async function () {
-    try {
-      const response = await fetch(window.location.pathname + '/unlink', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        window.location.href = '/dashboard';
-      } else {
-        alert('Failed to unlink league.');
-      }
-    } catch (error) {
-      console.error('Error unlinking league:', error);
-      alert('An error occurred while unlinking the league.');
-    }
-  });
+script(type='text/javascript', src='/dashboard_script.js')
