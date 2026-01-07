@@ -716,7 +716,7 @@ async function handleExportTask(task: ExportJobTask): Promise<void> {
   }
 }
 
-export const exportQueue: queueAsPromised<ExportJobTask> = fastq.promise(handleExportTask, QUEUE_CONCURRENCY)
+const exportQueue: queueAsPromised<ExportJobTask> = fastq.promise(handleExportTask, QUEUE_CONCURRENCY)
 
 async function addTaskToQueue(task: ExportJobTask) {
   tasks.set(task.id, task)
@@ -730,6 +730,10 @@ export function getTask(taskId: string): ExportJobTask {
     throw new Error(`Task not found ${taskId}`)
   }
   return task
+}
+
+export function getQueueSize() {
+  return exportQueue.length()
 }
 
 export function exporterForLeague(leagueId: number, context: ExportContext): MaddenExporter {

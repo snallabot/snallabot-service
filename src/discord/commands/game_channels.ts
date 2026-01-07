@@ -36,7 +36,7 @@ async function createGameChannels(client: DiscordClient, token: string, guild_id
     try {
       const exporter = exporterForLeague(Number(leagueId), ExportContext.AUTO)
       const { waitUntilDone } = exporter.exportSurroundingWeek()
-      await waitUntilDone
+      await waitUntilDone.catch(e => { throw e })
     } catch (e) {
       exportEmoji = SnallabotCommandReactions.ERROR
       if (e instanceof EAAccountError) {

@@ -110,3 +110,11 @@ export const maddenEventsDistribution = new client.Summary({
 
 
 export const contentType = register.contentType
+
+export const exportQueueSize = new client.Gauge(
+  {
+    name: "export_queue_length_total",
+    help: "the current length of the export queue",
+    registers: [register]
+  }
+)
