@@ -316,7 +316,8 @@ router.get("/", async (ctx) => {
   } else {
     exportMethod = () => exporter.exportSpecificWeeks([{ weekIndex: exportValue.week - 1, stage: exportValue.stage }])
   }
-  const { task } = exportMethod()
+  const { task, waitUntilDone } = exportMethod()
+  waitUntilDone.catch(e => { })
   ctx.status = 200
   ctx.body = {
     taskId: task.id
