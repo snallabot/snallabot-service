@@ -172,10 +172,10 @@ async function pollExportStatus(taskId, feedbackDiv) {
         
         // Add completion message
         const completeMsg = document.createElement('div');
-        completeMsg.className = 'alert alert-success alert-dismissible fade show mt-2';
+        completeMsg.className = 'alert  alert-dismissible fade show mt-2';
         completeMsg.style.maxWidth = '500px';
         completeMsg.innerHTML = `
-          Export completed successfully!
+          Export Complete!
           <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         `;
         feedbackDiv.appendChild(completeMsg);
