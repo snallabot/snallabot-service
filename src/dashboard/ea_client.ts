@@ -724,7 +724,6 @@ async function addTaskToQueue(task: ExportJobTask) {
 }
 
 export function getTask(taskId: string): ExportJobTask {
-  console.log(exportQueue.length())
   const task = tasks.get(taskId) as ExportJobTask
   if (!task) {
     throw new Error(`Task not found ${taskId}`)
