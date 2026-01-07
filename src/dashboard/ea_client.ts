@@ -716,6 +716,7 @@ async function handleExportTask(task: ExportJobTask): Promise<void> {
       await exportExtraData(extraData, contextualExports, `${leagueId}`, client.getSystemConsole())
     }
   } catch (e) {
+    console.log("here")
     return Promise.reject(e)
   }
 }
