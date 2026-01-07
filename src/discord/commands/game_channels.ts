@@ -69,7 +69,7 @@ async function createGameChannels(client: DiscordClient, token: string, guild_id
       })
       try {
         const exporter = exporterForLeague(Number(leagueId), ExportContext.AUTO)
-        const { waitUntilDone } = exporter.exportSpecificWeeks([{ weekIndex: week, stage: Stage.SEASON }])
+        const { waitUntilDone } = exporter.exportSpecificWeeks([{ weekIndex: week - 1, stage: Stage.SEASON }])
         await waitUntilDone
           .catch(e => { throw e })
         weekSchedule = (await MaddenClient.getLatestWeekSchedule(leagueId, week)).sort((g, g2) => g.scheduleId - g2.scheduleId)
