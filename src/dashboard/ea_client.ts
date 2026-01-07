@@ -716,7 +716,6 @@ async function handleExportTask(task: ExportJobTask): Promise<void> {
       await exportExtraData(extraData, contextualExports, `${leagueId}`, client.getSystemConsole())
     }
   } catch (e) {
-    console.log("here")
     return Promise.reject(e)
   }
 }
@@ -725,7 +724,7 @@ const exportQueue: queueAsPromised<ExportJobTask> = fastq.promise(handleExportTa
 
 async function addTaskToQueue(task: ExportJobTask) {
   tasks.set(task.id, task, 3600)
-  return exportQueue.push(task)
+  return exportQueue.push(task).catch(e => console.error(e))
 }
 
 export function getTask(taskId: string): ExportJobTask {
