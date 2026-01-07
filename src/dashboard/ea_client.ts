@@ -570,9 +570,6 @@ async function exportExtraData(data: ExtraData, destinations: { [key: string]: E
 }
 
 async function handleExportTask(task: ExportJobTask): Promise<void> {
-  if (Math.random() < 0.5) {
-    throw new Error('Random error occurred!');
-  }
   const { leagueId, context, request } = task
   const client = await storedTokenClient(leagueId)
   const exports = client.getExports()
