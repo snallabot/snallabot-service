@@ -170,7 +170,6 @@ async function createGameChannels(client: DiscordClient, token: string, guild_id
 - ${SnallabotCommandReactions.FINISHED} Setting up notifier
 - ${SnallabotCommandReactions.FINISHED} Creating Scoreboard
 - ${SnallabotCommandReactions.FINISHED} Logging
-${errorMessage}
 `
     })
     await LeagueSettingsDB.updateGameWeekState(guild_id, week, season, weeklyState)
