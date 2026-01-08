@@ -33,7 +33,8 @@ async function createGameChannels(client: DiscordClient, token: string, guild_id
     })
     let exportEmoji = SnallabotCommandReactions.FINISHED
     const exporter = exporterForLeague(Number(leagueId), ExportContext.AUTO)
-    exporter.exportSurroundingWeek()
+    const { waitUntilDone } = exporter.exportSurroundingWeek()
+    waitUntilDone.catch(_ => { })
     await client.editOriginalInteraction(token, {
       content: `Creating Game Channels:
 - ${exportEmoji} Exporting
