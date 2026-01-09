@@ -48,7 +48,7 @@ async function runLeagueChecks() {
     const leagues = await getLatestLeagues()
     for (const leagueId of leagues) {
       // avoid any overloading of EA
-      await sleep(5000)
+      await sleep(12000)
       try {
         await checkLeague(leagueId)
       } catch (e) {
@@ -57,7 +57,7 @@ async function runLeagueChecks() {
     }
     console.log(`Check complete, sleeping for ${SLEEP_MIN} minutes...\n`)
     await fetch("https://hc-ping.com/82b9220a-02cf-4ca1-9385-3c8b9463cff3")
-    await sleep(SLEEP_MIN * 60 * 1000)
+    await sleep(SLEEP_MIN * 5 * 1000)
   }
 }
 
