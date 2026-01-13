@@ -35,7 +35,7 @@ export type StreamCountConfiguration = { channel: ChannelId, message: MessageId,
 export type TeamAssignment = { discord_user?: UserId, discord_role?: RoleId }
 export type TeamAssignments = { [key: string]: TeamAssignment }
 export type TeamConfiguration = { channel: ChannelId, messageId: MessageId, useRoleUpdates: boolean, assignments: TeamAssignments }
-
+export type PlayerConfiguration = { useHiddenDevs: boolean }
 
 export type LeagueSettings = {
   commands: {
@@ -45,7 +45,8 @@ export type LeagueSettings = {
     broadcast?: BroadcastConfiguration,
     teams?: TeamConfiguration,
     waitlist?: WaitlistConfiguration,
-    madden_league?: MaddenLeagueConfiguration
+    madden_league?: MaddenLeagueConfiguration,
+    player?: PlayerConfiguration
   },
   guildId: string
 }
@@ -73,7 +74,8 @@ interface LeagueSettingsDB {
   removeAssignment(guildId: string, teamId: number | string): Promise<void>,
   removeAllAssignments(guildId: string): Promise<void>,
   getLeagueSettingsForLeagueId(leagueId: string): Promise<LeagueSettings[]>,
-  deleteLeagueSetting(guildId: string): Promise<void>
+  deleteLeagueSetting(guildId: string): Promise<void>,
+  configurePlayer(guildId: string, playerConfiguration: PlayerConfiguration): Promise<void>
 }
 
 export function createWeekKey(season: number, week: number) {
@@ -241,6 +243,13 @@ const LeagueSettingsDB: LeagueSettingsDB = {
   },
   async deleteLeagueSetting(guildId: string): Promise<void> {
     await db.collection('league_settings').doc(guildId).delete()
+  },
+  async configurePlayer(guildId: string, configuration: PlayerConfiguration) {
+    await db.collection('league_settings').doc(guildId).set({
+      commands: {
+        player: configuration
+      },
+    }, { merge: true })
   }
 }
 

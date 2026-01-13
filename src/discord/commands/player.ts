@@ -1,6 +1,6 @@
 import { Command, Autocomplete, MessageComponentInteraction } from "../commands_handler"
-import { DiscordClient, deferMessage, getTeamEmoji, SnallabotTeamEmojis, NoConnectedLeagueError, SnallabotCommandReactions } from "../discord_utils"
-import { APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ButtonStyle, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
+import { DiscordClient, deferMessage, getTeamEmoji, SnallabotTeamEmojis, NoConnectedLeagueError, SnallabotCommandReactions, createMessageResponse } from "../discord_utils"
+import { APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ButtonStyle, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { discordLeagueView, LeagueLogos, leagueLogosView } from "../../db/view"
 import fuzzysort from "fuzzysort"
 import MaddenDB, { PlayerListQuery, PlayerStatType, PlayerStats, TeamList, createPlayerKey } from "../../db/madden_db"
@@ -8,6 +8,7 @@ import { DevTrait, LBStyleTrait, MADDEN_SEASON, MaddenGame, POSITIONS, POSITION_
 import { ExportContext, exporterForLeague, storedTokenClient } from "../../dashboard/ea_client"
 import EventDB, { EventDelivery } from "../../db/events_db"
 import { EventTypes, RetiredPlayersEvent } from "../../db/events"
+import LeagueSettingsDB, { PlayerConfiguration } from "../settings_db"
 
 enum PlayerSelection {
   PLAYER_OVERVIEW = "po",
@@ -63,7 +64,8 @@ function generatePlayerZoomOptions(players: Player[], currentPagination: PlayerP
 
 async function showPlayerCard(playerSearch: string, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
   try {
-    const discordLeague = await discordLeagueView.createView(guild_id)
+    const [discordLeague, settings] = await Promise.all([discordLeagueView.createView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
+    const playerConfiguration = settings?.commands?.player || { useHiddenDevs: true }
     const leagueId = discordLeague?.leagueId
     if (!leagueId) {
       throw new NoConnectedLeagueError(guild_id)
@@ -103,7 +105,7 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, token
       components: [
         {
           type: ComponentType.TextDisplay,
-          content: formatPlayerCard(player, teamList, logos)
+          content: formatPlayerCard(player, teamList, logos, playerConfiguration)
         },
         {
           type: ComponentType.Separator,
@@ -138,7 +140,8 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, token
 }
 
 async function showPlayerFullRatings(rosterId: number, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
-  const discordLeague = await discordLeagueView.createView(guild_id)
+  const [discordLeague, settings] = await Promise.all([discordLeagueView.createView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
+  const playerConfiguration = settings?.commands?.player || { useHiddenDevs: true }
   const leagueId = discordLeague?.leagueId
   if (!leagueId) {
     throw new NoConnectedLeagueError(guild_id)
@@ -170,7 +173,7 @@ async function showPlayerFullRatings(rosterId: number, client: DiscordClient, to
     components: [
       {
         type: ComponentType.TextDisplay,
-        content: formatFullRatings(player, teamList, logos)
+        content: formatFullRatings(player, teamList, logos, playerConfiguration)
       },
       {
         type: ComponentType.Separator,
@@ -194,7 +197,8 @@ async function showPlayerFullRatings(rosterId: number, client: DiscordClient, to
 }
 
 async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
-  const discordLeague = await discordLeagueView.createView(guild_id)
+  const [discordLeague, settings] = await Promise.all([discordLeagueView.createView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
+  const playerConfiguration = settings?.commands?.player || { useHiddenDevs: true }
   const leagueId = discordLeague?.leagueId
   if (!leagueId) {
     throw new NoConnectedLeagueError(guild_id)
@@ -229,7 +233,7 @@ async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, to
     components: [
       {
         type: ComponentType.TextDisplay,
-        content: formatWeeklyStats(player, teamList, playerStats, games, logos)
+        content: formatWeeklyStats(player, teamList, playerStats, games, logos, playerConfiguration)
       },
       {
         type: ComponentType.Separator,
@@ -253,7 +257,8 @@ async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, to
 }
 
 async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
-  const discordLeague = await discordLeagueView.createView(guild_id)
+  const [discordLeague, settings] = await Promise.all([discordLeagueView.createView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
+  const playerConfiguration = settings?.commands?.player || { useHiddenDevs: true }
   const leagueId = discordLeague?.leagueId
   if (!leagueId) {
     throw new NoConnectedLeagueError(guild_id)
@@ -285,7 +290,7 @@ async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, to
     components: [
       {
         type: ComponentType.TextDisplay,
-        content: formatSeasonStats(player, playerStats, teamList, logos)
+        content: formatSeasonStats(player, playerStats, teamList, logos, playerConfiguration)
       },
       {
         type: ComponentType.Separator,
@@ -352,7 +357,8 @@ async function getPlayers(leagueId: string, query: PlayerListQuery, startAfterPl
 
 async function showPlayerList(playerSearch: string, client: DiscordClient, token: string, guild_id: string, startAfterPlayer?: number, endBeforePlayer?: number) {
   try {
-    const discordLeague = await discordLeagueView.createView(guild_id)
+    const [discordLeague, settings] = await Promise.all([discordLeagueView.createView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
+    const playerConfiguration = settings?.commands?.player || { useHiddenDevs: true }
     const leagueId = discordLeague?.leagueId
     if (!leagueId) {
       throw new NoConnectedLeagueError(guild_id)
@@ -369,7 +375,7 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
       query = { teamId, rookie: rookie ? true : false, position }
     }
     const [players, teamList, logos] = await Promise.all([getPlayers(leagueId, query, startAfterPlayer, endBeforePlayer), MaddenDB.getLatestTeams(leagueId), leagueLogosView.createView(leagueId)])
-    const message = players.length === 0 ? `# No results` : formatPlayerList(players, teamList, logos)
+    const message = players.length === 0 ? `# No results` : formatPlayerList(players, teamList, logos, playerConfiguration)
     const backDisabled = startAfterPlayer || endBeforePlayer ? false : true
     const nextDisabled = players.length < PAGINATION_LIMIT ? true : false
     const nextPagination = players.length === 0 ? startAfterPlayer : players[players.length - 1].rosterId
@@ -691,9 +697,9 @@ function getPositionalTraits(player: Player) {
 }
 
 
-function getDevTraitName(devTrait: DevTrait, yearsPro: number): string {
+function getDevTraitName(devTrait: DevTrait, yearsPro: number, useHiddenDevs: boolean): string {
   // non normal dev rookies get hidden dev
-  if (yearsPro === 0 && devTrait !== DevTrait.NORMAL) {
+  if (yearsPro === 0 && devTrait !== DevTrait.NORMAL && useHiddenDevs) {
     return SnallabotDevEmojis.HIDDEN
   }
   switch (devTrait) {
@@ -763,7 +769,7 @@ function formatAttributes(topAttributes: { name: string, value: number }[]): str
   return lines.join('\n');
 }
 
-function formatPlayerCard(player: Player, teams: TeamList, logos: LeagueLogos) {
+function formatPlayerCard(player: Player, teams: TeamList, logos: LeagueLogos, configuration: PlayerConfiguration) {
 
   const teamAbbr = getTeamAbbr(player.teamId, teams)
   const heightFeet = Math.floor(player.height / 12)
@@ -787,7 +793,7 @@ function formatPlayerCard(player: Player, teams: TeamList, logos: LeagueLogos) {
     : ""
   return `
   # ${getTeamEmoji(teamAbbr, logos)} ${player.position} ${player.firstName} ${player.lastName}
-## ${getDevTraitName(player.devTrait, player.yearsPro)} **${player.playerBestOvr} OVR**
+  ## ${getDevTraitName(player.devTrait, player.yearsPro, configuration.useHiddenDevs)} **${player.playerBestOvr} OVR**
 **${age} yrs** | **${getSeasonFormatting(player.yearsPro)}** | **${formattedHeight}, ${player.weight} lbs**
 ### Contract
 ${contractStatus}
@@ -839,12 +845,12 @@ function formatLbStyle(lbStyle: LBStyleTrait) {
 }
 
 
-function formatFullRatings(player: Player, teams: TeamList, logos: LeagueLogos) {
+function formatFullRatings(player: Player, teams: TeamList, logos: LeagueLogos, configuration: PlayerConfiguration) {
   const teamAbbr = getTeamAbbr(player.teamId, teams)
 
   return `
   # ${getTeamEmoji(teamAbbr, logos)} ${player.position} ${player.firstName} ${player.lastName}
-  ## ${getDevTraitName(player.devTrait, player.yearsPro)} **${player.playerBestOvr} OVR**
+  ## ${getDevTraitName(player.devTrait, player.yearsPro, configuration.useHiddenDevs)} **${player.playerBestOvr} OVR**
 ## Ratings
 __**Physical Attributes:**__
 **Speed:** ${player.speedRating}
@@ -1111,7 +1117,7 @@ function formatGame(game: MaddenGame, player: Player, teams: TeamList) {
   return `${formatWeek(game)} vs ${opponent.padEnd(3)} ${formatGameEmoji(game, playerTeam, teams)} ${formatScore(game)}:`
 }
 
-function formatWeeklyStats(player: Player, teams: TeamList, stats: PlayerStats, games: MaddenGame[], logos: LeagueLogos) {
+function formatWeeklyStats(player: Player, teams: TeamList, stats: PlayerStats, games: MaddenGame[], logos: LeagueLogos, configuration: PlayerConfiguration) {
   const currentSeason = Math.max(...games.map(g => g.seasonIndex))
   const currentGameIds = new Set(games.filter(g => g.seasonIndex === currentSeason && g.stageIndex > 0).map(g => formatGameKey(g)))
   const gameResults = Object.groupBy(games.filter(g => currentGameIds.has(formatGameKey(g))), g => formatGameKey(g))
@@ -1133,7 +1139,7 @@ function formatWeeklyStats(player: Player, teams: TeamList, stats: PlayerStats, 
   const joinedWeekStats = weekStats.join("\n")
   return `
   # ${getTeamEmoji(teamAbbr, logos)} ${player.position} ${player.firstName} ${player.lastName}
-## ${getDevTraitName(player.devTrait, player.yearsPro)} **${player.playerBestOvr} OVR**
+  ## ${getDevTraitName(player.devTrait, player.yearsPro, configuration.useHiddenDevs)} **${player.playerBestOvr} OVR**
 ## Stats
 ${joinedWeekStats}
 `
@@ -1205,19 +1211,19 @@ function formatSeasonAggregation(agg: SeasonAggregation): string {
     if (seasonStats.passPercent) {
       statItems.push(`${seasonStats.passPercent.top}/${seasonStats.passPercent.bottom}`);
     }
-    if (seasonStats.passYds) statItems.push(`${seasonStats.passYds.value} ${seasonStats.passYds.name}`);
-    if (seasonStats.passTDs) statItems.push(`${seasonStats.passTDs.value} ${seasonStats.passTDs.name}`);
-    if (seasonStats.passInts) statItems.push(`${seasonStats.passInts.value} ${seasonStats.passInts.name}`);
-    if (seasonStats.passSacks) statItems.push(`${seasonStats.passSacks.value} ${seasonStats.passSacks.name}`);
+    if (seasonStats.passYds && seasonStats.passYds.value > 0) statItems.push(`${seasonStats.passYds.value} ${seasonStats.passYds.name}`);
+    if (seasonStats.passTDs && seasonStats.passTDs.value > 0) statItems.push(`${seasonStats.passTDs.value} ${seasonStats.passTDs.name}`);
+    if (seasonStats.passInts && seasonStats.passInts.value > 0) statItems.push(`${seasonStats.passInts.value} ${seasonStats.passInts.name}`);
+    if (seasonStats.passSacks && seasonStats.passSacks.value > 0) statItems.push(`${seasonStats.passSacks.value} ${seasonStats.passSacks.name}`);
 
-    if (seasonStats.rushAtt) statItems.push(`${seasonStats.rushAtt.value} ${seasonStats.rushAtt.name}`);
-    if (seasonStats.rushYds) statItems.push(`${seasonStats.rushYds.value} ${seasonStats.rushYds.name}`);
-    if (seasonStats.rushTDs) statItems.push(`${seasonStats.rushTDs.value} ${seasonStats.rushTDs.name}`);
+    if (seasonStats.rushAtt && seasonStats.rushAtt.value > 0) statItems.push(`${seasonStats.rushAtt.value} ${seasonStats.rushAtt.name}`);
+    if (seasonStats.rushYds && seasonStats.rushYds.value > 0) statItems.push(`${seasonStats.rushYds.value} ${seasonStats.rushYds.name}`);
+    if (seasonStats.rushTDs && seasonStats.rushTDs.value > 0) statItems.push(`${seasonStats.rushTDs.value} ${seasonStats.rushTDs.name}`);
     if (seasonStats.rushFum && seasonStats.rushFum.value > 0) statItems.push(`${seasonStats.rushFum.value} ${seasonStats.rushFum.name}`);
 
-    if (seasonStats.recCatches) statItems.push(`${seasonStats.recCatches.value} ${seasonStats.recCatches.name}`);
-    if (seasonStats.recYds) statItems.push(`${seasonStats.recYds.value} ${seasonStats.recYds.name}`);
-    if (seasonStats.recTDs) statItems.push(`${seasonStats.recTDs.value} ${seasonStats.recTDs.name}`);
+    if (seasonStats.recCatches && seasonStats.recCatches.value > 0) statItems.push(`${seasonStats.recCatches.value} ${seasonStats.recCatches.name}`);
+    if (seasonStats.recYds && seasonStats.recYds.value > 0) statItems.push(`${seasonStats.recYds.value} ${seasonStats.recYds.name}`);
+    if (seasonStats.recTDs && seasonStats.recTDs.value > 0) statItems.push(`${seasonStats.recTDs.value} ${seasonStats.recTDs.name}`);
     if (seasonStats.recDrops && seasonStats.recDrops.value > 0) statItems.push(`${seasonStats.recDrops.value} ${seasonStats.recDrops.name}`);
 
     if (seasonStats.defTotalTackles && seasonStats.defTotalTackles.value > 0) statItems.push(`${seasonStats.defTotalTackles.value} ${seasonStats.defTotalTackles.name}`);
@@ -1507,20 +1513,20 @@ function aggregateSeason(stats: PlayerStats): SeasonAggregation {
   return seasonAggregation;
 }
 
-function formatSeasonStats(player: Player, stats: PlayerStats, teams: TeamList, logos: LeagueLogos) {
+function formatSeasonStats(player: Player, stats: PlayerStats, teams: TeamList, logos: LeagueLogos, configuration: PlayerConfiguration) {
   const teamAbbr = getTeamAbbr(player.teamId, teams)
   const agg = aggregateSeason(stats)
   const formattedAgg = formatSeasonAggregation(agg)
 
   return `
   # ${getTeamEmoji(teamAbbr, logos)} ${player.position} ${player.firstName} ${player.lastName}
-## ${getDevTraitName(player.devTrait, player.yearsPro)} **${player.playerBestOvr} OVR**
+  ## ${getDevTraitName(player.devTrait, player.yearsPro, configuration.useHiddenDevs)} **${player.playerBestOvr} OVR**
 ## Stats
 ${formattedAgg}
 `
 }
 
-function formatPlayerList(players: Player[], teams: TeamList, logos: LeagueLogos) {
+function formatPlayerList(players: Player[], teams: TeamList, logos: LeagueLogos, configuration: PlayerConfiguration) {
   let message = "# Player Results:\n";
 
   for (const player of players) {
@@ -1531,7 +1537,7 @@ function formatPlayerList(players: Player[], teams: TeamList, logos: LeagueLogos
     const heightFormatted = `${heightFeet}'${heightInches}"`;
     const teamEmoji = getTeamEmoji(teamName, logos) === SnallabotTeamEmojis.NFL ? `**${teamName.toUpperCase()}**` : getTeamEmoji(teamName, logos)
     const experience = getSeasonFormatting(player.yearsPro)
-    const devTraitEmoji = getDevTraitName(player.devTrait, player.yearsPro)
+    const devTraitEmoji = getDevTraitName(player.devTrait, player.yearsPro, configuration.useHiddenDevs)
     message += `## ${teamEmoji} ${player.position} ${fullName} - ${player.playerBestOvr} OVR\n`;
     message += `${devTraitEmoji} | ${player.age} yrs | ${experience} | ${heightFormatted} | ${player.weight} lbs\n\n`;
   }
@@ -1770,6 +1776,14 @@ export default {
       }
       retirePlayers(leagueId, token, client)
       return deferMessage()
+    } else if (subCommand === "configure") {
+      const subCommandOptions = playerCommand.options
+      if (!subCommandOptions) {
+        throw new Error("missing player configure options!")
+      }
+      const hiddenDevs = (subCommandOptions[0] as APIApplicationCommandInteractionDataBooleanOption).value
+      await LeagueSettingsDB.configurePlayer(guild_id, { useHiddenDevs: hiddenDevs })
+      return createMessageResponse(`Player Configuration:\n  - Hidden Devs: ${hiddenDevs ? "on" : "off"}`)
     }
 
     else {
@@ -1817,7 +1831,21 @@ export default {
           name: "retire",
           description: "Finds and retires all players who are no longer in the league",
           options: [],
-        }
+        },
+        {
+          type: ApplicationCommandOptionType.Subcommand,
+          name: "configure",
+          description: "configures settings for players",
+          options: [
+            {
+              type: ApplicationCommandOptionType.Boolean,
+              name: "hidden_devs",
+              description:
+                "Turn on/off rookie hidden devs",
+              required: true
+            },
+          ],
+        },
       ],
       type: 1,
     }

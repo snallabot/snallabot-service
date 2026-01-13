@@ -473,6 +473,54 @@ class CacheableTeamView extends CachedUpdatingView<TeamIndex> {
 export const teamView = new CacheableTeamView
 teamView.listen(MaddenEvents.MADDEN_TEAM)
 
+type SeasonIndex = {
+  currentSeasonIndex: number
+}
+
+class SeasonView extends View<SeasonIndex> {
+  constructor() {
+    super("season_view")
+  }
+  async createView(key: string) {
+    const scheduleCollection = db.collection("madden_data26")
+      .doc(key)
+      .collection(MaddenEvents.MADDEN_SCHEDULE);
+    const teamList = await MaddenDB.getLatestTeams(key)
+
+    // Query for unplayed games only
+    const allGames = await scheduleCollection
+      .where("stageIndex", "==", 1)
+      .get()
+
+    const games = deduplicateSchedule(allGames.docs.map(d => convertDate(d.data()) as StoredEvent<MaddenGame>), teamList)
+    if (games.length === 0) {
+      return {
+        currentSeasonIndex: 0
+      }
+    }
+    const maxSeason = Math.max(...games.map(game => game.seasonIndex));
+    return {
+      currentSeasonIndex: maxSeason
+    }
+  }
+}
+
+class CacheableSeasonView extends CachedUpdatingView<SeasonIndex> {
+  constructor() {
+    super(new SeasonView)
+  }
+  update(event: { [key: string]: any[] }, currentView: SeasonIndex): SeasonIndex {
+    if (event[MaddenEvents.MADDEN_SCHEDULE]) {
+      const updatedGames = event[MaddenEvents.MADDEN_SCHEDULE] as SnallabotEvent<MaddenGame>[]
+      currentView.currentSeasonIndex = Math.max(currentView.currentSeasonIndex, Math.max(...updatedGames.map(g => g.seasonIndex)))
+    }
+    return currentView
+  }
+}
+
+const seasonView = new CacheableSeasonView
+seasonView.listen(MaddenEvents.MADDEN_SCHEDULE)
+
 const MaddenDB: MaddenDB = {
   async appendEvents<Event>(events: SnallabotEvent<Event>[], idFn: (event: Event) => string) {
 
@@ -539,8 +587,11 @@ const MaddenDB: MaddenDB = {
     throw new Error(`No teams were found`)
   },
   getLatestWeekSchedule: async function(leagueId: string, week: number) {
+    const seasonIndex = await seasonView.createView(leagueId)
+    const maxSeason = seasonIndex ? seasonIndex.currentSeasonIndex : 0
     const [weekDocs, teamList] = await Promise.all([db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_SCHEDULE).where("weekIndex", "==", week - 1)
-      .where("stageIndex", "==", 1).orderBy("seasonIndex", "desc").get(), this.getLatestTeams(leagueId)])
+      .where("seasonIndex", "==", maxSeason)
+      .where("stageIndex", "==", 1).get(), this.getLatestTeams(leagueId)])
     const maddenSchedule = weekDocs.docs.map(d => convertDate(d.data()) as StoredEvent<MaddenGame>)
       .filter(game => game.awayTeamId != 0 && game.homeTeamId != 0)
     if (maddenSchedule.length === 0) {
@@ -555,9 +606,12 @@ const MaddenDB: MaddenDB = {
     throw new Error("Missing schedule for week " + week)
   },
   getLatestSchedule: async function(leagueId: string) {
+    const seasonIndex = await seasonView.createView(leagueId)
+    const maxSeason = seasonIndex ? seasonIndex.currentSeasonIndex : 0
     const scheduleCollection = db.collection("madden_data26")
       .doc(leagueId)
-      .collection(MaddenEvents.MADDEN_SCHEDULE);
+      .collection(MaddenEvents.MADDEN_SCHEDULE)
+      .where("seasonIndex", "==", maxSeason)
     const teamList = await this.getLatestTeams(leagueId)
 
     // Query for unplayed games only
@@ -570,20 +624,16 @@ const MaddenDB: MaddenDB = {
 
     if (unplayedGames.length === 0) {
       // All games have been played - get games from the latest week of the latest season
-      const maxSeason = Math.max(...games.map(game => game.seasonIndex));
-      const gamesInLatestSeason = games.filter(game => game.seasonIndex === maxSeason);
-      const maxWeek = Math.max(...gamesInLatestSeason.map(game => game.weekIndex));
+      const maxWeek = Math.max(...games.map(game => game.weekIndex));
       return deduplicateSchedule(games.filter(game => game.seasonIndex === maxSeason && game.weekIndex === maxWeek), teamList)
     }
 
     // Find the latest season and week with unplayed games
-    const currentSeason = Math.max(...unplayedGames.map(game => game.seasonIndex));
-    const gamesInCurrentSeason = unplayedGames.filter(game => game.seasonIndex === currentSeason);
-    const currentWeek = Math.min(...gamesInCurrentSeason.map(game => game.weekIndex));
+    const currentWeek = Math.min(...unplayedGames.map(game => game.weekIndex));
 
     // Return all games from the current season and week
     const currentWeekGames = await scheduleCollection
-      .where("seasonIndex", "==", currentSeason)
+      .where("seasonIndex", "==", maxSeason)
       .where("weekIndex", "==", currentWeek)
       .where("stageIndex", "==", 1)
       .get();
@@ -591,12 +641,12 @@ const MaddenDB: MaddenDB = {
     return deduplicateSchedule(currentWeekGames.docs.map(doc => doc.data() as StoredEvent<MaddenGame>), teamList)
   },
   getPlayoffSchedule: async function(leagueId: string) {
-    const weeks = await this.getAllWeeks(leagueId)
-    const currentSeason = weeks.length === 0 ? 0 : Math.max(...weeks.map(ws => ws.seasonIndex))
+    const seasonIndex = await seasonView.createView(leagueId)
+    const maxSeason = seasonIndex ? seasonIndex.currentSeasonIndex : 0
     const scheduleRef = db.collection("madden_data26")
       .doc(leagueId)
       .collection(MaddenEvents.MADDEN_SCHEDULE)
-      .where("seasonIndex", "==", currentSeason)
+      .where("seasonIndex", "==", maxSeason)
     const playoffGames = await Promise.all([scheduleRef
       .where("weekIndex", "==", 18)
       .get(), scheduleRef
