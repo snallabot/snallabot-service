@@ -588,8 +588,9 @@ const MaddenDB: MaddenDB = {
   },
   getLatestWeekSchedule: async function(leagueId: string, week: number) {
     const seasonIndex = await seasonView.createView(leagueId)
+    const maxSeason = seasonIndex ? seasonIndex.currentSeasonIndex : 0
     const [weekDocs, teamList] = await Promise.all([db.collection("madden_data26").doc(leagueId).collection(MaddenEvents.MADDEN_SCHEDULE).where("weekIndex", "==", week - 1)
-      .where("seasonIndex", "==", seasonIndex?.currentSeasonIndex)
+      .where("seasonIndex", "==", maxSeason)
       .where("stageIndex", "==", 1).get(), this.getLatestTeams(leagueId)])
     const maddenSchedule = weekDocs.docs.map(d => convertDate(d.data()) as StoredEvent<MaddenGame>)
       .filter(game => game.awayTeamId != 0 && game.homeTeamId != 0)
@@ -628,7 +629,7 @@ const MaddenDB: MaddenDB = {
     }
 
     // Find the latest season and week with unplayed games
-    const currentWeek = Math.min(...games.map(game => game.weekIndex));
+    const currentWeek = Math.min(...unplayedGames.map(game => game.weekIndex));
 
     // Return all games from the current season and week
     const currentWeekGames = await scheduleCollection
