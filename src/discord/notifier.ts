@@ -166,8 +166,20 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
 
           }
         } else if (currentState.state !== GameChannelState.FORCE_WIN_REQUESTED) {
+          let simMessage = "Sim"
+          try {
+            const result = decideResult(homeUsers, awayUsers)
+            if (result === SimResult.FAIR_SIM) {
+              simMessage = "Fair Sim"
+            } else if (result === SimResult.FORCE_WIN_AWAY) {
+              simMessage = "Force Win Away"
+            } else if (result === SimResult.FORCE_WIN_HOME) {
+              simMessage = "Force Win Home"
+            }
+          } catch (e) {
+          }
           const adminRole = settings.commands.game_channel?.admin.id || ""
-          const message = `Sim requested <@&${adminRole}> by ${joinUsers(fwUsers)}`
+          const message = `${simMessage} requested <@&${adminRole}> by ${joinUsers(fwUsers)}`
           await LeagueSettingsDB.updateGameChannelState(guildId, week, season, channelId, GameChannelState.FORCE_WIN_REQUESTED)
           try {
             await client.createMessage(channelId, message, ["roles"])

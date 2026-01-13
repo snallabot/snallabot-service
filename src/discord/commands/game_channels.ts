@@ -24,7 +24,7 @@ async function createGameChannels(client: DiscordClient, token: string, guild_id
     const leagueId = (settings.commands.madden_league as Required<MaddenLeagueConfiguration>).league_id
     await client.editOriginalInteraction(token, {
       content: `Creating Game Channels:
-- ${SnallabotCommandReactions.LOADING} Adding Export to Queue (DO NOT KEEP EXPORTING)
+- ${SnallabotCommandReactions.LOADING} Exporting
 - ${SnallabotCommandReactions.WAITING} Creating Channels
 - ${SnallabotCommandReactions.WAITING} Creating Notification Messages
 - ${SnallabotCommandReactions.WAITING} Setting up notifier
@@ -32,12 +32,22 @@ async function createGameChannels(client: DiscordClient, token: string, guild_id
 - ${SnallabotCommandReactions.WAITING} Logging`
     })
     let exportEmoji = SnallabotCommandReactions.FINISHED
-    const exporter = exporterForLeague(Number(leagueId), ExportContext.AUTO)
-    const { waitUntilDone } = exporter.exportSurroundingWeek()
-    waitUntilDone.catch(_ => { })
+    let errorMessage = ""
+    try {
+      const exporter = exporterForLeague(Number(leagueId), ExportContext.AUTO)
+      const { waitUntilDone } = exporter.exportSurroundingWeek()
+      await waitUntilDone.catch(e => { throw e })
+    } catch (e) {
+      exportEmoji = SnallabotCommandReactions.ERROR
+      if (e instanceof EAAccountError) {
+        errorMessage = `Export Failed with: EA Error ${e.message} Guidance: ${e.troubleshoot}`
+      } else {
+        errorMessage = `Export Failed with: ${e}`
+      }
+    }
     await client.editOriginalInteraction(token, {
       content: `Creating Game Channels:
-- ${exportEmoji} Export Added to Queue (DO NOT KEEP EXPORTING)
+- ${exportEmoji} Exporting 
 - ${SnallabotCommandReactions.LOADING} Creating Channels
 - ${SnallabotCommandReactions.WAITING} Creating Notification Messages
 - ${SnallabotCommandReactions.WAITING} Setting up notifier
@@ -50,8 +60,8 @@ async function createGameChannels(client: DiscordClient, token: string, guild_id
     } catch (e) {
       await client.editOriginalInteraction(token, {
         content: `Creating Game Channels (WAIT UNTIL DONE):
-- ${exportEmoji} Export Added to Queue (DO NOT KEEP EXPORTING)
-- ${SnallabotCommandReactions.LOADING} Creating Channels, automatically retrieving the week for you! PLEASE WAIT, THIS CAN TAKE TIME...
+- ${exportEmoji} Exporting
+- ${SnallabotCommandReactions.LOADING} Creating Channels, automatically retrieving the week for you! 
 - ${SnallabotCommandReactions.WAITING} Creating Notification Messages
 - ${SnallabotCommandReactions.WAITING} Setting up notifier
 - ${SnallabotCommandReactions.WAITING} Creating Scoreboard
@@ -87,7 +97,7 @@ async function createGameChannels(client: DiscordClient, token: string, guild_id
     channelsToCleanup = gameChannels.map(c => c.channel)
     await client.editOriginalInteraction(token, {
       content: `Creating Game Channels:
-- ${exportEmoji} Export Added to Queue (DO NOT KEEP EXPORTING)
+- ${exportEmoji} Exporting
 - ${SnallabotCommandReactions.FINISHED} Creating Channels
 - ${SnallabotCommandReactions.LOADING} Creating Notification Messages
 - ${SnallabotCommandReactions.WAITING} Setting up notifier
@@ -114,7 +124,7 @@ async function createGameChannels(client: DiscordClient, token: string, guild_id
     }))
     await client.editOriginalInteraction(token, {
       content: `Creating Game Channels:
-- ${exportEmoji} Export Added to Queue (DO NOT KEEP EXPORTING)
+- ${exportEmoji} Exporting
 - ${SnallabotCommandReactions.FINISHED} Creating Channels
 - ${SnallabotCommandReactions.FINISHED} Creating Notification Messages
 - ${SnallabotCommandReactions.LOADING} Setting up notifier
@@ -136,7 +146,7 @@ async function createGameChannels(client: DiscordClient, token: string, guild_id
     finalGameChannels.forEach(g => channelsMap[g.channel.id] = g)
     await client.editOriginalInteraction(token, {
       content: `Creating Game Channels:
-- ${exportEmoji} Export Added to Queue (DO NOT KEEP EXPORTING)
+- ${exportEmoji} Exporting
 - ${SnallabotCommandReactions.FINISHED} Creating Channels
 - ${SnallabotCommandReactions.FINISHED} Creating Notification Messages
 - ${SnallabotCommandReactions.FINISHED} Setting up notifier
@@ -151,7 +161,7 @@ async function createGameChannels(client: DiscordClient, token: string, guild_id
     const weeklyState: WeekState = { week: week, seasonIndex: season, scoreboard: scoreboardMessageId, channel_states: channelsMap }
     await client.editOriginalInteraction(token, {
       content: `Creating Game Channels:
-- ${exportEmoji} Export Added to Queue (DO NOT KEEP EXPORTING)
+- ${exportEmoji} Exporting
 - ${SnallabotCommandReactions.FINISHED} Creating Channels
 - ${SnallabotCommandReactions.FINISHED} Creating Notification Messages
 - ${SnallabotCommandReactions.FINISHED} Setting up notifier
@@ -164,12 +174,13 @@ async function createGameChannels(client: DiscordClient, token: string, guild_id
     }
     await client.editOriginalInteraction(token, {
       content: `Game Channels Successfully Created :
-- ${exportEmoji} Export Added to Queue (DO NOT KEEP EXPORTING)
+- ${exportEmoji} Export
 - ${SnallabotCommandReactions.FINISHED} Creating Channels
 - ${SnallabotCommandReactions.FINISHED} Creating Notification Messages
 - ${SnallabotCommandReactions.FINISHED} Setting up notifier
 - ${SnallabotCommandReactions.FINISHED} Creating Scoreboard
 - ${SnallabotCommandReactions.FINISHED} Logging
+${errorMessage}
 `
     })
     await LeagueSettingsDB.updateGameWeekState(guild_id, week, season, weeklyState)

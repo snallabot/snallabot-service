@@ -1,19 +1,20 @@
 import { Command, MessageComponentInteraction } from "../commands_handler"
 import { DiscordClient, NoConnectedLeagueError, deferMessage } from "../discord_utils"
 import { APIApplicationCommandInteractionDataStringOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ApplicationCommandType, ButtonStyle, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
-import LeagueSettingsDB from "../settings_db"
+import LeagueSettingsDB, { TeamAssignments } from "../settings_db"
 import MaddenDB from "../../db/madden_db"
 import { Standing, formatRecord } from "../../export/madden_league_types"
 import { discordLeagueView } from "../../db/view"
 
-function formatStandings(standings: Standing[], page: number = 0, itemsPerPage: number = 8) {
+function formatStandings(standings: Standing[], assignments: TeamAssignments, page: number = 0, itemsPerPage: number = 8) {
   const startIndex = page * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const pageStandings = standings.slice(startIndex, endIndex);
-
   const message = pageStandings.map(standing => {
     const record = formatRecord(standing)
-    return `### ${standing.rank}. ${standing.teamName} (${record})\nNet: ${standing.netPts} | Pts For: ${standing.ptsFor} (${standing.ptsForRank}) | Pts Against: ${standing.ptsAgainst} (${standing.ptsAgainstRank}) | TO: ${standing.tODiff}\nOFF: ${standing.offTotalYds} YDS (${standing.offTotalYdsRank}) | DEF: ${standing.defTotalYds} YDS (${standing.defTotalYdsRank})`
+    const discordUser = assignments[`${standing.teamId}`]?.discord_user?.id
+    const discordMsg = discordUser ? ` - <@${discordUser}>` : ""
+    return `### ${standing.rank}. ${standing.teamName}${discordMsg} (${record})\nNet: ${standing.netPts} | Pts For: ${standing.ptsFor} (${standing.ptsForRank}) | Pts Against: ${standing.ptsAgainst} (${standing.ptsAgainstRank}) | TO: ${standing.tODiff}\nOFF: ${standing.offTotalYds} YDS (${standing.offTotalYdsRank}) | DEF: ${standing.defTotalYds} YDS (${standing.defTotalYdsRank})`
   }).join("\n")
 
   return message;
@@ -73,9 +74,10 @@ const filterOptions = [
 ]
 const itemsPerPage = 8;
 export type StandingsPaginated = { f: string, p: number }
-async function handleCommand(client: DiscordClient, token: string, league: string, filter: string = "nfl", page: number = 0) {
+async function handleCommand(client: DiscordClient, token: string, league: string, guild: string, filter: string = "nfl", page: number = 0) {
   try {
-    const standings = await MaddenDB.getLatestStandings(league);
+    const [standings, teams, settings] = await Promise.all([MaddenDB.getLatestStandings(league), MaddenDB.getLatestTeams(league), LeagueSettingsDB.getLeagueSettings(guild)])
+    const assignments = teams.getLatestTeamAssignments(settings.commands.teams?.assignments || {})
     const filteredStandings = getStandingsForFilter(standings, filter);
 
     if (!filteredStandings || filteredStandings.length === 0) {
@@ -84,7 +86,7 @@ async function handleCommand(client: DiscordClient, token: string, league: strin
     const totalPages = Math.ceil(filteredStandings.length / itemsPerPage);
     const currentPage = Math.max(0, Math.min(page, totalPages - 1));
 
-    const message = formatStandings(filteredStandings, currentPage, itemsPerPage);
+    const message = formatStandings(filteredStandings, assignments, currentPage, itemsPerPage)
 
     // Create pagination buttons if needed
     const paginationButtons = [];
@@ -184,7 +186,7 @@ export default {
     }
     const league = leagueSettings.commands.madden_league.league_id
     const scope = (command?.data?.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.value
-    handleCommand(client, token, league, scope)
+    handleCommand(client, token, league, guild_id, scope)
     return deferMessage()
   },
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
@@ -209,7 +211,7 @@ export default {
       const discordLeague = await discordLeagueView.createView(interaction.guild_id)
       const leagueId = discordLeague?.leagueId
       if (leagueId) {
-        handleCommand(client, interaction.token, leagueId, standingsFilter.f, standingsFilter.p)
+        handleCommand(client, interaction.token, leagueId, standingsFilter.f, interaction.guild_id, standingsFilter.p)
       }
     } catch (e) {
       console.error(e)
