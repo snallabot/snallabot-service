@@ -169,7 +169,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
               simMessage = "Force Win Home"
             }
             await client.createMessage(channelId, `${simMessage} confirmed by ${joinUsers(confirmedUsers)}`, ["users"])
-            // wait 10 seconds before deleting
+            // wait before sending
             await new Promise((r) => setTimeout(r, 5000));
             await forceWin(result, requestedUsers, confirmedUsers, currentState, season, week)
             await this.deleteGameChannel(currentState, season, week, requestedUsers.concat(confirmedUsers))
