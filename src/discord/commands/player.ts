@@ -1211,19 +1211,19 @@ function formatSeasonAggregation(agg: SeasonAggregation): string {
     if (seasonStats.passPercent) {
       statItems.push(`${seasonStats.passPercent.top}/${seasonStats.passPercent.bottom}`);
     }
-    if (seasonStats.passYds) statItems.push(`${seasonStats.passYds.value} ${seasonStats.passYds.name}`);
-    if (seasonStats.passTDs) statItems.push(`${seasonStats.passTDs.value} ${seasonStats.passTDs.name}`);
-    if (seasonStats.passInts) statItems.push(`${seasonStats.passInts.value} ${seasonStats.passInts.name}`);
-    if (seasonStats.passSacks) statItems.push(`${seasonStats.passSacks.value} ${seasonStats.passSacks.name}`);
+    if (seasonStats.passYds && seasonStats.passYds.value > 0) statItems.push(`${seasonStats.passYds.value} ${seasonStats.passYds.name}`);
+    if (seasonStats.passTDs && seasonStats.passTDs.value > 0) statItems.push(`${seasonStats.passTDs.value} ${seasonStats.passTDs.name}`);
+    if (seasonStats.passInts && seasonStats.passInts.value > 0) statItems.push(`${seasonStats.passInts.value} ${seasonStats.passInts.name}`);
+    if (seasonStats.passSacks && seasonStats.passSacks.value > 0) statItems.push(`${seasonStats.passSacks.value} ${seasonStats.passSacks.name}`);
 
-    if (seasonStats.rushAtt) statItems.push(`${seasonStats.rushAtt.value} ${seasonStats.rushAtt.name}`);
-    if (seasonStats.rushYds) statItems.push(`${seasonStats.rushYds.value} ${seasonStats.rushYds.name}`);
-    if (seasonStats.rushTDs) statItems.push(`${seasonStats.rushTDs.value} ${seasonStats.rushTDs.name}`);
+    if (seasonStats.rushAtt && seasonStats.rushAtt.value > 0) statItems.push(`${seasonStats.rushAtt.value} ${seasonStats.rushAtt.name}`);
+    if (seasonStats.rushYds && seasonStats.rushYds.value > 0) statItems.push(`${seasonStats.rushYds.value} ${seasonStats.rushYds.name}`);
+    if (seasonStats.rushTDs && seasonStats.rushTDs.value > 0) statItems.push(`${seasonStats.rushTDs.value} ${seasonStats.rushTDs.name}`);
     if (seasonStats.rushFum && seasonStats.rushFum.value > 0) statItems.push(`${seasonStats.rushFum.value} ${seasonStats.rushFum.name}`);
 
-    if (seasonStats.recCatches) statItems.push(`${seasonStats.recCatches.value} ${seasonStats.recCatches.name}`);
-    if (seasonStats.recYds) statItems.push(`${seasonStats.recYds.value} ${seasonStats.recYds.name}`);
-    if (seasonStats.recTDs) statItems.push(`${seasonStats.recTDs.value} ${seasonStats.recTDs.name}`);
+    if (seasonStats.recCatches && seasonStats.recCatches.value > 0) statItems.push(`${seasonStats.recCatches.value} ${seasonStats.recCatches.name}`);
+    if (seasonStats.recYds && seasonStats.recYds.value > 0) statItems.push(`${seasonStats.recYds.value} ${seasonStats.recYds.name}`);
+    if (seasonStats.recTDs && seasonStats.recTDs.value > 0) statItems.push(`${seasonStats.recTDs.value} ${seasonStats.recTDs.name}`);
     if (seasonStats.recDrops && seasonStats.recDrops.value > 0) statItems.push(`${seasonStats.recDrops.value} ${seasonStats.recDrops.name}`);
 
     if (seasonStats.defTotalTackles && seasonStats.defTotalTackles.value > 0) statItems.push(`${seasonStats.defTotalTackles.value} ${seasonStats.defTotalTackles.name}`);
