@@ -29,13 +29,13 @@ export default {
 
     if (statsCommand.name === "weekly") {
       const statType = (statsCommand.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.value ?? MaddenEvents.MADDEN_PASSING_STAT
-      const week = (statsCommand.options?.[1] as APIApplicationCommandInteractionDataIntegerOption)?.value ?? 0
-      const season = (statsCommand.options?.[2] as APIApplicationCommandInteractionDataIntegerOption)?.value ?? 0
+      const week = (statsCommand.options?.[1] as APIApplicationCommandInteractionDataIntegerOption)?.value ?? -1
+      const season = (statsCommand.options?.[2] as APIApplicationCommandInteractionDataIntegerOption)?.value ?? -1
 
       return createMessageResponse(`Weekly stats - Type: ${statType}, Week: ${week}, Season: ${season}`)
     } else if (statsCommand.name === "season") {
       const statType = (statsCommand.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.value ?? MaddenEvents.MADDEN_PASSING_STAT
-      const season = (statsCommand.options?.[1] as APIApplicationCommandInteractionDataIntegerOption)?.value ?? 0
+      const season = (statsCommand.options?.[1] as APIApplicationCommandInteractionDataIntegerOption)?.value ?? -1
 
       return createMessageResponse(`Season stats - Type: ${statType}, Season: ${season}`)
     }
