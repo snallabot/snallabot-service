@@ -19,6 +19,7 @@ import playerHandler from "./commands/player"
 import gameStatsHandler from "./commands/game_stats"
 import bracketHandler from "./commands/bracket"
 import simsHandler from "./commands/sims"
+import statsHandler from "./commands/stats"
 import { APIMessageComponentInteractionData } from "discord-api-types/v9"
 import { discordCommandsCounter } from "../debug/metrics"
 
@@ -55,7 +56,8 @@ const SlashCommands: CommandsHandler = {
   "standings": standingsHandler,
   "player": playerHandler,
   "playoffs": bracketHandler,
-  "sims": simsHandler
+  "sims": simsHandler,
+  "stats": statsHandler
 }
 
 const AutocompleteCommands: AutocompleteHandlers = {
@@ -153,6 +155,7 @@ export async function handleMessageComponent(interaction: MessageComponentIntera
     }
   } else {
     try {
+      // TODO use typeof and fix this, its bad 
       const parsedCustomId = JSON.parse(custom_id)
       if (parsedCustomId.q != null) {
         discordCommandsCounter.inc({ command_name: "PLAYER_LIST", command_type: "MESSAGE_COMPONENT" })
