@@ -10,6 +10,7 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { exportCounter } from "../debug/metrics";
 import fastq, { queueAsPromised } from "fastq"
 import NodeCache from "node-cache";
+import { SnallabotError } from "../errors";
 
 
 export enum LeagueData {
@@ -66,12 +67,11 @@ export class BlazeError extends Error {
   }
 }
 
-export class EAAccountError extends Error {
+export class EAAccountError extends SnallabotError {
   troubleshoot: string
 
   constructor(message: string, troubleshoot: string) {
-    super(message)
-    this.name = "EAAccountError"
+    super(new Error(message), troubleshoot)
     this.troubleshoot = troubleshoot
   }
 }
