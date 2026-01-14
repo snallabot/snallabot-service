@@ -8,13 +8,14 @@ import MaddenDB, { TeamList } from "../db/madden_db"
 import { LeagueLogos } from "../db/view"
 import EventDB from "../db/events_db"
 import { ConfirmedSimV2, SimResult } from "../db/events"
+import { SnallabotError } from "../errors"
 
 export enum CommandMode {
   INSTALL = "INSTALL",
   DELETE = "DELETE"
 }
 
-export type DiscordError = { message: string, code: number, retry_after?: number, errors?: { name: { _errors: { code: string, message: string }[] } } }
+export type DiscordError = { message: string, code: number, retry_after?: number, errors?: { [key: string]: { _errors: { code: string, message: string }[] } } }
 
 // https://discord.com/developers/docs/topics/opcodes-and-status-codes
 export class DiscordRequestError extends Error {
@@ -41,12 +42,11 @@ export class NoConnectedLeagueError extends Error {
 const UNKNOWN_MESSAGE = 10008
 const UNKNOWN_CHANNEL = 10003
 
-export class SnallabotDiscordError extends Error {
+export class SnallabotDiscordError extends SnallabotError {
   guidance: string
   code: number
   constructor(error: DiscordRequestError, guidance: string) {
-    super(error.message)
-    this.name = "SnallabotDiscordError"
+    super(error, guidance)
     this.guidance = guidance
     this.code = error.code
   }
@@ -233,9 +233,9 @@ export function createClient(settings: DiscordSettings): DiscordClient {
             throw new SnallabotDiscordError(e, `Snallabot does not have permission to create a message in <#${channel.id}>`)
           }
           else if (e.code === UNKNOWN_MESSAGE) {
-            throw new SnallabotDiscordError(e, `Snallabot cannot create message, it may have been deleted? Try to re-configure the featuer you just used. Full discord error ${e.message}`)
+            throw new SnallabotDiscordError(e, `Snallabot cannot create message, it may have been deleted? Try to re-configure the featuer you just used`)
           } else if (e.code === UNKNOWN_CHANNEL) {
-            throw new SnallabotDiscordError(e, `Snallabot cannot create message in channel because the channel (<#${channel.id}>) may have been deleted? Try to re-configure the feature you just used. Full discord error: ${e.message}`)
+            throw new SnallabotDiscordError(e, `Snallabot cannot create message in channel because the channel (<#${channel.id}>) may have been deleted? Try to re-configure the feature you just used.`)
           }
         }
         throw e
@@ -255,11 +255,11 @@ export function createClient(settings: DiscordSettings): DiscordClient {
       } catch (e) {
         if (e instanceof DiscordRequestError) {
           if (e.isPermissionError()) {
-            throw new SnallabotDiscordError(e, `Snallabot does not have permissions to edit message in channel <#${channel.id}>. Full discord error: ${e.message}`)
+            throw new SnallabotDiscordError(e, `Snallabot does not have permissions to edit message in channel <#${channel.id}>.`)
           } else if (e.code === UNKNOWN_MESSAGE) {
-            throw new SnallabotDiscordError(e, `Snallabot cannot edit message, it may have been deleted? Full discord error ${e.message}`)
+            throw new SnallabotDiscordError(e, `Snallabot cannot edit message, it may have been deleted?`)
           } else if (e.code === UNKNOWN_CHANNEL) {
-            throw new SnallabotDiscordError(e, `Snallabot cannot edit message in channel because the channel (<#${channel.id}>) may have been deleted? Full discord error: ${e.message}`)
+            throw new SnallabotDiscordError(e, `Snallabot cannot edit message in channel because the channel (<#${channel.id}>) may have been deleted?`)
           }
         }
         throw e
@@ -273,11 +273,11 @@ export function createClient(settings: DiscordSettings): DiscordClient {
       } catch (e) {
         if (e instanceof DiscordRequestError) {
           if (e.isPermissionError()) {
-            throw new SnallabotDiscordError(e, `Snallabot does not have permissions to delete message in channel <#${channel.id}>. Full discord error: ${e.message}`)
+            throw new SnallabotDiscordError(e, `Snallabot does not have permissions to delete message in channel <#${channel.id}>.`)
           } else if (e.code === UNKNOWN_MESSAGE) {
-            throw new SnallabotDiscordError(e, `Snallabot cannot delete message, it may have been deleted? Full discord error ${e.message}`)
+            throw new SnallabotDiscordError(e, `Snallabot cannot delete message, it may have been deleted?`)
           } else if (e.code === UNKNOWN_CHANNEL) {
-            throw new SnallabotDiscordError(e, `Snallabot cannot delete message in channel because the channel (<#${channel.id}>) may have been deleted? Full discord error: ${e.message}`)
+            throw new SnallabotDiscordError(e, `Snallabot cannot delete message in channel because the channel (<#${channel.id}>) may have been deleted?`)
           }
         }
         throw e
@@ -339,9 +339,11 @@ export function createClient(settings: DiscordSettings): DiscordClient {
       } catch (e) {
         if (e instanceof DiscordRequestError) {
           if (e.isPermissionError()) {
-            throw new SnallabotDiscordError(e, `Snallabot does not have permissions to create channel under category <#${category.id}>. Full discord error: ${e.message}`)
+            throw new SnallabotDiscordError(e, `Snallabot does not have permissions to create channel under category <#${category.id}>.`)
           } else if (e.code === UNKNOWN_CHANNEL) {
-            throw new SnallabotDiscordError(e, `Snallabot could not create channel under category (<#${category.id}>) may have been deleted? Full discord error: ${e.message}`)
+            throw new SnallabotDiscordError(e, `Snallabot could not create channel under category (<#${category.id}>) may have been deleted?`)
+          } else if (e.code === 50035 && e.originalError?.errors?.parent_id?._errors?.[0]?.code === "CHANNEL_PARENT_INVALID") {
+            throw new SnallabotDiscordError(e, `Snallabot could not create channel under category (<#${category.id}>) may have been deleted?`)
           }
         }
         throw e
@@ -353,9 +355,9 @@ export function createClient(settings: DiscordSettings): DiscordClient {
       } catch (e) {
         if (e instanceof DiscordRequestError) {
           if (e.isPermissionError()) {
-            throw new SnallabotDiscordError(e, `Snallabot does not have permissions to delete channel <#${channel.id}>. Full discord error: ${e.message}`)
+            throw new SnallabotDiscordError(e, `Snallabot does not have permissions to delete channel <#${channel.id}>.`)
           } else if (e.code === UNKNOWN_CHANNEL) {
-            throw new SnallabotDiscordError(e, `Snallabot could not delete channel <#${channel.id}> may have been deleted? Full discord error: ${e.message}`)
+            throw new SnallabotDiscordError(e, `Snallabot could not delete channel <#${channel.id}> may have been deleted?`)
           }
         }
         throw e
@@ -367,9 +369,9 @@ export function createClient(settings: DiscordSettings): DiscordClient {
       } catch (e) {
         if (e instanceof DiscordRequestError) {
           if (e.isPermissionError()) {
-            throw new SnallabotDiscordError(e, `Snallabot does not have permissions to react to message in  channel <#${channel.id}>. Full discord error: ${e.message}`)
+            throw new SnallabotDiscordError(e, `Snallabot does not have permissions to react to message in  channel <#${channel.id}>.`)
           } else if (e.code === UNKNOWN_CHANNEL || e.code === UNKNOWN_MESSAGE) {
-            throw new SnallabotDiscordError(e, `Snallabot could not react to message in channel <#${channel.id}>. the channel or the message may have been deleted? Full discord error: ${e.message}`)
+            throw new SnallabotDiscordError(e, `Snallabot could not react to message in channel <#${channel.id}>. the channel or the message may have been deleted?`)
           }
         }
         throw e
@@ -386,9 +388,9 @@ export function createClient(settings: DiscordSettings): DiscordClient {
       } catch (e) {
         if (e instanceof DiscordRequestError) {
           if (e.isPermissionError()) {
-            throw new SnallabotDiscordError(e, `Snallabot does not have permissions to see users reacted to message in  channel <#${channel.id}>. Full discord error: ${e.message}`)
+            throw new SnallabotDiscordError(e, `Snallabot does not have permissions to see users reacted to message in  channel <#${channel.id}>.`)
           } else if (e.code === UNKNOWN_CHANNEL || e.code === UNKNOWN_MESSAGE) {
-            throw new SnallabotDiscordError(e, `Snallabot could not have permissions to see users reacted to message in <#${channel.id}>. the channel or the message may have been deleted? Full discord error: ${e.message}`)
+            throw new SnallabotDiscordError(e, `Snallabot could not have permissions to see users reacted to message in <#${channel.id}>. the channel or the message may have been deleted?`)
           }
         }
         throw e
@@ -402,9 +404,9 @@ export function createClient(settings: DiscordSettings): DiscordClient {
       } catch (e) {
         if (e instanceof DiscordRequestError) {
           if (e.isPermissionError()) {
-            throw new SnallabotDiscordError(e, `Snallabot does not have permissions to get messages from  <#${channelId.id}>. Full discord error: ${e.message}`)
+            throw new SnallabotDiscordError(e, `Snallabot does not have permissions to get messages from  <#${channelId.id}>.`)
           } else if (e.code === UNKNOWN_CHANNEL || e.code === UNKNOWN_MESSAGE) {
-            throw new SnallabotDiscordError(e, `Snallabot could not get messages from  <#${channelId.id}>. the channel may have been deleted? Full discord error: ${e.message}`)
+            throw new SnallabotDiscordError(e, `Snallabot could not get messages from  <#${channelId.id}>. the channel may have been deleted?`)
           }
         }
         throw e
@@ -426,9 +428,9 @@ export function createClient(settings: DiscordSettings): DiscordClient {
       } catch (e) {
         if (e instanceof DiscordRequestError) {
           if (e.isPermissionError()) {
-            throw new SnallabotDiscordError(e, `Snallabot does not have permissions to create thread in  <#${channel.id}>. Full discord error: ${e.message}`)
+            throw new SnallabotDiscordError(e, `Snallabot does not have permissions to create thread in  <#${channel.id}>.`)
           } else if (e.code === UNKNOWN_CHANNEL || e.code === UNKNOWN_MESSAGE) {
-            throw new SnallabotDiscordError(e, `Snallabot could not create a thread in  <#${channel.id}>. the channel may have been deleted? Full discord error: ${e.message}`)
+            throw new SnallabotDiscordError(e, `Snallabot could not create a thread in  <#${channel.id}>. the channel may have been deleted?`)
           }
         }
         throw e
@@ -443,7 +445,7 @@ export function createClient(settings: DiscordSettings): DiscordClient {
       } catch (e) {
         if (e instanceof DiscordRequestError) {
           if (e.isPermissionError()) {
-            throw new SnallabotDiscordError(e, `Snallabot does not have permissions to create thread in  <#${channel.id}>. Full discord error: ${e.message}`)
+            throw new SnallabotDiscordError(e, `Snallabot does not have permissions to create thread in  <#${channel.id}>.`)
           } else if (e.code === UNKNOWN_CHANNEL || e.code === UNKNOWN_MESSAGE) {
             return false
           }
@@ -464,7 +466,7 @@ export function createClient(settings: DiscordSettings): DiscordClient {
       } catch (e) {
         if (e instanceof DiscordRequestError) {
           if (e.isPermissionError()) {
-            throw new SnallabotDiscordError(e, `Snallabot does not have permissions to get users so I can check their roles. Full discord error: ${e.message}`)
+            throw new SnallabotDiscordError(e, `Snallabot does not have permissions to get users so I can check their roles.`)
           }
         }
         throw e

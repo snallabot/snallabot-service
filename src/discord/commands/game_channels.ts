@@ -6,7 +6,7 @@ import MaddenClient from "../../db/madden_db"
 import { formatRecord } from "../../export/madden_league_types"
 import createLogger from "../logging"
 import createNotifier from "../notifier"
-import { ExportContext, Stage, exporterForLeague, EAAccountError } from "../../dashboard/ea_client"
+import { ExportContext, Stage, exporterForLeague } from "../../dashboard/ea_client"
 import { leagueLogosView } from "../../db/view"
 
 async function react(client: DiscordClient, channel: ChannelId, message: MessageId, reaction: SnallabotReactions) {
@@ -180,11 +180,7 @@ async function createGameChannels(client: DiscordClient, token: string, guild_id
       }))
     } catch (e) {
     }
-    if (e instanceof SnallabotDiscordError) {
-      await client.editOriginalInteraction(token, { content: `Game Channels Create Failed with Error: ${e} Guidance: ${e.guidance}` })
-    } else {
-      await client.editOriginalInteraction(token, { content: `Game Channels Create Failed with Error: ${e}` })
-    }
+    await client.editOriginalInteraction(token, { content: `Game Channels Create Failed: ${e}` })
   }
 }
 
@@ -229,8 +225,7 @@ async function clearGameChannels(client: DiscordClient, token: string, guild_id:
     }))
     await client.editOriginalInteraction(token, { content: `Game Channels Cleared` })
   } catch (e) {
-    console.error(e)
-    await client.editOriginalInteraction(token, { content: `Game Channels could not be cleared properly . Error: ${e}` })
+    await client.editOriginalInteraction(token, { content: `Game Channels could not be cleared properly: ${e}` })
   }
 }
 
@@ -249,7 +244,7 @@ async function notifyGameChannels(client: DiscordClient, token: string, guild_id
     }))
     await client.editOriginalInteraction(token, { content: `Game Channels Notified` })
   } catch (e) {
-    await client.editOriginalInteraction(token, { content: `Game Channels could not be notified properly Error: ${e}` })
+    await client.editOriginalInteraction(token, { content: `Game Channels could not be notified properly: ${e}` })
   }
 }
 
