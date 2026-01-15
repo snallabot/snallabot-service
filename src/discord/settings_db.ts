@@ -58,7 +58,7 @@ interface LeagueSettingsDB {
   removeLogger(guildId: string): Promise<void>,
   configureBroadcast(guildId: string, broadcastSettings: BroadcastConfiguration): Promise<void>,
   configureGameChannel(guildId: string, gameChannelSettings: GameChannelConfiguration): Promise<void>,
-  deleteGameChannels(guildId: string, week: number, season: number): Promise<void>,
+  deleteGameChannels(guildId: string, entries: [WeekState, GameChannel][]): Promise<void>,
   updateGameWeekState(guildId: string, week: number, season: number, weekState: WeekState): Promise<void>,
   deleteGameChannel(guildId: string, week: number, season: number, channel: ChannelId): Promise<void>,
   updateGameChannelPingTime(guildId: string, week: number, season: number, channel: ChannelId): Promise<void>,
@@ -129,11 +129,13 @@ const LeagueSettingsDB: LeagueSettingsDB = {
     }, { merge: true })
   },
 
-  async deleteGameChannels(guildId: string, week: number, season: number): Promise<void> {
-    const seasonWeekKey = createWeekKey(season, week)
-    await db.collection('league_settings').doc(guildId).update({
-      [`commands.game_channel.weekly_states.${seasonWeekKey}.channel_states`]: FieldValue.delete()
-    })
+  async deleteGameChannels(guildId: string, entries: [WeekState, GameChannel][]): Promise<void> {
+    await db.collection('league_settings').doc(guildId).update(
+      Object.fromEntries(entries.map(e => {
+        const seasonWeekKey = createWeekKey(e[0].seasonIndex, e[0].week)
+        return [`commands.game_channel.weekly_states.${seasonWeekKey}.channel_states.${e[1].channel.id}`, FieldValue.delete()]
+      }))
+    )
   },
 
   async updateGameWeekState(guildId: string, week: number, season: number, weekState: WeekState): Promise<void> {

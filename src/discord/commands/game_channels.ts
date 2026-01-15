@@ -197,17 +197,19 @@ async function clearGameChannels(client: DiscordClient, token: string, guild_id:
     }))
     const channelsToClear = Object.entries(weekStatesWithChannels).flatMap(entry => {
       const weekState = entry[1]
-      return Object.values(weekState?.channel_states || {})
-    }).flatMap(channelStates => {
-      return channelStates.channel ? [channelStates.channel] : []
+      const entries: [WeekState, GameChannel][] = Object.values(weekState?.channel_states || {})
+        .map(c => [weekState, c])
+      return entries
+    }).flatMap(entry => {
+      return entry[1].channel ? [entry] : []
     })
     if (settings.commands.logger?.channel) {
       await client.editOriginalInteraction(token, { content: `Logging Game Channels...` })
       const logger = createLogger(settings.commands.logger)
-      await logger.logChannels(channelsToClear, [author], client)
+      await logger.logChannels(channelsToClear.map(e => e[1].channel), [author], client)
       await logger.logUsedCommand("game_channels clear", author, client)
     } else {
-      await Promise.all(channelsToClear.map(async channel => {
+      await Promise.all(channelsToClear.map(e => e[1].channel).map(async channel => {
         try {
           return await client.deleteChannel(channel)
         } catch (e) {
@@ -220,9 +222,7 @@ async function clearGameChannels(client: DiscordClient, token: string, guild_id:
         }
       }))
     }
-    await Promise.all(Object.values(weekStatesWithChannels).map(async weekState => {
-      await LeagueSettingsDB.deleteGameChannels(guild_id, weekState.week, weekState.seasonIndex)
-    }))
+    await LeagueSettingsDB.deleteGameChannels(guild_id, channelsToClear)
     await client.editOriginalInteraction(token, { content: `Game Channels Cleared` })
   } catch (e) {
     await client.editOriginalInteraction(token, { content: `Game Channels could not be cleared properly: ${e}` })
