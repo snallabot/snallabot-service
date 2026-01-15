@@ -141,7 +141,7 @@ const LeagueSettingsDB: LeagueSettingsDB = {
     await db.collection('league_settings').doc(guildId).set({
       commands: {
         game_channel: {
-          weekly_stats: {
+          weekly_states: {
             [seasonWeekKey]: weekState
           }
         }
