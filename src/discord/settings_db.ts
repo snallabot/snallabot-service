@@ -138,9 +138,9 @@ const LeagueSettingsDB: LeagueSettingsDB = {
 
   async updateGameWeekState(guildId: string, week: number, season: number, weekState: WeekState): Promise<void> {
     const seasonWeekKey = createWeekKey(season, week)
-    await db.collection('league_settings').doc(guildId).update({
+    await db.collection('league_settings').doc(guildId).set({
       [`commands.game_channel.weekly_states.${seasonWeekKey}`]: weekState
-    })
+    }, { merge: true })
   },
 
   async deleteGameChannel(guildId: string, week: number, season: number, channel: ChannelId): Promise<void> {
