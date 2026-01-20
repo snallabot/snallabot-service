@@ -23,17 +23,17 @@ async function checkLeague(leagueId: string) {
   const newHash = hash(leagueHash)
   if (newHash !== changeCache.get(leagueId)) {
     console.log(`Detected change in ${leagueId}`)
-    await fetch(`${DEPLOYMENT_URL}/dashboard/league/${leagueId}/export`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          exportOption: "Current Week"
-        })
-      }
-    )
+    // await fetch(`${DEPLOYMENT_URL}/dashboard/league/${leagueId}/export`,
+    //   {
+    //     method: 'POST',
+    //     headers: {
+    //       'Content-Type': 'application/json'
+    //     },
+    //     body: JSON.stringify({
+    //       exportOption: "Current Week"
+    //     })
+    //   }
+    // )
     changeCache.set(leagueId, newHash)
   }
 }
