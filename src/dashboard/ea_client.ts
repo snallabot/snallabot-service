@@ -639,8 +639,8 @@ async function handleExportTask(task: ExportJobTask): Promise<void> {
   task.status.leagueInfo = TaskStatus.FINISHED
   task.status.weeklyData = weeksToExport.map(w => ({ ...w, status: TaskStatus.NOT_STARTED }))
   if (destinations.some(e => e.weeklyStats)) {
-    // Process weeks in batches of 8 to reduce memory usage on big exports
-    const batchSize = 8;
+    // Process weeks in batches to reduce memory usage on big exports
+    const batchSize = 4;
     for (let i = 0; i < weeksToExport.length; i += batchSize) {
 
       const weeklyData = { weeks: [] } as any
@@ -667,7 +667,7 @@ async function handleExportTask(task: ExportJobTask): Promise<void> {
       })
 
       // Process this batch and wait for completion before moving to next batch
-      await Promise.all(batchDataRequests.map(request => request, 50))
+      await Promise.all(batchDataRequests)
       await exportData(weeklyData as ExportData, contextualExports, `${leagueId}`, client.getSystemConsole())
       task.status.weeklyData.forEach(w => {
         if (weekBatch.some(b => w.weekIndex === b.weekIndex && w.stage === b.stage)) {
@@ -682,7 +682,7 @@ async function handleExportTask(task: ExportJobTask): Promise<void> {
     let teamData: TeamData = { roster: {} }
     const teamList = leagueInfo.teamIdInfoList
     teamRequests.push(client.getFreeAgents(leagueId).then(freeAgents => teamData.roster["freeagents"] = freeAgents))
-
+    const batchSize = 4;
     for (let idx = 0; idx < teamList.length; idx++) {
       const team = teamList[idx];
       teamRequests.push(
@@ -690,7 +690,7 @@ async function handleExportTask(task: ExportJobTask): Promise<void> {
           teamData.roster[`${team.teamId}`] = roster
         )
       )
-      if ((idx + 1) % 8 == 0) {
+      if ((idx + 1) % batchSize == 0) {
         await Promise.all(teamRequests)
         await exportTeamData(teamData, contextualExports, `${leagueId}`, client.getSystemConsole())
         teamRequests = []
