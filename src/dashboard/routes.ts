@@ -34,7 +34,7 @@ async function renderErrorsMiddleware(ctx: ParameterizedContext, next: Next) {
     await next()
   } catch (e) {
     if (e instanceof EAAccountError) {
-      const error = `Error receieved from EA <br> Message: ${e.message} <br> Snallabot Guidance: ${e.troubleshoot}`
+      const error = `Error receieved from EA <br> Snallabot Guidance: ${e.troubleshoot} <br> Message: ${e.error}`
       ctx.body = errorRender({ error: error, canUnlink: false })
     } else if (e instanceof BlazeError) {
       ctx.body = errorRender({ error: `Error from EA: ${JSON.stringify(e.error)}` })
@@ -95,7 +95,7 @@ router.get("/", async (ctx) => {
   })
   if (!response.ok) {
     const errorResponse = await response.text()
-    throw new EAAccountError(`Failed to use login code: ${errorResponse}`, `This may have happened because the EA url used to login has been used already. Each time you copy and paste the URL it is valid only for one use only. Try to go back to the previous page and login again`)
+    throw new EAAccountError(`Failed to use login code: ${errorResponse}`, `This may have happened because the EA url used to login has been used already. Each time you copy and paste the URL it is valid only for one use only. Try to go back to the previous page and login again. This may also mean to use a different browser or incognito window`)
   }
   const { access_token } = (await response.json()) as AccountToken
 
