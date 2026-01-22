@@ -89,7 +89,7 @@ function buildStatusMessage(status: ExportStatus): string {
   // Weekly data status
   if (status.weeklyData.length > 0) {
     const weekSummary = status.weeklyData.map(w =>
-      `${getMessageForStage(w.stage)} ${getMessageForWeek(w.weekIndex + 1)}: ${getStatusEmoji(w.status)}`
+      `${getMessageForWeek(w.weekIndex + 1)}: ${getStatusEmoji(w.status)}`
     ).join("\n")
     parts.push(weekSummary)
   }
@@ -107,7 +107,7 @@ function buildCompletionMessage(status: ExportStatus): string {
 
   if (status.weeklyData.length > 0) {
     const weekSummary = status.weeklyData.map(w =>
-      `${getMessageForStage(w.stage)} ${getMessageForWeek(w.weekIndex + 1)}: ${SnallabotCommandReactions.FINISHED}`
+      `${getMessageForWeek(w.weekIndex + 1)}: ${SnallabotCommandReactions.FINISHED}`
     ).join("\n")
     parts.push(weekSummary)
   }

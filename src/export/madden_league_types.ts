@@ -18,16 +18,6 @@ export function getMessageForWeek(week: number) {
   throw new Error("Unknown week " + week)
 }
 
-export function getMessageForStage(stage: number) {
-  if (stage === 0) {
-    return "Preseason"
-  } else if (stage === 1) {
-    return "Regular Season"
-  } else {
-    throw new Error(`Invalid Stage ${stage}`)
-  }
-}
-
 export function getMessageForWeekShortened(week: number) {
   if (week < 1 || week > 23 || week === 22) {
     throw new Error("Invalid week number. Valid weeks are week 1-18 and for playoffs: Wildcard = 19, Divisional = 20, Conference Championship = 21, Super Bowl = 23")
