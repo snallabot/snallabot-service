@@ -3,7 +3,7 @@ import { DiscordClient, SnallabotCommandReactions, deferMessageInvisible } from 
 import { APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ApplicationCommandType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { ExportContext, exporterForLeague, ExportResult, ExportStatus, getPositionInQueue, getQueueSize, getTask, TaskStatus } from "../../dashboard/ea_client"
 import { discordLeagueView } from "../../db/view"
-import { getMessageForStage, getMessageForWeek } from "../../export/madden_league_types"
+import { getMessageForWeek } from "../../export/madden_league_types"
 
 
 async function handleExport(guildId: string, week: number, token: string, client: DiscordClient) {
@@ -20,48 +20,47 @@ async function handleExport(guildId: string, week: number, token: string, client
     })
     return
   }
+  const exporter = exporterForLeague(Number(league.leagueId), ExportContext.MANUAL)
+  let result: ExportResult
 
-  try {
-    const exporter = exporterForLeague(Number(league.leagueId), ExportContext.MANUAL)
-    let result: ExportResult
+  if (week === 100) {
+    result = exporter.exportCurrentWeek()
+  } else if (week === 101) {
+    result = exporter.exportAllWeeks()
+  } else {
+    result = exporter.exportSpecificWeeks([{ weekIndex: week - 1, stage: 1 }])
+  }
 
-    if (week === 100) {
-      result = exporter.exportCurrentWeek()
-    } else if (week === 101) {
-      result = exporter.exportAllWeeks()
-    } else {
-      result = exporter.exportSpecificWeeks([{ weekIndex: week - 1, stage: 1 }])
-    }
+  const { task, waitUntilDone } = result
 
-    const { task, waitUntilDone } = result
+  // Poll for status updates
+  const pollInterval = setInterval(async () => {
+    try {
+      const currentTask = getTask(task.id)
+      const position = getPositionInQueue(task.id)
 
-    // Poll for status updates
-    const pollInterval = setInterval(async () => {
-      try {
-        const currentTask = getTask(task.id)
-        const position = getPositionInQueue(task.id)
+      let content = ""
 
-        let content = ""
-
-        if (position >= 0) {
-          // Task is still in queue
-          content = `${SnallabotCommandReactions.WAITING} Export queued, No need to keep exporting - Position: ${position + 1} of ${getQueueSize()}`
-        } else {
-          // Task is being processed
-          content = buildStatusMessage(currentTask.status)
-        }
-
-        await client.editOriginalInteraction(token, {
-          content,
-          flags: 64
-        })
-      } catch (e) {
-        // Task might be complete or error occurred
-        clearInterval(pollInterval)
+      if (position >= 0) {
+        // Task is still in queue
+        content = `${SnallabotCommandReactions.WAITING} Export queued, No need to keep exporting - Position: ${position + 1} of ${getQueueSize()}`
+      } else {
+        // Task is being processed
+        content = buildStatusMessage(currentTask.status)
       }
-    }, 10000)
 
-    // Wait for completion
+      await client.editOriginalInteraction(token, {
+        content,
+        flags: 64
+      })
+    } catch (e) {
+      // Task might be complete or error occurred
+      clearInterval(pollInterval)
+    }
+  }, 10000)
+
+  // Wait for completion
+  try {
     await waitUntilDone
     clearInterval(pollInterval)
 
@@ -73,6 +72,7 @@ async function handleExport(guildId: string, week: number, token: string, client
     })
 
   } catch (e) {
+    clearInterval(pollInterval)
     await client.editOriginalInteraction(token, {
       content: `${SnallabotCommandReactions.ERROR} Export failed: ${e}`,
       flags: 64
