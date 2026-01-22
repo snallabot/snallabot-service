@@ -1,15 +1,17 @@
 import { Command } from "../commands_handler"
-import { DiscordClient, deferMessageInvisible } from "../discord_utils"
+import { DiscordClient, SnallabotCommandReactions, deferMessageInvisible } from "../discord_utils"
 import { APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ApplicationCommandType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
-import { ExportContext, exporterForLeague } from "../../dashboard/ea_client"
+import { ExportContext, exporterForLeague, ExportResult, ExportStatus, getPositionInQueue, getQueueSize, getTask, TaskStatus } from "../../dashboard/ea_client"
 import { discordLeagueView } from "../../db/view"
+import { getMessageForWeek } from "../../export/madden_league_types"
 
 
 async function handleExport(guildId: string, week: number, token: string, client: DiscordClient) {
   await client.editOriginalInteraction(token, {
-    content: "exporting now...",
+    content: "Starting export...",
     flags: 64
   })
+
   const league = await discordLeagueView.createView(guildId)
   if (!league) {
     await client.editOriginalInteraction(token, {
@@ -18,30 +20,118 @@ async function handleExport(guildId: string, week: number, token: string, client
     })
     return
   }
-  try {
-    const exporter = exporterForLeague(Number(league.leagueId), ExportContext.MANUAL)
-    if (week === 100) {
-      const { waitUntilDone } = exporter.exportCurrentWeek()
-      await waitUntilDone.catch(e => { throw e })
-    } else if (week === 101) {
-      const { waitUntilDone } = exporter.exportAllWeeks()
-      await waitUntilDone.catch(e => { throw e })
-    } else {
-      const { waitUntilDone } = exporter.exportSpecificWeeks([{ weekIndex: week - 1, stage: 1 }])
-      await waitUntilDone.catch(e => { throw e })
+  const exporter = exporterForLeague(Number(league.leagueId), ExportContext.MANUAL)
+  let result: ExportResult
+
+  if (week === 100) {
+    result = exporter.exportCurrentWeek()
+  } else if (week === 101) {
+    result = exporter.exportAllWeeks()
+  } else {
+    result = exporter.exportSpecificWeeks([{ weekIndex: week - 1, stage: 1 }])
+  }
+
+  const { task, waitUntilDone } = result
+
+  // Poll for status updates
+  const pollInterval = setInterval(async () => {
+    try {
+      const currentTask = getTask(task.id)
+      const position = getPositionInQueue(task.id)
+
+      let content = ""
+
+      if (position >= 0) {
+        // Task is still in queue
+        content = `${SnallabotCommandReactions.WAITING} Export queued, No need to keep exporting - Position: ${position + 1} of ${getQueueSize()}`
+      } else {
+        // Task is being processed
+        content = buildStatusMessage(currentTask.status)
+      }
+
+      await client.editOriginalInteraction(token, {
+        content,
+        flags: 64
+      })
+    } catch (e) {
+      // Task might be complete or error occurred
+      clearInterval(pollInterval)
     }
+  }, 10000)
+
+  // Wait for completion
+  try {
+    await waitUntilDone
+    clearInterval(pollInterval)
+
+    // Show final success state
+    const finalTask = getTask(task.id)
     await client.editOriginalInteraction(token, {
-      content: "finished exporting!",
+      content: buildCompletionMessage(finalTask.status),
       flags: 64
     })
+
   } catch (e) {
+    clearInterval(pollInterval)
     await client.editOriginalInteraction(token, {
-      content: `Export failed :(, error: ${e}`,
+      content: `${SnallabotCommandReactions.ERROR} Export failed: ${e}`,
       flags: 64
     })
   }
 }
 
+function buildStatusMessage(status: ExportStatus): string {
+  const parts: string[] = []
+
+  // League info status
+  parts.push(`League Info: ${getStatusEmoji(status.leagueInfo)}`)
+
+  // Weekly data status
+  if (status.weeklyData.length > 0) {
+    const weekSummary = status.weeklyData.map(w =>
+      `${getMessageForWeek(w.weekIndex + 1)}: ${getStatusEmoji(w.status)}`
+    ).join("\n")
+    parts.push(weekSummary)
+  }
+
+  // Rosters status
+  parts.push(`Rosters: ${getStatusEmoji(status.rosters)}`)
+
+  return parts.join("\n")
+}
+
+function buildCompletionMessage(status: ExportStatus): string {
+  const parts: string[] = []
+
+  parts.push(`League Info: ${SnallabotCommandReactions.FINISHED}`)
+
+  if (status.weeklyData.length > 0) {
+    const weekSummary = status.weeklyData.map(w =>
+      `${getMessageForWeek(w.weekIndex + 1)}: ${SnallabotCommandReactions.FINISHED}`
+    ).join("\n")
+    parts.push(weekSummary)
+  }
+
+  parts.push(`Rosters: ${SnallabotCommandReactions.FINISHED}`)
+  parts.push(`\nExport complete!`)
+
+  return parts.join("\n")
+}
+
+function getStatusEmoji(status: TaskStatus): string {
+  switch (status) {
+    case TaskStatus.NOT_STARTED:
+      return SnallabotCommandReactions.WAITING
+    case TaskStatus.STARTED:
+      return SnallabotCommandReactions.LOADING
+    case TaskStatus.FINISHED:
+      return SnallabotCommandReactions.FINISHED
+    case TaskStatus.ERROR:
+      return SnallabotCommandReactions.ERROR
+    default:
+      return "❓"
+  }
+}
 export default {
   async handleCommand(command: Command, client: DiscordClient) {
     const { guild_id, token } = command
