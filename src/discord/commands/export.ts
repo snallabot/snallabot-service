@@ -3,7 +3,7 @@ import { DiscordClient, SnallabotCommandReactions, deferMessageInvisible } from 
 import { APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ApplicationCommandType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { ExportContext, exporterForLeague, ExportResult, ExportStatus, getPositionInQueue, getQueueSize, getTask, TaskStatus } from "../../dashboard/ea_client"
 import { discordLeagueView } from "../../db/view"
-import { getMessageForWeek } from "../../export/madden_league_types"
+import { getMessageForStage, getMessageForWeek } from "../../export/madden_league_types"
 
 
 async function handleExport(guildId: string, week: number, token: string, client: DiscordClient) {
@@ -89,7 +89,7 @@ function buildStatusMessage(status: ExportStatus): string {
   // Weekly data status
   if (status.weeklyData.length > 0) {
     const weekSummary = status.weeklyData.map(w =>
-      `${getMessageForWeek(w.weekIndex + 1)}: ${getStatusEmoji(w.status)}`
+      `${getMessageForStage(w.stage)} ${getMessageForWeek(w.weekIndex + 1)}: ${getStatusEmoji(w.status)}`
     ).join("\n")
     parts.push(weekSummary)
   }
@@ -107,7 +107,7 @@ function buildCompletionMessage(status: ExportStatus): string {
 
   if (status.weeklyData.length > 0) {
     const weekSummary = status.weeklyData.map(w =>
-      `${getMessageForWeek(w.weekIndex + 1)}: ${SnallabotCommandReactions.FINISHED}`
+      `${getMessageForStage(w.stage)} ${getMessageForWeek(w.weekIndex + 1)}: ${SnallabotCommandReactions.FINISHED}`
     ).join("\n")
     parts.push(weekSummary)
   }
