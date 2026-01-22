@@ -640,7 +640,7 @@ async function handleExportTask(task: ExportJobTask): Promise<void> {
   task.status.weeklyData = weeksToExport.map(w => ({ ...w, status: TaskStatus.NOT_STARTED }))
   if (destinations.some(e => e.weeklyStats)) {
     // Process weeks in batches to reduce memory usage on big exports
-    const batchSize = 4;
+    const batchSize = 2;
     for (let i = 0; i < weeksToExport.length; i += batchSize) {
 
       const weeklyData = { weeks: [] } as any

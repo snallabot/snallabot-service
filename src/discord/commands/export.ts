@@ -113,7 +113,7 @@ function buildCompletionMessage(status: ExportStatus): string {
   }
 
   parts.push(`Rosters: ${SnallabotCommandReactions.FINISHED}`)
-  parts.push(`\n${SnallabotCommandReactions.FINISHED} Export complete!`)
+  parts.push(`\nExport complete!`)
 
   return parts.join("\n")
 }
