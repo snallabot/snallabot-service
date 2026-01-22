@@ -471,7 +471,7 @@ enum ExportType {
 }
 type ExportRequest = { exportType: ExportType, weeks?: { weekIndex: number, stage: number }[] }
 
-enum TaskStatus {
+export enum TaskStatus {
   NOT_STARTED = 0,
   STARTED = 1,
   FINISHED = 2,
@@ -479,9 +479,9 @@ enum TaskStatus {
 }
 // save tasks for 1 hour
 const tasks = new NodeCache({ stdTTL: 3600, useClones: false })
-type ExportStatus = { leagueInfo: TaskStatus, weeklyData: { weekIndex: number, stage: number, status: TaskStatus }[], rosters: TaskStatus }
+export type ExportStatus = { leagueInfo: TaskStatus, weeklyData: { weekIndex: number, stage: number, status: TaskStatus }[], rosters: TaskStatus }
 type ExportJobTask = { id: string, leagueId: number, context: ExportContext, request: ExportRequest, status: ExportStatus }
-type ExportResult = { task: ExportJobTask, waitUntilDone: Promise<void> }
+export type ExportResult = { task: ExportJobTask, waitUntilDone: Promise<void> }
 interface MaddenExporter {
   exportCurrentWeek(): ExportResult,
   exportAllWeeks(): ExportResult,
@@ -737,11 +737,16 @@ export function getTask(taskId: string): ExportJobTask {
   return task
 }
 
+export function getPositionInQueue(taskId: string): number {
+  return exportQueue.getQueue().findIndex(t => t.id === taskId)
+}
+
 export function getQueueSize() {
   return exportQueue.length()
 }
 
 export function exporterForLeague(leagueId: number, context: ExportContext): MaddenExporter {
+
   const taskId = randomUUID()
   const status = { leagueInfo: TaskStatus.NOT_STARTED, weeklyData: [], rosters: TaskStatus.NOT_STARTED }
   return {
