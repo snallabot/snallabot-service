@@ -3,7 +3,7 @@ import Pug from "pug"
 import path from "path"
 import { Next, ParameterizedContext } from "koa"
 import { EA_LOGIN_URL, AUTH_SOURCE, CLIENT_SECRET, REDIRECT_URL, CLIENT_ID, AccountToken, TokenInfo, Entitlements, VALID_ENTITLEMENTS, Persona, MACHINE_KEY, Personas, ENTITLEMENT_TO_VALID_NAMESPACE, NAMESPACES, ENTITLEMENT_TO_SYSTEM, SystemConsole, exportOptions, seasonType, ALL_CONSOLES, ConsoleOverride, CONSOLE_OVERRIDE_TO_ENTITLEMENT, CONSOLE_OVERRIDE_TO_VALID_NAMESPACE } from "./ea_constants"
-import { BlazeError, ExportContext, ExportDestination, unlinkLeague, ephemeralClientFromToken, exporterForLeague, storeToken, storedTokenClient, EAAccountError, getTask } from "./ea_client"
+import { BlazeError, ExportContext, ExportDestination, unlinkLeague, ephemeralClientFromToken, exporterForLeague, storeToken, storedTokenClient, EAAccountError, getTask, getPositionInQueue } from "./ea_client"
 import { removeLeague, setLeague } from "../connections/routes"
 import { discordLeagueView } from "../db/view"
 import LeagueSettingsDB from "../discord/settings_db"
@@ -326,8 +326,11 @@ router.get("/", async (ctx) => {
   .post("/league/exportStatus", async (ctx, next) => {
     const { taskId } = ctx.request.body as { taskId: string }
     const task = getTask(taskId)
+    const position = getPositionInQueue(taskId)
     ctx.status = 200
-    ctx.body = task
+    ctx.body = {
+      task: task, position: position
+    }
   })
   .post("/league/:leagueId/unlink", async (ctx, next) => {
     const { leagueId: rawLeagueId } = ctx.params

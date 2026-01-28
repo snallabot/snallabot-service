@@ -163,11 +163,24 @@ async function pollExportStatus(taskId, feedbackDiv) {
       
       const data = await response.json();
       
+      // Show queue position if in queue
+      let statusHTML = '';
+      if (data.position > 0) {
+        statusHTML = `<div class="alert alert-info" style="max-width: 500px;">
+          <strong>In Queue:</strong> Position ${data.position}
+        </div>`;
+      } else if (data.position === -1) {
+        statusHTML = `<div class="alert alert-primary" style="max-width: 500px;">
+          <strong>⚙Processing...</strong>
+        </div>`;
+      }
+      
       // Render the current status
-      feedbackDiv.innerHTML = renderExportStatus(data.status);
+      statusHTML += renderExportStatus(data.task.status);
+      feedbackDiv.innerHTML = statusHTML;
       
       // Check if export is complete
-      if (isExportComplete(data.status)) {
+      if (isExportComplete(data.task.status)) {
         clearInterval(pollInterval);
         
         // Add completion message

@@ -6,7 +6,7 @@ import MaddenClient from "../../db/madden_db"
 import { formatRecord } from "../../export/madden_league_types"
 import createLogger from "../logging"
 import createNotifier from "../notifier"
-import { ExportContext, Stage, exporterForLeague } from "../../dashboard/ea_client"
+import { ExportContext, Stage, exporterForLeague, getPositionInQueue, getQueueSize } from "../../dashboard/ea_client"
 import { leagueLogosView } from "../../db/view"
 
 async function react(client: DiscordClient, channel: ChannelId, message: MessageId, reaction: SnallabotReactions) {
@@ -59,9 +59,40 @@ async function createGameChannels(client: DiscordClient, token: string, guild_id
       })
       try {
         const exporter = exporterForLeague(Number(leagueId), ExportContext.AUTO)
-        const { waitUntilDone } = exporter.exportSpecificWeeks([{ weekIndex: week - 1, stage: Stage.SEASON }])
-        await waitUntilDone
-          .catch(e => { throw e })
+        const { task: specificTask, waitUntilDone: specificWaitUntilDone } = exporter.exportSpecificWeeks([{ weekIndex: week - 1, stage: Stage.SEASON }])
+
+        // Poll for queue position for specific week export
+        const specificPollInterval = setInterval(async () => {
+          try {
+            const position = getPositionInQueue(specificTask.id)
+            if (position >= 0) {
+              await client.editOriginalInteraction(token, {
+                content: `Creating Game Channels (WAIT UNTIL DONE):
+- ${exportEmoji} Export Added to Queue (DO NOT KEEP EXPORTING)
+- ${SnallabotCommandReactions.WAITING} Retrieving week - Export in Queue - Position: ${position + 1} of ${getQueueSize()}
+- ${SnallabotCommandReactions.WAITING} Creating Notification Messages
+- ${SnallabotCommandReactions.WAITING} Setting up notifier
+- ${SnallabotCommandReactions.WAITING} Creating Scoreboard
+- ${SnallabotCommandReactions.WAITING} Logging`
+              })
+            } else {
+              await client.editOriginalInteraction(token, {
+                content: `Creating Game Channels (WAIT UNTIL DONE):
+- ${exportEmoji} Export Added to Queue (DO NOT KEEP EXPORTING)
+- ${SnallabotCommandReactions.LOADING} Retrieving week - Export Processing
+- ${SnallabotCommandReactions.WAITING} Creating Notification Messages
+- ${SnallabotCommandReactions.WAITING} Setting up notifier
+- ${SnallabotCommandReactions.WAITING} Creating Scoreboard
+- ${SnallabotCommandReactions.WAITING} Logging`
+              })
+            }
+          } catch (e) {
+            clearInterval(specificPollInterval)
+          }
+        }, 5000)
+
+        await specificWaitUntilDone
+        clearInterval(specificPollInterval)
         weekSchedule = (await MaddenClient.getLatestWeekSchedule(leagueId, week)).sort((g, g2) => g.scheduleId - g2.scheduleId)
       } catch (e) {
         await client.editOriginalInteraction(token, { content: `Could not retrieve this weeks schedule ${e}` })

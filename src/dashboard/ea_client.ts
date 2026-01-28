@@ -478,7 +478,7 @@ export enum TaskStatus {
   ERROR = 3
 }
 // save tasks for 1 hour
-const tasks = new NodeCache({ stdTTL: 3600, useClones: false })
+const tasks = new NodeCache({ stdTTL: 7200, useClones: false })
 export type ExportStatus = { leagueInfo: TaskStatus, weeklyData: { weekIndex: number, stage: number, status: TaskStatus }[], rosters: TaskStatus }
 type ExportJobTask = { id: string, leagueId: number, context: ExportContext, request: ExportRequest, status: ExportStatus }
 export type ExportResult = { task: ExportJobTask, waitUntilDone: Promise<void> }
