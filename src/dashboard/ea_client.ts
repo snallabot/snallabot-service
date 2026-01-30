@@ -115,7 +115,7 @@ async function refreshToken(token: TokenInformation): Promise<TokenInformation> 
     });
     const newToken = await res.json() as AccountToken
     if (!res.ok || !newToken.access_token) {
-      throw new EAAccountError(`Error refreshing tokens, response from EA ${JSON.stringify(newToken)}`, "Lost connection to EA. Connect this league again via https://snallabot.me/dashboard")
+      throw new EAAccountError(`Error refreshing tokens, response from EA ${JSON.stringify(newToken)}`, `Lost connection to EA. Connect this league again via ${DEPLOYMENT_URL}/dashboard`)
     }
     const newExpiry = new Date(new Date().getTime() + newToken.expires_in * 1000)
     return { accessToken: newToken.access_token, refreshToken: newToken.refresh_token, expiry: newExpiry, console: token.console, blazeId: `${token.blazeId}` }

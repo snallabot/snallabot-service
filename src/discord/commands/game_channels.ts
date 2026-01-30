@@ -57,44 +57,44 @@ async function createGameChannels(client: DiscordClient, token: string, guild_id
 - ${SnallabotCommandReactions.WAITING} Creating Scoreboard
 - ${SnallabotCommandReactions.WAITING} Logging`
       })
-      try {
-        const exporter = exporterForLeague(Number(leagueId), ExportContext.AUTO)
-        const { task: specificTask, waitUntilDone: specificWaitUntilDone } = exporter.exportSpecificWeeks([{ weekIndex: week - 1, stage: Stage.SEASON }])
+      const exporter = exporterForLeague(Number(leagueId), ExportContext.AUTO)
+      const { task: specificTask, waitUntilDone: specificWaitUntilDone } = exporter.exportSpecificWeeks([{ weekIndex: week - 1, stage: Stage.SEASON }])
 
-        // Poll for queue position for specific week export
-        const specificPollInterval = setInterval(async () => {
-          try {
-            const position = getPositionInQueue(specificTask.id)
-            if (position >= 0) {
-              await client.editOriginalInteraction(token, {
-                content: `Creating Game Channels (WAIT UNTIL DONE):
+      // Poll for queue position for specific week export
+      const specificPollInterval = setInterval(async () => {
+        try {
+          const position = getPositionInQueue(specificTask.id)
+          if (position >= 0) {
+            await client.editOriginalInteraction(token, {
+              content: `Creating Game Channels (WAIT UNTIL DONE):
 - ${exportEmoji} Export Added to Queue (DO NOT KEEP EXPORTING)
 - ${SnallabotCommandReactions.WAITING} Retrieving week - Export in Queue - Position: ${position + 1} of ${getQueueSize()}
 - ${SnallabotCommandReactions.WAITING} Creating Notification Messages
 - ${SnallabotCommandReactions.WAITING} Setting up notifier
 - ${SnallabotCommandReactions.WAITING} Creating Scoreboard
 - ${SnallabotCommandReactions.WAITING} Logging`
-              })
-            } else {
-              await client.editOriginalInteraction(token, {
-                content: `Creating Game Channels (WAIT UNTIL DONE):
+            })
+          } else {
+            await client.editOriginalInteraction(token, {
+              content: `Creating Game Channels (WAIT UNTIL DONE):
 - ${exportEmoji} Export Added to Queue (DO NOT KEEP EXPORTING)
 - ${SnallabotCommandReactions.LOADING} Retrieving week - Export Processing
 - ${SnallabotCommandReactions.WAITING} Creating Notification Messages
 - ${SnallabotCommandReactions.WAITING} Setting up notifier
 - ${SnallabotCommandReactions.WAITING} Creating Scoreboard
 - ${SnallabotCommandReactions.WAITING} Logging`
-              })
-            }
-          } catch (e) {
-            clearInterval(specificPollInterval)
+            })
           }
-        }, 5000)
-
+        } catch (e) {
+          clearInterval(specificPollInterval)
+        }
+      }, 5000)
+      try {
         await specificWaitUntilDone
         clearInterval(specificPollInterval)
         weekSchedule = (await MaddenClient.getLatestWeekSchedule(leagueId, week)).sort((g, g2) => g.scheduleId - g2.scheduleId)
       } catch (e) {
+        clearInterval(specificPollInterval)
         await client.editOriginalInteraction(token, { content: `Could not retrieve this weeks schedule ${e}` })
         return
       }

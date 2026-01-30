@@ -2,9 +2,12 @@ import db from "../db/firebase"
 import NodeCache from "node-cache"
 import { storedTokenClient } from "./ea_client"
 import { DEPLOYMENT_URL } from "../config"
+import { sha1 } from "hash-wasm"
 
+const hash: (a: any) => Promise<string> = (a: any) => {
+  return sha1(JSON.stringify(a))
+}
 const changeCache = new NodeCache()
-const hash: (a: any) => string = require("object-hash")
 
 async function getLatestLeagues(): Promise<string[]> {
   const collection = db.collection("madden_data26").where("blazeId", "!=", null)
@@ -20,7 +23,7 @@ async function checkLeague(leagueId: string) {
     currentWeek: leagueData.careerHubInfo.seasonInfo.seasonWeek,
     currentGamesPlayed: leagueData.gameScheduleHubInfo.leagueSchedule.filter(game => game.seasonGameInfo.isGamePlayed).length,
   }
-  const newHash = hash(leagueHash)
+  const newHash = await hash(leagueHash)
   if (newHash !== changeCache.get(leagueId)) {
     console.log(`Detected change in ${leagueId}`)
     // await fetch(`${DEPLOYMENT_URL}/dashboard/league/${leagueId}/export`,

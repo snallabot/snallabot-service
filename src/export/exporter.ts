@@ -6,6 +6,11 @@ import { ExtraData, Stage } from "../dashboard/ea_client";
 import { DEPLOYMENT_URL } from "../config";
 import FileHandler, { defaultSerializer } from "../file_handlers"
 import { maddenHashEventChanged, maddenHashEventsTotal } from "../debug/metrics";
+import { sha1 } from "hash-wasm"
+
+const hash: (a: any) => Promise<string> = (a: any) => {
+  return sha1(JSON.stringify(a))
+}
 
 export enum ExportResult {
   SUCCESS = 0,
@@ -230,10 +235,10 @@ export const SnallabotExportDestination: MaddenExportDestination = {
   },
   teamRoster: async function(platform: string, leagueId: string, teamId: string, data: RosterExport): Promise<ExportResult> {
     const events = data.rosterInfoList.map(player => ({ key: leagueId, platform: platform, event_type: MaddenEvents.MADDEN_PLAYER, team: teamId, ...player }))
-    await sendEvents(leagueId, `roster${teamId}`, events, e => e.rosterId, e => {
+    await sendEvents(leagueId, `roster${teamId}`, events, e => e.rosterId, async e => {
       // analysis shows that these fields change the most, and arent honestly that useful. this should cut down on the data we write
       const { experiencePoints, legacyScore, confRating, productionGrade, teamSchemeOvr, intangibleGrade, ...rest } = e
-      return hash(rest)
+      return await hash(rest)
     })
     await MaddenDB.updateRosterExportStatus(leagueId, MaddenEvents.MADDEN_PLAYER, teamId)
     return ExportResult.SUCCESS
@@ -251,9 +256,8 @@ export function createDestination(url: string) {
     return MaddenUrlDestination(url)
   }
 }
-const hash: (a: any) => string = require("object-hash")
 const OPTIMIZE_WRITES = process.env.USE_WRITE_HASHES === "true"
-export async function sendEvents<T>(league: string, request_type: string, events: Array<SnallabotEvent<T>>, identifier: (e: T) => number | string, hasher: (a: T) => string = hash): Promise<void> {
+export async function sendEvents<T>(league: string, request_type: string, events: Array<SnallabotEvent<T>>, identifier: (e: T) => number | string, hasher: (a: T) => Promise<string> = hash): Promise<void> {
   if (events.length == 0) {
     return
   }
@@ -264,10 +268,10 @@ export async function sendEvents<T>(league: string, request_type: string, events
     }
     maddenHashEventsTotal.inc({ event_type: eventType }, events.length)
     const oldTree = await MaddenHash.readTree(league, request_type, eventType)
-    const hashToEvent = new Map(events.map(e => [hasher(e), e]))
-    const newNodes = events.sort((e, e2) => `${identifier(e)}`.localeCompare(`${identifier(e2)}`)).map(e => ({ hash: hasher(e), children: [] }))
-
-    const newTree = createTwoLayer(newNodes)
+    const eventHashed: [String, SnallabotEvent<T>][] = await Promise.all(events.map(async e => [await hasher(e), e]))
+    const hashToEvent = new Map(eventHashed)
+    const newNodes = await Promise.all(events.sort((e, e2) => `${identifier(e)}`.localeCompare(`${identifier(e2)}`)).map(async e => ({ hash: await hasher(e), children: [] })))
+    const newTree = await createTwoLayer(newNodes)
     const hashDifferences = findDifferences(newTree, oldTree)
     if (hashDifferences.length > 0) {
       const finalEvents = hashDifferences.map(h => hashToEvent.get(h)).filter(e => e) as SnallabotEvent<T>[]
