@@ -725,7 +725,6 @@ async function addTaskToQueue(task: ExportJobTask) {
     task.status.leagueInfo = task.status.leagueInfo != TaskStatus.FINISHED ? TaskStatus.ERROR : task.status.leagueInfo
     task.status.rosters = task.status.leagueInfo != TaskStatus.FINISHED ? TaskStatus.ERROR : task.status.rosters
     task.status.weeklyData.forEach(w => w.status != TaskStatus.FINISHED ? w.status = TaskStatus.ERROR : w.status)
-    console.error(e)
     return Promise.reject(e)
   })
 }
