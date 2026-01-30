@@ -1,8 +1,11 @@
 import { maddenHashCacheHits, maddenHashCacheTotalRequests } from "../debug/metrics"
 import FileHandler, { defaultSerializer } from "../file_handlers"
 import NodeCache from "node-cache"
+import { sha1 } from "hash-wasm"
 
-const hash: (a: any) => string = require("object-hash")
+const hash: (a: any) => Promise<string> = (a: any) => {
+  return sha1(JSON.stringify(a))
+}
 const treeCache = new NodeCache({ maxKeys: 100000 })
 const CACHE_TTL = 3600 * 48 // 2 days in seconds
 // debug function
@@ -37,8 +40,8 @@ export function findDifferences(incoming: MerkleTree, old: MerkleTree): Array<st
   }
 }
 
-export function createTwoLayer(nodes: Array<Node>): MerkleTree {
-  const topHash = hash(nodes.map(c => c.hash))
+export async function createTwoLayer(nodes: Array<Node>): Promise<MerkleTree> {
+  const topHash = await hash(nodes.map(c => c.hash))
   return { headNode: { hash: topHash, children: nodes } }
 }
 
@@ -71,7 +74,7 @@ const HashStorage: MaddenHashStorage = {
         }
         return tree
       } catch (e) {
-        return { headNode: { children: [], hash: hash("") } }
+        return { headNode: { children: [], hash: "" } }
       }
     }
   },

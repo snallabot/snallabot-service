@@ -141,7 +141,7 @@ async function handleStreamEvent(twitchEvent: StreamUpEvent) {
     const leagueSettings = await LeagueSettingsDB.getLeagueSettings(server)
     const configuration = leagueSettings.commands?.broadcast
     if (!configuration) {
-      console.error(`${server} is not configured for Broadcasts`)
+      await twitchNotifierHandler.removeTwitchChannel(server, broadcasterName)
     } else {
       const titleKeyword = configuration.title_keyword
       if (broadcastTitle.toLowerCase().includes(titleKeyword.toLowerCase())) {

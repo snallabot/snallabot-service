@@ -106,7 +106,6 @@ async function showSchedule(token: string, client: DiscordClient,
       ]
     })
   } catch (e) {
-    console.error(e)
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
@@ -295,7 +294,6 @@ async function showTeamSchedule(token: string, client: DiscordClient,
       ]
     })
   } catch (e) {
-    console.error(e)
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
@@ -471,7 +469,6 @@ export default {
         }
       }
     } catch (e) {
-      console.error(e)
       await client.editOriginalInteraction(interaction.token, {
         flags: 32768,
         components: [

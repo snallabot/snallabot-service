@@ -4,6 +4,7 @@ import LeagueSettingsDB, { LeagueSettings } from "../discord/settings_db"
 import db from "../db/firebase"
 import { createClient } from "../discord/discord_utils"
 import NodeCache from "node-cache"
+import { youtubeNotifierHandler } from "./routes"
 
 const currentlyBroadcasting = new NodeCache()
 
