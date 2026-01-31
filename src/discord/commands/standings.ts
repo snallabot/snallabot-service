@@ -211,7 +211,6 @@ export default {
       const discordLeague = await discordLeagueView.createView(interaction.guild_id)
       const leagueId = discordLeague?.leagueId
       if (leagueId) {
-        console.log(standingsFilter.p)
         handleCommand(client, interaction.token, leagueId, interaction.guild_id, standingsFilter.f, standingsFilter.p)
       }
     } catch (e) {
