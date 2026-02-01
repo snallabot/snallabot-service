@@ -187,7 +187,8 @@ function createTeamList(teams: StoredEvent<Team>[]): TeamList {
     if (!divTeams) {
       return
     }
-    const matchingTeams = Object.values(Object.groupBy(divTeams, t => `${t.cityName}#${t.abbrName}`)).filter((t): t is StoredEvent<Team>[] => !!t)
+//    const matchingTeams = Object.values(Object.groupBy(divTeams, t => `${t.cityName}#${t.abbrName}`)).filter((t): t is StoredEvent<Team>[] => !!t)
+    const matchingTeams = Object.values(Object.groupBy(divTeams, t => t.teamId).filter((t): t is StoredEvent<Team>[] => !!t)
     const unMatched = matchingTeams.filter(t => t && t.length === 1).flat()
     const matched = matchingTeams.filter(t => t && t.length !== 1)
     matched.forEach(matchedTeams => {
