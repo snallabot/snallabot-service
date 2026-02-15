@@ -26,11 +26,10 @@ export default {
     }
     const options = command.data.options
     const statsCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
-
     if (statsCommand.name === "weekly") {
-      const statType = (statsCommand.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.value ?? MaddenEvents.MADDEN_PASSING_STAT
-      const week = (statsCommand.options?.[1] as APIApplicationCommandInteractionDataIntegerOption)?.value ?? -1
-      const season = (statsCommand.options?.[2] as APIApplicationCommandInteractionDataIntegerOption)?.value ?? -1
+      const statType = (statsCommand.options?.find(o => o.name === "stat_type") as APIApplicationCommandInteractionDataStringOption)?.value ?? MaddenEvents.MADDEN_PASSING_STAT
+      const week = (statsCommand.options?.find(o => o.name === "week") as APIApplicationCommandInteractionDataIntegerOption)?.value ?? -1
+      const season = (statsCommand.options?.find(o => o.name === "season") as APIApplicationCommandInteractionDataIntegerOption)?.value ?? -1
 
       return createMessageResponse(`Weekly stats - Type: ${statType}, Week: ${week}, Season: ${season}`)
     } else if (statsCommand.name === "season") {
