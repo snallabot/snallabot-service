@@ -1825,27 +1825,7 @@ export default {
               autocomplete: true
             },
           ],
-        },
-        {
-          type: ApplicationCommandOptionType.Subcommand,
-          name: "retire",
-          description: "Finds and retires all players who are no longer in the league",
-          options: [],
-        },
-        {
-          type: ApplicationCommandOptionType.Subcommand,
-          name: "configure",
-          description: "configures settings for players",
-          options: [
-            {
-              type: ApplicationCommandOptionType.Boolean,
-              name: "hidden_devs",
-              description:
-                "Turn on/off rookie hidden devs",
-              required: true
-            },
-          ],
-        },
+        }
       ],
       type: 1,
     }
