@@ -424,7 +424,7 @@ async function showWeeklyStats(
 
     // Get the actual week/season from stats if not specified
     const actualWeek = week === -1 ? (rawStats[0] ? rawStats[0].weekIndex + 1 : 1) : week
-    const actualSeason = season === -1(rawStats[0] ? rawStats[0].seasonIndex : 0) : season
+    const actualSeason = season === -1 ? (rawStats[0] ? rawStats[0].seasonIndex : 0) : season
 
     let aggregatedStats: any[]
     let formattedStats: string
