@@ -19,6 +19,7 @@ import playerHandler from "./commands/player"
 import gameStatsHandler from "./commands/game_stats"
 import bracketHandler from "./commands/bracket"
 import simsHandler from "./commands/sims"
+import playerConfigurationHandler from "./commands/player_configuration"
 import { APIMessageComponentInteractionData } from "discord-api-types/v9"
 import { discordCommandsCounter } from "../debug/metrics"
 
@@ -54,6 +55,7 @@ const SlashCommands: CommandsHandler = {
   "test": testHandler,
   "standings": standingsHandler,
   "player": playerHandler,
+  "player_configuration": playerConfigurationHandler,
   "playoffs": bracketHandler,
   "sims": simsHandler
 }
