@@ -492,7 +492,7 @@ async function showWeeklyStats(
     // Create pagination buttons
     const backDisabled = page === 0
     const nextDisabled = endIdx >= aggregatedStats.length
-    const currentPagination: WeekStatsPagination = { st: statType, w: actualWeek, s: actualSeason, p: page }
+    const currentPagination: WeekStatsPagination = { st: "p" as PlayerStatEvents, w: actualWeek, s: actualSeason, p: page }
 
     // Create stat type selector
     const statTypeOptions = statEventTypes.map(type => ({
