@@ -4,6 +4,8 @@ import LeagueSettingsDB from "../discord/settings_db"
 import { DiscordLeagueConnectionEvent, TeamLogoCustomizedEvent } from "./events"
 import FileHandler, { defaultSerializer } from "../file_handlers"
 import { viewCacheHits, viewCacheTotalRequests } from "../debug/metrics"
+import fastq from 'fastq'
+import type { queueAsPromised } from 'fastq'
 
 const TTL = 259200 // 72 hours in seconds
 
@@ -61,12 +63,39 @@ export abstract class CachedUpdatingView<T> extends View<T> {
   }
 }
 
+type UpdateTask = {
+  key: string
+  event_type: string
+  events: any[]
+}
+
+
 export abstract class StorageBackedCachedView<T> extends View<T> {
   view: View<T>
+  private updateQueues: Map<string, queueAsPromised<UpdateTask>>
 
   constructor(view: View<T>) {
     super(view.id)
     this.view = view
+    this.updateQueues = new Map()
+  }
+
+  private getQueue(key: string): queueAsPromised<UpdateTask> {
+    if (!this.updateQueues.has(key)) {
+      const queue = fastq.promise(this, this.processUpdate, 1)
+      this.updateQueues.set(key, queue)
+    }
+    return this.updateQueues.get(key)!
+  }
+
+  private async processUpdate(task: UpdateTask): Promise<void> {
+    const { key, event_type, events } = task
+    const currentView = await this.createView(key)
+    if (currentView) {
+      const newView = this.update({ [event_type]: events }, currentView)
+      viewCache.set(this.createCacheKey(key), newView, TTL)
+      await FileHandler.writeFile<T>(newView, this.createStorageDirectory(key), defaultSerializer<T>())
+    }
   }
 
   createCacheKey(key: string) {
@@ -110,12 +139,14 @@ export abstract class StorageBackedCachedView<T> extends View<T> {
     event_types.forEach(event_type => {
       EventDB.on(event_type, async events => {
         const key = events.map(e => e.key)[0]
-        const currentView = await this.createView(key)
-        if (currentView) {
-          const newView = this.update({ [event_type]: events }, currentView)
-          viewCache.set(this.createCacheKey(key), newView, TTL)
-          await FileHandler.writeFile<T>(newView, this.createStorageDirectory(key), defaultSerializer<T>())
-        }
+        const queue = this.getQueue(key)
+
+        // Push task to queue - it will be processed sequentially
+        await queue.push({
+          key,
+          event_type,
+          events
+        })
       })
     })
   }
@@ -127,10 +158,12 @@ class DiscordLeagueConnection extends View<DiscordLeagueConnectionEvent> {
     super("discord_league_connection")
   }
   async createView(key: string) {
-    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(key)
-    const leagueId = leagueSettings?.commands?.madden_league?.league_id
-    if (leagueId) {
-      return { guildId: key, leagueId: leagueId }
+    if (key) {
+      const leagueSettings = await LeagueSettingsDB.getLeagueSettings(key)
+      const leagueId = leagueSettings?.commands?.madden_league?.league_id
+      if (leagueId) {
+        return { guildId: key, leagueId: leagueId }
+      }
     }
   }
 }
