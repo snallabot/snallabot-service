@@ -793,14 +793,14 @@ export default {
 
     if (statsCommand.name === "weekly") {
       const statType = (statsCommand.options?.find(o => o.name === "stat_type") as APIApplicationCommandInteractionDataStringOption)?.value as PlayerStatEvents ?? MaddenEvents.MADDEN_PASSING_STAT
-      const week = (statsCommand.options?.find(o => o.name === "week") as APIApplicationCommandInteractionDataIntegerOption)?.value
-      const season = (statsCommand.options?.find(o => o.name === "season") as APIApplicationCommandInteractionDataIntegerOption)?.value
+      const week = (statsCommand.options?.find(o => o.name === "week") as APIApplicationCommandInteractionDataIntegerOption)?.value ?? -1
+      const season = (statsCommand.options?.find(o => o.name === "season") as APIApplicationCommandInteractionDataIntegerOption)?.value ?? -1
 
       showWeeklyStats(token, client, leagueId, statType, Number(week), Number(season))
       return deferMessage()
     } else if (statsCommand.name === "season") {
       const statType = (statsCommand.options?.find(o => o.name === "stat_type") as APIApplicationCommandInteractionDataStringOption)?.value as PlayerStatEvents ?? MaddenEvents.MADDEN_PASSING_STAT
-      const season = (statsCommand.options?.find(o => o.name === "season") as APIApplicationCommandInteractionDataIntegerOption)?.value
+      const season = (statsCommand.options?.find(o => o.name === "season") as APIApplicationCommandInteractionDataIntegerOption)?.value ?? -1
 
       showSeasonStats(token, client, leagueId, statType, Number(season))
       return deferMessage()
