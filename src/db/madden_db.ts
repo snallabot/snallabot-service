@@ -524,7 +524,7 @@ seasonView.listen(MaddenEvents.MADDEN_SCHEDULE)
 const MaddenDB: MaddenDB = {
   async appendEvents<Event>(events: SnallabotEvent<Event>[], idFn: (event: Event) => string) {
 
-    const BATCH_SIZE = 500;
+    const BATCH_SIZE = 250;
     const timestamp = new Date();
     const totalBatches = Math.ceil(events.length / BATCH_SIZE);
     for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
