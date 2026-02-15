@@ -410,8 +410,8 @@ async function showWeeklyStats(
   client: DiscordClient,
   leagueId: string,
   statType: PlayerStatEvents,
-  week?: number,
-  season?: number,
+  week: number = -1,
+  season: number = -1,
   page: number = 0
 ) {
   try {
