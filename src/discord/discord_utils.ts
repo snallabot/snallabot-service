@@ -438,6 +438,9 @@ export function createClient(settings: DiscordSettings): DiscordClient {
 
     },
     checkMessageExists: async function(channel: ChannelId, message: MessageId) {
+      if (!(channel?.id && message?.id)) {
+        return false
+      }
       try {
         await sendDiscordRequest(`channels/${channel.id}/messages/${message.id}`, {
           method: "GET",

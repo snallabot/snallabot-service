@@ -1,5 +1,5 @@
 import EventDB, { EventDelivery, SnallabotEvent } from "../db/events_db"
-import { DiscordClient, formatTeamMessageName, SnallabotDiscordError, SnallabotReactions } from "./discord_utils"
+import { DiscordClient, formatTeamMessageName, NoConnectedLeagueError, SnallabotDiscordError, SnallabotReactions } from "./discord_utils"
 import LeagueSettingsDB, { ChannelId, GameChannel, GameChannelState, LeagueSettings, MessageId, TeamAssignments, UserId } from "./settings_db"
 import createLogger from "./logging"
 import MaddenDB from "../db/madden_db"
@@ -34,7 +34,7 @@ function joinUsers(users: UserId[]) {
 
 function createNotifier(client: DiscordClient, guildId: string, settings: LeagueSettings): SnallabotNotifier {
   if (!settings.commands.madden_league?.league_id) {
-    throw new Error("somehow channels being pinged without a league id")
+    throw new NoConnectedLeagueError(guildId)
   }
   const leagueId = settings.commands.madden_league.league_id
   async function getReactedUsers(channelId: ChannelId, messageId: MessageId, reaction: SnallabotReactions): Promise<UserId[]> {
