@@ -322,36 +322,38 @@ router.get("/", async (ctx) => {
   ctx.body = {
     taskId: task.id
   }
-})
-  .post("/league/exportStatus", async (ctx, next) => {
-    const { taskId } = ctx.request.body as { taskId: string }
-    const task = getTask(taskId)
-    const position = getPositionInQueue(taskId)
-    ctx.status = 200
-    ctx.body = {
-      task: task, position: position
-    }
-  })
-  .post("/league/:leagueId/unlink", async (ctx, next) => {
-    const { leagueId: rawLeagueId } = ctx.params
-    const leagueId = Number(rawLeagueId)
+}).post("/league/exportStatus", async (ctx, next) => {
+  const { taskId } = ctx.request.body as { taskId: string }
+  const task = getTask(taskId)
+  const position = getPositionInQueue(taskId)
+  ctx.status = 200
+  ctx.body = {
+    task: task, position: position
+  }
+}).post("/league/:leagueId/unlink", async (ctx, next) => {
+  const { leagueId: rawLeagueId } = ctx.params
+  const leagueId = Number(rawLeagueId)
+  // ignore any errors that happen when deleting the league
+  try {
     await unlinkLeague(leagueId)
-    const leagueSettings = await LeagueSettingsDB.getLeagueSettingsForLeagueId(rawLeagueId)
-    await Promise.all(leagueSettings.map(async d => {
-      await removeLeague(d.guildId)
-    }))
-    ctx.status = 200
-  }).get("/guilds", async (ctx, next) => {
-    const { code, state } = ctx.query
-    if (!code || !state) {
-      throw new Error("Invalid discord oauth, if errors seek support")
-    }
-    const token = await client.retrieveAccessToken(code as string, DISCORD_REDIRECT_URL)
-    ctx.redirect(`/dashboard/league/${state}?discord_token=${token}`)
-  }).post("/connectDiscord", async (ctx, next) => {
-    const connectRequest = ctx.request.body as ConnnectDiscord
-    await setLeague(connectRequest.guildId, `${connectRequest.leagueId}`)
-    ctx.redirect(`/dashboard/league/${connectRequest.leagueId}`)
-  })
+  } catch (e) {
+  }
+  const leagueSettings = await LeagueSettingsDB.getLeagueSettingsForLeagueId(rawLeagueId)
+  await Promise.all(leagueSettings.map(async d => {
+    await removeLeague(d.guildId)
+  }))
+  ctx.status = 200
+}).get("/guilds", async (ctx, next) => {
+  const { code, state } = ctx.query
+  if (!code || !state) {
+    throw new Error("Invalid discord oauth, if errors seek support")
+  }
+  const token = await client.retrieveAccessToken(code as string, DISCORD_REDIRECT_URL)
+  ctx.redirect(`/dashboard/league/${state}?discord_token=${token}`)
+}).post("/connectDiscord", async (ctx, next) => {
+  const connectRequest = ctx.request.body as ConnnectDiscord
+  await setLeague(connectRequest.guildId, `${connectRequest.leagueId}`)
+  ctx.redirect(`/dashboard/league/${connectRequest.leagueId}`)
+})
 
 export default router
