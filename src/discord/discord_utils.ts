@@ -108,6 +108,7 @@ export function createClient(settings: DiscordSettings): DiscordClient {
           data = JSON.parse(stringData) as DiscordError
         } catch (e) {
           console.error(e)
+	  throw e
         }
         if (data.retry_after) {
           tries = tries + 1
