@@ -9,6 +9,7 @@ import { LeagueLogos } from "../db/view"
 import EventDB from "../db/events_db"
 import { ConfirmedSimV2, SimResult } from "../db/events"
 import { SnallabotError } from "../errors"
+import { discordOutgoingRequestsCounter } from "../debug/metrics"
 
 export enum CommandMode {
   INSTALL = "INSTALL",
@@ -85,11 +86,14 @@ export interface DiscordClient {
   generateOAuthRedirect(redirct: string, scope: string, state: string): string,
   getAllGuilds(): Promise<string[]>
 }
-
+function getRandomInt(max: number) {
+  return Math.floor(Math.random() * max);
+}
 type DiscordSettings = { publicKey: string, botToken: string, appId: string, clientSecret?: string }
 export function createClient(settings: DiscordSettings): DiscordClient {
   async function sendDiscordRequest(endpoint: string, options: { [key: string]: any }, maxTries: number = 10) {
     // append endpoint to root API URL
+    discordOutgoingRequestsCounter.inc()
     const url = "https://discord.com/api/v10/" + endpoint
     if (options.body) options.body = JSON.stringify(options.body)
     let tries = 0
@@ -107,13 +111,17 @@ export function createClient(settings: DiscordSettings): DiscordClient {
         try {
           data = JSON.parse(stringData) as DiscordError
         } catch (e) {
-          console.error(e)
-          throw new Error(`Discord not responding. This is a fatal error. `)
+          console.error(stringData)
+          throw new Error(`Discord not responding snallabot. This is a fatal error. Please wait patiently`)
         }
         if (data.retry_after) {
-          tries = tries + 1
           const retryTime = data.retry_after
-          await new Promise((r) => setTimeout(r, retryTime * 1000))
+          const jitter = getRandomInt(20)
+          // exponential backoff with max time of 1 minute
+          const waitTime = Math.min(retryTime * 1000 * Math.pow(2, tries) + jitter, 60000)
+          tries = tries + 1
+
+          await new Promise((r) => setTimeout(r, waitTime))
         } else {
           throw new DiscordRequestError(data)
         }
@@ -143,13 +151,17 @@ export function createClient(settings: DiscordSettings): DiscordClient {
         try {
           data = JSON.parse(stringData) as DiscordError
         } catch (e) {
-          tries = tries + 1
-          await new Promise((r) => setTimeout(r, 1000))
+          console.error(stringData)
+          throw new Error(`Discord not responding snallabot. This is a fatal error. Please wait patiently`)
         }
         if (data.retry_after) {
-          tries = tries + 1
           const retryTime = data.retry_after
-          await new Promise((r) => setTimeout(r, retryTime * 1000))
+          const jitter = getRandomInt(20)
+          // exponential backoff with max time of 1 minute
+          const waitTime = Math.min(retryTime * 1000 * Math.pow(2, tries) + jitter, 60000)
+          tries = tries + 1
+
+          await new Promise((r) => setTimeout(r, waitTime))
         } else {
           throw new DiscordRequestError(data)
         }
