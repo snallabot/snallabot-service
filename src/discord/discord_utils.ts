@@ -107,8 +107,8 @@ export function createClient(settings: DiscordSettings): DiscordClient {
         try {
           data = JSON.parse(stringData) as DiscordError
         } catch (e) {
-          console.error(stringData)
-          throw new Error(`Discord not responding with ${stringData}`)
+          console.error(e)
+          throw new Error(`Discord not responding. This is a fatal error. `)
         }
         if (data.retry_after) {
           tries = tries + 1
@@ -202,7 +202,6 @@ export function createClient(settings: DiscordSettings): DiscordClient {
       try {
         await sendDiscordRequest(`webhooks/${settings.appId}/${token}/messages/@original`, { method: "PATCH", body })
       } catch (e) {
-        console.error(e)
       }
     },
     editOriginalInteractionWithForm: async (token: string, body: FormData) => {
