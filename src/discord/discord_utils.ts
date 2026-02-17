@@ -107,8 +107,7 @@ export function createClient(settings: DiscordSettings): DiscordClient {
         try {
           data = JSON.parse(stringData) as DiscordError
         } catch (e) {
-          tries = tries + 1
-          await new Promise((r) => setTimeout(r, 1000))
+          console.error(e)
         }
         if (data.retry_after) {
           tries = tries + 1
@@ -202,7 +201,7 @@ export function createClient(settings: DiscordSettings): DiscordClient {
       try {
         await sendDiscordRequest(`webhooks/${settings.appId}/${token}/messages/@original`, { method: "PATCH", body })
       } catch (e) {
-	console.error(e)
+        console.error(e)
       }
     },
     editOriginalInteractionWithForm: async (token: string, body: FormData) => {
