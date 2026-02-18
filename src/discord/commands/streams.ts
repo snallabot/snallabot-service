@@ -44,6 +44,53 @@ async function updateStreamMessage(streamConfiguration: Required<StreamCountConf
   }
 }
 
+async function configureInBackground(
+  client: DiscordClient,
+  token: string,
+  guild_id: string,
+  channel: ChannelId,
+  oldChannelId: ChannelId | undefined,
+  counts: Array<UserStreamCount>,
+  leagueSettings: LeagueSettings
+) {
+  if (oldChannelId && oldChannelId.id !== channel.id) {
+    const oldMessage = leagueSettings.commands?.stream_count?.message || {} as MessageId
+    const newMessageId = await moveStreamCountMessage(client, oldChannelId, oldMessage, channel, counts)
+    const streamConfiguration = {
+      channel: channel,
+      counts: counts,
+      message: newMessageId
+    } as StreamCountConfiguration
+    await db.collection("league_settings").doc(guild_id).set({
+      commands: { stream_count: streamConfiguration }
+    }, { merge: true })
+    await client.editOriginalInteraction(token, { content: "Stream count re configured and moved" })
+  } else {
+    const oldMessage = leagueSettings?.commands?.stream_count?.message
+    if (oldMessage) {
+      try {
+        const messageExists = await client.checkMessageExists(channel, oldMessage)
+        if (messageExists) {
+          await client.editOriginalInteraction(token, { content: "Stream already configured" })
+          return
+        }
+      } catch (e) {
+        console.log(e)
+      }
+    }
+    const messageId = await client.createMessage(channel, createStreamCountMessage(counts), [])
+    const streamConfiguration = {
+      channel,
+      counts,
+      message: messageId
+    } as StreamCountConfiguration
+    await db.collection("league_settings").doc(guild_id).set({
+      commands: { stream_count: streamConfiguration }
+    }, { merge: true })
+    await client.editOriginalInteraction(token, { content: "Stream Count configured" })
+  }
+}
+
 export default {
   async handleCommand(command: Command, client: DiscordClient) {
     const { guild_id, token } = command
@@ -61,52 +108,10 @@ export default {
       const channel: ChannelId = { id: (streamsCommand.options[0] as APIApplicationCommandInteractionDataChannelOption).value, id_type: DiscordIdType.CHANNEL }
       const oldChannelId = leagueSettings?.commands?.stream_count?.channel
       const counts = leagueSettings?.commands?.stream_count?.counts ?? []
-      if (oldChannelId && oldChannelId.id !== channel.id) {
-        // don't await so we can process these in the background
-        const oldMessage = leagueSettings.commands?.stream_count?.message || {} as MessageId
-        const update = async (newMessageId: MessageId) => {
-          const streamConfiguration = {
-            channel: channel,
-            counts: counts,
-            message: newMessageId
-          } as StreamCountConfiguration
-          await db.collection("league_settings").doc(guild_id).set({
-            commands: {
-              stream_count: streamConfiguration
-            }
-          }, { merge: true })
-          await client.editOriginalInteraction(token, {
-            content: "Stream count re configured and moved"
-          })
-        }
-        moveStreamCountMessage(client, oldChannelId, oldMessage, channel, counts).then(update).catch(e => client.editOriginalInteraction(token, { content: `could not update stream configuration ${e}` }))
-        return deferMessage()
-      } else {
-        const oldMessage = leagueSettings?.commands?.stream_count?.message
-        if (oldMessage) {
-          try {
-            const messageExists = await client.checkMessageExists(channel, oldMessage)
-            if (messageExists) {
-              return createMessageResponse("Stream already configured")
-            }
-            return
-          } catch (e) {
-            console.log(e)
-          }
-        }
-        const messageId = await client.createMessage(channel, createStreamCountMessage(counts), [])
-        const streamConfiguration = {
-          channel: channel,
-          counts: counts,
-          message: messageId
-        } as StreamCountConfiguration
-        await db.collection("league_settings").doc(guild_id).set({
-          commands: {
-            stream_count: streamConfiguration
-          }
-        }, { merge: true })
-        return createMessageResponse("Stream Count configured")
-      }
+
+      configureInBackground(client, token, guild_id, channel, oldChannelId, counts, leagueSettings)
+        .catch(e => client.editOriginalInteraction(token, { content: `could not update stream configuration: ${e}` }))
+      return deferMessage()
     } else if (subCommand === "count") {
       if (!streamsCommand.options || !streamsCommand.options[0]) {
         throw new Error("streams count misconfigured")
