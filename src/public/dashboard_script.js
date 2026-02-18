@@ -157,7 +157,7 @@ async function pollExportStatus(taskId, feedbackDiv) {
       
       if (!response.ok) {
         clearInterval(pollInterval);
-        feedbackDiv.innerHTML = '<span class="badge bg-danger">Failed to check export status</span>';
+        feedbackDiv.innerHTML = '<span class="badge bg-danger">Failed to check export status. It is safe to retry the export</span>';
         return;
       }
       

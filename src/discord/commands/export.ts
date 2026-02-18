@@ -43,7 +43,7 @@ async function handleExport(guildId: string, week: number, token: string, client
 
       if (position >= 0) {
         // Task is still in queue
-        content = `${SnallabotCommandReactions.WAITING} Export queued, No need to keep exporting - Position: ${position + 1} of ${getQueueSize()}`
+        content = `${SnallabotCommandReactions.WAITING} Export queued, please wait patiently as we process your export. There is no need to export again - Position: ${position + 1} of ${getQueueSize()}`
       } else {
         // Task is being processed
         content = buildStatusMessage(currentTask.status)

@@ -737,7 +737,7 @@ async function addTaskToQueue(task: ExportJobTask) {
 export function getTask(taskId: string): ExportJobTask {
   const task = tasks.get(taskId) as ExportJobTask
   if (!task) {
-    throw new Error(`Task not found ${taskId}`)
+    throw new SnallabotError(new Error(`Task not found ${taskId}`), `The Export task was lost! This could have happened because the server was restarted. It is safe to export again, or redo the command`)
   }
   return task
 }
