@@ -718,15 +718,20 @@ async function handleExportTask(task: ExportJobTask): Promise<void> {
 
 const exportQueue: queueAsPromised<ExportJobTask> = fastq.promise(handleExportTask, QUEUE_CONCURRENCY)
 
+const activeLeagueTasks = new Map<number, { task: ExportJobTask, promise: Promise<void> }>()
+
 async function addTaskToQueue(task: ExportJobTask) {
   tasks.set(task.id, task)
-  return exportQueue.push(task).catch(e => {
-    // update status with all the ones that failed
+  const promise = exportQueue.push(task).catch(e => {
     task.status.leagueInfo = task.status.leagueInfo != TaskStatus.FINISHED ? TaskStatus.ERROR : task.status.leagueInfo
     task.status.rosters = task.status.leagueInfo != TaskStatus.FINISHED ? TaskStatus.ERROR : task.status.rosters
     task.status.weeklyData.forEach(w => w.status != TaskStatus.FINISHED ? w.status = TaskStatus.ERROR : w.status)
     return Promise.reject(e)
+  }).finally(() => {
+    activeLeagueTasks.delete(task.leagueId)
   })
+  activeLeagueTasks.set(task.leagueId, { task, promise })
+  return promise
 }
 
 export function getTask(taskId: string): ExportJobTask {
@@ -745,27 +750,38 @@ export function getQueueSize() {
   return exportQueue.length()
 }
 
-export function exporterForLeague(leagueId: number, context: ExportContext): MaddenExporter {
-
+function getOrEnqueueTask(leagueId: number, buildTask: (taskId: string, status: ExportStatus) => ExportJobTask) {
+  const existing = activeLeagueTasks.get(leagueId)
+  if (existing) {
+    return { task: existing.task, waitUntilDone: existing.promise }
+  }
   const taskId = randomUUID()
   const status = { leagueInfo: TaskStatus.NOT_STARTED, weeklyData: [], rosters: TaskStatus.NOT_STARTED }
+  const task = buildTask(taskId, status)
+  return { task, waitUntilDone: addTaskToQueue(task) }
+}
+
+export function exporterForLeague(leagueId: number, context: ExportContext): MaddenExporter {
   return {
     exportCurrentWeek: function() {
-      const task = { id: taskId, request: { exportType: ExportType.CURRENT }, leagueId: leagueId, context: context, status: status }
-      return { task: task, waitUntilDone: addTaskToQueue(task) }
+      return getOrEnqueueTask(leagueId, (taskId, status) => (
+        { id: taskId, request: { exportType: ExportType.CURRENT }, leagueId, context, status }
+      ))
     },
     exportSurroundingWeek: function() {
-      const task = { id: taskId, request: { exportType: ExportType.SURROUNDING }, leagueId: leagueId, context: context, status: status }
-      return { task: task, waitUntilDone: addTaskToQueue(task) }
+      return getOrEnqueueTask(leagueId, (taskId, status) => (
+        { id: taskId, request: { exportType: ExportType.SURROUNDING }, leagueId, context, status }
+      ))
     },
     exportAllWeeks: function() {
-      const task = { id: taskId, request: { exportType: ExportType.ALL }, leagueId: leagueId, context: context, status: status }
-      return { task: task, waitUntilDone: addTaskToQueue(task) }
+      return getOrEnqueueTask(leagueId, (taskId, status) => (
+        { id: taskId, request: { exportType: ExportType.ALL }, leagueId, context, status }
+      ))
     },
     exportSpecificWeeks: function(weeks: { weekIndex: number, stage: number }[]) {
-      const task = { id: taskId, request: { exportType: ExportType.SPECIFIC, weeks: weeks }, leagueId: leagueId, context: context, status: status }
-      return { task: task, waitUntilDone: addTaskToQueue(task) }
-
+      return getOrEnqueueTask(leagueId, (taskId, status) => (
+        { id: taskId, request: { exportType: ExportType.SPECIFIC, weeks }, leagueId, context, status }
+      ))
     }
   }
 }
