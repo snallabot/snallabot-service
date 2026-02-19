@@ -1068,7 +1068,7 @@ const MaddenDB: MaddenDB = {
     console.log(seasonToQuery)
     let weekToQuery;
     if (week) {
-      weekToQuery = week
+      weekToQuery = week - 1
     } else {
       // if its not specified, find the latest week
       const scheduleCollection = db.collection("madden_data26")

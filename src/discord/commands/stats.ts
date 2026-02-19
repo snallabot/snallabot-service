@@ -505,6 +505,7 @@ async function showWeeklyStats(
     // Create week selector
     const weekOptions = allWeeks
       .filter(ws => ws.seasonIndex === actualSeason)
+      .sort((a, b) => a.weekIndex - b.weekIndex)
       .map(ws => ({
         label: getMessageForWeek(ws.weekIndex + 1),
         value: JSON.stringify({ w: ws.weekIndex + 1, s: actualSeason })
@@ -607,19 +608,19 @@ async function showSeasonStats(
   client: DiscordClient,
   leagueId: string,
   statType: PlayerStatEvents,
-  season?: number,
+  season: number = -1,
   page: number = 0
 ) {
   try {
     const [rawStats, teams, logos, allWeeks] = await Promise.all([
-      MaddenDB.getStatsForSeason(leagueId, statType, season),
+      MaddenDB.getStatsForSeason(leagueId, statType, season === -1 ? undefined : season),
       MaddenDB.getLatestTeams(leagueId),
       leagueLogosView.createView(leagueId),
       MaddenDB.getAllWeeks(leagueId)
     ])
 
     // Get the actual season from stats if not specified
-    const actualSeason = season ?? (rawStats[0] ? rawStats[0].seasonIndex : 0)
+    const actualSeason = season === -1 ? (rawStats[0] ? rawStats[0].seasonIndex : 0) : 0
 
     let aggregatedStats: any[]
     let formattedStats: string
