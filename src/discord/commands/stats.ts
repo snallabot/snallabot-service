@@ -31,16 +31,17 @@ const PAGINATION_LIMIT = 5
 type StatTypeConfig = {
   label: string
   value: PlayerStatEvents
-  offensiveStat: boolean
+  offensiveStat: boolean,
+  shortValue: string
 }
 
 const statEventTypes: StatTypeConfig[] = [
-  { label: "Passing", value: MaddenEvents.MADDEN_PASSING_STAT, offensiveStat: true },
-  { label: "Rushing", value: MaddenEvents.MADDEN_RUSHING_STAT, offensiveStat: true },
-  { label: "Receiving", value: MaddenEvents.MADDEN_RECEIVING_STAT, offensiveStat: true },
-  { label: "Defense", value: MaddenEvents.MADDEN_DEFENSIVE_STAT, offensiveStat: false },
-  { label: "Kicking", value: MaddenEvents.MADDEN_KICKING_STAT, offensiveStat: false },
-  { label: "Punting", value: MaddenEvents.MADDEN_PUNTING_STAT, offensiveStat: false },
+  { label: "Passing", value: MaddenEvents.MADDEN_PASSING_STAT, offensiveStat: true, shortValue: "p" },
+  { label: "Rushing", value: MaddenEvents.MADDEN_RUSHING_STAT, offensiveStat: true, shortValue: "ru" },
+  { label: "Receiving", value: MaddenEvents.MADDEN_RECEIVING_STAT, offensiveStat: true, shortValue: "rc" },
+  { label: "Defense", value: MaddenEvents.MADDEN_DEFENSIVE_STAT, offensiveStat: false, shortValue: "d" },
+  { label: "Kicking", value: MaddenEvents.MADDEN_KICKING_STAT, offensiveStat: false, shortValue: "k" },
+  { label: "Punting", value: MaddenEvents.MADDEN_PUNTING_STAT, offensiveStat: false, shortValue: "p" },
 ]
 
 type WeekStatsPagination = {
@@ -497,7 +498,7 @@ async function showWeeklyStats(
     // Create stat type selector
     const statTypeOptions = statEventTypes.map(type => ({
       label: type.label,
-      value: JSON.stringify({ st: type.value, w: actualWeek, s: actualSeason, p: 0 } as WeekStatsPagination)
+      value: JSON.stringify({ st: type.shortValue, w: actualWeek, s: actualSeason, p: 0 })
     }))
 
     // Create week selector
