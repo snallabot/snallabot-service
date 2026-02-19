@@ -512,7 +512,6 @@ class SeasonView extends View<SeasonIndex> {
       .collection(MaddenEvents.MADDEN_SCHEDULE);
     const teamList = await MaddenDB.getLatestTeams(key)
 
-    // Query for unplayed games only
     const allGames = await scheduleCollection
       .where("stageIndex", "==", 1)
       .get()
@@ -1066,6 +1065,7 @@ const MaddenDB: MaddenDB = {
   getStatsForWeek: async function <T extends PlayerStatTypes>(leagueId: string, statType: PlayerStatEvents, week?: number, season?: number): Promise<T[]> {
     const seasonIndex = await seasonView.createView(leagueId)
     const seasonToQuery = season ? season : seasonIndex ? seasonIndex.currentSeasonIndex : 0
+    console.log(seasonToQuery)
     let weekToQuery;
     if (week) {
       weekToQuery = week

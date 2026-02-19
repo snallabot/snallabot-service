@@ -36,12 +36,12 @@ type StatTypeConfig = {
 }
 
 const statEventTypes: StatTypeConfig[] = [
-  { label: "Passing", value: MaddenEvents.MADDEN_PASSING_STAT, offensiveStat: true, shortValue: "p" },
+  { label: "Passing", value: MaddenEvents.MADDEN_PASSING_STAT, offensiveStat: true, shortValue: "pa" },
   { label: "Rushing", value: MaddenEvents.MADDEN_RUSHING_STAT, offensiveStat: true, shortValue: "ru" },
   { label: "Receiving", value: MaddenEvents.MADDEN_RECEIVING_STAT, offensiveStat: true, shortValue: "rc" },
   { label: "Defense", value: MaddenEvents.MADDEN_DEFENSIVE_STAT, offensiveStat: false, shortValue: "d" },
   { label: "Kicking", value: MaddenEvents.MADDEN_KICKING_STAT, offensiveStat: false, shortValue: "k" },
-  { label: "Punting", value: MaddenEvents.MADDEN_PUNTING_STAT, offensiveStat: false, shortValue: "p" },
+  { label: "Punting", value: MaddenEvents.MADDEN_PUNTING_STAT, offensiveStat: false, shortValue: "pu" },
 ]
 
 type WeekStatsPagination = {
@@ -416,12 +416,14 @@ async function showWeeklyStats(
   page: number = 0
 ) {
   try {
+    console.log(season)
     const [rawStats, teams, logos, allWeeks] = await Promise.all([
       MaddenDB.getStatsForWeek(leagueId, statType, week === -1 ? undefined : week, season === -1 ? undefined : season),
       MaddenDB.getLatestTeams(leagueId),
       leagueLogosView.createView(leagueId),
       MaddenDB.getAllWeeks(leagueId)
     ])
+
 
     // Get the actual week/season from stats if not specified
     const actualWeek = week === -1 ? (rawStats[0] ? rawStats[0].weekIndex + 1 : 1) : week
