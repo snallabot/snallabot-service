@@ -137,7 +137,7 @@ interface MaddenDB {
   getExportStatus(leagueId: string): Promise<ExportStatus | undefined>,
   getStatsForGame(leagueId: string, season: number, week: number, scheduleId: number): Promise<GameStats>,
   getTeamSchedule(leagueId: string, season?: number): Promise<MaddenGame[]>,
-  getStatsForWeek<T extends PlayerStatTypes>(leagueId: string, statType: PlayerStatEvents, week?: number, season?: number): Promise<T[]>,
+  getStatsForWeek<T extends PlayerStatTypes>(leagueId: string, statType: PlayerStatEvents, week?: number, season?: number): Promise<{ seasonIndex: number, weekIndex: number, stats: T[] }>,
   getStatsForSeason<T extends PlayerStatTypes>(leagueId: string, statType: PlayerStatEvents, season?: number): Promise<T[]>
 }
 
@@ -1062,7 +1062,7 @@ const MaddenDB: MaddenDB = {
         , teams).sort((a, b) => a.weekIndex - b.weekIndex)
     }
   },
-  getStatsForWeek: async function <T extends PlayerStatTypes>(leagueId: string, statType: PlayerStatEvents, week?: number, season?: number): Promise<T[]> {
+  getStatsForWeek: async function <T extends PlayerStatTypes>(leagueId: string, statType: PlayerStatEvents, week?: number, season?: number): Promise<{ seasonIndex: number, weekIndex: number, stats: T[] }> {
     const seasonIndex = await seasonView.createView(leagueId)
     const seasonToQuery = season ? season : seasonIndex ? seasonIndex.currentSeasonIndex : 0
     console.log(seasonToQuery)
@@ -1097,7 +1097,8 @@ const MaddenDB: MaddenDB = {
       .where("weekIndex", "==", weekToQuery)
       .get()
     const stats = statDocs.docs.map(d => convertDate(d.data()) as StoredEvent<T>)
-    return await deduplicatePlayerStats(leagueId, stats)
+    const finalStats = await deduplicatePlayerStats(leagueId, stats)
+    return { seasonIndex: seasonToQuery, weekIndex: weekToQuery, stats: finalStats }
   },
   getStatsForSeason: async function <T extends PlayerStatTypes>(leagueId: string, statType: PlayerStatEvents, season?: number): Promise<T[]> {
     const seasonIndex = await seasonView.createView(leagueId)

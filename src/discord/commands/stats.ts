@@ -416,8 +416,7 @@ async function showWeeklyStats(
   page: number = 0
 ) {
   try {
-    console.log(season)
-    const [rawStats, teams, logos, allWeeks] = await Promise.all([
+    const [{ seasonIndex, weekIndex, stats: rawStats }, teams, logos, allWeeks] = await Promise.all([
       MaddenDB.getStatsForWeek(leagueId, statType, week === -1 ? undefined : week, season === -1 ? undefined : season),
       MaddenDB.getLatestTeams(leagueId),
       leagueLogosView.createView(leagueId),
@@ -426,8 +425,8 @@ async function showWeeklyStats(
 
 
     // Get the actual week/season from stats if not specified
-    const actualWeek = week === -1 ? (rawStats[0] ? rawStats[0].weekIndex + 1 : 1) : week
-    const actualSeason = season === -1 ? (rawStats[0] ? rawStats[0].seasonIndex : 0) : season
+    const actualWeek = weekIndex + 1
+    const actualSeason = seasonIndex
 
     let aggregatedStats: any[]
     let formattedStats: string
