@@ -1083,6 +1083,7 @@ const MaddenDB: MaddenDB = {
         .get()
 
       const games = deduplicateSchedule(allGames.docs.map(d => convertDate(d.data()) as StoredEvent<MaddenGame>), teamList)
+      console.log(games)
       const unplayedGames = games.filter(g => g.status === GameResult.NOT_PLAYED)
 
       if (unplayedGames.length === 0) {
@@ -1095,6 +1096,7 @@ const MaddenDB: MaddenDB = {
     const statDocs = await db.collection("madden_data26").doc(leagueId).collection(statType)
       .where("seasonIndex", "==", seasonToQuery)
       .where("weekIndex", "==", weekToQuery)
+      .where("stageIndex", "==", 1)
       .get()
     const stats = statDocs.docs.map(d => convertDate(d.data()) as StoredEvent<T>)
     const finalStats = await deduplicatePlayerStats(leagueId, stats)
@@ -1105,7 +1107,7 @@ const MaddenDB: MaddenDB = {
     const seasonToQuery = season ? season : seasonIndex ? seasonIndex.currentSeasonIndex : 0
     const statDocs = await db.collection("madden_data26").doc(leagueId).collection(statType)
       .where("seasonIndex", "==", seasonToQuery)
-
+      .where("stageIndex", "==", 1)
       .get()
     const stats = statDocs.docs.map(d => convertDate(d.data()) as StoredEvent<T>)
     return await deduplicatePlayerStats(leagueId, stats)
