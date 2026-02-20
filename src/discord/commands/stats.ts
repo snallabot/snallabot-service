@@ -477,7 +477,7 @@ async function showWeeklyStats(
     const statTypeLabel = statEventTypes[statType].label || "Stats"
 
     const message = formattedStats
-      ? `# ${getMessageForWeek(actualWeek)} ${statTypeLabel} Leaders - ${MADDEN_SEASON + actualSeason}\n`
+      ? `# ${getMessageForWeek(actualWeek)} ${statTypeLabel} Leaders - ${MADDEN_SEASON + actualSeason}\n${formattedStats}`
       : `# ${getMessageForWeek(actualWeek)} ${statTypeLabel} Leaders - ${MADDEN_SEASON + actualSeason}\nNo stats available`
 
     // Create pagination buttons
