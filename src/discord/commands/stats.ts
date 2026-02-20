@@ -458,8 +458,8 @@ async function showWeeklyStats(
         formattedStats = await formatReceivingStats(aggregatedStats.slice(startIdx, endIdx), leagueId, teams, logos)
         break
       case MaddenEvents.MADDEN_DEFENSIVE_STAT:
-        aggregatedStats = aggregateRushingStats(rawStats as RushingStats[])
-        formattedStats = await formatRushingStats(aggregatedStats.slice(startIdx, endIdx), leagueId, teams, logos)
+        aggregatedStats = aggregateDefensiveStats(rawStats as DefensiveStats[])
+        formattedStats = await formatDefensiveStats(aggregatedStats.slice(startIdx, endIdx), leagueId, teams, logos)
         break
       case MaddenEvents.MADDEN_KICKING_STAT:
         aggregatedStats = aggregateKickingStats(rawStats as KickingStats[])
@@ -631,8 +631,8 @@ async function showSeasonStats(
         formattedStats = await formatReceivingStats(aggregatedStats.slice(startIdx, endIdx), leagueId, teams, logos)
         break
       case MaddenEvents.MADDEN_DEFENSIVE_STAT:
-        aggregatedStats = aggregateRushingStats(rawStats as RushingStats[])
-        formattedStats = await formatRushingStats(aggregatedStats.slice(startIdx, endIdx), leagueId, teams, logos)
+        aggregatedStats = aggregateDefensiveStats(rawStats as DefensiveStats[])
+        formattedStats = await formatDefensiveStats(aggregatedStats.slice(startIdx, endIdx), leagueId, teams, logos)
         break
       case MaddenEvents.MADDEN_KICKING_STAT:
         aggregatedStats = aggregateKickingStats(rawStats as KickingStats[])
