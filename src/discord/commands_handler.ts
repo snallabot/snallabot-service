@@ -75,7 +75,12 @@ const MessageComponents: MessageComponentHandlers = {
   "team_season_selector": schedulesHandler,
   "game_stats": gameStatsHandler,
   "standings_filter": standingsHandler,
-  "sims_season_selector": simsHandler
+  "sims_season_selector": simsHandler,
+  "season_stat_type_selector": statsHandler,
+  "season_season_selector": statsHandler,
+  "weekly_stat_type_selector": statsHandler,
+  "weekly_week_selector": statsHandler,
+  "weekly_season_selector": statsHandler
 }
 
 export async function handleCommand(command: Command, ctx: ParameterizedContext, discordClient: DiscordClient, db: Firestore) {
@@ -180,6 +185,12 @@ export async function handleMessageComponent(interaction: MessageComponentIntera
       } else if (parsedCustomId.f != null) {
         discordCommandsCounter.inc({ command_name: "STANDINGS", command_type: "MESSAGE_COMPONENT" })
         const body = await standingsHandler.handleInteraction(interaction, client)
+        ctx.status = 200
+        ctx.set("Content-Type", "application/json")
+        ctx.body = body
+      } else if (parsedCustomId.st != null && parsedCustomId.p != null) {
+        discordCommandsCounter.inc({ command_name: "STATS", command_type: "MESSAGE_COMPONENT" })
+        const body = await statsHandler.handleInteraction(interaction, client)
         ctx.status = 200
         ctx.set("Content-Type", "application/json")
         ctx.body = body

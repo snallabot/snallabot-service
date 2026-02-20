@@ -27,38 +27,48 @@ import {
 } from "../../export/madden_league_types"
 
 const PAGINATION_LIMIT = 5
+type ShortPlayerStatEvents = "pa" | "ru" | "rc" | "d" | "k" | "pu"
+const SHORT_TO_LONG_MAPPING: Record<ShortPlayerStatEvents, PlayerStatEvents> = {
+  "pa": MaddenEvents.MADDEN_PASSING_STAT,
+  "ru": MaddenEvents.MADDEN_RUSHING_STAT,
+  "rc": MaddenEvents.MADDEN_RECEIVING_STAT,
+  "d": MaddenEvents.MADDEN_DEFENSIVE_STAT,
+  "k": MaddenEvents.MADDEN_KICKING_STAT,
+  "pu": MaddenEvents.MADDEN_PUNTING_STAT
+}
+
+const LONG_TO_SHORT_MAPPING = Object.fromEntries(
+  Object.entries(SHORT_TO_LONG_MAPPING).map(([k, v]) => [v, k])
+);
 
 type StatTypeConfig = {
   label: string
   value: PlayerStatEvents
   offensiveStat: boolean,
-  shortValue: string
+  shortValue: ShortPlayerStatEvents
 }
 
-const statEventTypes: StatTypeConfig[] = [
-  { label: "Passing", value: MaddenEvents.MADDEN_PASSING_STAT, offensiveStat: true, shortValue: "pa" },
-  { label: "Rushing", value: MaddenEvents.MADDEN_RUSHING_STAT, offensiveStat: true, shortValue: "ru" },
-  { label: "Receiving", value: MaddenEvents.MADDEN_RECEIVING_STAT, offensiveStat: true, shortValue: "rc" },
-  { label: "Defense", value: MaddenEvents.MADDEN_DEFENSIVE_STAT, offensiveStat: false, shortValue: "d" },
-  { label: "Kicking", value: MaddenEvents.MADDEN_KICKING_STAT, offensiveStat: false, shortValue: "k" },
-  { label: "Punting", value: MaddenEvents.MADDEN_PUNTING_STAT, offensiveStat: false, shortValue: "pu" },
-]
+const statEventTypes = {
+  [MaddenEvents.MADDEN_PASSING_STAT]: { label: "Passing", offensiveStat: true, shortValue: "pa" },
+  [MaddenEvents.MADDEN_RUSHING_STAT]: { label: "Rushing", offensiveStat: true, shortValue: "ru" },
+  [MaddenEvents.MADDEN_RECEIVING_STAT]: { label: "Receiving", offensiveStat: true, shortValue: "rc" },
+  [MaddenEvents.MADDEN_DEFENSIVE_STAT]: { label: "Defense", offensiveStat: false, shortValue: "d" },
+  [MaddenEvents.MADDEN_KICKING_STAT]: { label: "Kicking", offensiveStat: false, shortValue: "k" },
+  [MaddenEvents.MADDEN_PUNTING_STAT]: { label: "Punting", offensiveStat: false, shortValue: "pu" },
+}
 
 type WeekStatsPagination = {
-  st: PlayerStatEvents  // stat type
-  w?: number            // week
-  s?: number            // season
+  st: ShortPlayerStatEvents  // stat type
+  w: number            // week
+  s: number            // season
   p: number             // page
 }
 
 type SeasonStatsPagination = {
-  st: PlayerStatEvents  // stat type
-  s?: number            // season
+  st: ShortPlayerStatEvents  // stat type
+  s: number            // season
   p: number             // page
 }
-
-type WeekSelection = { w: number, s: number }
-type SeasonSelection = { s: number }
 
 // Aggregation types for season stats
 type PassingAggregation = {
@@ -430,74 +440,53 @@ async function showWeeklyStats(
 
     let aggregatedStats: any[]
     let formattedStats: string
+    const startIdx = page * PAGINATION_LIMIT
+    const endIdx = startIdx + PAGINATION_LIMIT
 
     // Aggregate and format based on stat type
     switch (statType) {
       case MaddenEvents.MADDEN_PASSING_STAT:
         aggregatedStats = aggregatePassingStats(rawStats as PassingStats[])
+        formattedStats = await formatPassingStats(aggregatedStats.slice(startIdx, endIdx), leagueId, teams, logos)
         break
       case MaddenEvents.MADDEN_RUSHING_STAT:
         aggregatedStats = aggregateRushingStats(rawStats as RushingStats[])
+        formattedStats = await formatRushingStats(aggregatedStats.slice(startIdx, endIdx), leagueId, teams, logos)
         break
       case MaddenEvents.MADDEN_RECEIVING_STAT:
         aggregatedStats = aggregateReceivingStats(rawStats as ReceivingStats[])
+        formattedStats = await formatReceivingStats(aggregatedStats.slice(startIdx, endIdx), leagueId, teams, logos)
         break
       case MaddenEvents.MADDEN_DEFENSIVE_STAT:
-        aggregatedStats = aggregateDefensiveStats(rawStats as DefensiveStats[])
+        aggregatedStats = aggregateRushingStats(rawStats as RushingStats[])
+        formattedStats = await formatRushingStats(aggregatedStats.slice(startIdx, endIdx), leagueId, teams, logos)
         break
       case MaddenEvents.MADDEN_KICKING_STAT:
         aggregatedStats = aggregateKickingStats(rawStats as KickingStats[])
+        formattedStats = await formatKickingStats(aggregatedStats.slice(startIdx, endIdx), leagueId, teams, logos)
         break
       case MaddenEvents.MADDEN_PUNTING_STAT:
         aggregatedStats = aggregatePuntingStats(rawStats as PuntingStats[])
+        formattedStats = await formatPuntingStats(aggregatedStats.slice(startIdx, endIdx), leagueId, teams, logos)
         break
       default:
-        throw new Error("Invalid stat type")
-    }
-
-    // Paginate
-    const startIdx = page * PAGINATION_LIMIT
-    const endIdx = startIdx + PAGINATION_LIMIT
-    const paginatedStats = aggregatedStats.slice(startIdx, endIdx)
-
-    // Format stats
-    switch (statType) {
-      case MaddenEvents.MADDEN_PASSING_STAT:
-        formattedStats = await formatPassingStats(paginatedStats, leagueId, teams, logos)
-        break
-      case MaddenEvents.MADDEN_RUSHING_STAT:
-        formattedStats = await formatRushingStats(paginatedStats, leagueId, teams, logos)
-        break
-      case MaddenEvents.MADDEN_RECEIVING_STAT:
-        formattedStats = await formatReceivingStats(paginatedStats, leagueId, teams, logos)
-        break
-      case MaddenEvents.MADDEN_DEFENSIVE_STAT:
-        formattedStats = await formatDefensiveStats(paginatedStats, leagueId, teams, logos)
-        break
-      case MaddenEvents.MADDEN_KICKING_STAT:
-        formattedStats = await formatKickingStats(paginatedStats, leagueId, teams, logos)
-        break
-      case MaddenEvents.MADDEN_PUNTING_STAT:
-        formattedStats = await formatPuntingStats(paginatedStats, leagueId, teams, logos)
-        break
-      default:
+        aggregatedStats = []
         formattedStats = "No stats available"
     }
 
-    const statTypeLabel = statEventTypes.find(t => t.value === statType)?.label || "Stats"
-    const showing = `Showing ${startIdx + 1}-${Math.min(endIdx, aggregatedStats.length)} of ${aggregatedStats.length}`
+    const statTypeLabel = statEventTypes[statType].label || "Stats"
 
     const message = formattedStats
-      ? `# ${getMessageForWeek(actualWeek)} ${statTypeLabel} Leaders - ${MADDEN_SEASON + actualSeason}\n${showing}\n\n${formattedStats}`
+      ? `# ${getMessageForWeek(actualWeek)} ${statTypeLabel} Leaders - ${MADDEN_SEASON + actualSeason}\n`
       : `# ${getMessageForWeek(actualWeek)} ${statTypeLabel} Leaders - ${MADDEN_SEASON + actualSeason}\nNo stats available`
 
     // Create pagination buttons
     const backDisabled = page === 0
     const nextDisabled = endIdx >= aggregatedStats.length
-    const currentPagination: WeekStatsPagination = { st: "p" as PlayerStatEvents, w: actualWeek, s: actualSeason, p: page }
+    const currentPagination = { st: LONG_TO_SHORT_MAPPING[statType], w: actualWeek, s: actualSeason, p: page }
 
     // Create stat type selector
-    const statTypeOptions = statEventTypes.map(type => ({
+    const statTypeOptions = Object.values(statEventTypes).map(type => ({
       label: type.label,
       value: JSON.stringify({ st: type.shortValue, w: actualWeek, s: actualSeason, p: 0 })
     }))
@@ -508,7 +497,7 @@ async function showWeeklyStats(
       .sort((a, b) => a.weekIndex - b.weekIndex)
       .map(ws => ({
         label: getMessageForWeek(ws.weekIndex + 1),
-        value: JSON.stringify({ w: ws.weekIndex + 1, s: actualSeason })
+        value: JSON.stringify({ st: LONG_TO_SHORT_MAPPING[statType], w: ws.weekIndex + 1, s: actualSeason, p: 0 })
       }))
 
     // Create season selector
@@ -516,7 +505,7 @@ async function showWeeklyStats(
       .sort((a, b) => a - b)
       .map(s => ({
         label: `Season ${s + MADDEN_SEASON}`,
-        value: JSON.stringify({ w: Math.min(...allWeeks.filter(ws => ws.seasonIndex === s).map(ws => ws.weekIndex + 1) || [1]), s })
+        value: JSON.stringify({ st: LONG_TO_SHORT_MAPPING[statType], w: 1, s: s, p: 0 })
       }))
 
     await client.editOriginalInteraction(token, {
@@ -624,84 +613,64 @@ async function showSeasonStats(
 
     let aggregatedStats: any[]
     let formattedStats: string
+    const startIdx = page * PAGINATION_LIMIT
+    const endIdx = startIdx + PAGINATION_LIMIT
 
     // Aggregate and format based on stat type
     switch (statType) {
       case MaddenEvents.MADDEN_PASSING_STAT:
         aggregatedStats = aggregatePassingStats(rawStats as PassingStats[])
+        formattedStats = await formatPassingStats(aggregatedStats.slice(startIdx, endIdx), leagueId, teams, logos)
         break
       case MaddenEvents.MADDEN_RUSHING_STAT:
         aggregatedStats = aggregateRushingStats(rawStats as RushingStats[])
+        formattedStats = await formatRushingStats(aggregatedStats.slice(startIdx, endIdx), leagueId, teams, logos)
         break
       case MaddenEvents.MADDEN_RECEIVING_STAT:
         aggregatedStats = aggregateReceivingStats(rawStats as ReceivingStats[])
+        formattedStats = await formatReceivingStats(aggregatedStats.slice(startIdx, endIdx), leagueId, teams, logos)
         break
       case MaddenEvents.MADDEN_DEFENSIVE_STAT:
-        aggregatedStats = aggregateDefensiveStats(rawStats as DefensiveStats[])
+        aggregatedStats = aggregateRushingStats(rawStats as RushingStats[])
+        formattedStats = await formatRushingStats(aggregatedStats.slice(startIdx, endIdx), leagueId, teams, logos)
         break
       case MaddenEvents.MADDEN_KICKING_STAT:
         aggregatedStats = aggregateKickingStats(rawStats as KickingStats[])
+        formattedStats = await formatKickingStats(aggregatedStats.slice(startIdx, endIdx), leagueId, teams, logos)
         break
       case MaddenEvents.MADDEN_PUNTING_STAT:
         aggregatedStats = aggregatePuntingStats(rawStats as PuntingStats[])
+        formattedStats = await formatPuntingStats(aggregatedStats.slice(startIdx, endIdx), leagueId, teams, logos)
         break
       default:
-        throw new Error("Invalid stat type")
-    }
-
-    // Paginate
-    const startIdx = page * PAGINATION_LIMIT
-    const endIdx = startIdx + PAGINATION_LIMIT
-    const paginatedStats = aggregatedStats.slice(startIdx, endIdx)
-
-    // Format stats
-    switch (statType) {
-      case MaddenEvents.MADDEN_PASSING_STAT:
-        formattedStats = await formatPassingStats(paginatedStats, leagueId, teams, logos)
-        break
-      case MaddenEvents.MADDEN_RUSHING_STAT:
-        formattedStats = await formatRushingStats(paginatedStats, leagueId, teams, logos)
-        break
-      case MaddenEvents.MADDEN_RECEIVING_STAT:
-        formattedStats = await formatReceivingStats(paginatedStats, leagueId, teams, logos)
-        break
-      case MaddenEvents.MADDEN_DEFENSIVE_STAT:
-        formattedStats = await formatDefensiveStats(paginatedStats, leagueId, teams, logos)
-        break
-      case MaddenEvents.MADDEN_KICKING_STAT:
-        formattedStats = await formatKickingStats(paginatedStats, leagueId, teams, logos)
-        break
-      case MaddenEvents.MADDEN_PUNTING_STAT:
-        formattedStats = await formatPuntingStats(paginatedStats, leagueId, teams, logos)
-        break
-      default:
+        aggregatedStats = []
         formattedStats = "No stats available"
     }
 
-    const statTypeLabel = statEventTypes.find(t => t.value === statType)?.label || "Stats"
-    const showing = `Showing ${startIdx + 1}-${Math.min(endIdx, aggregatedStats.length)} of ${aggregatedStats.length}`
+    const statTypeLabel = statEventTypes[statType].label || "Stats"
 
     const message = formattedStats
-      ? `# ${MADDEN_SEASON + actualSeason} Season ${statTypeLabel} Leaders\n${showing}\n\n${formattedStats}`
+      ? `# ${MADDEN_SEASON + actualSeason} Season ${statTypeLabel} Leaders\n${formattedStats}`
       : `# ${MADDEN_SEASON + actualSeason} Season ${statTypeLabel} Leaders\nNo stats available`
 
     // Create pagination buttons
     const backDisabled = page === 0
     const nextDisabled = endIdx >= aggregatedStats.length
-    const currentPagination: SeasonStatsPagination = { st: statType, s: actualSeason, p: page }
+    const currentPagination = { st: LONG_TO_SHORT_MAPPING[statType], s: actualSeason, p: page }
 
     // Create stat type selector
-    const statTypeOptions = statEventTypes.map(type => ({
+    const statTypeOptions = Object.values(statEventTypes).map(type => ({
       label: type.label,
-      value: JSON.stringify({ st: type.value, s: actualSeason, p: 0 } as SeasonStatsPagination)
+      value: JSON.stringify({ st: type.shortValue, s: actualSeason, p: 0 })
     }))
+
 
     // Create season selector
     const seasonOptions = [...new Set(allWeeks.map(ws => ws.seasonIndex))]
       .sort((a, b) => a - b)
       .map(s => ({
         label: `Season ${s + MADDEN_SEASON}`,
-        value: JSON.stringify({ s })
+        value: JSON.stringify({ st: LONG_TO_SHORT_MAPPING[statType], s: actualSeason, p: 0 })
       }))
 
     await client.editOriginalInteraction(token, {
@@ -777,6 +746,44 @@ async function showSeasonStats(
   }
 }
 
+function getWeeklyStatSelection(interaction: MessageComponentInteraction) {
+  const customId = interaction.custom_id
+  if (customId === "weekly_stat_type_selector" || customId === "weekly_week_selector" || customId === "weekly_season_selector") {
+    const data = interaction.data as APIMessageStringSelectInteractionData
+    if (data.values.length !== 1) {
+      throw new Error("Somehow did not receive just one selection from stats selector " + data.values)
+    }
+    return JSON.parse(data.values[0]) as WeekStatsPagination
+  } else {
+    try {
+      const parsedId = JSON.parse(customId)
+      if (parsedId.st != null && parsedId.w != null && parsedId.s != null && parsedId.p != null) {
+        return parsedId as WeekStatsPagination
+      }
+    } catch (e) {
+    }
+  }
+}
+
+function getSeasonStatSelection(interaction: MessageComponentInteraction) {
+  const customId = interaction.custom_id
+  if (customId === "season_stat_type_selector" || customId === "season_season_selector") {
+    const data = interaction.data as APIMessageStringSelectInteractionData
+    if (data.values.length !== 1) {
+      throw new Error("Somehow did not receive just one selection from schedule selector " + data.values)
+    }
+    return JSON.parse(data.values[0]) as SeasonStatsPagination
+  } else {
+    try {
+      const parsedId = JSON.parse(customId)
+      if (parsedId.st != null && parsedId.w != null && parsedId.s != null && parsedId.p != null) {
+        return parsedId as SeasonStatsPagination
+      }
+    } catch (e) {
+    }
+  }
+}
+
 export default {
   async handleCommand(command: Command, client: DiscordClient) {
     const { guild_id, token } = command
@@ -827,7 +834,7 @@ export default {
               name: "stat_type",
               description: "passing, rushing, receiving, defense...",
               required: false,
-              choices: statEventTypes.map(f => ({ name: f.label, value: f.value }))
+              choices: Object.entries(statEventTypes).map(f => ({ name: f[1].label, value: f[0] }))
             },
             {
               type: ApplicationCommandOptionType.Integer,
@@ -853,7 +860,7 @@ export default {
               name: "stat_type",
               description: "passing, rushing, receiving, defense...",
               required: false,
-              choices: statEventTypes.map(f => ({ name: f.label, value: f.value }))
+              choices: Object.entries(statEventTypes).map(f => ({ name: f[1].label, value: f[0] }))
             },
             {
               type: ApplicationCommandOptionType.Integer,
@@ -878,46 +885,14 @@ export default {
       if (!leagueId) {
         throw new NoConnectedLeagueError(guildId)
       }
+      const weekStatSelection = getWeeklyStatSelection(interaction)
+      const seasonStatSelection = getSeasonStatSelection(interaction)
+      if (weekStatSelection) {
+        showWeeklyStats(interaction.token, client, leagueId, SHORT_TO_LONG_MAPPING[weekStatSelection.st], weekStatSelection.w, weekStatSelection.s, weekStatSelection.p)
+      } else if (seasonStatSelection) {
+        showSeasonStats(interaction.token, client, leagueId, SHORT_TO_LONG_MAPPING[seasonStatSelection.st], seasonStatSelection.s, seasonStatSelection.p)
+      }
 
-      // Handle weekly stats interactions
-      if (customId === "weekly_stat_type_selector") {
-        const data = interaction.data as APIMessageStringSelectInteractionData
-        const pagination: WeekStatsPagination = JSON.parse(data.values[0])
-        showWeeklyStats(interaction.token, client, leagueId, pagination.st, pagination.w, pagination.s, pagination.p)
-      } else if (customId === "weekly_week_selector" || customId === "weekly_season_selector") {
-        const data = interaction.data as APIMessageStringSelectInteractionData
-        const selection: WeekSelection = JSON.parse(data.values[0])
-        // Default to passing stats when changing week/season
-        showWeeklyStats(interaction.token, client, leagueId, MaddenEvents.MADDEN_PASSING_STAT, selection.w, selection.s, 0)
-      }
-      // Handle season stats interactions
-      else if (customId === "season_stat_type_selector") {
-        const data = interaction.data as APIMessageStringSelectInteractionData
-        const pagination: SeasonStatsPagination = JSON.parse(data.values[0])
-        showSeasonStats(interaction.token, client, leagueId, pagination.st, pagination.s, pagination.p)
-      } else if (customId === "season_season_selector") {
-        const data = interaction.data as APIMessageStringSelectInteractionData
-        const selection: SeasonSelection = JSON.parse(data.values[0])
-        // Default to passing stats when changing season
-        showSeasonStats(interaction.token, client, leagueId, MaddenEvents.MADDEN_PASSING_STAT, selection.s, 0)
-      }
-      // Handle pagination buttons
-      else {
-        try {
-          const pagination = JSON.parse(customId)
-          if ('w' in pagination) {
-            // Weekly stats pagination
-            const weekPagination = pagination as WeekStatsPagination
-            showWeeklyStats(interaction.token, client, leagueId, weekPagination.st, weekPagination.w, weekPagination.s, weekPagination.p)
-          } else if ('st' in pagination) {
-            // Season stats pagination
-            const seasonPagination = pagination as SeasonStatsPagination
-            showSeasonStats(interaction.token, client, leagueId, seasonPagination.st, seasonPagination.s, seasonPagination.p)
-          }
-        } catch (e) {
-          throw new Error(`Invalid interaction: ${customId}`)
-        }
-      }
     } catch (e) {
       await client.editOriginalInteraction(interaction.token, {
         flags: 32768,
