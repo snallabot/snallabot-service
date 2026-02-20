@@ -1083,14 +1083,13 @@ const MaddenDB: MaddenDB = {
         .get()
 
       const games = deduplicateSchedule(allGames.docs.map(d => convertDate(d.data()) as StoredEvent<MaddenGame>), teamList)
-      console.log(games)
       const unplayedGames = games.filter(g => g.status === GameResult.NOT_PLAYED)
 
       if (unplayedGames.length === 0) {
         // All games have been played - get games from the latest week of the latest season
         weekToQuery = Math.max(...games.map(game => game.weekIndex));
       } else {
-        weekToQuery = Math.max(...unplayedGames.map(g => g.weekIndex))
+        weekToQuery = Math.min(...unplayedGames.map(game => game.weekIndex));
       }
     }
     const statDocs = await db.collection("madden_data26").doc(leagueId).collection(statType)
