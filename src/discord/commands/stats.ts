@@ -629,7 +629,7 @@ async function showSeasonStats(
       })
     }
     // Get the actual season from stats if not specified
-    const actualSeason = season === -1 ? (rawStats[0] ? rawStats[0].seasonIndex : 0) : 0
+    const actualSeason = rawStats[0] ? rawStats[0].seasonIndex : season == -1 ? 0 : season
 
     let aggregatedStats: any[]
     let formattedStats: string
@@ -796,7 +796,7 @@ function getSeasonStatSelection(interaction: MessageComponentInteraction) {
   } else {
     try {
       const parsedId = JSON.parse(customId)
-      if (parsedId.st != null && parsedId.w != null && parsedId.s != null && parsedId.p != null) {
+      if (parsedId.st != null && parsedId.s != null && parsedId.p != null) {
         return parsedId as SeasonStatsPagination
       }
     } catch (e) {
@@ -897,7 +897,6 @@ export default {
 
   async handleInteraction(interaction: MessageComponentInteraction, client: DiscordClient) {
     try {
-      const customId = interaction.custom_id
       const guildId = interaction.guild_id
       const discordLeague = await discordLeagueView.createView(guildId)
       const leagueId = discordLeague?.leagueId
