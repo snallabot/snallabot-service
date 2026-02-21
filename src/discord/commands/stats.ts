@@ -112,7 +112,6 @@ const passingConfig: StatTypeConfig<PassingAggregation> = {
     { sorter: (x) => x.passYds, shortName: "YD", label: "Pass Yards" },
     { sorter: (x) => x.passTDs, shortName: "TD", label: "Touchdowns" },
     { sorter: (x) => x.passInts, shortName: "IN", label: "Interceptions" },
-    { sorter: (x) => x.passSacks, shortName: "SK", label: "Sacks" },
     { sorter: (x) => x.passAtt > 0 ? x.passComp / x.passAtt : 0, shortName: "%", label: "Completion %" },
   ]
 }
@@ -578,7 +577,7 @@ async function showWeeklyStats(
     const statTypeOptions = Object.values(statEventTypes).map(sType => {
       return {
         label: sType.label,
-        value: JSON.stringify({ st: sType.shortValue, w: actualWeek, s: actualSeason, p: 0, so: statEventTypes[statType].sortOrders[0].shortName })
+        value: JSON.stringify({ st: sType.shortValue, w: actualWeek, s: actualSeason, p: 0, so: sType.sortOrders[0].shortName })
       }
     })
     const sortOptions = statEventTypes[statType].sortOrders.map(sortOrder => (
@@ -786,9 +785,9 @@ async function showSeasonStats(
     const currentPagination = { st: LONG_TO_SHORT_MAPPING[statType], s: actualSeason, p: page, so: shortSortOrder }
 
     // Create stat type selector
-    const statTypeOptions = Object.values(statEventTypes).map(type => ({
-      label: type.label,
-      value: JSON.stringify({ st: type.shortValue, s: actualSeason, p: 0, so: type.sortOrders[0].shortName })
+    const statTypeOptions = Object.values(statEventTypes).map(sType => ({
+      label: sType.label,
+      value: JSON.stringify({ st: sType.shortValue, s: actualSeason, p: 0, so: sType.sortOrders[0].shortName })
     }))
     const sortOptions = statEventTypes[statType].sortOrders.map(sortOrder => (
       {
