@@ -432,7 +432,17 @@ async function showWeeklyStats(
       leagueLogosView.createView(leagueId),
       MaddenDB.getAllWeeks(leagueId)
     ])
-
+    if (allWeeks.length === 0) {
+      await client.editOriginalInteraction(token, {
+        flags: 32768,
+        components: [
+          {
+            type: ComponentType.TextDisplay,
+            content: `No data to show, try an export`
+          }
+        ]
+      })
+    }
 
     // Get the actual week/season from stats if not specified
     const actualWeek = weekIndex + 1
@@ -607,7 +617,17 @@ async function showSeasonStats(
       leagueLogosView.createView(leagueId),
       MaddenDB.getAllWeeks(leagueId)
     ])
-
+    if (allWeeks.length === 0) {
+      await client.editOriginalInteraction(token, {
+        flags: 32768,
+        components: [
+          {
+            type: ComponentType.TextDisplay,
+            content: `No data to show, try an export`
+          }
+        ]
+      })
+    }
     // Get the actual season from stats if not specified
     const actualSeason = season === -1 ? (rawStats[0] ? rawStats[0].seasonIndex : 0) : 0
 
