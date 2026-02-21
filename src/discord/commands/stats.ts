@@ -581,10 +581,14 @@ async function showWeeklyStats(
         value: JSON.stringify({ st: sType.shortValue, w: actualWeek, s: actualSeason, p: 0, so: statEventTypes[statType].sortOrders[0].shortName })
       }
     })
-    const sortOptions = statEventTypes[statType].sortOrders.map(sortOrder => ({
-      label: sortOrder.label,
-      value: JSON.stringify({ st: LONG_TO_SHORT_MAPPING[statType], w: actualWeek, s: actualSeason, p: 0, so: sortOrder.shortName })
-    }))
+    const sortOptions = statEventTypes[statType].sortOrders.map(sortOrder => (
+      {
+        type: ComponentType.Button,
+        style: ButtonStyle.Secondary,
+        label: sortOrder.label,
+        disabled: false,
+        custom_id: JSON.stringify({ st: LONG_TO_SHORT_MAPPING[statType], w: actualWeek, s: actualSeason, p: 0, so: sortOrder.shortName })
+      }))
 
     // Create week selector
     const weekOptions = allWeeks
@@ -788,10 +792,14 @@ async function showSeasonStats(
       label: type.label,
       value: JSON.stringify({ st: type.shortValue, s: actualSeason, p: 0, so: type.sortOrders[0].shortName })
     }))
-    const sortOptions = statEventTypes[statType].sortOrders.map(sortOrder => ({
-      label: sortOrder.label,
-      value: JSON.stringify({ st: LONG_TO_SHORT_MAPPING[statType], s: actualSeason, p: 0, so: sortOrder.shortName })
-    }))
+    const sortOptions = statEventTypes[statType].sortOrders.map(sortOrder => (
+      {
+        type: ComponentType.Button,
+        style: ButtonStyle.Secondary,
+        label: sortOrder.label,
+        disabled: false,
+        custom_id: JSON.stringify({ st: LONG_TO_SHORT_MAPPING[statType], s: actualSeason, p: 0, so: sortOrder.shortName })
+      }))
 
 
     // Create season selector
