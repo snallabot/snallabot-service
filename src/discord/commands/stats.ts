@@ -586,7 +586,7 @@ async function showWeeklyStats(
         type: ComponentType.Button,
         style: ButtonStyle.Secondary,
         label: sortOrder.label,
-        disabled: false,
+        disabled: sortOrder.shortName === shortSortOrder,
         custom_id: JSON.stringify({ st: LONG_TO_SHORT_MAPPING[statType], w: actualWeek, s: actualSeason, p: 0, so: sortOrder.shortName })
       }))
 
@@ -795,7 +795,7 @@ async function showSeasonStats(
         type: ComponentType.Button,
         style: ButtonStyle.Secondary,
         label: sortOrder.label,
-        disabled: false,
+        disabled: sortOrder.shortName === shortSortOrder,
         custom_id: JSON.stringify({ st: LONG_TO_SHORT_MAPPING[statType], s: actualSeason, p: 0, so: sortOrder.shortName })
       }))
 
