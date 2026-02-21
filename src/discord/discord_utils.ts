@@ -200,6 +200,7 @@ export function createClient(settings: DiscordSettings): DiscordClient {
     },
     editOriginalInteraction: async (token: string, body: { [key: string]: any }) => {
       try {
+        console.log(body)
         await sendDiscordRequest(`webhooks/${settings.appId}/${token}/messages/@original`, { method: "PATCH", body })
       } catch (e) {
         throw e
