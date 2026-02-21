@@ -1065,7 +1065,6 @@ const MaddenDB: MaddenDB = {
   getStatsForWeek: async function <T extends PlayerStatTypes>(leagueId: string, statType: PlayerStatEvents, week?: number, season?: number): Promise<{ seasonIndex: number, weekIndex: number, stats: T[] }> {
     const seasonIndex = await seasonView.createView(leagueId)
     const seasonToQuery = season ? season : seasonIndex ? seasonIndex.currentSeasonIndex : 0
-    console.log(seasonToQuery)
     let weekToQuery;
     if (week) {
       weekToQuery = week - 1
