@@ -587,7 +587,7 @@ async function showWeeklyStats(
         label: sortOrder.label,
         disabled: sortOrder.shortName === shortSortOrder,
         // differentiate id
-        custom_id: JSON.stringify({ st: LONG_TO_SHORT_MAPPING[statType], s: actualSeason, p: 0, so: sortOrder.shortName, b: "b" })
+        custom_id: JSON.stringify({ st: LONG_TO_SHORT_MAPPING[statType], w: actualWeek, s: actualSeason, p: 0, so: sortOrder.shortName, b: "b" })
       }))
 
     // Create week selector
