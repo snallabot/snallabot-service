@@ -7,7 +7,7 @@ import { viewCacheHits, viewCacheTotalRequests } from "../debug/metrics"
 import fastq from 'fastq'
 import type { queueAsPromised } from 'fastq'
 
-const TTL = 259200 // 72 hours in seconds
+const TTL = 36000 // 10 hours in seconds
 
 export abstract class View<T> {
   id: string
