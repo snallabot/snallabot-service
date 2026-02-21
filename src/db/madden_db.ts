@@ -50,7 +50,7 @@ export enum MaddenEvents {
 }
 
 export type PlayerStatEvents = MaddenEvents.MADDEN_PASSING_STAT | MaddenEvents.MADDEN_RUSHING_STAT | MaddenEvents.MADDEN_DEFENSIVE_STAT | MaddenEvents.MADDEN_KICKING_STAT | MaddenEvents.MADDEN_RECEIVING_STAT | MaddenEvents.MADDEN_PUNTING_STAT
-type PlayerStatTypes = PassingStats | RushingStats | DefensiveStats | KickingStats | ReceivingStats | PuntingStats
+export type PlayerStatTypes = PassingStats | RushingStats | DefensiveStats | KickingStats | ReceivingStats | PuntingStats
 
 export type PlayerListQuery = { teamId?: number, position?: string, rookie?: boolean, retired?: boolean }
 type IndividualStatus = { lastExported: Date }

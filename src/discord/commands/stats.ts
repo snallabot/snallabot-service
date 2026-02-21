@@ -39,36 +39,7 @@ const SHORT_TO_LONG_MAPPING: Record<ShortPlayerStatEvents, PlayerStatEvents> = {
 
 const LONG_TO_SHORT_MAPPING = Object.fromEntries(
   Object.entries(SHORT_TO_LONG_MAPPING).map(([k, v]) => [v, k])
-);
-
-type StatTypeConfig = {
-  label: string
-  value: PlayerStatEvents
-  offensiveStat: boolean,
-  shortValue: ShortPlayerStatEvents
-}
-
-const statEventTypes = {
-  [MaddenEvents.MADDEN_PASSING_STAT]: { label: "Passing", offensiveStat: true, shortValue: "pa" },
-  [MaddenEvents.MADDEN_RUSHING_STAT]: { label: "Rushing", offensiveStat: true, shortValue: "ru" },
-  [MaddenEvents.MADDEN_RECEIVING_STAT]: { label: "Receiving", offensiveStat: true, shortValue: "rc" },
-  [MaddenEvents.MADDEN_DEFENSIVE_STAT]: { label: "Defense", offensiveStat: false, shortValue: "d" },
-  [MaddenEvents.MADDEN_KICKING_STAT]: { label: "Kicking", offensiveStat: false, shortValue: "k" },
-  [MaddenEvents.MADDEN_PUNTING_STAT]: { label: "Punting", offensiveStat: false, shortValue: "pu" },
-}
-
-type WeekStatsPagination = {
-  st: ShortPlayerStatEvents  // stat type
-  w: number            // week
-  s: number            // season
-  p: number             // page
-}
-
-type SeasonStatsPagination = {
-  st: ShortPlayerStatEvents  // stat type
-  s: number            // season
-  p: number             // page
-}
+)
 
 // Aggregation types for season stats
 type PassingAggregation = {
@@ -124,9 +95,121 @@ type PuntingAggregation = {
   puntNetYds: number
 }
 
-function aggregatePassingStats(stats: PassingStats[]): PassingAggregation[] {
-  const aggregated = new Map<number, PassingAggregation>()
+type StatAggregations = PuntingAggregation | KickingAggregation | RushingAggregation | ReceivingAggregation | PassingAggregation | DefensiveAggregation
 
+type SortOrderConfig<T extends StatAggregations> = { sorter: (x: T) => number, shortName: string, label: string }
+
+type StatTypeConfig<T extends StatAggregations> = {
+  label: string
+  shortValue: ShortPlayerStatEvents,
+  sortOrders: SortOrderConfig<T>[]
+}
+
+const passingConfig: StatTypeConfig<PassingAggregation> = {
+  label: "Passing",
+  shortValue: "pa" satisfies ShortPlayerStatEvents,
+  sortOrders: [
+    { sorter: (x) => x.passYds, shortName: "YD", label: "Pass Yards" },
+    { sorter: (x) => x.passTDs, shortName: "TD", label: "Touchdowns" },
+    { sorter: (x) => x.passInts, shortName: "IN", label: "Interceptions" },
+    { sorter: (x) => x.passSacks, shortName: "SK", label: "Sacks" },
+    { sorter: (x) => x.passAtt > 0 ? x.passComp / x.passAtt : 0, shortName: "%", label: "Completion %" },
+  ]
+}
+
+const rushingConfig: StatTypeConfig<RushingAggregation> = {
+  label: "Rushing",
+  shortValue: "ru" satisfies ShortPlayerStatEvents,
+  sortOrders: [
+    { sorter: (x) => x.rushYds, shortName: "YD", label: "Rush Yards" },
+    { sorter: (x) => x.rushTDs, shortName: "TD", label: "Touchdowns" },
+    { sorter: (x) => x.rushFum, shortName: "FM", label: "Fumbles" },
+    { sorter: (x) => x.rushAtt > 0 ? x.rushYds / x.rushAtt : 0, shortName: "YC", label: "Yards Per Carry" },
+  ]
+}
+
+const receivingConfig: StatTypeConfig<ReceivingAggregation> = {
+  label: "Receiving",
+  shortValue: "rc" satisfies ShortPlayerStatEvents,
+  sortOrders: [
+    { sorter: (x) => x.recYds, shortName: "YD", label: "Rec Yards" },
+    { sorter: (x) => x.recTDs, shortName: "TD", label: "Touchdowns" },
+    { sorter: (x) => x.recCatches, shortName: "RC", label: "Receptions" },
+    { sorter: (x) => x.recDrops, shortName: "DR", label: "Drops" },
+    { sorter: (x) => x.recCatches > 0 ? x.recYds / x.recCatches : 0, shortName: "YR", label: "Yards Per Catch" },
+  ]
+}
+
+const defensiveConfig: StatTypeConfig<DefensiveAggregation> = {
+  label: "Defense",
+  shortValue: "d" satisfies ShortPlayerStatEvents,
+  sortOrders: [
+    { sorter: (x) => x.defTotalTackles, shortName: "TK", label: "Total Tackles" },
+    { sorter: (x) => x.defSacks, shortName: "SK", label: "Sacks" },
+    { sorter: (x) => x.defInts, shortName: "IN", label: "Interceptions" },
+    { sorter: (x) => x.defForcedFum, shortName: "FF", label: "Forced Fumbles" },
+    { sorter: (x) => x.defTDs, shortName: "TD", label: "Touchdowns" },
+  ]
+}
+
+const kickingConfig: StatTypeConfig<KickingAggregation> = {
+  label: "Kicking",
+  shortValue: "k" satisfies ShortPlayerStatEvents,
+  sortOrders: [
+    { sorter: (x) => x.fGMade, shortName: "FG", label: "FG Made" },
+    { sorter: (x) => x.kickPts, shortName: "PT", label: "Points" },
+    { sorter: (x) => x.fGAtt > 0 ? x.fGMade / x.fGAtt : 0, shortName: "%", label: "FG %" },
+  ]
+}
+
+const puntingConfig: StatTypeConfig<PuntingAggregation> = {
+  label: "Punting",
+  shortValue: "pu" satisfies ShortPlayerStatEvents,
+  sortOrders: [
+    { sorter: (x) => x.puntYds, shortName: "YD", label: "Punt Yards" },
+    { sorter: (x) => x.puntsIn20, shortName: "20", label: "Punts Inside 20" },
+    { sorter: (x) => x.puntNetYds, shortName: "NT", label: "Net Yards" },
+  ]
+}
+
+type StatAggregationMap = {
+  [MaddenEvents.MADDEN_PASSING_STAT]: PassingAggregation
+  [MaddenEvents.MADDEN_RUSHING_STAT]: RushingAggregation
+  [MaddenEvents.MADDEN_RECEIVING_STAT]: ReceivingAggregation
+  [MaddenEvents.MADDEN_DEFENSIVE_STAT]: DefensiveAggregation
+  [MaddenEvents.MADDEN_KICKING_STAT]: KickingAggregation
+  [MaddenEvents.MADDEN_PUNTING_STAT]: PuntingAggregation
+}
+
+const statEventTypes = {
+  [MaddenEvents.MADDEN_PASSING_STAT]: passingConfig,
+  [MaddenEvents.MADDEN_RUSHING_STAT]: rushingConfig,
+  [MaddenEvents.MADDEN_RECEIVING_STAT]: receivingConfig,
+  [MaddenEvents.MADDEN_DEFENSIVE_STAT]: defensiveConfig,
+  [MaddenEvents.MADDEN_KICKING_STAT]: kickingConfig,
+  [MaddenEvents.MADDEN_PUNTING_STAT]: puntingConfig,
+} satisfies {
+    [K in PlayerStatEvents]: StatTypeConfig<StatAggregationMap[K]>
+  }
+
+type WeekStatsPagination = {
+  st: ShortPlayerStatEvents  // stat type
+  w: number            // week
+  s: number            // season
+  p: number             // page
+  so: string
+}
+
+type SeasonStatsPagination = {
+  st: ShortPlayerStatEvents  // stat type
+  s: number            // season
+  p: number             // page
+  so: string
+}
+
+
+function aggregatePassingStats(stats: PassingStats[], sorter: (x: PassingAggregation) => number): PassingAggregation[] {
+  const aggregated = new Map<number, PassingAggregation>()
   for (const stat of stats) {
     const existing = aggregated.get(stat.rosterId) || {
       rosterId: stat.rosterId,
@@ -137,23 +220,19 @@ function aggregatePassingStats(stats: PassingStats[]): PassingAggregation[] {
       passAtt: 0,
       passSacks: 0
     }
-
     existing.passYds += stat.passYds
     existing.passTDs += stat.passTDs
     existing.passInts += stat.passInts
     existing.passComp += stat.passComp
     existing.passAtt += stat.passAtt
     existing.passSacks += stat.passSacks
-
     aggregated.set(stat.rosterId, existing)
   }
-
-  return Array.from(aggregated.values()).sort((a, b) => b.passYds - a.passYds)
+  return Array.from(aggregated.values()).sort((a, b) => sorter(b) - sorter(a))
 }
 
-function aggregateRushingStats(stats: RushingStats[]): RushingAggregation[] {
+function aggregateRushingStats(stats: RushingStats[], sorter: (x: RushingAggregation) => number): RushingAggregation[] {
   const aggregated = new Map<number, RushingAggregation>()
-
   for (const stat of stats) {
     const existing = aggregated.get(stat.rosterId) || {
       rosterId: stat.rosterId,
@@ -162,21 +241,17 @@ function aggregateRushingStats(stats: RushingStats[]): RushingAggregation[] {
       rushAtt: 0,
       rushFum: 0
     }
-
     existing.rushYds += stat.rushYds
     existing.rushTDs += stat.rushTDs
     existing.rushAtt += stat.rushAtt
     existing.rushFum += stat.rushFum
-
     aggregated.set(stat.rosterId, existing)
   }
-
-  return Array.from(aggregated.values()).sort((a, b) => b.rushYds - a.rushYds)
+  return Array.from(aggregated.values()).sort((a, b) => sorter(b) - sorter(a))
 }
 
-function aggregateReceivingStats(stats: ReceivingStats[]): ReceivingAggregation[] {
+function aggregateReceivingStats(stats: ReceivingStats[], sorter: (x: ReceivingAggregation) => number): ReceivingAggregation[] {
   const aggregated = new Map<number, ReceivingAggregation>()
-
   for (const stat of stats) {
     const existing = aggregated.get(stat.rosterId) || {
       rosterId: stat.rosterId,
@@ -185,21 +260,17 @@ function aggregateReceivingStats(stats: ReceivingStats[]): ReceivingAggregation[
       recCatches: 0,
       recDrops: 0
     }
-
     existing.recYds += stat.recYds
     existing.recTDs += stat.recTDs
     existing.recCatches += stat.recCatches
     existing.recDrops += stat.recDrops
-
     aggregated.set(stat.rosterId, existing)
   }
-
-  return Array.from(aggregated.values()).sort((a, b) => b.recYds - a.recYds)
+  return Array.from(aggregated.values()).sort((a, b) => sorter(b) - sorter(a))
 }
 
-function aggregateDefensiveStats(stats: DefensiveStats[]): DefensiveAggregation[] {
+function aggregateDefensiveStats(stats: DefensiveStats[], sorter: (x: DefensiveAggregation) => number): DefensiveAggregation[] {
   const aggregated = new Map<number, DefensiveAggregation>()
-
   for (const stat of stats) {
     const existing = aggregated.get(stat.rosterId) || {
       rosterId: stat.rosterId,
@@ -210,23 +281,19 @@ function aggregateDefensiveStats(stats: DefensiveStats[]): DefensiveAggregation[
       defForcedFum: 0,
       defTDs: 0
     }
-
     existing.defTotalTackles += stat.defTotalTackles
     existing.defSacks += stat.defSacks
     existing.defInts += stat.defInts
     existing.defFumRec += stat.defFumRec
     existing.defForcedFum += stat.defForcedFum
     existing.defTDs += stat.defTDs
-
     aggregated.set(stat.rosterId, existing)
   }
-
-  return Array.from(aggregated.values()).sort((a, b) => b.defTotalTackles - a.defTotalTackles)
+  return Array.from(aggregated.values()).sort((a, b) => sorter(b) - sorter(a))
 }
 
-function aggregateKickingStats(stats: KickingStats[]): KickingAggregation[] {
+function aggregateKickingStats(stats: KickingStats[], sorter: (x: KickingAggregation) => number): KickingAggregation[] {
   const aggregated = new Map<number, KickingAggregation>()
-
   for (const stat of stats) {
     const existing = aggregated.get(stat.rosterId) || {
       rosterId: stat.rosterId,
@@ -236,22 +303,18 @@ function aggregateKickingStats(stats: KickingStats[]): KickingAggregation[] {
       xPAtt: 0,
       kickPts: 0
     }
-
     existing.fGMade += stat.fGMade
     existing.fGAtt += stat.fGAtt
     existing.xPMade += stat.xPMade
     existing.xPAtt += stat.xPAtt
     existing.kickPts += stat.kickPts
-
     aggregated.set(stat.rosterId, existing)
   }
-
-  return Array.from(aggregated.values()).sort((a, b) => b.kickPts - a.kickPts)
+  return Array.from(aggregated.values()).sort((a, b) => sorter(b) - sorter(a))
 }
 
-function aggregatePuntingStats(stats: PuntingStats[]): PuntingAggregation[] {
+function aggregatePuntingStats(stats: PuntingStats[], sorter: (x: PuntingAggregation) => number): PuntingAggregation[] {
   const aggregated = new Map<number, PuntingAggregation>()
-
   for (const stat of stats) {
     const existing = aggregated.get(stat.rosterId) || {
       rosterId: stat.rosterId,
@@ -260,16 +323,13 @@ function aggregatePuntingStats(stats: PuntingStats[]): PuntingAggregation[] {
       puntsIn20: 0,
       puntNetYds: 0
     }
-
     existing.puntYds += stat.puntYds
     existing.puntAtt += stat.puntAtt
     existing.puntsIn20 += stat.puntsIn20
     existing.puntNetYds += stat.puntNetYds
-
     aggregated.set(stat.rosterId, existing)
   }
-
-  return Array.from(aggregated.values()).sort((a, b) => b.puntYds - a.puntYds)
+  return Array.from(aggregated.values()).sort((a, b) => sorter(b) - sorter(a))
 }
 
 async function formatPassingStats(
@@ -415,12 +475,18 @@ async function formatPuntingStats(
   return lines.join('\n\n')
 }
 
+function findSortOrder<T extends StatAggregations>(sortOrder: string, config: StatTypeConfig<T>) {
+  const entry = config.sortOrders.find(s => s.shortName === sortOrder)
+  if (!entry) throw new Error(`Sort order "${sortOrder}" not found in ${config.label} config`)
+  return entry
+}
 
 async function showWeeklyStats(
   token: string,
   client: DiscordClient,
   leagueId: string,
   statType: PlayerStatEvents,
+  sortOrder: string,
   week: number = -1,
   season: number = -1,
   page: number = 0
@@ -450,38 +516,51 @@ async function showWeeklyStats(
 
     let aggregatedStats: any[]
     let formattedStats: string
+    let shortSortOrder: string
     const startIdx = page * PAGINATION_LIMIT
     const endIdx = startIdx + PAGINATION_LIMIT
-
     // Aggregate and format based on stat type
     switch (statType) {
       case MaddenEvents.MADDEN_PASSING_STAT:
-        aggregatedStats = aggregatePassingStats(rawStats as PassingStats[])
+        const passingOrder = findSortOrder(sortOrder, statEventTypes[MaddenEvents.MADDEN_PASSING_STAT])
+        aggregatedStats = aggregatePassingStats(rawStats as PassingStats[], passingOrder.sorter)
         formattedStats = await formatPassingStats(aggregatedStats.slice(startIdx, endIdx), leagueId, teams, logos)
+        shortSortOrder = passingOrder.shortName
         break
       case MaddenEvents.MADDEN_RUSHING_STAT:
-        aggregatedStats = aggregateRushingStats(rawStats as RushingStats[])
+        const rushingOrder = findSortOrder(sortOrder, statEventTypes[MaddenEvents.MADDEN_RUSHING_STAT])
+        aggregatedStats = aggregateRushingStats(rawStats as RushingStats[], rushingOrder.sorter)
         formattedStats = await formatRushingStats(aggregatedStats.slice(startIdx, endIdx), leagueId, teams, logos)
+        shortSortOrder = rushingOrder.shortName
         break
       case MaddenEvents.MADDEN_RECEIVING_STAT:
-        aggregatedStats = aggregateReceivingStats(rawStats as ReceivingStats[])
+        const receivingOrder = findSortOrder(sortOrder, statEventTypes[MaddenEvents.MADDEN_RECEIVING_STAT])
+        aggregatedStats = aggregateReceivingStats(rawStats as ReceivingStats[], receivingOrder.sorter)
         formattedStats = await formatReceivingStats(aggregatedStats.slice(startIdx, endIdx), leagueId, teams, logos)
+        shortSortOrder = receivingOrder.shortName
         break
       case MaddenEvents.MADDEN_DEFENSIVE_STAT:
-        aggregatedStats = aggregateDefensiveStats(rawStats as DefensiveStats[])
+        const defensiveOrder = findSortOrder(sortOrder, statEventTypes[MaddenEvents.MADDEN_DEFENSIVE_STAT])
+        aggregatedStats = aggregateDefensiveStats(rawStats as DefensiveStats[], defensiveOrder.sorter)
         formattedStats = await formatDefensiveStats(aggregatedStats.slice(startIdx, endIdx), leagueId, teams, logos)
+        shortSortOrder = defensiveOrder.shortName
         break
       case MaddenEvents.MADDEN_KICKING_STAT:
-        aggregatedStats = aggregateKickingStats(rawStats as KickingStats[])
+        const kickingOrder = findSortOrder(sortOrder, statEventTypes[MaddenEvents.MADDEN_KICKING_STAT])
+        aggregatedStats = aggregateKickingStats(rawStats as KickingStats[], kickingOrder.sorter)
         formattedStats = await formatKickingStats(aggregatedStats.slice(startIdx, endIdx), leagueId, teams, logos)
+        shortSortOrder = kickingOrder.shortName
         break
       case MaddenEvents.MADDEN_PUNTING_STAT:
-        aggregatedStats = aggregatePuntingStats(rawStats as PuntingStats[])
+        const puntingOrder = findSortOrder(sortOrder, statEventTypes[MaddenEvents.MADDEN_PUNTING_STAT])
+        aggregatedStats = aggregatePuntingStats(rawStats as PuntingStats[], puntingOrder.sorter)
         formattedStats = await formatPuntingStats(aggregatedStats.slice(startIdx, endIdx), leagueId, teams, logos)
+        shortSortOrder = puntingOrder.shortName
         break
       default:
         aggregatedStats = []
         formattedStats = "No stats available"
+        shortSortOrder = ""
     }
 
     const statTypeLabel = statEventTypes[statType].label || "Stats"
@@ -493,12 +572,18 @@ async function showWeeklyStats(
     // Create pagination buttons
     const backDisabled = page === 0
     const nextDisabled = endIdx >= aggregatedStats.length
-    const currentPagination = { st: LONG_TO_SHORT_MAPPING[statType], w: actualWeek, s: actualSeason, p: page }
+    const currentPagination = { st: LONG_TO_SHORT_MAPPING[statType], w: actualWeek, s: actualSeason, p: page, so: shortSortOrder }
 
     // Create stat type selector
-    const statTypeOptions = Object.values(statEventTypes).map(type => ({
-      label: type.label,
-      value: JSON.stringify({ st: type.shortValue, w: actualWeek, s: actualSeason, p: 0 })
+    const statTypeOptions = Object.values(statEventTypes).map(sType => {
+      return {
+        label: sType.label,
+        value: JSON.stringify({ st: sType.shortValue, w: actualWeek, s: actualSeason, p: 0, so: statEventTypes[statType].sortOrders[0].shortName })
+      }
+    })
+    const sortOptions = statEventTypes[statType].sortOrders.map(sortOrder => ({
+      label: sortOrder.label,
+      value: JSON.stringify({ st: LONG_TO_SHORT_MAPPING[statType], w: actualWeek, s: actualSeason, p: 0, so: sortOrder.shortName })
     }))
 
     // Create week selector
@@ -507,7 +592,7 @@ async function showWeeklyStats(
       .sort((a, b) => a.weekIndex - b.weekIndex)
       .map(ws => ({
         label: getMessageForWeek(ws.weekIndex + 1),
-        value: JSON.stringify({ st: LONG_TO_SHORT_MAPPING[statType], w: ws.weekIndex + 1, s: actualSeason, p: 0 })
+        value: JSON.stringify({ st: LONG_TO_SHORT_MAPPING[statType], w: ws.weekIndex + 1, s: actualSeason, p: 0, so: shortSortOrder })
       }))
 
     // Create season selector
@@ -515,7 +600,7 @@ async function showWeeklyStats(
       .sort((a, b) => a - b)
       .map(s => ({
         label: `Season ${s + MADDEN_SEASON}`,
-        value: JSON.stringify({ st: LONG_TO_SHORT_MAPPING[statType], w: 1, s: s, p: 0 })
+        value: JSON.stringify({ st: LONG_TO_SHORT_MAPPING[statType], w: 1, s: s, p: 0, so: shortSortOrder })
       }))
 
     await client.editOriginalInteraction(token, {
@@ -547,6 +632,12 @@ async function showWeeklyStats(
               disabled: nextDisabled,
               custom_id: JSON.stringify({ ...currentPagination, p: page + 1 })
             }
+          ]
+        },
+        {
+          type: ComponentType.ActionRow,
+          components: [
+            sortOptions
           ]
         },
         {
@@ -607,6 +698,7 @@ async function showSeasonStats(
   client: DiscordClient,
   leagueId: string,
   statType: PlayerStatEvents,
+  sortOrder: string,
   season: number = -1,
   page: number = 0
 ) {
@@ -633,38 +725,51 @@ async function showSeasonStats(
 
     let aggregatedStats: any[]
     let formattedStats: string
+    let shortSortOrder: string
     const startIdx = page * PAGINATION_LIMIT
     const endIdx = startIdx + PAGINATION_LIMIT
-
     // Aggregate and format based on stat type
     switch (statType) {
       case MaddenEvents.MADDEN_PASSING_STAT:
-        aggregatedStats = aggregatePassingStats(rawStats as PassingStats[])
+        const passingOrder = findSortOrder(sortOrder, statEventTypes[MaddenEvents.MADDEN_PASSING_STAT])
+        aggregatedStats = aggregatePassingStats(rawStats as PassingStats[], passingOrder.sorter)
         formattedStats = await formatPassingStats(aggregatedStats.slice(startIdx, endIdx), leagueId, teams, logos)
+        shortSortOrder = passingOrder.shortName
         break
       case MaddenEvents.MADDEN_RUSHING_STAT:
-        aggregatedStats = aggregateRushingStats(rawStats as RushingStats[])
+        const rushingOrder = findSortOrder(sortOrder, statEventTypes[MaddenEvents.MADDEN_RUSHING_STAT])
+        aggregatedStats = aggregateRushingStats(rawStats as RushingStats[], rushingOrder.sorter)
         formattedStats = await formatRushingStats(aggregatedStats.slice(startIdx, endIdx), leagueId, teams, logos)
+        shortSortOrder = rushingOrder.shortName
         break
       case MaddenEvents.MADDEN_RECEIVING_STAT:
-        aggregatedStats = aggregateReceivingStats(rawStats as ReceivingStats[])
+        const receivingOrder = findSortOrder(sortOrder, statEventTypes[MaddenEvents.MADDEN_RECEIVING_STAT])
+        aggregatedStats = aggregateReceivingStats(rawStats as ReceivingStats[], receivingOrder.sorter)
         formattedStats = await formatReceivingStats(aggregatedStats.slice(startIdx, endIdx), leagueId, teams, logos)
+        shortSortOrder = receivingOrder.shortName
         break
       case MaddenEvents.MADDEN_DEFENSIVE_STAT:
-        aggregatedStats = aggregateDefensiveStats(rawStats as DefensiveStats[])
+        const defensiveOrder = findSortOrder(sortOrder, statEventTypes[MaddenEvents.MADDEN_DEFENSIVE_STAT])
+        aggregatedStats = aggregateDefensiveStats(rawStats as DefensiveStats[], defensiveOrder.sorter)
         formattedStats = await formatDefensiveStats(aggregatedStats.slice(startIdx, endIdx), leagueId, teams, logos)
+        shortSortOrder = defensiveOrder.shortName
         break
       case MaddenEvents.MADDEN_KICKING_STAT:
-        aggregatedStats = aggregateKickingStats(rawStats as KickingStats[])
+        const kickingOrder = findSortOrder(sortOrder, statEventTypes[MaddenEvents.MADDEN_KICKING_STAT])
+        aggregatedStats = aggregateKickingStats(rawStats as KickingStats[], kickingOrder.sorter)
         formattedStats = await formatKickingStats(aggregatedStats.slice(startIdx, endIdx), leagueId, teams, logos)
+        shortSortOrder = kickingOrder.shortName
         break
       case MaddenEvents.MADDEN_PUNTING_STAT:
-        aggregatedStats = aggregatePuntingStats(rawStats as PuntingStats[])
+        const puntingOrder = findSortOrder(sortOrder, statEventTypes[MaddenEvents.MADDEN_PUNTING_STAT])
+        aggregatedStats = aggregatePuntingStats(rawStats as PuntingStats[], puntingOrder.sorter)
         formattedStats = await formatPuntingStats(aggregatedStats.slice(startIdx, endIdx), leagueId, teams, logos)
+        shortSortOrder = puntingOrder.shortName
         break
       default:
         aggregatedStats = []
         formattedStats = "No stats available"
+        shortSortOrder = ""
     }
 
     const statTypeLabel = statEventTypes[statType].label || "Stats"
@@ -676,12 +781,16 @@ async function showSeasonStats(
     // Create pagination buttons
     const backDisabled = page === 0
     const nextDisabled = endIdx >= aggregatedStats.length
-    const currentPagination = { st: LONG_TO_SHORT_MAPPING[statType], s: actualSeason, p: page }
+    const currentPagination = { st: LONG_TO_SHORT_MAPPING[statType], s: actualSeason, p: page, so: shortSortOrder }
 
     // Create stat type selector
     const statTypeOptions = Object.values(statEventTypes).map(type => ({
       label: type.label,
-      value: JSON.stringify({ st: type.shortValue, s: actualSeason, p: 0 })
+      value: JSON.stringify({ st: type.shortValue, s: actualSeason, p: 0, so: type.sortOrders[0].shortName })
+    }))
+    const sortOptions = statEventTypes[statType].sortOrders.map(sortOrder => ({
+      label: sortOrder.label,
+      value: JSON.stringify({ st: LONG_TO_SHORT_MAPPING[statType], s: actualSeason, p: 0, so: sortOrder.shortName })
     }))
 
 
@@ -690,7 +799,7 @@ async function showSeasonStats(
       .sort((a, b) => a - b)
       .map(s => ({
         label: `Season ${s + MADDEN_SEASON}`,
-        value: JSON.stringify({ st: LONG_TO_SHORT_MAPPING[statType], s: actualSeason, p: 0 })
+        value: JSON.stringify({ st: LONG_TO_SHORT_MAPPING[statType], s: actualSeason, p: 0, so: shortSortOrder })
       }))
 
     await client.editOriginalInteraction(token, {
@@ -722,6 +831,12 @@ async function showSeasonStats(
               disabled: nextDisabled,
               custom_id: JSON.stringify({ ...currentPagination, p: page + 1 })
             }
+          ]
+        },
+        {
+          type: ComponentType.ActionRow,
+          components: [
+            sortOptions
           ]
         },
         {
@@ -826,13 +941,13 @@ export default {
       const week = (statsCommand.options?.find(o => o.name === "week") as APIApplicationCommandInteractionDataIntegerOption)?.value ?? -1
       const season = (statsCommand.options?.find(o => o.name === "season") as APIApplicationCommandInteractionDataIntegerOption)?.value ?? -1
 
-      showWeeklyStats(token, client, leagueId, statType, Number(week), Number(season))
+      showWeeklyStats(token, client, leagueId, statType, statEventTypes[statType].sortOrders[0].shortName, Number(week), Number(season))
       return deferMessage()
     } else if (statsCommand.name === "season") {
       const statType = (statsCommand.options?.find(o => o.name === "stat_type") as APIApplicationCommandInteractionDataStringOption)?.value as PlayerStatEvents ?? MaddenEvents.MADDEN_PASSING_STAT
       const season = (statsCommand.options?.find(o => o.name === "season") as APIApplicationCommandInteractionDataIntegerOption)?.value ?? -1
 
-      showSeasonStats(token, client, leagueId, statType, Number(season))
+      showSeasonStats(token, client, leagueId, statType, statEventTypes[statType].sortOrders[0].shortName, Number(season))
       return deferMessage()
     }
 
@@ -907,9 +1022,9 @@ export default {
       const weekStatSelection = getWeeklyStatSelection(interaction)
       const seasonStatSelection = getSeasonStatSelection(interaction)
       if (weekStatSelection) {
-        showWeeklyStats(interaction.token, client, leagueId, SHORT_TO_LONG_MAPPING[weekStatSelection.st], weekStatSelection.w, weekStatSelection.s, weekStatSelection.p)
+        showWeeklyStats(interaction.token, client, leagueId, SHORT_TO_LONG_MAPPING[weekStatSelection.st], weekStatSelection.so, weekStatSelection.w, weekStatSelection.s, weekStatSelection.p)
       } else if (seasonStatSelection) {
-        showSeasonStats(interaction.token, client, leagueId, SHORT_TO_LONG_MAPPING[seasonStatSelection.st], seasonStatSelection.s, seasonStatSelection.p)
+        showSeasonStats(interaction.token, client, leagueId, SHORT_TO_LONG_MAPPING[seasonStatSelection.st], seasonStatSelection.so, seasonStatSelection.s, seasonStatSelection.p)
       }
 
     } catch (e) {
