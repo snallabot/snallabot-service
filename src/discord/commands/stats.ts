@@ -806,7 +806,7 @@ async function showSeasonStats(
       .sort((a, b) => a - b)
       .map(s => ({
         label: `Season ${s + MADDEN_SEASON}`,
-        value: JSON.stringify({ st: LONG_TO_SHORT_MAPPING[statType], s: actualSeason, p: 0, so: shortSortOrder })
+        value: JSON.stringify({ st: LONG_TO_SHORT_MAPPING[statType], s: s, p: 0, so: shortSortOrder })
       }))
 
     await client.editOriginalInteraction(token, {
@@ -945,14 +945,16 @@ export default {
       const statType = (statsCommand.options?.find(o => o.name === "stat_type") as APIApplicationCommandInteractionDataStringOption)?.value as PlayerStatEvents ?? MaddenEvents.MADDEN_PASSING_STAT
       const week = (statsCommand.options?.find(o => o.name === "week") as APIApplicationCommandInteractionDataIntegerOption)?.value ?? -1
       const season = (statsCommand.options?.find(o => o.name === "season") as APIApplicationCommandInteractionDataIntegerOption)?.value ?? -1
+      const seasonIndex = Number(season) < 100 ? Number(season) : Number(season) - MADDEN_SEASON
 
-      showWeeklyStats(token, client, leagueId, statType, statEventTypes[statType].sortOrders[0].shortName, Number(week), Number(season))
+      showWeeklyStats(token, client, leagueId, statType, statEventTypes[statType].sortOrders[0].shortName, Number(week), seasonIndex)
       return deferMessage()
     } else if (statsCommand.name === "season") {
       const statType = (statsCommand.options?.find(o => o.name === "stat_type") as APIApplicationCommandInteractionDataStringOption)?.value as PlayerStatEvents ?? MaddenEvents.MADDEN_PASSING_STAT
       const season = (statsCommand.options?.find(o => o.name === "season") as APIApplicationCommandInteractionDataIntegerOption)?.value ?? -1
+      const seasonIndex = Number(season) < 100 ? Number(season) : Number(season) - MADDEN_SEASON
 
-      showSeasonStats(token, client, leagueId, statType, statEventTypes[statType].sortOrders[0].shortName, Number(season))
+      showSeasonStats(token, client, leagueId, statType, statEventTypes[statType].sortOrders[0].shortName, seasonIndex)
       return deferMessage()
     }
 
