@@ -640,9 +640,7 @@ async function showWeeklyStats(
         },
         {
           type: ComponentType.ActionRow,
-          components: [
-            sortOptions
-          ]
+          components: sortOptions
         },
         {
           type: ComponentType.Separator,
@@ -843,9 +841,7 @@ async function showSeasonStats(
         },
         {
           type: ComponentType.ActionRow,
-          components: [
-            sortOptions
-          ]
+          components: sortOptions
         },
         {
           type: ComponentType.Separator,
