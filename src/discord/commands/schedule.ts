@@ -1,5 +1,5 @@
 import { Command, Autocomplete, MessageComponentInteraction } from "../commands_handler"
-import { DiscordClient, deferMessage, formatTeamEmoji, getSimsForWeek, formatSchedule, getSims, createSimMessageForTeam } from "../discord_utils"
+import { DiscordClient, deferMessage, formatTeamEmoji, getSimsForWeek, formatSchedule, getSims, createSimMessageForTeam, NoConnectedLeagueError } from "../discord_utils"
 import { APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ApplicationCommandType, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { GameResult, MADDEN_SEASON, getMessageForWeek, getMessageForWeekShortened } from "../../export/madden_league_types"
 import LeagueSettingsDB from "../settings_db"
@@ -8,6 +8,7 @@ import { GameStatsOptions } from "./game_stats"
 import fuzzysort from "fuzzysort"
 import { ConfirmedSimV2 } from "../../db/events"
 import MaddenDB from "../../db/madden_db"
+import { retrieveTeam } from "./teams"
 
 export type WeekSelection = { wi: number, si: number }
 export type TeamSelection = { ti: number, si: number }
@@ -384,22 +385,16 @@ export default {
       return deferMessage()
     } else if (scheduleCommand.name === "team") {
       if (!scheduleCommand.options || !scheduleCommand.options[0]) {
-        throw new Error("teams free misconfigured")
+        throw new Error("schedule  misconfigured")
       }
       const teamSearchPhrase = (scheduleCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value.toLowerCase()
       if (!leagueSettings?.commands?.madden_league?.league_id) {
-        throw new Error("No Madden league linked, setup the bot with your madden league first.")
+        throw new NoConnectedLeagueError(guild_id)
       }
       const leagueId = leagueSettings.commands.madden_league.league_id
       const season = (scheduleCommand.options?.[1] as APIApplicationCommandInteractionDataIntegerOption)?.value
       const teams = await MaddenDB.getLatestTeams(leagueId)
-      const results = fuzzysort.go(teamSearchPhrase, teams.getLatestTeams(), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.9 })
-      if (results.length < 1) {
-        throw new Error(`Could not find team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs`)
-      } else if (results.length > 1) {
-        throw new Error(`Found more than one  team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs.Found teams: ${results.map(t => t.obj.displayName).join(", ")}`)
-      }
-      const foundTeam = results[0].obj
+      const foundTeam = retrieveTeam(teamSearchPhrase, teams)
       const teamIdToShowSchedule = teams.getTeamForId(foundTeam.teamId).teamId
       showTeamSchedule(command.token, client, leagueId, teamIdToShowSchedule, season ? Number(season) : undefined)
       return deferMessage()
@@ -487,7 +482,7 @@ export default {
   async choices(command: Autocomplete) {
     const { guild_id } = command
     if (!command.data.options) {
-      throw new Error("team command not defined properly")
+      throw new Error("schedule command not defined properly")
     }
     const options = command.data.options
     const scheduleCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
@@ -498,7 +493,7 @@ export default {
       const teamsToSearch = await MaddenDB.getLatestTeams(leagueId)
       if (teamsToSearch) {
         const results = fuzzysort.go(teamSearchPhrase, teamsToSearch.getLatestTeams(), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.4, limit: 25 })
-        return results.map(r => ({ name: r.obj.displayName, value: r.obj.displayName }))
+        return results.map(r => ({ name: r.obj.displayName, value: r.obj.teamId }))
       }
     }
     return []

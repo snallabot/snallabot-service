@@ -13,6 +13,9 @@ import { TeamLogoCustomizedEvent } from "../../db/events"
 
 function formatTeamMessage(teams: Team[], teamAssignments: TeamAssignments): string {
   const header = "# Teams"
+  if (teams.length === 0) {
+    return `${header}\nNo Teams found, try exporting via dashboard or /export all_weeks`
+  }
   const teamsMessage = Object.entries(Object.groupBy(teams, team => team.divName))
     .sort((entry1, entry2) => entry1[0].localeCompare(entry2[0]))
     .map(entry => {
@@ -178,6 +181,21 @@ async function handleCustomLogo(guild_id: string, league_id: string, client: Dis
   }
 }
 
+export function retrieveTeam(teamSearchPhrase: string, teams: TeamList) {
+  const teamId = Number(teamSearchPhrase)
+  if (isNaN(teamId)) {
+    const results = fuzzysort.go(teamSearchPhrase, teams.getLatestTeams(), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.9 })
+    if (results.length < 1) {
+      throw new Error(`Could not find team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs`)
+    } else if (results.length > 1) {
+      throw new Error(`Found more than one  team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs.Found teams: ${results.map(t => t.obj.displayName).join(", ")} `)
+    }
+    return results[0].obj
+  } else {
+    return teams.getTeamForId(teamId)
+  }
+}
+
 export default {
   async handleCommand(command: Command, client: DiscordClient) {
     const { guild_id } = command
@@ -252,13 +270,7 @@ export default {
       }
       const leagueId = leagueSettings.commands.madden_league.league_id
       const teams = await MaddenDB.getLatestTeams(leagueId)
-      const results = fuzzysort.go(teamSearchPhrase, teams.getLatestTeams(), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.9 })
-      if (results.length < 1) {
-        throw new Error(`Could not find team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs`)
-      } else if (results.length > 1) {
-        throw new Error(`Found more than one  team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs.Found teams: ${results.map(t => t.obj.displayName).join(", ")} `)
-      }
-      const assignedTeam = results[0].obj
+      const assignedTeam = retrieveTeam(teamSearchPhrase, teams)
       const role = (teamsCommand?.options?.[2] as APIApplicationCommandInteractionDataRoleOption)?.value
       const roleAssignment = role ? { discord_role: { id: role, id_type: DiscordIdType.ROLE } } : {}
       const oldAssignments = teams.getLatestTeamAssignments(leagueSettings.commands.teams?.assignments || {})
@@ -295,13 +307,7 @@ export default {
       }
       const leagueId = leagueSettings.commands.madden_league.league_id
       const teams = await MaddenDB.getLatestTeams(leagueId)
-      const results = fuzzysort.go(teamSearchPhrase, teams.getLatestTeams(), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.9 })
-      if (results.length < 1) {
-        throw new Error(`Could not find team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs`)
-      } else if (results.length > 1) {
-        throw new Error(`Found more than one  team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs.Found teams: ${results.map(t => t.obj.displayName).join(", ")}`)
-      }
-      const assignedTeam = results[0].obj
+      const assignedTeam = retrieveTeam(teamSearchPhrase, teams)
       const teamIdToDelete = teams.getTeamForId(assignedTeam.teamId).teamId
       const currentAssignments = { ...teams.getLatestTeamAssignments(leagueSettings.commands.teams.assignments) }
       delete currentAssignments[`${teamIdToDelete}`]
@@ -489,7 +495,7 @@ export default {
       const teamSearchPhrase = teamsCommand.options[0].value as string
       const teamsToSearch = await MaddenDB.getLatestTeams(leagueId)
       const results = fuzzysort.go(teamSearchPhrase, teamsToSearch.getLatestTeams(), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.4, limit: 25 })
-      return results.map(r => ({ name: r.obj.displayName, value: r.obj.displayName }))
+      return results.map(r => ({ name: r.obj.displayName, value: r.obj.teamId }))
     }
     return []
   }
