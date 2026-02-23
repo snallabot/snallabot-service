@@ -3,7 +3,7 @@ import Pug from "pug"
 import path from "path"
 import { Next, ParameterizedContext } from "koa"
 import { EA_LOGIN_URL, AUTH_SOURCE, CLIENT_SECRET, REDIRECT_URL, CLIENT_ID, AccountToken, TokenInfo, Entitlements, VALID_ENTITLEMENTS, Persona, MACHINE_KEY, Personas, ENTITLEMENT_TO_VALID_NAMESPACE, NAMESPACES, ENTITLEMENT_TO_SYSTEM, SystemConsole, exportOptions, seasonType, ALL_CONSOLES, ConsoleOverride, CONSOLE_OVERRIDE_TO_ENTITLEMENT, CONSOLE_OVERRIDE_TO_VALID_NAMESPACE } from "./ea_constants"
-import { BlazeError, ExportContext, ExportDestination, unlinkLeague, ephemeralClientFromToken, exporterForLeague, storeToken, storedTokenClient, EAAccountError, getTask } from "./ea_client"
+import { BlazeError, ExportContext, ExportDestination, unlinkLeague, ephemeralClientFromToken, exporterForLeague, storeToken, storedTokenClient, EAAccountError, getTask, getPositionInQueue } from "./ea_client"
 import { removeLeague, setLeague } from "../connections/routes"
 import { discordLeagueView } from "../db/view"
 import LeagueSettingsDB from "../discord/settings_db"
@@ -34,7 +34,7 @@ async function renderErrorsMiddleware(ctx: ParameterizedContext, next: Next) {
     await next()
   } catch (e) {
     if (e instanceof EAAccountError) {
-      const error = `Error receieved from EA <br> Message: ${e.message} <br> Snallabot Guidance: ${e.troubleshoot}`
+      const error = `Error receieved from EA <br> Snallabot Guidance: ${e.troubleshoot} <br> Message: ${e.error}`
       ctx.body = errorRender({ error: error, canUnlink: false })
     } else if (e instanceof BlazeError) {
       ctx.body = errorRender({ error: `Error from EA: ${JSON.stringify(e.error)}` })
@@ -95,7 +95,7 @@ router.get("/", async (ctx) => {
   })
   if (!response.ok) {
     const errorResponse = await response.text()
-    throw new EAAccountError(`Failed to use login code: ${errorResponse}`, `This may have happened because the EA url used to login has been used already. Each time you copy and paste the URL it is valid only for one use only. Try to go back to the previous page and login again`)
+    throw new EAAccountError(`Failed to use login code: ${errorResponse}`, `This may have happened because the EA url used to login has been used already. Each time you copy and paste the URL it is valid only for one use only. Try to go back to the previous page and login again. This may also mean to use a different browser or incognito window`)
   }
   const { access_token } = (await response.json()) as AccountToken
 
@@ -322,33 +322,38 @@ router.get("/", async (ctx) => {
   ctx.body = {
     taskId: task.id
   }
-})
-  .post("/league/exportStatus", async (ctx, next) => {
-    const { taskId } = ctx.request.body as { taskId: string }
-    const task = getTask(taskId)
-    ctx.status = 200
-    ctx.body = task
-  })
-  .post("/league/:leagueId/unlink", async (ctx, next) => {
-    const { leagueId: rawLeagueId } = ctx.params
-    const leagueId = Number(rawLeagueId)
+}).post("/league/exportStatus", async (ctx, next) => {
+  const { taskId } = ctx.request.body as { taskId: string }
+  const task = getTask(taskId)
+  const position = getPositionInQueue(taskId)
+  ctx.status = 200
+  ctx.body = {
+    task: task, position: position
+  }
+}).post("/league/:leagueId/unlink", async (ctx, next) => {
+  const { leagueId: rawLeagueId } = ctx.params
+  const leagueId = Number(rawLeagueId)
+  // ignore any errors that happen when deleting the league
+  try {
     await unlinkLeague(leagueId)
-    const leagueSettings = await LeagueSettingsDB.getLeagueSettingsForLeagueId(rawLeagueId)
-    await Promise.all(leagueSettings.map(async d => {
-      await removeLeague(d.guildId)
-    }))
-    ctx.status = 200
-  }).get("/guilds", async (ctx, next) => {
-    const { code, state } = ctx.query
-    if (!code || !state) {
-      throw new Error("Invalid discord oauth, if errors seek support")
-    }
-    const token = await client.retrieveAccessToken(code as string, DISCORD_REDIRECT_URL)
-    ctx.redirect(`/dashboard/league/${state}?discord_token=${token}`)
-  }).post("/connectDiscord", async (ctx, next) => {
-    const connectRequest = ctx.request.body as ConnnectDiscord
-    await setLeague(connectRequest.guildId, `${connectRequest.leagueId}`)
-    ctx.redirect(`/dashboard/league/${connectRequest.leagueId}`)
-  })
+  } catch (e) {
+  }
+  const leagueSettings = await LeagueSettingsDB.getLeagueSettingsForLeagueId(rawLeagueId)
+  await Promise.all(leagueSettings.map(async d => {
+    await removeLeague(d.guildId)
+  }))
+  ctx.status = 200
+}).get("/guilds", async (ctx, next) => {
+  const { code, state } = ctx.query
+  if (!code || !state) {
+    throw new Error("Invalid discord oauth, if errors seek support")
+  }
+  const token = await client.retrieveAccessToken(code as string, DISCORD_REDIRECT_URL)
+  ctx.redirect(`/dashboard/league/${state}?discord_token=${token}`)
+}).post("/connectDiscord", async (ctx, next) => {
+  const connectRequest = ctx.request.body as ConnnectDiscord
+  await setLeague(connectRequest.guildId, `${connectRequest.leagueId}`)
+  ctx.redirect(`/dashboard/league/${connectRequest.leagueId}`)
+})
 
 export default router

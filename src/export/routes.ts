@@ -40,7 +40,7 @@ router.post("/:platform/:l/leagueteams", maddenExportErrorMiddleware, async (ctx
   const puntingExport = ctx.request.body as PuntingExport
   await SnallabotExportDestination.punting(platform, l, Number.parseInt(week), toStage(stage), puntingExport)
   ctx.status = 200
-}).post("/:platform/:l/week/:stage/:week/teamstats", maddenExportErrorMiddleware, async (ctx) => {
+}).post("/:platform/:l/week/:stage/:week/team(.*)", maddenExportErrorMiddleware, async (ctx) => {
   const { platform, l, week, stage } = ctx.params
   const teamStatsExport = ctx.request.body as TeamStatsExport
   await SnallabotExportDestination.teamStats(platform, l, Number.parseInt(week), toStage(stage), teamStatsExport)

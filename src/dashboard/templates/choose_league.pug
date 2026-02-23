@@ -1,34 +1,53 @@
 doctype html
 html
   head
-    title Snallabot Dashboard
-    link(rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossOrigin="anonymous")
+    meta(name="viewport" content="width=device-width, initial-scale=1")
+    title Select League to Connect
+    link(rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossOrigin="anonymous")    
   body
-    div(style={padding: "16px 8px"})
-      h2 Which league are you connecting?
-      form(action="/dashboard/connect" method="POST")
-        .input-group
-          span.input-group-text EA Access Token
-          input#access(type="text" name="access_token" class="form-control" value=access_token readonly=true aria-label="EA access token")
-        .input-group
-          span.input-group-text EA Refresh Token
-          input#refresh(type="text" name="refresh_token" class="form-control" value=refresh_token readonly=true aria-label="EA refresh token")
-        .input-group
-          span.input-group-text EA Token Expiry
-          input#expiry(type="text" name="expiry" class="form-control" value=`${expiry.getTime()}` readonly=true aria-label="EA token expiry")
-        .input-group.mb-3
-          span.input-group-text EA Console
-          input#console(type="text" name="console" class="form-control" value=systemConsole readonly=true aria-label="EA Console")
-        .input-group.mb-3
-          span.input-group-text EA Blaze Id
-          input#blaze_id(type="text" name="blaze_id" class="form-control" value=blazeId readonly=true aria-label="EA Blaze Id")
-        if discord
-          .input-group.mb-3
-            span.input-group-text Discord League 
-            input#discord(type="text" name="discord" class="form-control" value=discord readonly=true aria-label="Discord League")
-        .input-group.mb-3
-          select#selectLeague(class="form-select" name="selected_league")
-            each league in leagues
-              option(value=`${league.leagueId}`) #{league.leagueName} - #{league.userTeamName}
-        button#submit(type="submit" class="btn btn-primary") Select League 
-
+    .container.py-4
+      .row
+        .col-md-8.mx-auto
+          .card.shadow-sm
+            .card-header.bg-white
+              h4.mb-0 Select League to Connect
+            .card-body
+              form(action="/dashboard/connect" method="POST")                
+                .mb-3
+                  .accordion(id="tokensAccordion")
+                    .accordion-item
+                      h2.accordion-header(id="headingTokens")                        
+                        button.accordion-button.collapsed.bg-secondary.text-white(type="button" data-bs-toggle="collapse" data-bs-target="#collapseTokens" aria-expanded="false" aria-controls="collapseTokens")
+                          | Click to view / hide read-only tokens used to fetch personas.
+                      #collapseTokens.accordion-collapse.collapse(aria-labelledby="headingTokens" data-bs-parent="#tokensAccordion")                        
+                        .accordion-body.bg-secondary.bg-opacity-10                          
+                          .mb-1
+                            label.form-label(for="access") EA Access Token
+                            input#access.form-control(type="text" name="access_token" value=access_token readonly=true aria-label="EA access token")                            
+                          .mb-1
+                            label.form-label(for="refresh") EA Refresh Token
+                            input#refresh.form-control(type="text" name="refresh_token" value=refresh_token readonly=true aria-label="EA refresh token")
+                          .mb-1
+                            label.form-label(for="expiry") EA Token Expiry
+                            input#expiry.form-control(type="text" name="expiry" value=`${expiry.getTime()}` readonly=true aria-label="EA token expiry")
+                          .mb-1
+                            label.form-label(for="console") EA Console
+                            input#console.form-control(type="text" name="console" value=systemConsole readonly=true aria-label="EA Console")
+                          .mb-1
+                            label.form-label(for="blaze_id") EA Blaze Id
+                            input#blaze_id.form-control(type="text" name="blaze_id" value=blazeId readonly=true aria-label="EA Blaze Id")
+                          if discord
+                            .mb-1
+                              label.form-label(for="discord") Discord League (debug)
+                              input#discord.form-control(type="text" name="discord" value=discord readonly=true aria-label="Discord League (debug)")
+                .mb-5
+                  label.form-label(for="selectLeague")
+                  .input-group
+                    span.input-group-text League
+                    select#selectLeague.form-select(name="selected_league" required=true)
+                      each league in leagues
+                        option(value=`${league.leagueId}`) #{league.leagueName} - #{league.userTeamName}
+                .d-flex.justify-content-between.mt-3
+                  a.btn.btn-outline-secondary(href="/dashboard") Back
+                  button#submit.btn.btn-success(type="submit") Select League    
+    script(src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous")

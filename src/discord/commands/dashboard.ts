@@ -3,7 +3,7 @@ import { DiscordClient, deferMessage } from "../discord_utils"
 import { ApplicationCommandType, ComponentType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { DEPLOYMENT_URL } from "../../config"
 import { discordLeagueView } from "../../db/view"
-import { EAAccountError, storedTokenClient } from "../../dashboard/ea_client"
+import { storedTokenClient } from "../../dashboard/ea_client"
 
 async function getDashboardInfo(client: DiscordClient, token: string, guild_id: string) {
   let message = `${createDashboard(guild_id)}\n`
@@ -49,11 +49,7 @@ async function getDashboardInfo(client: DiscordClient, token: string, guild_id: 
           ]
         })
     } catch (e) {
-      if (e instanceof EAAccountError) {
-        message += `Could not fetch league information. Error: ${e} Guidance: ${e.troubleshoot}\n\nTo link a different league, click on the link above. Hit unlink league. Then come back here, and setup the new league at the link above`
-      } else {
-        message += `Could not fetch league information. Error: ${e}\n\nTo link a different league, click on the link above. Hit unlink league. Sign into a different league, and connect it to this server`
-      }
+      message += `Could not fetch league information. ${e}\n\nTo link a different league, click on the link above. Hit unlink league. Sign into a different league, and connect it to this server`
       await client.editOriginalInteraction(token,
         {
           flags: 32768,

@@ -1,50 +1,69 @@
-doctype html
+﻿doctype html
 html
   head
-    title Snallabot Dashboard
+    meta(name="viewport" content="width=device-width, initial-scale=1")
+    title Connect to EA Account
     link(rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossOrigin="anonymous")
   body
-    div(style={padding: "16px 8px"})
-      div
-        p Please read all these instructions before doing anything! This connects snallabot to EA and your Madden league. To be clear, 
-        strong snallabot does not save your credentials, EA credentials, or any console credentials (such as PSN, Xbox, etc).
-        |  It uses special tokens to retain its connection to EA and is completely safe and secure with your personal information! This is a 
-        strong one time setup
-        |  for your league, you should not have to login again.
-
-        br
-        br
-
-        | You will soon login to EA, this login is the same login you would normally use for the Madden Companion App, therefore login the 
-        | same way you would in that app. Snallabot will try to help you through the login process as much as possible
-
-        br
-        br
-
-        | Once you login to EA, you will be met with an error/blank page and your browser will be at URL 
-        strong "http://127.0.0.1"
-        | . This is 
-        strong EXPECTED AND NORMAL
-        | . Copy that entire URL into the box below and you will move on to the next step!
-
-        br
-        br
-
-        | Legality wise this all falls under 
-        strong interoperability
-
-        br
-        br
-
-        a(href=url target="_blank") Login to EA
-
-      form(action="/dashboard/retrievePersonas", method="POST")
-        label(for="code") Enter the URL of the page. It should start with 127.0.0.1:
-        input#code(type="text" name="code" value="")
-        if discord
-          input#discord(type="hidden" name="discord" value=discord readonly=true)
-        button#submit(type="submit" class="btn btn-primary" disabled="true") Submit to Next Step
+    .container.py-4
+      .row
+        .col-md-8.mx-auto
+          .card.shadow-sm
+            .card-header.bg-white
+              h4.mb-0 Connect Snallabot to EA (one-time setup)
+            .card-body
+              .alert.alert-info
+                strong Please read before continuing:
+                |  This setup links Snallabot to your EA Account and your Madden league. Snallabot does NOT store your EA Acount or console credentials (PSN, Xbox, etc.). It uses secure tokens to maintain the connection.
+              p.mb-0
+                | Follow these steps:
+              ol.mt-2
+                li
+                  | Click the "Login to EA" button.
+                  small.text-muted.ms-2(role="note") (NOTE: This opens the EA login page in a new tab.)
+                li After signing in you may see a blank or error page and your browser URL will be at: 
+                  code.ms-2 http://127.0.0.1
+                li Copy the entire URL from your browser (the address bar) and paste it into the box below, then submit.
+              hr              
+              a.btn.btn-primary.me-2(href=url target="_blank" rel="noopener") Login to EA
+              form.d-inline(action="/dashboard/retrievePersonas" method="POST")
+                .mb-3.mt-3
+                  label.form-label(for="code") Paste the URL shown in your browser (must start with "http://127.0.0.1")
+                  .input-group
+                    input#code.form-control(type="text" name="code" placeholder="e.g. http://127.0.0.1:PORT/..." aria-label="Redirect URL" value="")
+                    button.btn.btn-secondary(type="button" id="pasteBtn") Paste
+                  if discord
+                    input#discord(type="hidden" name="discord" value=discord readonly=true)
+                  .form-text.text-muted.mt-1
+                    | Tip: copy the full URL from the browser address bar and paste it here. The form will enable the Continue to Next button when the URL looks valid.
+                .d-flex.justify-content-end
+                  button#submit.btn.btn-success(type="submit" disabled=true) Continue to Next Step
+                br
+                .small.text-muted.border-top.pt-2.text-center.fst-italic(role="note")
+                  | Legally this falls under interoperability. This tool only automates a standard login flow.            
     script.
-      const inputElement = document.getElementById('code')
-      const btn = document.getElementById('submit')
-      inputElement.addEventListener("input", function() { btn.disabled = !this.value})
+      (function () {
+        const inputElement = document.getElementById('code')
+        const btn = document.getElementById('submit')
+        const pasteBtn = document.getElementById('pasteBtn')
+
+        function looksLikeLocalRedirect(val) {
+          if (!val) return false
+          const v = val.trim()
+          return v.startsWith('http://127.0.0.1') || v.startsWith('127.0.0.1')
+        }
+
+        inputElement.addEventListener('input', function () { btn.disabled = !looksLikeLocalRedirect(this.value) })
+
+        pasteBtn.addEventListener('click', async function () {
+          try {
+            const text = await navigator.clipboard.readText()
+            if (text) {
+              inputElement.value = text
+              inputElement.dispatchEvent(new Event('input', { bubbles: true }))
+            }
+          } catch (e) {
+            inputElement.focus()
+          }
+        })
+      })()

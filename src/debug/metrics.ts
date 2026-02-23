@@ -118,3 +118,12 @@ export const exportQueueSize = new client.Gauge(
     registers: [register]
   }
 )
+
+export const discordOutgoingRequestsCounter = new client.Counter(
+  {
+    name: "discord_outgoing_requests_total",
+    help: "number of outgoing requests to discord",
+    labelNames: [],
+    registers: [register]
+  }
+)

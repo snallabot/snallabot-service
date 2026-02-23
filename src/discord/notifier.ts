@@ -1,5 +1,5 @@
 import EventDB, { EventDelivery, SnallabotEvent } from "../db/events_db"
-import { DiscordClient, formatTeamMessageName, SnallabotDiscordError, SnallabotReactions } from "./discord_utils"
+import { DiscordClient, formatTeamMessageName, NoConnectedLeagueError, SnallabotDiscordError, SnallabotReactions } from "./discord_utils"
 import LeagueSettingsDB, { ChannelId, GameChannel, GameChannelState, LeagueSettings, MessageId, TeamAssignments, UserId } from "./settings_db"
 import createLogger from "./logging"
 import MaddenDB from "../db/madden_db"
@@ -34,7 +34,7 @@ function joinUsers(users: UserId[]) {
 
 function createNotifier(client: DiscordClient, guildId: string, settings: LeagueSettings): SnallabotNotifier {
   if (!settings.commands.madden_league?.league_id) {
-    throw new Error("somehow channels being pinged without a league id")
+    throw new NoConnectedLeagueError(guildId)
   }
   const leagueId = settings.commands.madden_league.league_id
   async function getReactedUsers(channelId: ChannelId, messageId: MessageId, reaction: SnallabotReactions): Promise<UserId[]> {
@@ -160,14 +160,37 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
           try {
             const result = decideResult(homeUsers, awayUsers)
             const requestedUsers = fwUsers.filter(u => !admins.includes(u.id))
+            let simMessage = "Sim"
+            if (result === SimResult.FAIR_SIM) {
+              simMessage = "Fair Sim"
+            } else if (result === SimResult.FORCE_WIN_AWAY) {
+              simMessage = "Force Win Away"
+            } else if (result === SimResult.FORCE_WIN_HOME) {
+              simMessage = "Force Win Home"
+            }
+            await client.createMessage(channelId, `${simMessage} confirmed by ${joinUsers(confirmedUsers)}`, ["users"])
+            // wait before sending
+            await new Promise((r) => setTimeout(r, 5000));
             await forceWin(result, requestedUsers, confirmedUsers, currentState, season, week)
             await this.deleteGameChannel(currentState, season, week, requestedUsers.concat(confirmedUsers))
           } catch (e) {
 
           }
         } else if (currentState.state !== GameChannelState.FORCE_WIN_REQUESTED) {
+          let simMessage = "Sim"
+          try {
+            const result = decideResult(homeUsers, awayUsers)
+            if (result === SimResult.FAIR_SIM) {
+              simMessage = "Fair Sim"
+            } else if (result === SimResult.FORCE_WIN_AWAY) {
+              simMessage = "Force Win Away"
+            } else if (result === SimResult.FORCE_WIN_HOME) {
+              simMessage = "Force Win Home"
+            }
+          } catch (e) {
+          }
           const adminRole = settings.commands.game_channel?.admin.id || ""
-          const message = `Sim requested <@&${adminRole}> by ${joinUsers(fwUsers)}`
+          const message = `${simMessage} requested <@&${adminRole}> by ${joinUsers(fwUsers)}`
           await LeagueSettingsDB.updateGameChannelState(guildId, week, season, channelId, GameChannelState.FORCE_WIN_REQUESTED)
           try {
             await client.createMessage(channelId, message, ["roles"])

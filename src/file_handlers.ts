@@ -63,6 +63,7 @@ class LocalFileHandler implements FileHandler {
 
   constructor() {
     this.tempDir = os.tmpdir()
+    console.log("using temp dir " + this.tempDir)
   }
 
   async readFile<T>(filePath: string, serializer: Serializer<T>): Promise<T> {

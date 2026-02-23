@@ -10,6 +10,7 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { exportCounter } from "../debug/metrics";
 import fastq, { queueAsPromised } from "fastq"
 import NodeCache from "node-cache";
+import { SnallabotError } from "../errors";
 
 
 export enum LeagueData {
@@ -66,12 +67,11 @@ export class BlazeError extends Error {
   }
 }
 
-export class EAAccountError extends Error {
+export class EAAccountError extends SnallabotError {
   troubleshoot: string
 
   constructor(message: string, troubleshoot: string) {
-    super(message)
-    this.name = "EAAccountError"
+    super(new Error(message), troubleshoot)
     this.troubleshoot = troubleshoot
   }
 }
@@ -115,7 +115,7 @@ async function refreshToken(token: TokenInformation): Promise<TokenInformation> 
     });
     const newToken = await res.json() as AccountToken
     if (!res.ok || !newToken.access_token) {
-      throw new EAAccountError(`Error refreshing tokens, response from EA ${JSON.stringify(newToken)}`, "Lost connection to EA. Connect this league again via https://snallabot.me/dashboard")
+      throw new EAAccountError(`Error refreshing tokens, response from EA ${JSON.stringify(newToken)}`, `Lost connection to EA. Connect this league again via ${DEPLOYMENT_URL}/dashboard`)
     }
     const newExpiry = new Date(new Date().getTime() + newToken.expires_in * 1000)
     return { accessToken: newToken.access_token, refreshToken: newToken.refresh_token, expiry: newExpiry, console: token.console, blazeId: `${token.blazeId}` }
@@ -471,17 +471,17 @@ enum ExportType {
 }
 type ExportRequest = { exportType: ExportType, weeks?: { weekIndex: number, stage: number }[] }
 
-enum TaskStatus {
+export enum TaskStatus {
   NOT_STARTED = 0,
   STARTED = 1,
   FINISHED = 2,
   ERROR = 3
 }
 // save tasks for 1 hour
-const tasks = new NodeCache({ stdTTL: 3600, useClones: false })
-type ExportStatus = { leagueInfo: TaskStatus, weeklyData: { weekIndex: number, stage: number, status: TaskStatus }[], rosters: TaskStatus }
+const tasks = new NodeCache({ stdTTL: 7200, useClones: false })
+export type ExportStatus = { leagueInfo: TaskStatus, weeklyData: { weekIndex: number, stage: number, status: TaskStatus }[], rosters: TaskStatus }
 type ExportJobTask = { id: string, leagueId: number, context: ExportContext, request: ExportRequest, status: ExportStatus }
-type ExportResult = { task: ExportJobTask, waitUntilDone: Promise<void> }
+export type ExportResult = { task: ExportJobTask, waitUntilDone: Promise<void> }
 interface MaddenExporter {
   exportCurrentWeek(): ExportResult,
   exportAllWeeks(): ExportResult,
@@ -639,8 +639,8 @@ async function handleExportTask(task: ExportJobTask): Promise<void> {
   task.status.leagueInfo = TaskStatus.FINISHED
   task.status.weeklyData = weeksToExport.map(w => ({ ...w, status: TaskStatus.NOT_STARTED }))
   if (destinations.some(e => e.weeklyStats)) {
-    // Process weeks in batches of 8 to reduce memory usage on big exports
-    const batchSize = 8;
+    // Process weeks in batches to reduce memory usage on big exports
+    const batchSize = 2;
     for (let i = 0; i < weeksToExport.length; i += batchSize) {
 
       const weeklyData = { weeks: [] } as any
@@ -667,7 +667,7 @@ async function handleExportTask(task: ExportJobTask): Promise<void> {
       })
 
       // Process this batch and wait for completion before moving to next batch
-      await Promise.all(batchDataRequests.map(request => request, 50))
+      await Promise.all(batchDataRequests)
       await exportData(weeklyData as ExportData, contextualExports, `${leagueId}`, client.getSystemConsole())
       task.status.weeklyData.forEach(w => {
         if (weekBatch.some(b => w.weekIndex === b.weekIndex && w.stage === b.stage)) {
@@ -682,7 +682,7 @@ async function handleExportTask(task: ExportJobTask): Promise<void> {
     let teamData: TeamData = { roster: {} }
     const teamList = leagueInfo.teamIdInfoList
     teamRequests.push(client.getFreeAgents(leagueId).then(freeAgents => teamData.roster["freeagents"] = freeAgents))
-
+    const batchSize = 4;
     for (let idx = 0; idx < teamList.length; idx++) {
       const team = teamList[idx];
       teamRequests.push(
@@ -690,7 +690,7 @@ async function handleExportTask(task: ExportJobTask): Promise<void> {
           teamData.roster[`${team.teamId}`] = roster
         )
       )
-      if ((idx + 1) % 8 == 0) {
+      if ((idx + 1) % batchSize == 0) {
         await Promise.all(teamRequests)
         await exportTeamData(teamData, contextualExports, `${leagueId}`, client.getSystemConsole())
         teamRequests = []
@@ -718,49 +718,70 @@ async function handleExportTask(task: ExportJobTask): Promise<void> {
 
 const exportQueue: queueAsPromised<ExportJobTask> = fastq.promise(handleExportTask, QUEUE_CONCURRENCY)
 
+const activeLeagueTasks = new Map<number, { task: ExportJobTask, promise: Promise<void> }>()
+
 async function addTaskToQueue(task: ExportJobTask) {
   tasks.set(task.id, task)
-  return exportQueue.push(task).catch(e => {
-    // update status with all the ones that failed
+  const promise = exportQueue.push(task).catch(e => {
     task.status.leagueInfo = task.status.leagueInfo != TaskStatus.FINISHED ? TaskStatus.ERROR : task.status.leagueInfo
     task.status.rosters = task.status.leagueInfo != TaskStatus.FINISHED ? TaskStatus.ERROR : task.status.rosters
     task.status.weeklyData.forEach(w => w.status != TaskStatus.FINISHED ? w.status = TaskStatus.ERROR : w.status)
     return Promise.reject(e)
+  }).finally(() => {
+    activeLeagueTasks.delete(task.leagueId)
   })
+  activeLeagueTasks.set(task.leagueId, { task, promise })
+  return promise
 }
 
 export function getTask(taskId: string): ExportJobTask {
   const task = tasks.get(taskId) as ExportJobTask
   if (!task) {
-    throw new Error(`Task not found ${taskId}`)
+    throw new SnallabotError(new Error(`Task not found ${taskId}`), `The Export task was lost! This could have happened because the server was restarted. It is safe to export again, or redo the command`)
   }
   return task
+}
+
+export function getPositionInQueue(taskId: string): number {
+  return exportQueue.getQueue().findIndex(t => t.id === taskId)
 }
 
 export function getQueueSize() {
   return exportQueue.length()
 }
 
-export function exporterForLeague(leagueId: number, context: ExportContext): MaddenExporter {
+function getOrEnqueueTask(leagueId: number, buildTask: (taskId: string, status: ExportStatus) => ExportJobTask) {
+  const existing = activeLeagueTasks.get(leagueId)
+  if (existing) {
+    return { task: existing.task, waitUntilDone: existing.promise }
+  }
   const taskId = randomUUID()
   const status = { leagueInfo: TaskStatus.NOT_STARTED, weeklyData: [], rosters: TaskStatus.NOT_STARTED }
+  const task = buildTask(taskId, status)
+  return { task, waitUntilDone: addTaskToQueue(task) }
+}
+
+export function exporterForLeague(leagueId: number, context: ExportContext): MaddenExporter {
   return {
     exportCurrentWeek: function() {
-      const task = { id: taskId, request: { exportType: ExportType.CURRENT }, leagueId: leagueId, context: context, status: status }
-      return { task: task, waitUntilDone: addTaskToQueue(task) }
+      return getOrEnqueueTask(leagueId, (taskId, status) => (
+        { id: taskId, request: { exportType: ExportType.CURRENT }, leagueId, context, status }
+      ))
     },
     exportSurroundingWeek: function() {
-      const task = { id: taskId, request: { exportType: ExportType.SURROUNDING }, leagueId: leagueId, context: context, status: status }
-      return { task: task, waitUntilDone: addTaskToQueue(task) }
+      return getOrEnqueueTask(leagueId, (taskId, status) => (
+        { id: taskId, request: { exportType: ExportType.SURROUNDING }, leagueId, context, status }
+      ))
     },
     exportAllWeeks: function() {
-      const task = { id: taskId, request: { exportType: ExportType.ALL }, leagueId: leagueId, context: context, status: status }
-      return { task: task, waitUntilDone: addTaskToQueue(task) }
+      return getOrEnqueueTask(leagueId, (taskId, status) => (
+        { id: taskId, request: { exportType: ExportType.ALL }, leagueId, context, status }
+      ))
     },
     exportSpecificWeeks: function(weeks: { weekIndex: number, stage: number }[]) {
-      const task = { id: taskId, request: { exportType: ExportType.SPECIFIC, weeks: weeks }, leagueId: leagueId, context: context, status: status }
-      return { task: task, waitUntilDone: addTaskToQueue(task) }
-
+      return getOrEnqueueTask(leagueId, (taskId, status) => (
+        { id: taskId, request: { exportType: ExportType.SPECIFIC, weeks }, leagueId, context, status }
+      ))
     }
   }
 }
