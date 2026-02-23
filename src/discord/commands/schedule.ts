@@ -493,7 +493,7 @@ export default {
       const teamsToSearch = await MaddenDB.getLatestTeams(leagueId)
       if (teamsToSearch) {
         const results = fuzzysort.go(teamSearchPhrase, teamsToSearch.getLatestTeams(), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.4, limit: 25 })
-        return results.map(r => ({ name: r.obj.displayName, value: `$r.obj.teamId}` }))
+        return results.map(r => ({ name: r.obj.displayName, value: `${$r.obj.teamId}` }))
       }
     }
     return []
