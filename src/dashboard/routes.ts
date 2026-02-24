@@ -345,11 +345,20 @@ router.get("/", async (ctx) => {
   ctx.status = 200
 }).get("/guilds", async (ctx, next) => {
   const { code, state } = ctx.query
+  console.log("Incoming /dashboard/guilds", { codePresent: !!code, state })
   if (!code || !state) {
+    console.error("Invalid discord oauth callback: missing code or state", ctx.query)
     throw new Error("Invalid discord oauth, if errors seek support")
   }
-  const token = await client.retrieveAccessToken(code as string, DISCORD_REDIRECT_URL)
-  ctx.redirect(`/dashboard/league/${state}?discord_token=${token}`)
+  try {
+    const token = await client.retrieveAccessToken(code as string, DISCORD_REDIRECT_URL)
+    console.log("Discord OAuth token retrieved, redirecting to dashboard with token")
+    ctx.redirect(`/dashboard/league/${state}?discord_token=${token}`)
+  } catch (e) {
+    console.error("Discord OAuth token exchange failed:", e)
+    // show a friendly error page so user isn't silently bounced back
+    ctx.body = Pug.renderFile(path.join(__dirname, "/templates/error.pug"), { error: `Discord OAuth failed: ${e}`, canUnlink: false })
+  }
 }).post("/connectDiscord", async (ctx, next) => {
   const connectRequest = ctx.request.body as ConnnectDiscord
   await setLeague(connectRequest.guildId, `${connectRequest.leagueId}`)

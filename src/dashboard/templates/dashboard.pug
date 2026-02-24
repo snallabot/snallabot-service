@@ -169,6 +169,18 @@ body
             div(class="mb-3")
               input(type="hidden" name="leagueId" value=leagueId)
             button(type="submit" class="btn btn-primary") Connect Discord
+        else if discord_token
+          //- The user completed OAuth but no eligible guilds were returned
+          div(class="alert alert-warning mb-2")
+            strong No eligible servers found.
+            |  This usually means:
+            ul
+              li You don't have Manage Server permissions in any server,
+              li The Discord OAuth token did not return guilds (check OAuth scope includes "guilds"),
+              li The Discord app needs additional permissions or verification to list all guilds.
+            p.mb-0
+              | Try authorizing again or ensure you are an admin on the server you want to connect.
+              a(href=oauthUrl class="btn btn-link") Retry Authorization
         else
           div(class="text-center")
             p(class="mb-3") Authorize Discord to connect your league
