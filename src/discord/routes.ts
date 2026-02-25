@@ -163,7 +163,8 @@ MaddenDB.on<MaddenGame>("MADDEN_SCHEDULE", async (events) => {
 const discordClient = new Client({
   auth: `Bot ${process.env.DISCORD_TOKEN}`,
   gateway: {
-    intents: ["GUILD_MESSAGE_REACTIONS", "GUILD_MEMBERS"]
+    intents: ["GUILD_MESSAGE_REACTIONS", "GUILD_MEMBERS"],
+    maxShards: "auto"
   }
 })
 
