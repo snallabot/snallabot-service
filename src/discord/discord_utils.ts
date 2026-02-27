@@ -3,7 +3,7 @@ import { verifyKey } from "discord-interactions"
 import { APIApplicationCommand, APIChannel, APIEmoji, APIGuild, APIGuildMember, APIMessage, APIThreadChannel, APIUser, ChannelType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { CategoryId, ChannelId, DiscordIdType, MessageId, RoleId, UserId } from "./settings_db"
 import { createDashboard } from "./commands/dashboard"
-import { GameResult, MADDEN_SEASON, MaddenGame, Team, getMessageForWeek } from "../export/madden_league_types"
+import { GameResult, MADDEN_SEASON, MaddenGame, Team, getMessageForWeek, Standing, formatRecord } from "../export/madden_league_types"
 import MaddenDB, { TeamList } from "../db/madden_db"
 import { LeagueLogos } from "../db/view"
 import EventDB from "../db/events_db"
@@ -765,13 +765,17 @@ export function formatTeamEmoji(leagueCustomLogos: LeagueLogos, teamAbbr?: strin
   return SnallabotTeamEmojis.NFL
 }
 
-export function formatGame(game: MaddenGame, teams: TeamList, leagueCustomLogos: LeagueLogos) {
+export function formatGame(game: MaddenGame, teams: TeamList, leagueCustomLogos: LeagueLogos, teamRecords?: Map<number, string>) {
   const awayTeam = teams.getTeamForId(game.awayTeamId)
   const homeTeam = teams.getTeamForId(game.homeTeamId)
   const awayEmoji = formatTeamEmoji(leagueCustomLogos, awayTeam?.abbrName)
   const homeEmoji = formatTeamEmoji(leagueCustomLogos, homeTeam?.abbrName)
-  const awayDisplay = `${awayEmoji} ${awayTeam?.displayName}`;
-  const homeDisplay = `${homeEmoji} ${homeTeam?.displayName}`;
+
+  const awayRecord = teamRecords?.get(awayTeam.teamId)
+  const homeRecord = teamRecords?.get(homeTeam.teamId)
+
+  const awayDisplay = `${awayEmoji} ${awayTeam?.displayName}${awayRecord ? ` (${awayRecord})` : ""}`
+  const homeDisplay = `${homeEmoji} ${homeTeam?.displayName}${homeRecord ? ` (${homeRecord})` : ""}`
 
   if (game.status === GameResult.NOT_PLAYED) {
     return `${awayDisplay} vs ${homeDisplay}`;
@@ -822,12 +826,25 @@ export function createSimMessageForTeam(sim: ConfirmedSimV2, game: MaddenGame, s
   throw new Error("Should not have gotten here! from createSimMessage")
 }
 
-export function formatSchedule(week: number, seasonIndex: number, games: MaddenGame[], teams: TeamList, sims: ConfirmedSimV2[], logos: LeagueLogos) {
+export function formatSchedule(week: number, seasonIndex: number, games: MaddenGame[], teams: TeamList, sims: ConfirmedSimV2[], logos: LeagueLogos, standings?: Standing[]) {
   const gameToSim = new Map<number, ConfirmedSimV2>()
   sims.forEach(sim => gameToSim.set(sim.scheduleId, sim))
+
+  // build a map of teamId -> record string using standings if provided
+  const teamRecords = new Map<number, string>()
+  if (standings && standings.length > 0) {
+    standings.forEach(s => {
+      try {
+        teamRecords.set(s.teamId, formatRecord(s))
+      } catch (e) {
+        // ignore formatting errors per-team
+      }
+    })
+  }
+
   const scoreboardGames = games.sort((g1, g2) => g1.scheduleId - g2.scheduleId).map(game => {
     const simMessage = gameToSim.has(game.scheduleId) ? `(${createSimMessage(gameToSim.get(game.scheduleId)!)})` : ""
-    const gameMessage = formatGame(game, teams, logos)
+    const gameMessage = formatGame(game, teams, logos, teamRecords)
     return `${gameMessage} ${simMessage}`
   }).join("\n")
   return `# ${seasonIndex + MADDEN_SEASON} Season ${getMessageForWeek(week)} Games\n${scoreboardGames}`

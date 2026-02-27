@@ -1,7 +1,7 @@
 import { Command, Autocomplete, MessageComponentInteraction } from "../commands_handler"
 import { DiscordClient, deferMessage, formatTeamEmoji, getSimsForWeek, formatSchedule, getSims, createSimMessageForTeam, NoConnectedLeagueError } from "../discord_utils"
 import { APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ApplicationCommandType, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
-import { GameResult, MADDEN_SEASON, getMessageForWeek, getMessageForWeekShortened } from "../../export/madden_league_types"
+import { GameResult, MADDEN_SEASON, getMessageForWeek, getMessageForWeekShortened, Standing } from "../../export/madden_league_types"
 import LeagueSettingsDB from "../settings_db"
 import { discordLeagueView, leagueLogosView } from "../../db/view"
 import { GameStatsOptions } from "./game_stats"
@@ -15,7 +15,11 @@ export type TeamSelection = { ti: number, si: number }
 async function showSchedule(token: string, client: DiscordClient,
   league: string, requestedWeek?: number, requestedSeason?: number) {
   try {
-    const settledPromise = await Promise.allSettled([getWeekSchedule(league, requestedWeek != null ? Number(requestedWeek) : undefined, requestedSeason != null ? Number(requestedSeason) : undefined), MaddenDB.getLatestTeams(league)])
+    const settledPromise = await Promise.allSettled([
+      getWeekSchedule(league, requestedWeek != null ? Number(requestedWeek) : undefined, requestedSeason != null ? Number(requestedSeason) : undefined),
+      MaddenDB.getLatestTeams(league),
+      MaddenDB.getLatestStandings(league)
+    ])
     const schedule = settledPromise[0].status === "fulfilled" ? settledPromise[0].value : []
     if (settledPromise[1].status !== "fulfilled") {
       throw new Error("No Teams setup, setup the bot and export")
@@ -26,7 +30,11 @@ async function showSchedule(token: string, client: DiscordClient,
     const season = schedule?.[0]?.seasonIndex >= 0 ? schedule[0].seasonIndex : requestedSeason != null ? requestedSeason : 0
     const week = schedule?.[0]?.weekIndex >= 0 ? schedule[0].weekIndex + 1 : requestedWeek != null ? requestedWeek : 1
     const sims = await getSimsForWeek(league, week, season)
-    const message = formatSchedule(week, season, sortedSchedule, teams, sims, logos)
+
+    // standings may have failed; use empty array if so
+    const standings: Standing[] = settledPromise[2].status === "fulfilled" ? settledPromise[2].value : []
+
+    const message = formatSchedule(week, season, sortedSchedule, teams, sims, logos, standings)
     const gameOptions = sortedSchedule.filter(g => g.status !== GameResult.NOT_PLAYED && g.stageIndex > 0).map(game => ({
       label: `${teams.getTeamForId(game.awayTeamId)?.abbrName} ${game.awayScore} - ${game.homeScore} ${teams.getTeamForId(game.homeTeamId)?.abbrName}`,
       value: { w: game.weekIndex, s: game.seasonIndex, c: game.scheduleId, o: GameStatsOptions.OVERVIEW, b: { wi: week - 1, si: season } }
