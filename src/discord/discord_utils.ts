@@ -847,5 +847,7 @@ export function formatSchedule(week: number, seasonIndex: number, games: MaddenG
     const gameMessage = formatGame(game, teams, logos, teamRecords)
     return `${gameMessage} ${simMessage}`
   }).join("\n")
-  return `# ${seasonIndex + MADDEN_SEASON} Season ${getMessageForWeek(week)} Games\n${scoreboardGames}`
+  const message = `# ${seasonIndex + MADDEN_SEASON} Season ${getMessageForWeek(week)} Games\n${scoreboardGames}`
+  console.log(message.length)
+  return message
 }
