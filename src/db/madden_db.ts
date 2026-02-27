@@ -6,7 +6,7 @@ import { DefensiveStats, GameResult, KickingStats, MADDEN_SEASON, MaddenGame, PO
 import { TeamAssignments } from "../discord/settings_db"
 import { CachedUpdatingView, StorageBackedCachedView, View } from "./view"
 import { EventTypes, RetiredPlayersEvent } from "./events"
-import { maddenEventsDistribution } from "../debug/metrics"
+import { maddenDBRequestsCounter, maddenEventsDistribution } from "../debug/metrics"
 
 type HistoryUpdate<ValueType> = { oldValue: ValueType, newValue: ValueType }
 type History = { [key: string]: HistoryUpdate<any>, }
@@ -1112,4 +1112,22 @@ const MaddenDB: MaddenDB = {
   }
 }
 
-export default MaddenDB
+function withMetrics<T extends object>(db: T): T {
+  return new Proxy(db, {
+    get(target, prop, receiver) {
+      const value = Reflect.get(target, prop, receiver)
+
+      if (typeof value === "function") {
+        return (...args: unknown[]) => {
+          maddenDBRequestsCounter.inc({ method: String(prop) })
+          return value.apply(target, args)
+        }
+      }
+
+      return value
+    }
+  })
+}
+
+export default withMetrics(MaddenDB)
+

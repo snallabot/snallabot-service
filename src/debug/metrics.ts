@@ -127,3 +127,13 @@ export const discordOutgoingRequestsCounter = new client.Counter(
     registers: [register]
   }
 )
+
+export const maddenDBRequestsCounter = new client.Counter(
+  {
+    name: "madden_db_requests_counter_total",
+    help: "number of requests to the madden db per method",
+    registers: [register],
+    labelNames: ["method"]
+  }
+)
+
