@@ -368,13 +368,7 @@ export default {
       }
       const leagueId = leagueSettings.commands.madden_league.league_id
       const teams = await MaddenDB.getLatestTeams(leagueId)
-      const results = fuzzysort.go(teamSearchPhrase, teams.getLatestTeams(), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.9 })
-      if (results.length < 1) {
-        throw new Error(`Could not find team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs`)
-      } else if (results.length > 1) {
-        throw new Error(`Found more than one  team for phrase ${teamSearchPhrase}.Enter a team name, city, abbreviation, or nickname.Examples: Buccaneers, TB, Tampa Bay, Bucs.Found teams: ${results.map(t => t.obj.displayName).join(", ")}`)
-      }
-      const assignedTeam = results[0].obj
+      const assignedTeam = retrieveTeam(teamSearchPhrase, teams))
       const teamToCustomize = teams.getTeamForId(assignedTeam.teamId)
       const { url } = command.data.resolved.attachments[image.value]
       handleCustomLogo(guild_id, leagueId, client, command.token, url, teamToCustomize)
