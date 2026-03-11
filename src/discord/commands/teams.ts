@@ -368,7 +368,7 @@ export default {
       }
       const leagueId = leagueSettings.commands.madden_league.league_id
       const teams = await MaddenDB.getLatestTeams(leagueId)
-      const assignedTeam = retrieveTeam(teamSearchPhrase, teams))
+      const assignedTeam = retrieveTeam(teamSearchPhrase, teams)
       const teamToCustomize = teams.getTeamForId(assignedTeam.teamId)
       const { url } = command.data.resolved.attachments[image.value]
       handleCustomLogo(guild_id, leagueId, client, command.token, url, teamToCustomize)
