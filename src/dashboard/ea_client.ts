@@ -221,23 +221,62 @@ async function sendBlazeRequest<T>(token: TokenInformation, session: SessionInfo
   }
 }
 
-async function getExportData<T>(token: TokenInformation, session: SessionInformation, exportType: LeagueData, body: Record<string, any>): Promise<T> {
-  const res1 = await fetch(
-    `https://wal2.tools.gos.bio-iad.ea.com/wal/mca/${exportType}/${session.sessionKey}`,
-    {
-      dispatcher: dispatcher,
-      method: "POST",
-      headers: headers(token),
-      body: JSON.stringify(body)
+interface EAError {
+  component: number;
+  errorcode: number;
+  errorname: string;
+  errortdf: {
+    commandSeverity: string;
+    errorString: string;
+  };
+}
+
+async function getExportData<T>(
+  token: TokenInformation,
+  session: SessionInformation,
+  exportType: LeagueData,
+  body: Record<string, any>,
+  retries = 5,
+  baseDelayMs = 1000
+): Promise<T> {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    const res1 = await fetch(
+      `https://wal2.tools.gos.bio-iad.ea.com/wal/mca/${exportType}/${session.sessionKey}`,
+      {
+        dispatcher: dispatcher,
+        method: "POST",
+        headers: headers(token),
+        body: JSON.stringify(body)
+      }
+    );
+
+    let parsed: unknown;
+    try {
+      const text = await res1.text();
+      const replacedText = text.replaceAll(/[\u0000-\u001F\u007F-\u009F]/g, "");
+      parsed = JSON.parse(replacedText);
+    } catch (e) {
+      throw new EAAccountError(`Could not fetch league data, error: ${e}`, "No Guidance");
     }
-  )
-  try {
-    const text = await res1.text()
-    const replacedText = text.replaceAll(/[\u0000-\u001F\u007F-\u009F]/g, "")
-    return JSON.parse(replacedText) as T
-  } catch (e) {
-    throw new EAAccountError(`Could not fetch league data, error: ${e}`, "No Guidance")
+
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      "errorname" in parsed &&
+      (parsed as EAError).errorname === "ERR_TIMEOUT"
+    ) {
+      if (attempt < retries - 1) {
+        const delay = baseDelayMs * 2 ** attempt;
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      throw new EAAccountError(`EA request timed out after ${retries} attempts`, "No Guidance");
+    }
+
+    return parsed as T;
   }
+
+  throw new EAAccountError(`EA request failed after ${retries} attempts`, "No Guidance");
 }
 
 async function refreshBlazeSession(token: TokenInformation, session: SessionInformation): Promise<SessionInformation> {
@@ -521,6 +560,7 @@ const PRESEASON_WEEKS = Array.from({ length: 4 }, (v, index) => index)
 const SEASON_WEEKS = Array.from({ length: 23 }, (v, index) => index).filter(i => i !== 21) // filters out pro bowl
 
 async function exportData(data: ExportData, destinations: { [key: string]: ExportDestination }, leagueId: string, platform: string) {
+
   const leagueInfo = Object.values(destinations).filter(d => d.leagueInfo).map(d => createDestination(d.url))
   const weeklyStats = Object.values(destinations).filter(d => d.weeklyStats).map(d => createDestination(d.url))
   if (leagueInfo.length > 0) {
