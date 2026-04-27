@@ -221,13 +221,15 @@ async function sendBlazeRequest<T>(token: TokenInformation, session: SessionInfo
   }
 }
 
-interface EAError {
-  component: number;
-  errorcode: number;
-  errorname: string;
-  errortdf: {
-    commandSeverity: string;
-    errorString: string;
+interface EAErrorResponse {
+  error: {
+    component: number;
+    errorcode: number;
+    errorname: string;
+    errortdf: {
+      commandSeverity: string;
+      errorString: string;
+    };
   };
 }
 
@@ -262,8 +264,9 @@ async function getExportData<T>(
     if (
       typeof parsed === "object" &&
       parsed !== null &&
-      "errorname" in parsed &&
-      (parsed as EAError).errorname === "ERR_TIMEOUT"
+      "error" in parsed &&
+      typeof (parsed as any).error === "object" &&
+      (parsed as any).error?.errorname === "ERR_TIMEOUT"
     ) {
       if (attempt < retries - 1) {
         const delay = baseDelayMs * 2 ** attempt;
