@@ -29,7 +29,7 @@ https://accounts.ea.com/connect/auth?hide_create=true&release_type=prod&response
 After login, EA redirects to a URL like:
 
 ```
-http://127.0.0.1/success?code=QUOhAFs1kcSeHLr18VvFW70-6zD7LwCOe_itdEp5
+http://127.0.0.1/success?code=CODE_HERE
 ```
 
 Parse the `code` query parameter from that URL. It is used in Step 2.
