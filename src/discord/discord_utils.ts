@@ -471,13 +471,26 @@ export function createClient(settings: DiscordSettings): DiscordClient {
     },
     getUsers: async function(guild_id: string) {
       try {
-        const res = await sendDiscordRequest(
-          `guilds/${guild_id}/members?limit=1000`,
-          {
-            method: "GET",
-          }
-        )
-        return await res.json() as APIGuildMember[]
+        const allMembers: APIGuildMember[] = []
+        let after: string | undefined = undefined
+
+        while (true) {
+          const query = after
+            ? `guilds/${guild_id}/members?limit=1000&after=${after}`
+            : `guilds/${guild_id}/members?limit=1000`
+
+          const res = await sendDiscordRequest(query, { method: "GET" })
+          const page = await res.json() as APIGuildMember[]
+
+          allMembers.push(...page)
+
+          if (page.length < 1000) break
+
+          after = page[page.length - 1].user?.id
+          if (!after) break
+        }
+
+        return allMembers
       } catch (e) {
         if (e instanceof DiscordRequestError) {
           if (e.isPermissionError()) {
