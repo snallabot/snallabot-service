@@ -161,7 +161,7 @@ async function handleCustomLogo(guild_id: string, league_id: string, client: Dis
     // // Convert to buffer
     // const resizedBuffer = canvas.toBuffer('image/png');
     const base64Image = `data:image/png;base64,${buffer.toString('base64')}`;
-    const emoji = await client.uploadEmoji(base64Image, `${league_id}_${teamToCustomize.abbrName}`)
+    const emoji = await client.uploadEmoji(base64Image, `${league_id}_${teamToCustomize.abbrName}`, guild_id)
     if (!emoji.name || !emoji.id) {
       throw new Error(`Emoji not created correctly`)
     }
