@@ -523,14 +523,16 @@ export function createClient(settings: DiscordSettings): DiscordClient {
         });
         const existingEmojis = (await existingEmojisRes.json()) as APIEmoji[];
         const duplicateEmoji = existingEmojis.find((emoji) => emoji.name === name);
-        console.log(duplicateEmoji)
 
         if (duplicateEmoji) {
           await sendDiscordRequest(`guilds/${guildId}/emojis/${duplicateEmoji.id}`, {
             method: "DELETE"
           });
         }
-
+        console.log({
+          name: name,
+          image: image
+        })
         const res = await sendDiscordRequest(`guilds/${guildId}/emojis`, {
           method: "POST",
           body: {
