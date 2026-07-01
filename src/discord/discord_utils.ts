@@ -95,7 +95,7 @@ export function createClient(settings: DiscordSettings): DiscordClient {
     // append endpoint to root API URL
     discordOutgoingRequestsCounter.inc()
     const url = "https://discord.com/api/v10/" + endpoint
-    if (options.body) options.body = JSON.stringify(options.body)
+    const body = options.body ? JSON.stringify(options.body) : undefined
     let tries = 0
     while (tries < maxTries) {
       const res = await fetch(url, {
@@ -104,6 +104,7 @@ export function createClient(settings: DiscordSettings): DiscordClient {
           "Content-Type": "application/json; charset=UTF-8",
         },
         ...options,
+        body
       })
       if (!res.ok) {
         const stringData = await res.text()
@@ -524,15 +525,11 @@ export function createClient(settings: DiscordSettings): DiscordClient {
         const existingEmojis = (await existingEmojisRes.json()) as APIEmoji[];
         const duplicateEmoji = existingEmojis.find((emoji) => emoji.name === name);
 
-        // if (duplicateEmoji) {
-        //   await sendDiscordRequest(`guilds/${guildId}/emojis/${duplicateEmoji.id}`, {
-        //     method: "DELETE"
-        //   });
-        // }
-        console.log({
-          name: name,
-          image: image
-        })
+        if (duplicateEmoji) {
+          await sendDiscordRequest(`guilds/${guildId}/emojis/${duplicateEmoji.id}`, {
+            method: "DELETE"
+          });
+        }
         const res = await sendDiscordRequest(`guilds/${guildId}/emojis`, {
           method: "POST",
           body: {
