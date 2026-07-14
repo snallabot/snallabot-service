@@ -98,6 +98,14 @@ export function createClient(settings: DiscordSettings): DiscordClient {
     const body = options.body && Object.keys(options.body).length > 0 ? JSON.stringify(options.body) : undefined
     let tries = 0
     while (tries < maxTries) {
+      console.log({
+        headers: {
+          Authorization: `Bot ${settings.botToken}`,
+          "Content-Type": "application/json; charset=UTF-8",
+        },
+        ...options,
+        body
+      })
       const res = await fetch(url, {
         headers: {
           Authorization: `Bot ${settings.botToken}`,
@@ -526,7 +534,7 @@ export function createClient(settings: DiscordSettings): DiscordClient {
         const duplicateEmoji = existingEmojis.find((emoji) => emoji.name === name);
 
         if (duplicateEmoji) {
-          console.log("duplicate")
+          console.log("duplicate emoji " + duplicateEmoji.id)
           const res = await sendDiscordRequest(`guilds/${guildId}/emojis/${duplicateEmoji.id}`, {
             method: "DELETE"
           })
