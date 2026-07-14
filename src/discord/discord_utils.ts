@@ -98,21 +98,12 @@ export function createClient(settings: DiscordSettings): DiscordClient {
     if (options.body) options.body = JSON.stringify(options.body)
     let tries = 0
     while (tries < maxTries) {
-      console.log({
-        headers: {
-          Authorization: `Bot ${settings.botToken}`,
-          "Content-Type": "application/json; charset=UTF-8",
-        },
-        ...options,
-        body
-      })
       const res = await fetch(url, {
         headers: {
           Authorization: `Bot ${settings.botToken}`,
           "Content-Type": "application/json; charset=UTF-8",
         },
-        ...options,
-        body
+        ...options
       })
       if (!res.ok) {
         const stringData = await res.text()
