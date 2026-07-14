@@ -95,7 +95,7 @@ export function createClient(settings: DiscordSettings): DiscordClient {
     // append endpoint to root API URL
     discordOutgoingRequestsCounter.inc()
     const url = "https://discord.com/api/v10/" + endpoint
-    const body = options.body ? JSON.stringify(options.body) : undefined
+    const body = options.body && Object.keys(options.body).length > 0 ? JSON.stringify(options.body) : undefined
     let tries = 0
     while (tries < maxTries) {
       const res = await fetch(url, {
