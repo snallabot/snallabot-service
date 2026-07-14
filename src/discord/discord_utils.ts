@@ -534,7 +534,8 @@ export function createClient(settings: DiscordSettings): DiscordClient {
         if (duplicateEmoji) {
           console.log("duplicate emoji " + duplicateEmoji.id)
           const res = await sendDiscordRequest(`guilds/${guildId}/emojis/${duplicateEmoji.id}`, {
-            method: "DELETE"
+            method: "DELETE",
+            body: {}
           })
           const te = res.text()
           console.log(res.status)
