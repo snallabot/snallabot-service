@@ -8,9 +8,9 @@ import { CachedUpdatingView, StorageBackedCachedView, View } from "./view"
 import { EventTypes, RetiredPlayersEvent } from "./events"
 import { maddenDBRequestsCounter, maddenEventsDistribution } from "../debug/metrics"
 
-type HistoryUpdate<ValueType> = { oldValue: ValueType, newValue: ValueType }
-type History = { [key: string]: HistoryUpdate<any>, }
-type StoredHistory = { timestamp: Date } & History
+export type HistoryUpdate<ValueType> = { oldValue: ValueType, newValue: ValueType }
+export type History = { [key: string]: HistoryUpdate<any>, }
+export type StoredHistory = { timestamp: Date } & History
 
 export enum PlayerStatType {
   DEFENSE,
@@ -53,7 +53,7 @@ export type PlayerStatEvents = MaddenEvents.MADDEN_PASSING_STAT | MaddenEvents.M
 export type PlayerStatTypes = PassingStats | RushingStats | DefensiveStats | KickingStats | ReceivingStats | PuntingStats
 
 export type PlayerListQuery = { teamId?: number, position?: string, rookie?: boolean, retired?: boolean }
-type IndividualStatus = { lastExported: Date }
+export type IndividualStatus = { lastExported: Date }
 export type ExportStatus = {
   [MaddenEvents.MADDEN_TEAM]?: IndividualStatus,
   [MaddenEvents.MADDEN_STANDING]?: IndividualStatus
@@ -100,7 +100,7 @@ export function parseExportStatusWeekKey(weekKey: string): SeasonWeek {
 }
 
 export type SeasonWeek = { seasonIndex: number, weekIndex: number }
-type SmallPlayerIndex = {
+export type SmallPlayerIndex = {
   rosterId: string,
   firstName: string,
   lastName: string,
@@ -113,7 +113,7 @@ type SmallPlayerIndex = {
   birthDay: number,
   presentationId: number
 }
-interface MaddenDB {
+export interface MaddenDB {
   appendEvents<Event>(event: SnallabotEvent<Event>[], idFn: (event: Event) => string): Promise<void>,
   on<Event>(event_type: string, notifier: EventNotifier<Event>): void,
   getLatestTeams(leagueId: string): Promise<TeamList>,
@@ -162,7 +162,7 @@ function convertDate(firebaseObject: any) {
   return firebaseObject;
 }
 
-function createEventHistoryUpdate(newEvent: Record<string, any>, oldEvent: Record<string, any>): History {
+export function createEventHistoryUpdate(newEvent: Record<string, any>, oldEvent: Record<string, any>): History {
   const change: History = {}
   Object.keys(newEvent).forEach(key => {
     const oldValue = oldEvent[key]
@@ -184,7 +184,7 @@ export interface TeamList {
   getLatestTeamAssignments(assignments: TeamAssignments): TeamAssignments
 }
 
-function createTeamList(teams: StoredEvent<Team>[]): TeamList {
+export function createTeamList(teams: StoredEvent<Team>[]): TeamList {
   const latestTeamMap = new Map<number, Team>()
   const latestTeams: Team[] = []
   Object.entries(Object.groupBy(teams, t => t.divName)).forEach(divisionTeams => {
@@ -243,7 +243,7 @@ function createTeamList(teams: StoredEvent<Team>[]): TeamList {
   }
 }
 
-function deduplicateStats<T extends { weekIndex: number, seasonIndex: number, timestamp: Date }>(stats: T[]) {
+export function deduplicateStats<T extends { weekIndex: number, seasonIndex: number, timestamp: Date }>(stats: T[]) {
   const statMap = new Map<string, T>();
 
   for (const stat of stats) {
@@ -266,7 +266,7 @@ async function getStats<T extends { rosterId: number, stageIndex: number, weekIn
 }
 
 
-function reconstructFromHistory<T>(histories: StoredHistory[], og: T) {
+export function reconstructFromHistory<T>(histories: StoredHistory[], og: T) {
   const changes = histories.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
   const all: StoredEvent<T>[] = []
   let previousVersion = { ...og };
@@ -288,7 +288,7 @@ function reconstructFromHistory<T>(histories: StoredHistory[], og: T) {
 }
 
 
-function deduplicateSchedule(games: StoredEvent<MaddenGame>[], teams: TeamList): StoredEvent<MaddenGame>[] {
+export function deduplicateSchedule(games: StoredEvent<MaddenGame>[], teams: TeamList): StoredEvent<MaddenGame>[] {
   const gameMap = new Map<string, StoredEvent<MaddenGame>>();
 
   try {
@@ -326,7 +326,7 @@ export function createPlayerKey(player: { presentationId: number, birthYear: num
   return `${player.presentationId}-${player.birthYear}-${player.birthMonth}-${player.birthDay}`
 }
 
-function deduplicatePlayers(players: StoredEvent<Player>[]): StoredEvent<Player>[] {
+export function deduplicatePlayers(players: StoredEvent<Player>[]): StoredEvent<Player>[] {
   const playerMap = new Map<string, StoredEvent<Player>>();
 
   for (const player of players) {
@@ -349,7 +349,7 @@ function deduplicatePlayers(players: StoredEvent<Player>[]): StoredEvent<Player>
   return Array.from(playerMap.values());
 }
 
-async function deduplicatePlayerStats<T extends PlayerStatTypes>(leagueId: string, stats: StoredEvent<T>[]) {
+export async function deduplicatePlayerStats<T extends PlayerStatTypes>(leagueId: string, stats: StoredEvent<T>[]) {
   const playerIndex = await playerListIndex.createView(leagueId)
   const currentPlayers = Object.values(playerIndex || {})
   const statsGrouped: [string, StoredEvent<T>][] = await Promise.all(stats.map(async s => {
@@ -369,7 +369,7 @@ async function deduplicatePlayerStats<T extends PlayerStatTypes>(leagueId: strin
   return Array.from(deduplicateStats.values())
 }
 
-function findLatestScheduleId(scheduleId: number, games: StoredEvent<MaddenGame>[], teams: TeamList): StoredEvent<MaddenGame> {
+export function findLatestScheduleId(scheduleId: number, games: StoredEvent<MaddenGame>[], teams: TeamList): StoredEvent<MaddenGame> {
   // First, find the game with the given schedule ID
   const filteredGames = games.filter(game => game.awayTeamId !== 0 && game.homeTeamId !== 0)
   const originalGame = filteredGames.find(game => game.scheduleId === scheduleId);
@@ -402,7 +402,7 @@ function findLatestScheduleId(scheduleId: number, games: StoredEvent<MaddenGame>
   )
 }
 
-type PlayerListIndex = {
+export type PlayerListIndex = {
   [key: string]: SmallPlayerIndex
 }
 
@@ -462,10 +462,10 @@ class CacheablePlayerListView extends StorageBackedCachedView<PlayerListIndex> {
   }
 }
 
-const playerListIndex = new CacheablePlayerListView()
+export const playerListIndex = new CacheablePlayerListView()
 playerListIndex.listen(MaddenEvents.MADDEN_PLAYER)
 
-type TeamIndex = {
+export type TeamIndex = {
   [key: string]: StoredEvent<Team>
 }
 
@@ -542,7 +542,7 @@ class CacheableSeasonView extends CachedUpdatingView<SeasonIndex> {
   }
 }
 
-const seasonView = new CacheableSeasonView
+export const seasonView = new CacheableSeasonView
 seasonView.listen(MaddenEvents.MADDEN_SCHEDULE)
 
 const MaddenDB: MaddenDB = {
@@ -1129,5 +1129,6 @@ function withMetrics<T extends object>(db: T): T {
   })
 }
 
-export default withMetrics(MaddenDB)
-
+import mongoImpl from "./madden_db_mongo"
+const dbToUse = process.env.MONGO_CONNECTION_URI ? mongoImpl : withMetrics(MaddenDB)
+export default dbToUse
