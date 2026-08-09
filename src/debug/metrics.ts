@@ -137,3 +137,20 @@ export const maddenDBRequestsCounter = new client.Counter(
   }
 )
 
+export const youtubeChannelsGauge = new client.Gauge(
+  {
+    name: "broadcasts_youtube_total",
+    help: "number of current youtube channels registered",
+    registers: [register],
+    labelNames: []
+  }
+)
+
+export const twitchChannelsGauge = new client.Gauge(
+  {
+    name: "broadcasts_twitch_total",
+    help: "number of current twitch channels registered",
+    registers: [register],
+    labelNames: []
+  }
+)

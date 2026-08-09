@@ -59,7 +59,8 @@ type ListTwitchRequest = { discord_server: string }
 interface TwitchNotifier {
   addTwitchChannel(discordServer: string, twitchUrl: string): Promise<void>,
   removeTwitchChannel(discordServer: string, twitchUrl: string): Promise<void>,
-  listTwitchChannels(discordServer: string): Promise<{ name: string, url: string }[]>
+  listTwitchChannels(discordServer: string): Promise<{ name: string, url: string }[]>,
+  listAllTwitchChannels(): Promise<{ name: string, url: string }[]>
 }
 
 type SubscriptionDoc = { subscriptionId: string, broadcasterLogin: string, servers: { [key: string]: { subscribed: boolean } } }
@@ -118,6 +119,13 @@ export const twitchNotifierHandler: TwitchNotifier = {
   },
   listTwitchChannels: async (discordServer: string) => {
     const notifiers = await db.collection("twitch_notifiers").where(`servers.${discordServer}.subscribed`, "==", true).get()
+    return notifiers.docs.map(d => {
+      const twitchSub = d.data() as SubscriptionDoc
+      return { name: twitchSub.broadcasterLogin, url: createTwitchUrl(twitchSub.broadcasterLogin) }
+    })
+  },
+  listAllTwitchChannels: async () => {
+    const notifiers = await db.collection("twitch_notifiers").get()
     return notifiers.docs.map(d => {
       const twitchSub = d.data() as SubscriptionDoc
       return { name: twitchSub.broadcasterLogin, url: createTwitchUrl(twitchSub.broadcasterLogin) }

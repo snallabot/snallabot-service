@@ -13,7 +13,8 @@ export type YoutubeUri = { channelName: string, channelUri: string }
 interface YoutubeNotifierHandler {
   addYoutubeChannel(discordServer: string, youtubeUrl: string): Promise<void>,
   removeYoutubeChannel(discordServer: string, youtubeUrl: string): Promise<void>,
-  listYoutubeChannels(discordServer: string): Promise<YoutubeUri[]>
+  listYoutubeChannels(discordServer: string): Promise<YoutubeUri[]>,
+  listAllYoutubeChannels(): Promise<YoutubeUri[]>
 }
 
 export type YoutubeNotifierStored = {
@@ -137,6 +138,18 @@ export const youtubeNotifierHandler: YoutubeNotifierHandler = {
         const channelId = doc.id;
         channelUrls.push({ channelUri: `https://www.youtube.com/channel/${channelId}`, channelName: data.channelName });
       }
+    });
+
+    return channelUrls;
+  },
+  listAllYoutubeChannels: async () => {
+    const snapshot = await db.collection("youtube_notifiers").get();
+    const channelUrls: { channelName: string, channelUri: string }[] = []
+
+    snapshot.forEach(doc => {
+      const data = doc.data() as YoutubeNotifierStored
+      const channelId = doc.id;
+      channelUrls.push({ channelUri: `https://www.youtube.com/channel/${channelId}`, channelName: data.channelName });
     });
 
     return channelUrls;
