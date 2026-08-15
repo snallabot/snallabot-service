@@ -54,7 +54,7 @@ function createEventHistoryUpdate(newEvent: Record<string, any>, oldEvent: Recor
 
 class PlayerListView extends View<PlayerListIndex> {
   constructor() {
-    super("player_list")
+    super("player_list_v2")
   }
 
   async createView(key: string) {
@@ -118,7 +118,7 @@ export type TeamIndex = {
 
 class TeamView extends View<TeamIndex> {
   constructor() {
-    super("team_view")
+    super("team_view_v2")
   }
   async createView(key: string) {
     const teamDocs = await db.collection(MaddenEvents.MADDEN_TEAM).find({ leagueId: key }).toArray()
@@ -151,7 +151,7 @@ type SeasonIndex = {
 
 class SeasonView extends View<SeasonIndex> {
   constructor() {
-    super("season_view")
+    super("season_view_v2")
   }
   async createView(key: string) {
     const teamList = await MaddenDB.getLatestTeams(key)
