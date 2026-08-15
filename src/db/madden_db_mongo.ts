@@ -324,8 +324,8 @@ const MaddenDB: MaddenDB = {
         const puntingStats = await getStats<PuntingStats>(leagueId, rosterIds, MaddenEvents.MADDEN_PUNTING_STAT)
         return { [PlayerStatType.PUNTING]: puntingStats }
       }
-      case "LEDGE":
-      case "REDGE":
+      case "LEDG":
+      case "REDG":
       case "DT":
       case "SAM":
       case "MIKE":

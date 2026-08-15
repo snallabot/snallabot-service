@@ -617,8 +617,8 @@ export const POSITIONS = [
   "RT",   // Right Tackle
   "LS",   // Long Snapper
   // Defense
-  "LEDGE",   // Left Edge
-  "REDGE",   // Right Edge
+  "LEDG",   // Left Edge
+  "REDG",   // Right Edge
   "DT",   // Defensive Tackle
   "SAM",  // SAM linebacker
   "WILL", // Will linebacker
@@ -633,7 +633,7 @@ export const POSITIONS = [
 
 export const POSITION_GROUP = ["OL", "DL", "DB"]
 export const oLinePositions = ["LT", "LG", "C", "RG", "RT", "LS"];
-export const dLinePositions = ["REDGE", "LEDGE", "DT"]
+export const dLinePositions = ["REDG", "LEDG", "DT"]
 export const dbPositions = ["CB", "FS", "SS"]
 
 export type RosterExport = {

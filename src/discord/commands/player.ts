@@ -534,8 +534,8 @@ function getTopAttributesByPosition(player: Player): Array<{ name: string, value
         { name: "Long Snap", value: player.longSnapRating }
       )
       break
-    case "LEDGE":
-    case "REDGE":
+    case "LEDG":
+    case "REDG":
       attributes.push(
         { name: "Power Moves", value: player.powerMovesRating },
         { name: "Finesse Moves", value: player.finesseMovesRating },
