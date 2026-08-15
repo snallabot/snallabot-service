@@ -1,6 +1,6 @@
 import { ParameterizedContext } from "koa"
 import { APIChatInputApplicationCommandInteractionData, APIInteractionGuildMember } from "discord-api-types/payloads"
-import { APIApplicationCommandOption, APIApplicationCommandOptionType, APIAutocompleteApplicationCommandInteractionData, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
+import { ApplicationCommandOptionType, APIAutocompleteApplicationCommandInteractionData, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { createMessageResponse, respond, DiscordClient, CommandMode } from "./discord_utils"
 import { Firestore } from "firebase-admin/firestore"
 import leagueExportHandler from "./commands/league_export"
@@ -42,14 +42,14 @@ function findOption(options: readonly any[] | undefined, name: string): any | un
 
 function addLeagueSelector(definition: RESTPostAPIApplicationCommandsJSONBody): RESTPostAPIApplicationCommandsJSONBody {
   if (!LEAGUE_SELECTABLE_COMMANDS.has(definition.name)) return definition
-  const leagueOption: APIApplicationCommandOption = {
+  const leagueOption = {
     type: ApplicationCommandOptionType.String,
     name: "league",
     description: "Connected Madden league ID (uses the default when omitted)",
     required: false,
     autocomplete: true
   }
-  const options = [...(definition.options || [])]
+  const options: any[] = [...(definition.options || [])]
   const hasSubcommands = options.some(option => option.type === ApplicationCommandOptionType.Subcommand || option.type === ApplicationCommandOptionType.SubcommandGroup)
   if (!hasSubcommands) return { ...definition, options: [...options, leagueOption] }
   return {
@@ -59,7 +59,7 @@ function addLeagueSelector(definition: RESTPostAPIApplicationCommandsJSONBody): 
         return { ...option, options: [...(option.options || []), leagueOption] }
       }
       if (option.type === ApplicationCommandOptionType.SubcommandGroup) {
-        return { ...option, options: (option.options || []).map(sub => ({ ...sub, options: [...(sub.options || []), leagueOption] })) }
+        return { ...option, options: (option.options || []).map((sub: any) => ({ ...sub, options: [...(sub.options || []), leagueOption] })) }
       }
       return option
     })
