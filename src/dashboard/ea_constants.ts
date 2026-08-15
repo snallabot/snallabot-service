@@ -7,7 +7,7 @@ export const EA_LOGIN_URL = `https://accounts.ea.com/connect/auth?hide_create=tr
 
 
 export const TWO_DIGIT_YEAR = "26"
-export const YEAR = "2026"
+export const YEAR = "2027"
 
 export const VALID_ENTITLEMENTS = ((a: string) => ({
   xone: `MADDEN_${a}XONE`,
