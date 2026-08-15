@@ -794,8 +794,8 @@ const MaddenDB: MaddenDB = {
         return {
           [PlayerStatType.PUNTING]: puntingStats
         }
-      case "LEDGE":
-      case "REDGE":
+      case "LEDG":
+      case "REDG":
       case "DT":
       case "SAM":
       case "MIKE":
