@@ -8,6 +8,13 @@ html
 body
   .div(class="container-fluid" style="margin-top: 8px;")
     h4 #{leagueName} Snallabot Dashboard
+    if leagueChoices && leagueChoices.length > 1
+      .row.mb-3
+        .col-md-5.col-lg-4
+          label.form-label(for="leagueSwitcher") Switch dashboard league
+          select#leagueSwitcher.form-select(onchange="if (this.value) window.location.href='/dashboard/league/' + encodeURIComponent(this.value)")
+            each choice in leagueChoices
+              option(value=choice.leagueId selected=choice.leagueId === leagueId) #{choice.leagueName}
     .row.align-items-center
      .col-auto
        div

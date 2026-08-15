@@ -248,6 +248,10 @@ router.get("/", async (ctx) => {
   const [leagueInfo, allLeagues, exportStatus, latestTeams, discordLeagues] = await Promise.all([eaClient.getLeagueInfo(leagueId), eaClient.getLeagues(), MaddenDB.getExportStatus(rawLeagueId), MaddenDB.getLatestTeams(rawLeagueId), LeagueSettingsDB.getLeagueSettingsForLeagueId(rawLeagueId)])
   const leagueName = allLeagues.filter(l => l.leagueId === leagueId)
     .map(l => l.leagueName)[0]
+  const leagueChoices = allLeagues.map(league => ({
+    leagueId: `${league.leagueId}`,
+    leagueName: league.leagueName
+  }))
   const exports = eaClient.getExports()
   const {
     gameScheduleHubInfo,
@@ -289,7 +293,7 @@ router.get("/", async (ctx) => {
 
   const discordSettings = settledSettings.flatMap(s => s.status === "fulfilled" ? [s.value] : [])
   ctx.body = dashboardRender({
-    gameScheduleHubInfo: gameScheduleHubInfo, teamIdInfoList: teamIdInfoList, seasonInfo: seasonInfo, leagueName: leagueName, exports: exports, exportOptions: exportOptions, seasonWeekType: seasonType(seasonInfo), lastAdvance, exportStatus: displayableExportStatus, discordSettings, discordsToConnect, oauthUrl, leagueId: rawLeagueId
+    gameScheduleHubInfo: gameScheduleHubInfo, teamIdInfoList: teamIdInfoList, seasonInfo: seasonInfo, leagueName: leagueName, leagueChoices, exports: exports, exportOptions: exportOptions, seasonWeekType: seasonType(seasonInfo), lastAdvance, exportStatus: displayableExportStatus, discordSettings, discordsToConnect, oauthUrl, leagueId: rawLeagueId
   })
 }).post("/league/:leagueId/updateExport", async (ctx, next) => {
   const { leagueId: rawLeagueId } = ctx.params
