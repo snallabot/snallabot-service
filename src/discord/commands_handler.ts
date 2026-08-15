@@ -45,21 +45,21 @@ function addLeagueSelector(definition: RESTPostAPIApplicationCommandsJSONBody): 
   const leagueOption = {
     type: ApplicationCommandOptionType.String,
     name: "league",
-    description: "Connected Madden league ID (uses the default when omitted)",
-    required: false,
+    description: "Choose which connected Madden league to use",
+    required: true,
     autocomplete: true
   }
   const options: any[] = [...(definition.options || [])]
   const hasSubcommands = options.some(option => option.type === ApplicationCommandOptionType.Subcommand || option.type === ApplicationCommandOptionType.SubcommandGroup)
-  if (!hasSubcommands) return { ...definition, options: [...options, leagueOption] }
+  if (!hasSubcommands) return { ...definition, options: [leagueOption, ...options] }
   return {
     ...definition,
     options: options.map(option => {
       if (option.type === ApplicationCommandOptionType.Subcommand) {
-        return { ...option, options: [...(option.options || []), leagueOption] }
+        return { ...option, options: [leagueOption, ...(option.options || [])] }
       }
       if (option.type === ApplicationCommandOptionType.SubcommandGroup) {
-        return { ...option, options: (option.options || []).map((sub: any) => ({ ...sub, options: [...(sub.options || []), leagueOption] })) }
+        return { ...option, options: (option.options || []).map((sub: any) => ({ ...sub, options: [leagueOption, ...(sub.options || [])] })) }
       }
       return option
     })
@@ -173,7 +173,8 @@ export async function handleAutocomplete(command: Autocomplete, ctx: Parameteriz
   if (handler) {
     try {
       discordCommandsCounter.inc({ command_name: command.command_name, command_type: "AUTOCOMPLETE" })
-      const choices = await handler.choices(command)
+      const requestedLeague = findOption(command.data.options, "league")?.value as string | undefined
+      const choices = await runWithLeague(command.guild_id, requestedLeague, () => handler.choices(command))
       ctx.status = 200
       ctx.set("Content-Type", "application/json")
       ctx.body = {

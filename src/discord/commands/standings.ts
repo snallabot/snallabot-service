@@ -185,7 +185,7 @@ export default {
       throw new NoConnectedLeagueError(guild_id)
     }
     const league = leagueSettings.commands.madden_league.league_id
-    const scope = (command?.data?.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.value
+    const scope = (command?.data?.options?.find(option => option.name === "scope") as APIApplicationCommandInteractionDataStringOption)?.value
     handleCommand(client, token, league, guild_id, scope)
     return deferMessage()
   },

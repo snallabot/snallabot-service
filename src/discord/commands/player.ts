@@ -1755,18 +1755,20 @@ export default {
     const playerCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
     const subCommand = playerCommand.name
     if (subCommand === "get") {
-      if (!playerCommand.options || !playerCommand.options[0]) {
+      const playerOption = playerCommand.options?.find(option => option.name === "player") as APIApplicationCommandInteractionDataStringOption | undefined
+      if (!playerOption) {
         throw new Error("player get misconfigured")
       }
-      const playerSearch = (playerCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value
+      const playerSearch = playerOption.value
       showPlayerCard(playerSearch, client, token, guild_id)
       return deferMessage()
 
     } else if (subCommand === "list") {
-      if (!playerCommand.options || !playerCommand.options[0]) {
+      const playersOption = playerCommand.options?.find(option => option.name === "players") as APIApplicationCommandInteractionDataStringOption | undefined
+      if (!playersOption) {
         throw new Error("player get misconfigured")
       }
-      const playerSearch = (playerCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value
+      const playerSearch = playersOption.value
       showPlayerList(playerSearch, client, token, guild_id)
       return deferMessage()
     } else if (subCommand === "retire") {
@@ -1842,16 +1844,18 @@ export default {
     if (subCommand === "get") {
       const view = await discordLeagueView.createView(guild_id)
       const leagueId = view?.leagueId
-      if (leagueId && (playerCommand?.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.focused && playerCommand?.options?.[0]?.value) {
-        const playerSearchPhrase = playerCommand.options[0].value as string
+      const playerOption = playerCommand.options?.find(option => option.name === "player") as APIApplicationCommandInteractionDataStringOption | undefined
+      if (leagueId && playerOption?.focused && playerOption.value) {
+        const playerSearchPhrase = playerOption.value as string
         const results = await searchPlayerForRosterId(playerSearchPhrase, leagueId)
         return results.map(r => ({ name: `${r.teamAbbr} ${r.position.toUpperCase()} ${r.firstName} ${r.lastName}`, value: `${r.rosterId}` }))
       }
     } else if (subCommand === "list") {
       const view = await discordLeagueView.createView(guild_id)
       const leagueId = view?.leagueId
-      if (leagueId && (playerCommand?.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.focused && playerCommand?.options?.[0]?.value) {
-        const playerListSearchPhrase = playerCommand.options[0].value as string
+      const playersOption = playerCommand.options?.find(option => option.name === "players") as APIApplicationCommandInteractionDataStringOption | undefined
+      if (leagueId && playersOption?.focused && playersOption.value) {
+        const playerListSearchPhrase = playersOption.value as string
         const results = await searchPlayerListForQuery(playerListSearchPhrase, leagueId)
         return results.map(r => {
           const { teamId, rookie, position, retired } = r
