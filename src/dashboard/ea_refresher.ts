@@ -10,7 +10,7 @@ const hash: (a: any) => Promise<string> = (a: any) => {
 const changeCache = new NodeCache()
 
 async function getLatestLeagues(): Promise<string[]> {
-  const collection = db.collection("madden_data26").where("blazeId", "!=", null)
+  const collection = db.collection("league_connection").where("blazeId", "!=", null)
   const docs = await collection.get()
   return docs.docs.map(d => d.id)
 }
