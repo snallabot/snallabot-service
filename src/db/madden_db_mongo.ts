@@ -1,10 +1,11 @@
 import { randomUUID } from "crypto"
 import db from "./mongo_db"
 import EventDB, { EventNotifier, SnallabotEvent, StoredEvent, notifiers } from "./events_db"
-import { DefensiveStats, GameResult, KickingStats, MADDEN_SEASON, MaddenGame, POSITION_GROUP, PassingStats, Player, PuntingStats, ReceivingStats, RushingStats, Standing, TeamStats, dLinePositions, dbPositions, oLinePositions } from "../export/madden_league_types"
+import { DefensiveStats, GameResult, KickingStats, MADDEN_SEASON, MaddenGame, POSITION_GROUP, PassingStats, Player, PuntingStats, ReceivingStats, RushingStats, Standing, Team, TeamStats, dLinePositions, dbPositions, oLinePositions } from "../export/madden_league_types"
 import { EventTypes, RetiredPlayersEvent } from "./events"
 import { maddenDBRequestsCounter, maddenEventsDistribution } from "../debug/metrics"
-import { ExportStatus, GameStats, MaddenDB, MaddenEvents, PlayerListQuery, PlayerStatEvents, PlayerStatType, PlayerStatTypes, PlayerStats, TeamList, createPlayerKey, createTeamList, deduplicatePlayerStats, deduplicateSchedule, deduplicateStats, findLatestScheduleId, playerListIndex, seasonView, teamView } from "./madden_db"
+import { ExportStatus, GameStats, MaddenDB, MaddenEvents, PlayerListIndex, PlayerListQuery, PlayerStatEvents, PlayerStatType, PlayerStatTypes, PlayerStats, TeamList, createPlayerKey, createTeamList, deduplicatePlayerStats, deduplicatePlayers, deduplicateSchedule, deduplicateStats, findLatestScheduleId } from "./madden_db"
+import { CachedUpdatingView, StorageBackedCachedView, View } from "./view"
 
 type HistoryUpdate<ValueType> = { oldValue?: ValueType, newValue?: ValueType }
 type History = { [key: string]: HistoryUpdate<any> }
@@ -44,12 +45,141 @@ function createEventHistoryUpdate(newEvent: Record<string, any>, oldEvent: Recor
         change[key] = {} as HistoryUpdate<any>
         oldValue !== undefined && (change[key].oldValue = oldValue)
         newValue !== undefined && (change[key].newValue = newValue)
+        1
       }
     }
   })
   return change
 }
 
+class PlayerListView extends View<PlayerListIndex> {
+  constructor() {
+    super("player_list")
+  }
+
+  async createView(key: string) {
+    const playerDocs = await db.collection(MaddenEvents.MADDEN_PLAYER).find(
+      { leagueId: key },
+      { projection: { rosterId: 1, firstName: 1, lastName: 1, teamId: 1, position: 1, birthYear: 1, birthMonth: 1, birthDay: 1, presentationId: 1, timestamp: 1, yearsPro: 1, playerBestOvr: 1 } }
+    ).toArray()
+    const players = deduplicatePlayers(playerDocs as unknown as StoredEvent<Player>[])
+    return Object.fromEntries(players.map(player => {
+      return [createPlayerKey(player), {
+        rosterId: `${player.rosterId}`,
+        firstName: player.firstName,
+        lastName: player.lastName,
+        teamId: `${player.teamId}`,
+        yearsPro: player.yearsPro,
+        playerBestOvr: player.playerBestOvr,
+        position: player.position,
+        birthYear: player.birthYear,
+        birthMonth: player.birthMonth,
+        birthDay: player.birthDay,
+        presentationId: player.presentationId
+      }]
+    }))
+  }
+}
+
+class CacheablePlayerListView extends StorageBackedCachedView<PlayerListIndex> {
+  constructor() {
+    super(new PlayerListView())
+  }
+
+  update(events: { [key: string]: any[] }, currentView: PlayerListIndex) {
+    if (events[MaddenEvents.MADDEN_PLAYER]) {
+      const playersToUpdate = events[MaddenEvents.MADDEN_PLAYER]
+      playersToUpdate.map(player => {
+        currentView[createPlayerKey(player)] = {
+          rosterId: `${player.rosterId}`,
+          firstName: player.firstName,
+          lastName: player.lastName,
+          teamId: `${player.teamId}`,
+          playerBestOvr: player.playerBestOvr,
+          yearsPro: player.yearsPro,
+          position: player.position,
+          birthYear: player.birthYear,
+          birthMonth: player.birthMonth,
+          birthDay: player.birthDay,
+          presentationId: player.presentationId
+        }
+      })
+    }
+    return currentView
+  }
+}
+
+export const playerListIndex = new CacheablePlayerListView()
+playerListIndex.listen(MaddenEvents.MADDEN_PLAYER)
+
+export type TeamIndex = {
+  [key: string]: StoredEvent<Team>
+}
+
+class TeamView extends View<TeamIndex> {
+  constructor() {
+    super("team_view")
+  }
+  async createView(key: string) {
+    const teamDocs = await db.collection(MaddenEvents.MADDEN_TEAM).find({ leagueId: key }).toArray()
+    const teams = teamDocs as unknown as StoredEvent<Team>[]
+    return Object.fromEntries(teams.map(t => [`${t.teamId}`, t]))
+  }
+}
+
+class CacheableTeamView extends CachedUpdatingView<TeamIndex> {
+  constructor() {
+    super(new TeamView)
+  }
+  update(event: { [key: string]: any[] }, currentView: TeamIndex): TeamIndex {
+    if (event[MaddenEvents.MADDEN_TEAM]) {
+      const updatedTeams = event[MaddenEvents.MADDEN_TEAM] as SnallabotEvent<Team>[]
+      updatedTeams.forEach(t => {
+        currentView[t.teamId] = { ...currentView[t.teamId], ...t }
+      })
+    }
+    return currentView
+  }
+}
+
+export const teamView = new CacheableTeamView
+teamView.listen(MaddenEvents.MADDEN_TEAM)
+
+type SeasonIndex = {
+  currentSeasonIndex: number
+}
+
+class SeasonView extends View<SeasonIndex> {
+  constructor() {
+    super("season_view")
+  }
+  async createView(key: string) {
+    const teamList = await MaddenDB.getLatestTeams(key)
+    const allGames = await db.collection(MaddenEvents.MADDEN_SCHEDULE).find({ leagueId: key, stageIndex: 1 }).toArray()
+    const games = deduplicateSchedule(allGames as unknown as StoredEvent<MaddenGame>[], teamList)
+    if (games.length === 0) {
+      return { currentSeasonIndex: 0 }
+    }
+    const maxSeason = Math.max(...games.map(game => game.seasonIndex));
+    return { currentSeasonIndex: maxSeason }
+  }
+}
+
+class CacheableSeasonView extends CachedUpdatingView<SeasonIndex> {
+  constructor() {
+    super(new SeasonView)
+  }
+  update(event: { [key: string]: any[] }, currentView: SeasonIndex): SeasonIndex {
+    if (event[MaddenEvents.MADDEN_SCHEDULE]) {
+      const updatedGames = event[MaddenEvents.MADDEN_SCHEDULE] as SnallabotEvent<MaddenGame>[]
+      currentView.currentSeasonIndex = Math.max(currentView.currentSeasonIndex, Math.max(...updatedGames.map(g => g.seasonIndex)))
+    }
+    return currentView
+  }
+}
+
+export const seasonView = new CacheableSeasonView
+seasonView.listen(MaddenEvents.MADDEN_SCHEDULE)
 
 const MaddenDB: MaddenDB = {
   async appendEvents<Event>(events: SnallabotEvent<Event>[], idFn: (event: Event) => string) {

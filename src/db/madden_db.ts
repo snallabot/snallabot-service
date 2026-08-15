@@ -462,7 +462,7 @@ class CacheablePlayerListView extends StorageBackedCachedView<PlayerListIndex> {
   }
 }
 
-export const playerListIndex = new CacheablePlayerListView()
+const playerListIndex = new CacheablePlayerListView()
 playerListIndex.listen(MaddenEvents.MADDEN_PLAYER)
 
 export type TeamIndex = {
@@ -495,7 +495,7 @@ class CacheableTeamView extends CachedUpdatingView<TeamIndex> {
   }
 }
 
-export const teamView = new CacheableTeamView
+const teamView = new CacheableTeamView
 teamView.listen(MaddenEvents.MADDEN_TEAM)
 
 type SeasonIndex = {
@@ -542,7 +542,7 @@ class CacheableSeasonView extends CachedUpdatingView<SeasonIndex> {
   }
 }
 
-export const seasonView = new CacheableSeasonView
+const seasonView = new CacheableSeasonView
 seasonView.listen(MaddenEvents.MADDEN_SCHEDULE)
 
 const MaddenDB: MaddenDB = {
