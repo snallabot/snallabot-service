@@ -6,6 +6,7 @@ import FileHandler, { defaultSerializer } from "../file_handlers"
 import { viewCacheHits, viewCacheTotalRequests } from "../debug/metrics"
 import fastq from 'fastq'
 import type { queueAsPromised } from 'fastq'
+import { selectedLeagueForGuild } from "../discord/league_context"
 
 const TTL = 36000 // 10 hours in seconds
 
@@ -171,6 +172,16 @@ class DiscordLeagueConnection extends View<DiscordLeagueConnectionEvent> {
 class CacheableDiscordLeagueConnection extends CachedUpdatingView<DiscordLeagueConnectionEvent> {
   constructor() {
     super(new DiscordLeagueConnection())
+  }
+  async createView(key: string) {
+    // A slash command may explicitly select one of several leagues connected to
+    // the same guild. That request-scoped selection must take precedence over
+    // the cached default connection for the guild.
+    const selectedLeague = selectedLeagueForGuild(key)
+    if (selectedLeague) {
+      return { guildId: key, leagueId: selectedLeague }
+    }
+    return super.createView(key)
   }
   update(event: { [key: string]: any[] }, currentView: DiscordLeagueConnectionEvent) {
     if (event["DISCORD_LEAGUE_CONNECTION"]) {
