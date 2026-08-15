@@ -330,7 +330,7 @@ function fromShortQuery(q: ShortPlayerListQuery) {
   if (q.e) query.retired = q.e
   return query
 }
-type PlayerPagination = { q: ShortPlayerListQuery, s?: number, b?: number }
+type PlayerPagination = { q: ShortPlayerListQuery, s?: number, b?: number, l?: string }
 const PAGINATION_LIMIT = 5
 
 async function getPlayers(leagueId: string, query: PlayerListQuery, startAfterPlayer?: number, endBeforePlayer?: number) {
@@ -380,6 +380,7 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
     const nextDisabled = players.length < PAGINATION_LIMIT ? true : false
     const nextPagination = players.length === 0 ? startAfterPlayer : players[players.length - 1].rosterId
     const previousPagination = players.length === 0 ? endBeforePlayer : players[0].rosterId
+    const leaguePagination = { q: toShortQuery(query), l: leagueId }
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
@@ -395,13 +396,13 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
               style: ButtonStyle.Secondary,
               label: "Back",
               disabled: backDisabled,
-              custom_id: `${JSON.stringify({ q: toShortQuery(query), b: previousPagination ? previousPagination : -1 })}`
+              custom_id: `${JSON.stringify({ ...leaguePagination, b: previousPagination ? previousPagination : -1 })}`
             },
             {
               type: ComponentType.Button,
               style: ButtonStyle.Secondary,
               label: "Next",
-              custom_id: `${JSON.stringify({ q: toShortQuery(query), s: nextPagination ? nextPagination : -1 })}`,
+              custom_id: `${JSON.stringify({ ...leaguePagination, s: nextPagination ? nextPagination : -1 })}`,
               disabled: nextDisabled
             }
           ]
@@ -418,7 +419,7 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
               type: ComponentType.StringSelect,
               custom_id: "player_card",
               placeholder: `Show Player Card`,
-              options: generatePlayerZoomOptions(players, { q: toShortQuery(query), s: startAfterPlayer, b: endBeforePlayer })
+              options: generatePlayerZoomOptions(players, { ...leaguePagination, s: startAfterPlayer, b: endBeforePlayer })
             }
           ]
         }])

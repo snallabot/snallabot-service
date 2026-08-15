@@ -206,11 +206,27 @@ export async function handleAutocomplete(command: Autocomplete, ctx: Parameteriz
 
 export async function handleMessageComponent(interaction: MessageComponentInteraction, ctx: ParameterizedContext, client: DiscordClient) {
   const custom_id = interaction.custom_id
+  let requestedLeague: string | undefined
+  try {
+    const componentData = custom_id.startsWith("{")
+      ? JSON.parse(custom_id)
+      : JSON.parse(((interaction.data as any).values || [])[0] || "{}")
+    requestedLeague = componentData.l || componentData.q?.l
+  } catch (_) {
+    // Components that predate multi-league support simply use the active league.
+  }
+  const invoke = async (componentHandler: MessageComponentHandler) => {
+    if (requestedLeague) {
+      const connectedLeagues = await LeagueSettingsDB.getMaddenLeagueIds(interaction.guild_id)
+      if (!connectedLeagues.includes(requestedLeague)) throw new Error(`League ${requestedLeague} is not connected to this Discord server`)
+    }
+    return runWithLeague(interaction.guild_id, requestedLeague, () => componentHandler.handleInteraction(interaction, client))
+  }
   const handler = MessageComponents[custom_id]
   if (handler) {
     try {
       discordCommandsCounter.inc({ command_name: custom_id, command_type: "MESSAGE_COMPONENT" })
-      const body = await handler.handleInteraction(interaction, client)
+      const body = await invoke(handler)
       ctx.status = 200
       ctx.set("Content-Type", "application/json")
       ctx.body = body
@@ -224,38 +240,38 @@ export async function handleMessageComponent(interaction: MessageComponentIntera
       const parsedCustomId = JSON.parse(custom_id)
       if (parsedCustomId.q != null) {
         discordCommandsCounter.inc({ command_name: "PLAYER_LIST", command_type: "MESSAGE_COMPONENT" })
-        const body = await playerHandler.handleInteraction(interaction, client)
+        const body = await invoke(playerHandler)
         ctx.status = 200
         ctx.set("Content-Type", "application/json")
         ctx.body = body
       } else if (parsedCustomId.t != null) {
         discordCommandsCounter.inc({ command_name: "BROADCAST", command_type: "MESSAGE_COMPONENT" })
-        const body = await broadcastsHandler.handleInteraction(interaction, client)
+        const body = await invoke(broadcastsHandler)
         ctx.status = 200
         ctx.set("Content-Type", "application/json")
         ctx.body = body
       } else if (parsedCustomId.p != null && parsedCustomId.si != null) {
         discordCommandsCounter.inc({ command_name: "SIMS", command_type: "MESSAGE_COMPONENT" })
-        const body = await simsHandler.handleInteraction(interaction, client)
+        const body = await invoke(simsHandler)
         ctx.status = 200
         ctx.set("Content-Type", "application/json")
         ctx.body = body
       }
       else if (parsedCustomId.si != null) {
         discordCommandsCounter.inc({ command_name: "SCHEDULE", command_type: "MESSAGE_COMPONENT" })
-        const body = await schedulesHandler.handleInteraction(interaction, client)
+        const body = await invoke(schedulesHandler)
         ctx.status = 200
         ctx.set("Content-Type", "application/json")
         ctx.body = body
       } else if (parsedCustomId.f != null) {
         discordCommandsCounter.inc({ command_name: "STANDINGS", command_type: "MESSAGE_COMPONENT" })
-        const body = await standingsHandler.handleInteraction(interaction, client)
+        const body = await invoke(standingsHandler)
         ctx.status = 200
         ctx.set("Content-Type", "application/json")
         ctx.body = body
       } else if (parsedCustomId.st != null && parsedCustomId.p != null) {
         discordCommandsCounter.inc({ command_name: "STATS", command_type: "MESSAGE_COMPONENT" })
-        const body = await statsHandler.handleInteraction(interaction, client)
+        const body = await invoke(statsHandler)
         ctx.status = 200
         ctx.set("Content-Type", "application/json")
         ctx.body = body
