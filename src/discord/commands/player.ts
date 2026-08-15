@@ -1,5 +1,5 @@
 import { Command, Autocomplete, MessageComponentInteraction } from "../commands_handler"
-import { DiscordClient, deferMessage, getTeamEmoji, SnallabotTeamEmojis, NoConnectedLeagueError, SnallabotCommandReactions, createMessageResponse } from "../discord_utils"
+import { DiscordClient, deferMessage, getTeamEmoji, getApplicationEmoji, SnallabotTeamEmojis, NoConnectedLeagueError, SnallabotCommandReactions, createMessageResponse } from "../discord_utils"
 import { APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ButtonStyle, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { discordLeagueView, LeagueLogos, leagueLogosView } from "../../db/view"
 import fuzzysort from "fuzzysort"
@@ -700,13 +700,13 @@ function getPositionalTraits(player: Player) {
 function getDevTraitName(devTrait: DevTrait, yearsPro: number, useHiddenDevs: boolean): string {
   // non normal dev rookies get hidden dev
   if (yearsPro === 0 && devTrait !== DevTrait.NORMAL && useHiddenDevs) {
-    return SnallabotDevEmojis.HIDDEN
+    return getApplicationEmoji("snallabot_hidden_dev", "Hidden")
   }
   switch (devTrait) {
-    case DevTrait.NORMAL: return SnallabotDevEmojis.NORMAL
-    case DevTrait.STAR: return SnallabotDevEmojis.STAR
-    case DevTrait.SUPERSTAR: return SnallabotDevEmojis.SUPERSTAR
-    case DevTrait.XFACTOR: return SnallabotDevEmojis.XFACTOR
+    case DevTrait.NORMAL: return getApplicationEmoji("snallabot_normal_dev", "Normal")
+    case DevTrait.STAR: return getApplicationEmoji("snallabot_star_dev", "Star")
+    case DevTrait.SUPERSTAR: return getApplicationEmoji("snallabot_superstar_dev", "Superstar")
+    case DevTrait.XFACTOR: return getApplicationEmoji("snallabot_xfactor_dev", "X-Factor")
     default: return "Unknown"
   }
 }
