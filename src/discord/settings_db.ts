@@ -48,6 +48,7 @@ export type LeagueSettings = {
     stream_count?: StreamCountConfiguration,
     broadcast?: BroadcastConfiguration,
     teams?: TeamConfiguration,
+    team_leagues?: Record<string, TeamConfiguration>,
     waitlist?: WaitlistConfiguration,
     madden_league?: MaddenLeagueConfiguration,
     player?: PlayerConfiguration
@@ -106,11 +107,15 @@ const LeagueSettingsDB: LeagueSettingsDB = {
     const settings = { guildId: doc.id, ...doc.data() } as LeagueSettings
     const selectedLeague = selectedLeagueForGuild(guildId)
     if (selectedLeague && settings.commands.madden_league) {
+      const defaultLeague = settings.commands.madden_league.league_id
+      const selectedTeams = settings.commands.team_leagues?.[selectedLeague]
+        || (selectedLeague === defaultLeague ? settings.commands.teams : undefined)
       return {
         ...settings,
         commands: {
           ...settings.commands,
-          madden_league: { ...settings.commands.madden_league, league_id: selectedLeague }
+          madden_league: { ...settings.commands.madden_league, league_id: selectedLeague },
+          teams: selectedTeams
         }
       }
     }
@@ -274,6 +279,14 @@ const LeagueSettingsDB: LeagueSettingsDB = {
   },
 
   async updateTeamConfiguration(guildId: string, teamSettings: TeamConfiguration): Promise<void> {
+    const leagueId = selectedLeagueForGuild(guildId)
+    if (leagueId) {
+      await db.collection('league_settings').doc(guildId).set({
+        commands: { team_leagues: { [leagueId]: teamSettings } },
+        guildId
+      }, { merge: true })
+      return
+    }
     await db.collection('league_settings').doc(guildId).set({
       commands: {
         teams: teamSettings
@@ -282,25 +295,33 @@ const LeagueSettingsDB: LeagueSettingsDB = {
     }, { merge: true })
   },
   async updateAssignmentUser(guildId: string, teamId: string | number, user: UserId): Promise<void> {
+    const leagueId = selectedLeagueForGuild(guildId)
+    const basePath = leagueId ? `commands.team_leagues.${leagueId}` : 'commands.teams'
     await db.collection('league_settings').doc(guildId).update({
-      [`commands.teams.assignments.${teamId}.discord_user`]: user
+      [`${basePath}.assignments.${teamId}.discord_user`]: user
     })
   },
   async updateAssignment(guildId: string, assignments: TeamAssignments): Promise<void> {
+    const leagueId = selectedLeagueForGuild(guildId)
+    const basePath = leagueId ? `commands.team_leagues.${leagueId}` : 'commands.teams'
     await db.collection('league_settings').doc(guildId).update({
-      'commands.teams.assignments': assignments
+      [`${basePath}.assignments`]: assignments
     })
   },
 
   async removeAssignment(guildId: string, teamId: number | string): Promise<void> {
+    const leagueId = selectedLeagueForGuild(guildId)
+    const basePath = leagueId ? `commands.team_leagues.${leagueId}` : 'commands.teams'
     await db.collection('league_settings').doc(guildId).update({
-      [`commands.teams.assignments.${teamId}`]: FieldValue.delete()
+      [`${basePath}.assignments.${teamId}`]: FieldValue.delete()
     })
   },
 
   async removeAllAssignments(guildId: string): Promise<void> {
+    const leagueId = selectedLeagueForGuild(guildId)
+    const basePath = leagueId ? `commands.team_leagues.${leagueId}` : 'commands.teams'
     await db.collection('league_settings').doc(guildId).update({
-      'commands.teams.assignments': {}
+      [`${basePath}.assignments`]: {}
     })
   },
 
