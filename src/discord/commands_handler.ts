@@ -30,7 +30,13 @@ export type Command = { command_name: string, token: string, guild_id: string, d
 export type Autocomplete = { command_name: string, guild_id: string, data: APIAutocompleteApplicationCommandInteractionData }
 export type MessageComponentInteraction = { custom_id: string, token: string, data: APIMessageComponentInteractionData, guild_id: string }
 
-const LEAGUE_SELECTABLE_COMMANDS = new Set(["standings", "schedule", "player", "stats", "playoffs", "export", "sims"])
+// Commands which read or mutate league-specific settings/data. Dashboard, test,
+// and league_export stay exempt because they are used before a league exists.
+const LEAGUE_SELECTABLE_COMMANDS = new Set([
+  "game_channels", "teams", "streams", "broadcasts", "waitlist", "logger",
+  "standings", "schedule", "player", "player_configuration", "stats",
+  "playoffs", "export", "sims"
+])
 
 function findOption(options: readonly any[] | undefined, name: string): any | undefined {
   for (const option of options || []) {
@@ -38,6 +44,13 @@ function findOption(options: readonly any[] | undefined, name: string): any | un
     const nested = findOption(option.options, name)
     if (nested) return nested
   }
+}
+
+function withoutLeagueSelector(options: readonly any[] | undefined): any[] | undefined {
+  if (!options) return undefined
+  return options
+    .filter(option => option.name !== "league")
+    .map(option => option.options ? { ...option, options: withoutLeagueSelector(option.options) } : option)
 }
 
 function addLeagueSelector(definition: RESTPostAPIApplicationCommandsJSONBody): RESTPostAPIApplicationCommandsJSONBody {
@@ -134,7 +147,10 @@ export async function handleCommand(command: Command, ctx: ParameterizedContext,
           throw new Error(`League ${requestedLeague} is not connected to this Discord server`)
         }
       }
-      const res = await runWithLeague(command.guild_id, requestedLeague, () => handler.handleCommand(command, discordClient))
+      // Keep legacy handlers stable: the injected selector establishes context,
+      // but is removed before handlers that use positional option indexes run.
+      const handlerCommand = { ...command, data: { ...command.data, options: withoutLeagueSelector(command.data.options) } }
+      const res = await runWithLeague(command.guild_id, requestedLeague, () => handler.handleCommand(handlerCommand, discordClient))
       respond(ctx, res)
     } catch (e) {
       const error = e as Error
@@ -174,7 +190,8 @@ export async function handleAutocomplete(command: Autocomplete, ctx: Parameteriz
     try {
       discordCommandsCounter.inc({ command_name: command.command_name, command_type: "AUTOCOMPLETE" })
       const requestedLeague = findOption(command.data.options, "league")?.value as string | undefined
-      const choices = await runWithLeague(command.guild_id, requestedLeague, () => handler.choices(command))
+      const handlerCommand = { ...command, data: { ...command.data, options: withoutLeagueSelector(command.data.options) } }
+      const choices = await runWithLeague(command.guild_id, requestedLeague, () => handler.choices(handlerCommand))
       ctx.status = 200
       ctx.set("Content-Type", "application/json")
       ctx.body = {
