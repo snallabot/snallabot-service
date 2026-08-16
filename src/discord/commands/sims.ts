@@ -12,7 +12,7 @@ enum SortOrder {
   BY_FW = "bw",
   BY_FL = "bs"
 }
-export type SeasonSelection = { si: number, p?: number, so?: SortOrder }
+export type SeasonSelection = { si: number, p?: number, so?: SortOrder, l?: string }
 const USERS_PER_PAGE = 10
 
 async function showSeasonSims(token: string, client: DiscordClient, league: string, requestedSeason?: number, paginatedIndex?: number, sortOrder: SortOrder = SortOrder.BY_TOTAL) {
@@ -145,7 +145,7 @@ async function showSeasonSims(token: string, client: DiscordClient, league: stri
     // Create season selector dropdown
     const seasonOptions = seasons.map(s => ({
       label: `Season ${s + MADDEN_SEASON}`,
-      value: JSON.stringify({ si: s, p: 0 } as SeasonSelection)
+      value: JSON.stringify({ si: s, p: 0, l: league } as SeasonSelection)
     }))
     const paginationButtons = []
     if (userStatsMap.size > USERS_PER_PAGE) {
@@ -161,7 +161,8 @@ async function showSeasonSims(token: string, client: DiscordClient, league: stri
             label: "Back",
             custom_id: JSON.stringify({
               si: currentSeason,
-              p: Math.max(startIndex - USERS_PER_PAGE, 0)
+              p: Math.max(startIndex - USERS_PER_PAGE, 0),
+              l: league
             }),
             disabled: startIndex === 0
           },
@@ -171,7 +172,8 @@ async function showSeasonSims(token: string, client: DiscordClient, league: stri
             label: "Next",
             custom_id: JSON.stringify({
               si: currentSeason,
-              p: Math.min(startIndex + USERS_PER_PAGE, totalUsers)
+              p: Math.min(startIndex + USERS_PER_PAGE, totalUsers),
+              l: league
             }),
             disabled: startIndex + USERS_PER_PAGE >= totalUsers
           }
@@ -200,7 +202,8 @@ async function showSeasonSims(token: string, client: DiscordClient, league: stri
               custom_id: JSON.stringify({
                 si: currentSeason,
                 p: 0,
-                so: SortOrder.BY_TOTAL
+                so: SortOrder.BY_TOTAL,
+                l: league
               }),
               disabled: SortOrder.BY_TOTAL === sortOrder
             },
@@ -211,7 +214,8 @@ async function showSeasonSims(token: string, client: DiscordClient, league: stri
               custom_id: JSON.stringify({
                 si: currentSeason,
                 p: 0,
-                so: SortOrder.BY_FW
+                so: SortOrder.BY_FW,
+                l: league
               }),
               disabled: SortOrder.BY_FW === sortOrder
             },
@@ -222,7 +226,8 @@ async function showSeasonSims(token: string, client: DiscordClient, league: stri
               custom_id: JSON.stringify({
                 si: currentSeason,
                 p: 0,
-                so: SortOrder.BY_FL
+                so: SortOrder.BY_FL,
+                l: league
               }),
               disabled: SortOrder.BY_FL === sortOrder
             },

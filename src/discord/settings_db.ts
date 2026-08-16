@@ -52,6 +52,14 @@ export type LeagueSettings = {
     waitlist?: WaitlistConfiguration,
     madden_league?: MaddenLeagueConfiguration,
     player?: PlayerConfiguration
+    league_commands?: Record<string, {
+      logger?: LoggerConfiguration,
+      game_channel?: GameChannelConfiguration,
+      stream_count?: StreamCountConfiguration,
+      broadcast?: BroadcastConfiguration,
+      waitlist?: WaitlistConfiguration,
+      player?: PlayerConfiguration
+    }>
   },
   guildId: string
 }
@@ -108,12 +116,20 @@ const LeagueSettingsDB: LeagueSettingsDB = {
     const selectedLeague = selectedLeagueForGuild(guildId)
     if (selectedLeague && settings.commands.madden_league) {
       const defaultLeague = settings.commands.madden_league.league_id
+      const selectedCommands = settings.commands.league_commands?.[selectedLeague] || {}
+      const legacyCommands = selectedLeague === defaultLeague ? settings.commands : {}
       const selectedTeams = settings.commands.team_leagues?.[selectedLeague]
         || (selectedLeague === defaultLeague ? settings.commands.teams : undefined)
       return {
         ...settings,
         commands: {
           ...settings.commands,
+          logger: selectedCommands.logger || legacyCommands.logger,
+          game_channel: selectedCommands.game_channel || legacyCommands.game_channel,
+          stream_count: selectedCommands.stream_count || legacyCommands.stream_count,
+          broadcast: selectedCommands.broadcast || legacyCommands.broadcast,
+          waitlist: selectedCommands.waitlist || legacyCommands.waitlist,
+          player: selectedCommands.player || legacyCommands.player,
           madden_league: { ...settings.commands.madden_league, league_id: selectedLeague },
           teams: selectedTeams
         }
@@ -123,41 +139,39 @@ const LeagueSettingsDB: LeagueSettingsDB = {
   },
 
   async configureLogger(guildId: string, loggerSettings: LoggerConfiguration): Promise<void> {
-    await db.collection('league_settings').doc(guildId).set({
-      commands: {
-        logger: loggerSettings
-      },
-    }, { merge: true })
+    const leagueId = selectedLeagueForGuild(guildId)
+    const path = leagueId ? `commands.league_commands.${leagueId}.logger` : 'commands.logger'
+    await db.collection('league_settings').doc(guildId).update({ [path]: loggerSettings })
   },
 
   async removeLogger(guildId: string): Promise<void> {
+    const leagueId = selectedLeagueForGuild(guildId)
+    const path = leagueId ? `commands.league_commands.${leagueId}.logger` : 'commands.logger'
     await db.collection('league_settings').doc(guildId).update({
-      'commands.logger': FieldValue.delete()
+      [path]: FieldValue.delete()
     })
   },
 
   async configureBroadcast(guildId: string, broadcastSettings: BroadcastConfiguration): Promise<void> {
-    await db.collection('league_settings').doc(guildId).set({
-      commands: {
-        broadcast: broadcastSettings
-      }
-    }, { merge: true })
+    const leagueId = selectedLeagueForGuild(guildId)
+    const path = leagueId ? `commands.league_commands.${leagueId}.broadcast` : 'commands.broadcast'
+    await db.collection('league_settings').doc(guildId).update({ [path]: broadcastSettings })
   },
 
   async configureGameChannel(guildId: string, gameChannelSettings: GameChannelConfiguration): Promise<void> {
-    await db.collection('league_settings').doc(guildId).set({
-      commands: {
-        game_channel: gameChannelSettings
-      }
-    }, { merge: true })
+    const leagueId = selectedLeagueForGuild(guildId)
+    const path = leagueId ? `commands.league_commands.${leagueId}.game_channel` : 'commands.game_channel'
+    await db.collection('league_settings').doc(guildId).update({ [path]: gameChannelSettings })
   },
 
   async deleteGameChannels(guildId: string, entries: [WeekState, GameChannel][]): Promise<void> {
     if (entries.length > 0) {
+      const leagueId = selectedLeagueForGuild(guildId)
+      const basePath = leagueId ? `commands.league_commands.${leagueId}.game_channel` : 'commands.game_channel'
       await db.collection('league_settings').doc(guildId).update(
         Object.fromEntries(entries.map(e => {
           const seasonWeekKey = createWeekKey(e[0].seasonIndex, e[0].week)
-          return [`commands.game_channel.weekly_states.${seasonWeekKey}.channel_states.${e[1].channel.id}`, FieldValue.delete()]
+          return [`${basePath}.weekly_states.${seasonWeekKey}.channel_states.${e[1].channel.id}`, FieldValue.delete()]
         }))
       )
     }
@@ -165,38 +179,38 @@ const LeagueSettingsDB: LeagueSettingsDB = {
 
   async updateGameWeekState(guildId: string, week: number, season: number, weekState: WeekState): Promise<void> {
     const seasonWeekKey = createWeekKey(season, week)
-    await db.collection('league_settings').doc(guildId).set({
-      commands: {
-        game_channel: {
-          weekly_states: {
-            [seasonWeekKey]: weekState
-          }
-        }
-      }
-    }, { merge: true })
+    const leagueId = selectedLeagueForGuild(guildId)
+    const basePath = leagueId ? `commands.league_commands.${leagueId}.game_channel` : 'commands.game_channel'
+    await db.collection('league_settings').doc(guildId).update({ [`${basePath}.weekly_states.${seasonWeekKey}`]: weekState })
   },
 
   async deleteGameChannel(guildId: string, week: number, season: number, channel: ChannelId): Promise<void> {
     const seasonWeekKey = createWeekKey(season, week)
     const channelKey = channel.id
+    const leagueId = selectedLeagueForGuild(guildId)
+    const basePath = leagueId ? `commands.league_commands.${leagueId}.game_channel` : 'commands.game_channel'
     await db.collection('league_settings').doc(guildId).update({
-      [`commands.game_channel.weekly_states.${seasonWeekKey}.channel_states.${channelKey}`]: FieldValue.delete()
+      [`${basePath}.weekly_states.${seasonWeekKey}.channel_states.${channelKey}`]: FieldValue.delete()
     })
   },
 
   async updateGameChannelPingTime(guildId: string, week: number, season: number, channel: ChannelId): Promise<void> {
     const seasonWeekKey = createWeekKey(season, week)
     const channelKey = channel.id
+    const leagueId = selectedLeagueForGuild(guildId)
+    const basePath = leagueId ? `commands.league_commands.${leagueId}.game_channel` : 'commands.game_channel'
     await db.collection('league_settings').doc(guildId).update({
-      [`commands.game_channel.weekly_states.${seasonWeekKey}.channel_states.${channelKey}.notifiedTime`]: new Date().getTime()
+      [`${basePath}.weekly_states.${seasonWeekKey}.channel_states.${channelKey}.notifiedTime`]: new Date().getTime()
     })
   },
 
   async updateGameChannelState(guildId: string, week: number, season: number, channel: ChannelId, state: GameChannelState): Promise<void> {
     const seasonWeekKey = createWeekKey(season, week)
     const channelKey = channel.id
+    const leagueId = selectedLeagueForGuild(guildId)
+    const basePath = leagueId ? `commands.league_commands.${leagueId}.game_channel` : 'commands.game_channel'
     await db.collection('league_settings').doc(guildId).update({
-      [`commands.game_channel.weekly_states.${seasonWeekKey}.channel_states.${channelKey}.state`]: state
+      [`${basePath}.weekly_states.${seasonWeekKey}.channel_states.${channelKey}.state`]: state
     })
   },
   async connectMaddenLeagueId(guildId: string, leagueId: string, leagueName?: string) {
@@ -261,21 +275,15 @@ const LeagueSettingsDB: LeagueSettingsDB = {
   },
 
   async configureWaitlist(guildId: string, waitlistSettings: WaitlistConfiguration): Promise<void> {
-    await db.collection('league_settings').doc(guildId).set({
-      commands: {
-        waitlist: waitlistSettings
-      },
-      guildId
-    }, { merge: true })
+    const leagueId = selectedLeagueForGuild(guildId)
+    const path = leagueId ? `commands.league_commands.${leagueId}.waitlist` : 'commands.waitlist'
+    await db.collection('league_settings').doc(guildId).update({ [path]: waitlistSettings, guildId })
   },
 
   async updateStreamCountConfiguration(guildId: string, streamCountSettings: StreamCountConfiguration): Promise<void> {
-    await db.collection('league_settings').doc(guildId).set({
-      commands: {
-        stream_count: streamCountSettings
-      },
-      guildId
-    }, { merge: true })
+    const leagueId = selectedLeagueForGuild(guildId)
+    const path = leagueId ? `commands.league_commands.${leagueId}.stream_count` : 'commands.stream_count'
+    await db.collection('league_settings').doc(guildId).update({ [path]: streamCountSettings, guildId })
   },
 
   async updateTeamConfiguration(guildId: string, teamSettings: TeamConfiguration): Promise<void> {
@@ -332,17 +340,36 @@ const LeagueSettingsDB: LeagueSettingsDB = {
       db.collection('league_settings').where('commands.madden_league.league_ids', 'array-contains', leagueId).get()
     ])
     const docs = new Map([...activeSnapshot.docs, ...connectedSnapshot.docs].map(doc => [doc.id, doc]))
-    return [...docs.values()].map(doc => ({ guildId: doc.id, ...doc.data() }) as LeagueSettings)
+    return [...docs.values()].map(doc => {
+      const settings = { guildId: doc.id, ...doc.data() } as LeagueSettings
+      const selectedCommands = settings.commands.league_commands?.[leagueId] || {}
+      const isDefault = settings.commands.madden_league?.league_id === leagueId
+      const legacyCommands = isDefault ? settings.commands : {}
+      return {
+        ...settings,
+        commands: {
+          ...settings.commands,
+          logger: selectedCommands.logger || legacyCommands.logger,
+          game_channel: selectedCommands.game_channel || legacyCommands.game_channel,
+          stream_count: selectedCommands.stream_count || legacyCommands.stream_count,
+          broadcast: selectedCommands.broadcast || legacyCommands.broadcast,
+          waitlist: selectedCommands.waitlist || legacyCommands.waitlist,
+          player: selectedCommands.player || legacyCommands.player,
+          teams: settings.commands.team_leagues?.[leagueId] || (isDefault ? settings.commands.teams : undefined),
+          madden_league: settings.commands.madden_league
+            ? { ...settings.commands.madden_league, league_id: leagueId }
+            : undefined
+        }
+      }
+    })
   },
   async deleteLeagueSetting(guildId: string): Promise<void> {
     await db.collection('league_settings').doc(guildId).delete()
   },
   async configurePlayer(guildId: string, configuration: PlayerConfiguration) {
-    await db.collection('league_settings').doc(guildId).set({
-      commands: {
-        player: configuration
-      },
-    }, { merge: true })
+    const leagueId = selectedLeagueForGuild(guildId)
+    const path = leagueId ? `commands.league_commands.${leagueId}.player` : 'commands.player'
+    await db.collection('league_settings').doc(guildId).update({ [path]: configuration })
   }
 }
 

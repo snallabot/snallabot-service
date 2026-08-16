@@ -571,13 +571,13 @@ async function showWeeklyStats(
     // Create pagination buttons
     const backDisabled = page === 0
     const nextDisabled = endIdx >= aggregatedStats.length
-    const currentPagination = { st: LONG_TO_SHORT_MAPPING[statType], w: actualWeek, s: actualSeason, p: page, so: shortSortOrder }
+    const currentPagination = { st: LONG_TO_SHORT_MAPPING[statType], w: actualWeek, s: actualSeason, p: page, so: shortSortOrder, l: leagueId }
 
     // Create stat type selector
     const statTypeOptions = Object.values(statEventTypes).map(sType => {
       return {
         label: sType.label,
-        value: JSON.stringify({ st: sType.shortValue, w: actualWeek, s: actualSeason, p: 0, so: sType.sortOrders[0].shortName })
+        value: JSON.stringify({ st: sType.shortValue, w: actualWeek, s: actualSeason, p: 0, so: sType.sortOrders[0].shortName, l: leagueId })
       }
     })
     const sortOptions = statEventTypes[statType].sortOrders.map(sortOrder => (
@@ -587,7 +587,7 @@ async function showWeeklyStats(
         label: sortOrder.label,
         disabled: sortOrder.shortName === shortSortOrder,
         // differentiate id
-        custom_id: JSON.stringify({ st: LONG_TO_SHORT_MAPPING[statType], w: actualWeek, s: actualSeason, p: 0, so: sortOrder.shortName, b: "b" })
+        custom_id: JSON.stringify({ st: LONG_TO_SHORT_MAPPING[statType], w: actualWeek, s: actualSeason, p: 0, so: sortOrder.shortName, b: "b", l: leagueId })
       }))
 
     // Create week selector
@@ -596,7 +596,7 @@ async function showWeeklyStats(
       .sort((a, b) => a.weekIndex - b.weekIndex)
       .map(ws => ({
         label: getMessageForWeek(ws.weekIndex + 1),
-        value: JSON.stringify({ st: LONG_TO_SHORT_MAPPING[statType], w: ws.weekIndex + 1, s: actualSeason, p: 0, so: shortSortOrder })
+        value: JSON.stringify({ st: LONG_TO_SHORT_MAPPING[statType], w: ws.weekIndex + 1, s: actualSeason, p: 0, so: shortSortOrder, l: leagueId })
       }))
 
     // Create season selector
@@ -604,7 +604,7 @@ async function showWeeklyStats(
       .sort((a, b) => a - b)
       .map(s => ({
         label: `Season ${s + MADDEN_SEASON}`,
-        value: JSON.stringify({ st: LONG_TO_SHORT_MAPPING[statType], w: 1, s: s, p: 0, so: shortSortOrder })
+        value: JSON.stringify({ st: LONG_TO_SHORT_MAPPING[statType], w: 1, s: s, p: 0, so: shortSortOrder, l: leagueId })
       }))
 
     await client.editOriginalInteraction(token, {
@@ -783,12 +783,12 @@ async function showSeasonStats(
     // Create pagination buttons
     const backDisabled = page === 0
     const nextDisabled = endIdx >= aggregatedStats.length
-    const currentPagination = { st: LONG_TO_SHORT_MAPPING[statType], s: actualSeason, p: page, so: shortSortOrder }
+    const currentPagination = { st: LONG_TO_SHORT_MAPPING[statType], s: actualSeason, p: page, so: shortSortOrder, l: leagueId }
 
     // Create stat type selector
     const statTypeOptions = Object.values(statEventTypes).map(sType => ({
       label: sType.label,
-      value: JSON.stringify({ st: sType.shortValue, s: actualSeason, p: 0, so: sType.sortOrders[0].shortName })
+      value: JSON.stringify({ st: sType.shortValue, s: actualSeason, p: 0, so: sType.sortOrders[0].shortName, l: leagueId })
     }))
     const sortOptions = statEventTypes[statType].sortOrders.map(sortOrder => (
       {
@@ -797,7 +797,7 @@ async function showSeasonStats(
         label: sortOrder.label,
         disabled: sortOrder.shortName === shortSortOrder,
         // differentiate id
-        custom_id: JSON.stringify({ st: LONG_TO_SHORT_MAPPING[statType], s: actualSeason, p: 0, so: sortOrder.shortName, b: "b" })
+        custom_id: JSON.stringify({ st: LONG_TO_SHORT_MAPPING[statType], s: actualSeason, p: 0, so: sortOrder.shortName, b: "b", l: leagueId })
       }))
 
 
@@ -806,7 +806,7 @@ async function showSeasonStats(
       .sort((a, b) => a - b)
       .map(s => ({
         label: `Season ${s + MADDEN_SEASON}`,
-        value: JSON.stringify({ st: LONG_TO_SHORT_MAPPING[statType], s: s, p: 0, so: shortSortOrder })
+        value: JSON.stringify({ st: LONG_TO_SHORT_MAPPING[statType], s: s, p: 0, so: shortSortOrder, l: leagueId })
       }))
 
     await client.editOriginalInteraction(token, {

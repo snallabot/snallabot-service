@@ -73,7 +73,7 @@ const filterOptions = [
   { label: "NFC West", value: "nfc_west" }
 ]
 const itemsPerPage = 8;
-export type StandingsPaginated = { f: string, p: number }
+export type StandingsPaginated = { f: string, p: number, l?: string }
 async function handleCommand(client: DiscordClient, token: string, league: string, guild: string, filter: string = "nfl", page: number = 0) {
   try {
     const [standings, teams, settings] = await Promise.all([MaddenDB.getLatestStandings(league), MaddenDB.getLatestTeams(league), LeagueSettingsDB.getLeagueSettings(guild)])
@@ -96,14 +96,14 @@ async function handleCommand(client: DiscordClient, token: string, league: strin
         components: [
           {
             type: ComponentType.Button,
-            custom_id: JSON.stringify({ f: filter, p: Math.max(0, currentPage - 1) }),
+            custom_id: JSON.stringify({ f: filter, p: Math.max(0, currentPage - 1), l: league }),
             label: "Previous",
             style: ButtonStyle.Secondary,
             disabled: currentPage === 0
           },
           {
             type: ComponentType.Button,
-            custom_id: JSON.stringify({ f: filter, p: Math.min(totalPages - 1, currentPage + 1) }),
+            custom_id: JSON.stringify({ f: filter, p: Math.min(totalPages - 1, currentPage + 1), l: league }),
             label: "Next",
             style: ButtonStyle.Secondary,
             disabled: currentPage === totalPages - 1
@@ -132,7 +132,7 @@ async function handleCommand(client: DiscordClient, token: string, league: strin
             placeholder: filterOptions.find(opt => opt.value === filter)?.label || "NFL",
             options: filterOptions.map(option => ({
               ...option,
-              value: JSON.stringify({ f: option.value, p: 0 })
+              value: JSON.stringify({ f: option.value, p: 0, l: league })
             }))
           }
         ]

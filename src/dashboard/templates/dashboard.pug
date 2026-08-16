@@ -202,7 +202,7 @@ body
               div(class="card-body")
                 - const connectedLeagueIds = league.settings.commands.madden_league.league_ids || [league.settings.commands.madden_league.league_id]
                 div(class="mb-3")
-                  strong Connected leagues: 
+                  strong Connected leagues:
                   | #{connectedLeagueIds.map(id => (league.settings.commands.madden_league.league_names || {})[id] || id).join(', ')}
                   if league.settings.commands.madden_league.league_id === leagueId
                     span(class="badge bg-success ms-2") Active

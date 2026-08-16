@@ -1,6 +1,7 @@
 import { createProdClient } from "./discord_utils"
 import createNotifier from "./notifier"
 import LeagueSettingsDB, { DiscordIdType } from "./settings_db"
+import { runWithLeague } from "./league_context"
 
 const prodClient = createProdClient()
 const CONCURRENCY = 10 // tune based on Discord rate limits
@@ -43,31 +44,34 @@ async function updateEachLeagueNotifier() {
 
   const jobs: Job[] = []
 
-  for (const leagueSettings of allLeagueSettings) {
-    let notifier
-    try {
-      notifier = createNotifier(prodClient, leagueSettings.guildId, leagueSettings)
-    } catch (e) {
-      continue // skip this league, matches original behavior
-    }
+  for (const rawSettings of allLeagueSettings) {
+    const leagueIds = await LeagueSettingsDB.getMaddenLeagueIds(rawSettings.guildId)
+    for (const leagueId of leagueIds) {
+      await runWithLeague(rawSettings.guildId, leagueId, async () => {
+        const leagueSettings = await LeagueSettingsDB.getLeagueSettings(rawSettings.guildId)
+        let notifier
+        try {
+          notifier = createNotifier(prodClient, leagueSettings.guildId, leagueSettings)
+        } catch (e) {
+          return
+        }
 
-    const weeklyStates = leagueSettings.commands?.game_channel?.weekly_states || {}
-
-    for (const weeklyState of Object.values(weeklyStates)) {
-      for (const [channelId, channelState] of Object.entries(weeklyState.channel_states || {})) {
-        // todo hack, this doesnt seem necessary
-        channelState.channel = { id: channelId, id_type: DiscordIdType.CHANNEL }
-
-        jobs.push(async () => {
-          try {
-            const jitter = getRandomInt(3)
-            await new Promise((r) => setTimeout(r, 100 + jitter * 50)); // reduced wait
-            await notifier.checkPing(channelState, weeklyState.seasonIndex, weeklyState.week)
-          } catch (e) {
-            // swallow, matches original behavior
+        const weeklyStates = leagueSettings.commands?.game_channel?.weekly_states || {}
+        for (const weeklyState of Object.values(weeklyStates)) {
+          for (const [channelId, channelState] of Object.entries(weeklyState.channel_states || {})) {
+            channelState.channel = { id: channelId, id_type: DiscordIdType.CHANNEL }
+            jobs.push(async () => {
+              try {
+                const jitter = getRandomInt(3)
+                await new Promise((r) => setTimeout(r, 100 + jitter * 50))
+                await notifier.checkPing(channelState, weeklyState.seasonIndex, weeklyState.week)
+              } catch (e) {
+                // Swallow individual notifier failures so other leagues continue.
+              }
+            })
           }
-        })
-      }
+        }
+      })
     }
   }
 
