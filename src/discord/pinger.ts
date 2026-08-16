@@ -3,37 +3,77 @@ import createNotifier from "./notifier"
 import LeagueSettingsDB, { DiscordIdType } from "./settings_db"
 
 const prodClient = createProdClient()
+const CONCURRENCY = 10 // tune based on Discord rate limits
 
 function getRandomInt(max: number) {
   return Math.floor(Math.random() * max);
 }
 
-async function updateEachLeagueNotifier() {
-  const allLeagueSettings = await LeagueSettingsDB.getAllLeagueSettings()
-  for (const leagueSettings of allLeagueSettings) {
-    try {
-      const notifier = createNotifier(prodClient, leagueSettings.guildId, leagueSettings)
-      const weeklyStates = leagueSettings.commands?.game_channel?.weekly_states || {}
-      await Promise.all(Object.values(weeklyStates).map(async weeklyState => {
-        await Promise.all(Object.entries(weeklyState.channel_states || {}).map(async channelEntry => {
-          const [channelId, channelState] = channelEntry
-          // todo hack, this doesnt seem necessary
-          channelState.channel = {
-            id: channelId, id_type: DiscordIdType.CHANNEL
-          }
-          try {
-            const jitter = getRandomInt(3)
-            await new Promise((r) => setTimeout(r, 500 + jitter * 100));
-            await notifier.checkPing(channelState, weeklyState.seasonIndex, weeklyState.week)
-          } catch (e) {
-          }
+type Job = () => Promise<void>
 
-        }))
-      }))
-    } catch (e) {
-      // well do nothing
+async function runWithConcurrency(jobs: Job[], concurrency: number) {
+  let index = 0
+  let completed = 0
+  const total = jobs.length
+  const startedAt = Date.now()
+
+  async function worker() {
+    while (index < jobs.length) {
+      const currentIndex = index++
+      try {
+        await jobs[currentIndex]()
+      } catch (e) {
+        // individual job errors already caught inside job, this is just a safety net
+      } finally {
+        completed++
+        if (completed % 50 === 0 || completed === total) {
+          const elapsedSec = ((Date.now() - startedAt) / 1000).toFixed(1)
+          console.log(`[updateEachLeagueNotifier] ${completed}/${total} jobs done (${elapsedSec}s elapsed)`)
+        }
+      }
     }
   }
+
+  const workers = Array.from({ length: Math.min(concurrency, jobs.length) }, () => worker())
+  await Promise.all(workers)
+}
+
+async function updateEachLeagueNotifier() {
+  const allLeagueSettings = await LeagueSettingsDB.getAllLeagueSettings()
+
+  const jobs: Job[] = []
+
+  for (const leagueSettings of allLeagueSettings) {
+    let notifier
+    try {
+      notifier = createNotifier(prodClient, leagueSettings.guildId, leagueSettings)
+    } catch (e) {
+      continue // skip this league, matches original behavior
+    }
+
+    const weeklyStates = leagueSettings.commands?.game_channel?.weekly_states || {}
+
+    for (const weeklyState of Object.values(weeklyStates)) {
+      for (const [channelId, channelState] of Object.entries(weeklyState.channel_states || {})) {
+        // todo hack, this doesnt seem necessary
+        channelState.channel = { id: channelId, id_type: DiscordIdType.CHANNEL }
+
+        jobs.push(async () => {
+          try {
+            const jitter = getRandomInt(3)
+            await new Promise((r) => setTimeout(r, 100 + jitter * 50)); // reduced wait
+            await notifier.checkPing(channelState, weeklyState.seasonIndex, weeklyState.week)
+          } catch (e) {
+            // swallow, matches original behavior
+          }
+        })
+      }
+    }
+  }
+
+  console.log(`[updateEachLeagueNotifier] starting ${jobs.length} jobs with concurrency ${CONCURRENCY}`)
+  await runWithConcurrency(jobs, CONCURRENCY)
+  console.log(`[updateEachLeagueNotifier] done`)
 }
 
 updateEachLeagueNotifier()
