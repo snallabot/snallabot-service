@@ -1,5 +1,6 @@
 import db from "../db/firebase"
 import { FieldValue } from "firebase-admin/firestore"
+import { selectedLeagueForGuild } from "./league_context"
 
 export enum DiscordIdType {
   ROLE = "ROLE",
@@ -17,7 +18,10 @@ export type MessageId = { id: string, id_type: DiscordIdType.MESSAGE }
 export type UserId = { id: string, id_type: DiscordIdType.USER }
 export type LoggerConfiguration = { channel: ChannelId }
 export type WaitlistConfiguration = { current_waitlist: UserId[] }
-export type MaddenLeagueConfiguration = { league_id: string }
+// league_id remains the active/default league for backwards compatibility with
+// commands and existing Firestore documents. league_ids contains every league
+// connected to the guild.
+export type MaddenLeagueConfiguration = { league_id: string, league_ids?: string[], league_names?: Record<string, string> }
 export type BroadcastConfiguration = { role?: RoleId, channel: ChannelId, title_keyword: string }
 export enum GameChannelState {
   CREATED = "CREATED",
@@ -63,9 +67,12 @@ interface LeagueSettingsDB {
   deleteGameChannel(guildId: string, week: number, season: number, channel: ChannelId): Promise<void>,
   updateGameChannelPingTime(guildId: string, week: number, season: number, channel: ChannelId): Promise<void>,
   updateGameChannelState(guildId: string, week: number, season: number, channel: ChannelId, state: GameChannelState): Promise<void>
-  connectMaddenLeagueId(guildId: string, leagueId: string): Promise<void>,
+  connectMaddenLeagueId(guildId: string, leagueId: string, leagueName?: string): Promise<void>,
+  setActiveMaddenLeagueId(guildId: string, leagueId: string): Promise<void>,
   getMaddenLeagueId(guildId: string): Promise<string | undefined>,
-  disconnectMaddenLeagueId(guildId: string): Promise<void>,
+  getMaddenLeagueIds(guildId: string): Promise<string[]>,
+  getMaddenLeagueNames(guildId: string): Promise<Record<string, string>>,
+  disconnectMaddenLeagueId(guildId: string, leagueId?: string): Promise<void>,
   configureWaitlist(guildId: string, waitlistSettings: WaitlistConfiguration): Promise<void>,
   updateStreamCountConfiguration(guildId: string, streamCountSettings: StreamCountConfiguration): Promise<void>,
   updateTeamConfiguration(guildId: string, teamSettings: TeamConfiguration): Promise<void>,
@@ -96,7 +103,18 @@ const LeagueSettingsDB: LeagueSettingsDB = {
         guildId
       }
     }
-    return { guildId: doc.id, ...doc.data() } as LeagueSettings
+    const settings = { guildId: doc.id, ...doc.data() } as LeagueSettings
+    const selectedLeague = selectedLeagueForGuild(guildId)
+    if (selectedLeague && settings.commands.madden_league) {
+      return {
+        ...settings,
+        commands: {
+          ...settings.commands,
+          madden_league: { ...settings.commands.madden_league, league_id: selectedLeague }
+        }
+      }
+    }
+    return settings
   },
 
   async configureLogger(guildId: string, loggerSettings: LoggerConfiguration): Promise<void> {
@@ -176,10 +194,24 @@ const LeagueSettingsDB: LeagueSettingsDB = {
       [`commands.game_channel.weekly_states.${seasonWeekKey}.channel_states.${channelKey}.state`]: state
     })
   },
-  async connectMaddenLeagueId(guildId: string, leagueId: string) {
+  async connectMaddenLeagueId(guildId: string, leagueId: string, leagueName?: string) {
+    const maddenLeague: Record<string, unknown> = {
+      league_id: leagueId,
+      league_ids: FieldValue.arrayUnion(leagueId)
+    }
+    if (leagueName) maddenLeague.league_names = { [leagueId]: leagueName }
     await db.collection("league_settings").doc(guildId).set(
-      { commands: { madden_league: { league_id: leagueId } } }, { merge: true }
+      { commands: { madden_league: maddenLeague } }, { merge: true }
     )
+  },
+  async setActiveMaddenLeagueId(guildId: string, leagueId: string): Promise<void> {
+    const leagueIds = await this.getMaddenLeagueIds(guildId)
+    if (!leagueIds.includes(leagueId)) {
+      throw new Error(`League ${leagueId} is not connected to Discord server ${guildId}`)
+    }
+    await db.collection('league_settings').doc(guildId).update({
+      'commands.madden_league.league_id': leagueId
+    })
   },
   async getMaddenLeagueId(guildId: string): Promise<string | undefined> {
     const doc = await db.collection('league_settings').doc(guildId).get()
@@ -189,8 +221,35 @@ const LeagueSettingsDB: LeagueSettingsDB = {
     const data = doc.data() as LeagueSettings
     return data.commands.madden_league?.league_id
   },
+  async getMaddenLeagueIds(guildId: string): Promise<string[]> {
+    const settings = await this.getLeagueSettings(guildId)
+    const configuration = settings.commands.madden_league
+    if (!configuration) return []
+    return [...new Set([...(configuration.league_ids || []), configuration.league_id].filter(Boolean))]
+  },
+  async getMaddenLeagueNames(guildId: string): Promise<Record<string, string>> {
+    const settings = await this.getLeagueSettings(guildId)
+    return settings.commands.madden_league?.league_names || {}
+  },
 
-  async disconnectMaddenLeagueId(guildId: string): Promise<void> {
+  async disconnectMaddenLeagueId(guildId: string, leagueId?: string): Promise<void> {
+    if (leagueId) {
+      const settings = await this.getLeagueSettings(guildId)
+      const configuration = settings.commands.madden_league
+      if (!configuration) return
+      const remaining = [...new Set([...(configuration.league_ids || []), configuration.league_id])]
+        .filter(id => id && id !== leagueId)
+      if (remaining.length) {
+        await db.collection('league_settings').doc(guildId).update({
+          'commands.madden_league': {
+            league_id: configuration.league_id === leagueId ? remaining[0] : configuration.league_id,
+            league_ids: remaining,
+            league_names: Object.fromEntries(Object.entries(configuration.league_names || {}).filter(([id]) => id !== leagueId))
+          }
+        })
+        return
+      }
+    }
     await db.collection('league_settings').doc(guildId).update({
       'commands.madden_league': FieldValue.delete()
     })
@@ -246,10 +305,13 @@ const LeagueSettingsDB: LeagueSettingsDB = {
   },
 
   async getLeagueSettingsForLeagueId(leagueId: string): Promise<LeagueSettings[]> {
-    const snapshot = await db.collection('league_settings')
-      .where('commands.madden_league.league_id', '==', leagueId)
-      .get()
-    return snapshot.docs.map(doc => ({ guildId: doc.id, ...doc.data() }) as LeagueSettings)
+    // Query both schemas so pre-migration documents continue to work.
+    const [activeSnapshot, connectedSnapshot] = await Promise.all([
+      db.collection('league_settings').where('commands.madden_league.league_id', '==', leagueId).get(),
+      db.collection('league_settings').where('commands.madden_league.league_ids', 'array-contains', leagueId).get()
+    ])
+    const docs = new Map([...activeSnapshot.docs, ...connectedSnapshot.docs].map(doc => [doc.id, doc]))
+    return [...docs.values()].map(doc => ({ guildId: doc.id, ...doc.data() }) as LeagueSettings)
   },
   async deleteLeagueSetting(guildId: string): Promise<void> {
     await db.collection('league_settings').doc(guildId).delete()

@@ -1,6 +1,6 @@
 import { ParameterizedContext } from "koa"
 import { APIChatInputApplicationCommandInteractionData, APIInteractionGuildMember } from "discord-api-types/payloads"
-import { APIAutocompleteApplicationCommandInteractionData, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
+import { APIApplicationCommandOption, APIApplicationCommandOptionType, APIAutocompleteApplicationCommandInteractionData, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { createMessageResponse, respond, DiscordClient, CommandMode } from "./discord_utils"
 import { Firestore } from "firebase-admin/firestore"
 import leagueExportHandler from "./commands/league_export"
@@ -23,10 +23,48 @@ import playerConfigurationHandler from "./commands/player_configuration"
 import statsHandler from "./commands/stats"
 import { APIMessageComponentInteractionData } from "discord-api-types/v9"
 import { discordCommandsCounter } from "../debug/metrics"
+import LeagueSettingsDB from "./settings_db"
+import { runWithLeague } from "./league_context"
 
 export type Command = { command_name: string, token: string, guild_id: string, data: APIChatInputApplicationCommandInteractionData, member: APIInteractionGuildMember }
 export type Autocomplete = { command_name: string, guild_id: string, data: APIAutocompleteApplicationCommandInteractionData }
 export type MessageComponentInteraction = { custom_id: string, token: string, data: APIMessageComponentInteractionData, guild_id: string }
+
+const LEAGUE_SELECTABLE_COMMANDS = new Set(["standings", "schedule", "player", "stats", "playoffs", "export", "sims"])
+
+function findOption(options: readonly any[] | undefined, name: string): any | undefined {
+  for (const option of options || []) {
+    if (option.name === name) return option
+    const nested = findOption(option.options, name)
+    if (nested) return nested
+  }
+}
+
+function addLeagueSelector(definition: RESTPostAPIApplicationCommandsJSONBody): RESTPostAPIApplicationCommandsJSONBody {
+  if (!LEAGUE_SELECTABLE_COMMANDS.has(definition.name)) return definition
+  const leagueOption: APIApplicationCommandOption = {
+    type: ApplicationCommandOptionType.String,
+    name: "league",
+    description: "Connected Madden league ID (uses the default when omitted)",
+    required: false,
+    autocomplete: true
+  }
+  const options = [...(definition.options || [])]
+  const hasSubcommands = options.some(option => option.type === ApplicationCommandOptionType.Subcommand || option.type === ApplicationCommandOptionType.SubcommandGroup)
+  if (!hasSubcommands) return { ...definition, options: [...options, leagueOption] }
+  return {
+    ...definition,
+    options: options.map(option => {
+      if (option.type === ApplicationCommandOptionType.Subcommand) {
+        return { ...option, options: [...(option.options || []), leagueOption] }
+      }
+      if (option.type === ApplicationCommandOptionType.SubcommandGroup) {
+        return { ...option, options: (option.options || []).map(sub => ({ ...sub, options: [...(sub.options || []), leagueOption] })) }
+      }
+      return option
+    })
+  }
+}
 export interface CommandHandler {
   handleCommand(command: Command, client: DiscordClient): Promise<any>
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody
@@ -89,7 +127,14 @@ export async function handleCommand(command: Command, ctx: ParameterizedContext,
   if (handler) {
     try {
       discordCommandsCounter.inc({ command_name: command.command_name, command_type: "SLASH" })
-      const res = await handler.handleCommand(command, discordClient)
+      const requestedLeague = findOption(command.data.options, "league")?.value as string | undefined
+      if (requestedLeague) {
+        const connectedLeagues = await LeagueSettingsDB.getMaddenLeagueIds(command.guild_id)
+        if (!connectedLeagues.includes(requestedLeague)) {
+          throw new Error(`League ${requestedLeague} is not connected to this Discord server`)
+        }
+      }
+      const res = await runWithLeague(command.guild_id, requestedLeague, () => handler.handleCommand(command, discordClient))
       respond(ctx, res)
     } catch (e) {
       const error = e as Error
@@ -105,6 +150,26 @@ export async function handleCommand(command: Command, ctx: ParameterizedContext,
 export async function handleAutocomplete(command: Autocomplete, ctx: ParameterizedContext) {
   const commandName = command.command_name
   const handler = AutocompleteCommands[commandName]
+  const focused = findOption(command.data.options, "league")
+  if (focused?.focused && LEAGUE_SELECTABLE_COMMANDS.has(commandName)) {
+    const query = `${focused.value || ""}`.toLowerCase()
+    const [leagueIds, leagueNames] = await Promise.all([
+      LeagueSettingsDB.getMaddenLeagueIds(command.guild_id),
+      LeagueSettingsDB.getMaddenLeagueNames(command.guild_id)
+    ])
+    ctx.status = 200
+    ctx.set("Content-Type", "application/json")
+    ctx.body = {
+      type: InteractionResponseType.ApplicationCommandAutocompleteResult,
+      data: {
+        choices: leagueIds
+          .filter(id => id.toLowerCase().includes(query) || (leagueNames[id] || "").toLowerCase().includes(query))
+          .slice(0, 25)
+          .map(id => ({ name: leagueNames[id] || id, value: id }))
+      }
+    }
+    return
+  }
   if (handler) {
     try {
       discordCommandsCounter.inc({ command_name: command.command_name, command_type: "AUTOCOMPLETE" })
@@ -211,7 +276,7 @@ export async function commandsInstaller(client: DiscordClient, commandNames: str
   await Promise.all(commandsToHandle.map(async (name) => {
     const handler = SlashCommands[name]
     if (handler) {
-      await client.handleSlashCommand(mode, handler.commandDefinition(), guildId)
+      await client.handleSlashCommand(mode, addLeagueSelector(handler.commandDefinition()), guildId)
       console.log(`${mode} ${name}`)
     }
   }))
