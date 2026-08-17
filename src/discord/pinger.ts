@@ -76,4 +76,13 @@ async function updateEachLeagueNotifier() {
   console.log(`[updateEachLeagueNotifier] done`)
 }
 
+// manually close as some connections can keep this alive
 updateEachLeagueNotifier()
+  .then(() => {
+    console.log("updateEachLeagueNotifier done")
+    process.exit(0)
+  })
+  .catch(e => {
+    console.error("updateEachLeagueNotifier failed:", e)
+    process.exit(1)
+  })
