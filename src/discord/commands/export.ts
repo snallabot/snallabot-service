@@ -145,10 +145,11 @@ export default {
     const subCommand = exportCommand.name
     const week = (() => {
       if (subCommand === "week") {
-        if (!exportCommand.options || !exportCommand.options[0]) {
+        const weekOption = exportCommand.options?.find(option => option.name === "week") as APIApplicationCommandInteractionDataIntegerOption | undefined
+        if (!weekOption) {
           throw new Error("export week command misconfigured")
         }
-        const week = Number((exportCommand.options[0] as APIApplicationCommandInteractionDataIntegerOption).value)
+        const week = Number(weekOption.value)
         if (week < 1 || week > 23 || week === 22) {
           throw new Error("Invalid week number. Valid weeks are week 1-18 and use specific playoff commands or playoff week numbers: Wildcard = 19, Divisional = 20, Conference Championship = 21, Super Bowl = 23")
         }

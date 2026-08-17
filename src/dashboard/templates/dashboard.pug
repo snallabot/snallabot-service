@@ -8,6 +8,13 @@ html
 body
   .div(class="container-fluid" style="margin-top: 8px;")
     h4 #{leagueName} Snallabot Dashboard
+    if leagueChoices && leagueChoices.length > 1
+      .row.mb-3
+        .col-md-5.col-lg-4
+          label.form-label(for="leagueSwitcher") Switch dashboard league
+          select#leagueSwitcher.form-select(onchange="if (this.value) window.location.href='/dashboard/league/' + encodeURIComponent(this.value)")
+            each choice in leagueChoices
+              option(value=choice.leagueId selected=choice.leagueId === leagueId) #{choice.leagueName}
     .row.align-items-center
      .col-auto
        div
@@ -168,6 +175,9 @@ body
                   option(value=discord.guildId) #{discord.name}
             div(class="mb-3")
               input(type="hidden" name="leagueId" value=leagueId)
+            div(class="mb-3")
+              label(for="leagueName" class="form-label") Display name
+              input(type="text" class="form-control" id="leagueName" name="leagueName" value=leagueName maxlength="100" placeholder="For example: Sim or Comp")
             button(type="submit" class="btn btn-primary") Connect Discord
         else
           div(class="text-center")
@@ -190,6 +200,16 @@ body
                   small(class="text-white-50") Guild ID: #{league.settings.guildId}
 
               div(class="card-body")
+                - const connectedLeagueIds = league.settings.commands.madden_league.league_ids || [league.settings.commands.madden_league.league_id]
+                div(class="mb-3")
+                  strong Connected leagues:
+                  | #{connectedLeagueIds.map(id => (league.settings.commands.madden_league.league_names || {})[id] || id).join(', ')}
+                  if league.settings.commands.madden_league.league_id === leagueId
+                    span(class="badge bg-success ms-2") Active
+                  else
+                    form(action=`/dashboard/guild/${league.settings.guildId}/activeLeague` method="POST" class="d-inline ms-2")
+                      input(type="hidden" name="leagueId" value=leagueId)
+                      button(type="submit" class="btn btn-sm btn-outline-primary") Make this league active
                 h6(class="text-muted mb-3") Command Configurations
                 div(class="row g-2")
                   div(class="col-6")

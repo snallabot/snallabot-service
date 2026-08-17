@@ -47,6 +47,10 @@ html
                     select#selectLeague.form-select(name="selected_league" required=true)
                       each league in leagues
                         option(value=`${league.leagueId}`) #{league.leagueName} - #{league.userTeamName}
+                .mb-4
+                  label.form-label(for="leagueName") Display name (optional)
+                  input#leagueName.form-control(type="text" name="league_name" maxlength="100" placeholder="For example: Sim or Comp")
+                  .form-text Leave blank to use the EA league name.
                 .d-flex.justify-content-between.mt-3
                   a.btn.btn-outline-secondary(href="/dashboard") Back
                   button#submit.btn.btn-success(type="submit") Select League    

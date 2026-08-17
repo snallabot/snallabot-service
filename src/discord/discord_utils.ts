@@ -10,6 +10,61 @@ import EventDB from "../db/events_db"
 import { ConfirmedSimV2, SimResult } from "../db/events"
 import { SnallabotError } from "../errors"
 import { discordOutgoingRequestsCounter } from "../debug/metrics"
+import fs from "node:fs"
+import path from "node:path"
+
+const applicationEmojis: Record<string, string> = {}
+
+export function getApplicationEmoji(name: string, fallback: string): string {
+  return applicationEmojis[name] || fallback
+}
+
+/** Register the bundled artwork on this deployment's Discord application. */
+export async function initializeApplicationEmojis(): Promise<void> {
+  const appId = process.env.APP_ID
+  const token = process.env.DISCORD_TOKEN
+  if (!appId || !token) return
+
+  const headers = { Authorization: `Bot ${token}`, "Content-Type": "application/json; charset=UTF-8" }
+  const listResponse = await fetch(`https://discord.com/api/v10/applications/${appId}/emojis`, { headers })
+  if (!listResponse.ok) throw new Error(`Could not list Discord application emojis: ${listResponse.status}`)
+  const existing = await listResponse.json() as { items: APIEmoji[] }
+  for (const emoji of existing.items) {
+    if (emoji.name && emoji.id) applicationEmojis[emoji.name] = `<:${emoji.name}:${emoji.id}>`
+  }
+
+  const assets: Array<[string, string]> = []
+  const logoDirectory = path.join(process.cwd(), "emojis", "nfl_logos")
+  for (const filename of fs.readdirSync(logoDirectory).filter(file => file.endsWith(".png"))) {
+    assets.push([`snallabot_${path.parse(filename).name}`, path.join(logoDirectory, filename)])
+  }
+  assets.push(
+    ["snallabot_normal_dev", path.join(process.cwd(), "emojis", "normal_dev.png")],
+    ["snallabot_star_dev", path.join(process.cwd(), "emojis", "Star Dev.png")],
+    ["snallabot_superstar_dev", path.join(process.cwd(), "emojis", "Superstar.webp")],
+    ["snallabot_xfactor_dev", path.join(process.cwd(), "emojis", "Superstar X-Factor.png")],
+    ["snallabot_hidden_dev", path.join(process.cwd(), "emojis", "Hidden.png")]
+  )
+
+  for (const [name, filename] of assets) {
+    if (applicationEmojis[name]) continue
+    const extension = path.extname(filename).toLowerCase()
+    const mime = extension === ".webp" ? "image/webp" : "image/png"
+    const image = `data:${mime};base64,${fs.readFileSync(filename).toString("base64")}`
+    const response = await fetch(`https://discord.com/api/v10/applications/${appId}/emojis`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ name, image })
+    })
+    if (!response.ok) {
+      console.error(`Could not create application emoji ${name}: ${response.status} ${await response.text()}`)
+      continue
+    }
+    const emoji = await response.json() as APIEmoji
+    if (emoji.name && emoji.id) applicationEmojis[emoji.name] = `<:${emoji.name}:${emoji.id}>`
+  }
+  console.log(`Loaded ${Object.keys(applicationEmojis).length} Discord application emojis`)
+}
 
 export enum CommandMode {
   INSTALL = "INSTALL",
@@ -750,13 +805,20 @@ export function getTeamEmoji(teamAbbr: string, leagueCustomLogos: LeagueLogos): 
   if (customLogo) {
     return `<:${customLogo.emoji_name}:${customLogo.emoji_id}>`
   }
-  return SnallabotTeamEmojis[teamAbbr.toUpperCase() as keyof typeof SnallabotTeamEmojis] || SnallabotTeamEmojis.NFL
+  const abbreviation = teamAbbr?.trim().toUpperCase()
+  if (abbreviation) {
+    const emojiName = `snallabot_${abbreviation === "AZ" ? "ari" : abbreviation.toLowerCase()}`
+    const applicationEmoji = applicationEmojis[emojiName]
+    if (applicationEmoji) return applicationEmoji
+  }
+  // Remain readable if Discord's emoji service is temporarily unavailable.
+  return abbreviation ? `\u{1F3C8} **${abbreviation}**` : "\u{1F3C8}"
 }
 export function formatTeamEmoji(leagueCustomLogos: LeagueLogos, teamAbbr?: string) {
   if (teamAbbr) {
     return getTeamEmoji(teamAbbr, leagueCustomLogos)
   }
-  return SnallabotTeamEmojis.NFL
+  return "\u{1F3C8}"
 }
 
 export function formatGame(game: MaddenGame, teams: TeamList, leagueCustomLogos: LeagueLogos, teamRecords?: Map<number, string>) {

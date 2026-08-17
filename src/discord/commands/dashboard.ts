@@ -4,6 +4,7 @@ import { ApplicationCommandType, ComponentType, RESTPostAPIApplicationCommandsJS
 import { DEPLOYMENT_URL } from "../../config"
 import { discordLeagueView } from "../../db/view"
 import { storedTokenClient } from "../../dashboard/ea_client"
+import LeagueSettingsDB from "../settings_db"
 
 async function getDashboardInfo(client: DiscordClient, token: string, guild_id: string) {
   let message = `${createDashboard(guild_id)}\n`
@@ -18,6 +19,11 @@ async function getDashboardInfo(client: DiscordClient, token: string, guild_id: 
       ]
     })
   const v = await discordLeagueView.createView(guild_id)
+  const connectedLeagueIds = await LeagueSettingsDB.getMaddenLeagueIds(guild_id)
+  if (connectedLeagueIds.length > 1) {
+    message += `Connected Leagues: ${connectedLeagueIds.map(id => id === v?.leagueId ? `${id} (active)` : id).join(", ")}\n`
+    message += `Open a league dashboard to make it active for Discord commands.\n`
+  }
   if (v && v.leagueId) {
     message += `Connected League: ${v.leagueId}\n`
     await client.editOriginalInteraction(token,
