@@ -74,12 +74,14 @@ export const notifierCheckLastRun = new client.Gauge({
   registers: [register]
 })
 
-export async function pushMetrics(jobName: string, instance: string) {
+const JOB_NAME = 'snallabot_jobs'
+
+export async function pushMetrics(instance: string) {
   if (!gateway) {
     return
   }
   try {
-    await gateway.pushAdd({ jobName, groupings: { instance } })
+    await gateway.pushAdd({ jobName: JOB_NAME, groupings: { instance } })
   } catch (err) {
     console.error('metrics push failed:', err)
   }
