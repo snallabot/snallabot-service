@@ -43,7 +43,7 @@ async function runLeagueChecks() {
     leaguesErroredCount.set(errorCount)
     leagueCheckCycleDuration.set(cycleDuration)
     leagueCheckLastCompleted.set(Math.floor(Date.now() / 1000))
-    await pushMetrics('league_check', 'snallabot-service')
+    await pushMetrics('snallabot-service')
 
     console.log(`Check complete, sleeping for ${SLEEP_MIN} minutes...\n`)
     await sleep(SLEEP_MIN * 5 * 1000)

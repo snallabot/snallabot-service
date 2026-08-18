@@ -145,7 +145,7 @@ async function notifyYoutubeBroadcasts() {
       broadcastsSentCount.set(sentBroadcasts.length)
       youtubeCheckCycleDuration.set(cycleDuration)
       youtubeCheckLastCompleted.set(Math.floor(Date.now() / 1000))
-      await pushMetrics('youtube_check', 'snallabot-service')
+      await pushMetrics('snallabot-service')
 
       console.log("Check complete, sleeping for 5 minutes...\n")
       await sleep(5 * 60 * 1000)
