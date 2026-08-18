@@ -1,3 +1,4 @@
+import { channelsCheckedCount, notifierCheckLastRun, notifierLeaguesCheckedCount, pushMetrics } from "../debug/metrics_push"
 import { createProdClient } from "./discord_utils"
 import createNotifier from "./notifier"
 import LeagueSettingsDB, { DiscordIdType } from "./settings_db"
@@ -40,8 +41,8 @@ async function runWithConcurrency(jobs: Job[], concurrency: number) {
 
 async function updateEachLeagueNotifier() {
   const allLeagueSettings = await LeagueSettingsDB.getAllLeagueSettings()
-
   const jobs: Job[] = []
+  let leaguesChecked = 0
 
   for (const leagueSettings of allLeagueSettings) {
     let notifier
@@ -50,14 +51,12 @@ async function updateEachLeagueNotifier() {
     } catch (e) {
       continue // skip this league, matches original behavior
     }
-
+    leaguesChecked++
     const weeklyStates = leagueSettings.commands?.game_channel?.weekly_states || {}
-
     for (const weeklyState of Object.values(weeklyStates)) {
       for (const [channelId, channelState] of Object.entries(weeklyState.channel_states || {})) {
         // todo hack, this doesnt seem necessary
         channelState.channel = { id: channelId, id_type: DiscordIdType.CHANNEL }
-
         jobs.push(async () => {
           try {
             const jitter = getRandomInt(3)
@@ -74,6 +73,11 @@ async function updateEachLeagueNotifier() {
   console.log(`[updateEachLeagueNotifier] starting ${jobs.length} jobs with concurrency ${CONCURRENCY}`)
   await runWithConcurrency(jobs, CONCURRENCY)
   console.log(`[updateEachLeagueNotifier] done`)
+
+  notifierLeaguesCheckedCount.set(leaguesChecked)
+  channelsCheckedCount.set(jobs.length)
+  notifierCheckLastRun.set(Math.floor(Date.now() / 1000))
+  await pushMetrics('notifier_check', 'snallabot-service')
 }
 
 // manually close as some connections can keep this alive
