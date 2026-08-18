@@ -5,6 +5,7 @@ import db from "../db/firebase"
 import { createClient } from "../discord/discord_utils"
 import NodeCache from "node-cache"
 import { youtubeNotifierHandler } from "./routes"
+import { broadcastsSentCount, channelsStreamingCount, pushMetrics, youtubeCheckCycleDuration, youtubeCheckLastCompleted } from "../debug/metrics_push"
 
 const currentlyBroadcasting = new NodeCache()
 
@@ -93,6 +94,7 @@ const ONE_DAY_TTL = 3600 * 24 // 1 days in seconds
 async function notifyYoutubeBroadcasts() {
   const youtubeState = await createYoutubeNotifierStateManager()
   while (true) {
+    const cycleStart = Date.now()
     try {
       const channelToServers = youtubeState.getCurrentState()
       const currentChannels = [...new Set(channelToServers.map(m => m.channel_id))]
@@ -123,7 +125,7 @@ async function notifyYoutubeBroadcasts() {
       })
       console.log(`broadcasts that are new: ${JSON.stringify(newBroadcasts)}`)
       const channelTitleMap: { [key: string]: { title: string, video: string } } = Object.fromEntries(newBroadcasts.map(c => [[c.channel_id], { title: c.title, video: c.video }]))
-      await Promise.all(channelToServers.flatMap(c => {
+      const sentBroadcasts = channelToServers.flatMap(c => {
         const title = channelTitleMap[c.channel_id]?.title
         return Object.entries(c.servers).flatMap(e => {
           const [discord_server, enabled] = e
@@ -133,11 +135,19 @@ async function notifyYoutubeBroadcasts() {
             return []
           }
         })
-      }).map(async c => {
+      })
+      await Promise.all(sentBroadcasts.map(async c => {
         return await EventDB.appendEvents<MaddenBroadcastEvent>([{ key: c.discord_server, event_type: "MADDEN_BROADCAST", title: c.title, video: c.video }], EventDelivery.EVENT_SOURCE)
       }))
+
+      const cycleDuration = (Date.now() - cycleStart) / 1000
+      channelsStreamingCount.set(currentlyLiveStreaming.length)
+      broadcastsSentCount.set(sentBroadcasts.length)
+      youtubeCheckCycleDuration.set(cycleDuration)
+      youtubeCheckLastCompleted.set(Math.floor(Date.now() / 1000))
+      await pushMetrics('youtube_check', 'snallabot-service')
+
       console.log("Check complete, sleeping for 5 minutes...\n")
-      await fetch("https://hc-ping.com/59c94914-bacc-42e1-8ae5-fde17d2e8dcc")
       await sleep(5 * 60 * 1000)
     } catch (e) {
       console.error(e)
