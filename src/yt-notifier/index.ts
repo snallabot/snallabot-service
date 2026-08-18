@@ -91,7 +91,7 @@ function sleep(ms: number) {
 }
 const ONE_DAY_TTL = 3600 * 24 // 1 days in seconds
 
-sync function notifyYoutubeBroadcasts() {
+async function notifyYoutubeBroadcasts() {
   const youtubeState = await createYoutubeNotifierStateManager()
   while (true) {
     const cycleStart = Date.now()
