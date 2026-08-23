@@ -88,7 +88,7 @@ export default {
       if (role) {
         conf.role = { id: role, id_type: DiscordIdType.ROLE }
       }
-      await LeagueSettingsDB.configureBroadcast(guild_id, conf)
+      await LeagueSettingsDB.configureBroadcast(guild_id, conf, command.league_id)
       return createMessageResponse("Broadcast is configured!")
     } else if (subCommandName === "youtube") {
       const subCommandGroup = subCommand as APIApplicationCommandInteractionDataSubcommandGroupOption

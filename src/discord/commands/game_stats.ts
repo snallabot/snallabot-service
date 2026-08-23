@@ -339,7 +339,7 @@ export default {
       const { w: weekIndex, s: seasonIndex, c: scheduleId, o: selectedOption, b: showBack } = JSON.parse(data.values[0]) as GameSelection
       try {
         const guildId = interaction.guild_id
-        const discordLeague = await discordLeagueView.createSelectedView(guildId)
+        const discordLeague = await discordLeagueView.createSelectedView(guildId, interaction.league_id)
         const leagueId = discordLeague?.leagueId
         if (leagueId) {
           showGameStats(interaction.token, client, leagueId, weekIndex, seasonIndex, scheduleId, selectedOption, showBack)

@@ -373,7 +373,7 @@ export default {
   async handleCommand(command: Command, client: DiscordClient) {
     const { guild_id } = command
 
-    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
+    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id, command.league_id)
     if (!leagueSettings.commands.madden_league?.league_id) {
       throw new Error("Could not find a linked Madden league, link a league first")
     }
@@ -458,7 +458,7 @@ export default {
       if (weekSelection) {
         const { wi: weekIndex, si: seasonIndex } = weekSelection
         const guildId = interaction.guild_id
-        const discordLeague = await discordLeagueView.createSelectedView(guildId)
+        const discordLeague = await discordLeagueView.createSelectedView(guildId, interaction.league_id)
         const leagueId = discordLeague?.leagueId
         if (leagueId) {
           showSchedule(interaction.token, client, leagueId, weekIndex + 1, seasonIndex)
@@ -466,7 +466,7 @@ export default {
       } else if (teamSelection) {
         const { ti: team, si: seasonIndex } = teamSelection
         const guildId = interaction.guild_id
-        const discordLeague = await discordLeagueView.createSelectedView(guildId)
+        const discordLeague = await discordLeagueView.createSelectedView(guildId, interaction.league_id)
         const leagueId = discordLeague?.leagueId
         if (leagueId) {
           showTeamSchedule(interaction.token, client, leagueId, team, seasonIndex)
@@ -495,7 +495,7 @@ export default {
     }
     const options = command.data.options
     const scheduleCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
-    const view = await discordLeagueView.createSelectedView(guild_id)
+    const view = await discordLeagueView.createSelectedView(guild_id, command.league_id)
     const leagueId = view?.leagueId
     const teamOption = scheduleCommand.options?.find(option => option.name === "team") as APIApplicationCommandInteractionDataStringOption | undefined
     if (leagueId && teamOption?.focused && teamOption.value) {

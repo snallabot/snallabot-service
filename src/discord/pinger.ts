@@ -1,7 +1,6 @@
 import { createProdClient } from "./discord_utils"
 import createNotifier from "./notifier"
 import LeagueSettingsDB, { DiscordIdType } from "./settings_db"
-import { runWithLeague } from "./league_context"
 
 const prodClient = createProdClient()
 const CONCURRENCY = 10 // tune based on Discord rate limits
@@ -47,8 +46,8 @@ async function updateEachLeagueNotifier() {
   for (const rawSettings of allLeagueSettings) {
     const leagueIds = await LeagueSettingsDB.getMaddenLeagueIds(rawSettings.guildId)
     for (const leagueId of leagueIds) {
-      await runWithLeague(rawSettings.guildId, leagueId, async () => {
-        const leagueSettings = await LeagueSettingsDB.getLeagueSettings(rawSettings.guildId)
+      {
+        const leagueSettings = await LeagueSettingsDB.getLeagueSettings(rawSettings.guildId, leagueId)
         let notifier
         try {
           notifier = createNotifier(prodClient, leagueSettings.guildId, leagueSettings)
@@ -71,7 +70,7 @@ async function updateEachLeagueNotifier() {
             })
           }
         }
-      })
+      }
     }
   }
 

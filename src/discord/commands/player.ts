@@ -62,9 +62,9 @@ function generatePlayerZoomOptions(players: Player[], currentPagination: PlayerP
     .map(option => ({ ...option, value: JSON.stringify(option.value) }))
 }
 
-async function showPlayerCard(playerSearch: string, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
+async function showPlayerCard(playerSearch: string, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination, selectedLeague?: string) {
   try {
-    const [discordLeague, settings] = await Promise.all([discordLeagueView.createSelectedView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
+    const [discordLeague, settings] = await Promise.all([discordLeagueView.createSelectedView(guild_id, selectedLeague), LeagueSettingsDB.getLeagueSettings(guild_id, selectedLeague)])
     const playerConfiguration = settings?.commands?.player || { useHiddenDevs: true }
     const leagueId = discordLeague?.leagueId
     if (!leagueId) {
@@ -139,8 +139,8 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, token
   }
 }
 
-async function showPlayerFullRatings(rosterId: number, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
-  const [discordLeague, settings] = await Promise.all([discordLeagueView.createSelectedView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
+async function showPlayerFullRatings(rosterId: number, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination, selectedLeague?: string) {
+  const [discordLeague, settings] = await Promise.all([discordLeagueView.createSelectedView(guild_id, selectedLeague), LeagueSettingsDB.getLeagueSettings(guild_id, selectedLeague)])
   const playerConfiguration = settings?.commands?.player || { useHiddenDevs: true }
   const leagueId = discordLeague?.leagueId
   if (!leagueId) {
@@ -196,8 +196,8 @@ async function showPlayerFullRatings(rosterId: number, client: DiscordClient, to
   })
 }
 
-async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
-  const [discordLeague, settings] = await Promise.all([discordLeagueView.createSelectedView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
+async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination, selectedLeague?: string) {
+  const [discordLeague, settings] = await Promise.all([discordLeagueView.createSelectedView(guild_id, selectedLeague), LeagueSettingsDB.getLeagueSettings(guild_id, selectedLeague)])
   const playerConfiguration = settings?.commands?.player || { useHiddenDevs: true }
   const leagueId = discordLeague?.leagueId
   if (!leagueId) {
@@ -256,8 +256,8 @@ async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, to
   })
 }
 
-async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
-  const [discordLeague, settings] = await Promise.all([discordLeagueView.createSelectedView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
+async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination, selectedLeague?: string) {
+  const [discordLeague, settings] = await Promise.all([discordLeagueView.createSelectedView(guild_id, selectedLeague), LeagueSettingsDB.getLeagueSettings(guild_id, selectedLeague)])
   const playerConfiguration = settings?.commands?.player || { useHiddenDevs: true }
   const leagueId = discordLeague?.leagueId
   if (!leagueId) {
@@ -355,9 +355,9 @@ async function getPlayers(leagueId: string, query: PlayerListQuery, startAfterPl
   }
 }
 
-async function showPlayerList(playerSearch: string, client: DiscordClient, token: string, guild_id: string, startAfterPlayer?: number, endBeforePlayer?: number) {
+async function showPlayerList(playerSearch: string, client: DiscordClient, token: string, guild_id: string, startAfterPlayer?: number, endBeforePlayer?: number, selectedLeague?: string) {
   try {
-    const [discordLeague, settings] = await Promise.all([discordLeagueView.createSelectedView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
+    const [discordLeague, settings] = await Promise.all([discordLeagueView.createSelectedView(guild_id, selectedLeague), LeagueSettingsDB.getLeagueSettings(guild_id, selectedLeague)])
     const playerConfiguration = settings?.commands?.player || { useHiddenDevs: true }
     const leagueId = discordLeague?.leagueId
     if (!leagueId) {
@@ -1760,7 +1760,7 @@ export default {
         throw new Error("player get misconfigured")
       }
       const playerSearch = playerOption.value
-      showPlayerCard(playerSearch, client, token, guild_id)
+      showPlayerCard(playerSearch, client, token, guild_id, undefined, command.league_id)
       return deferMessage()
 
     } else if (subCommand === "list") {
@@ -1769,10 +1769,10 @@ export default {
         throw new Error("player get misconfigured")
       }
       const playerSearch = playersOption.value
-      showPlayerList(playerSearch, client, token, guild_id)
+      showPlayerList(playerSearch, client, token, guild_id, undefined, undefined, command.league_id)
       return deferMessage()
     } else if (subCommand === "retire") {
-      const discordLeague = await discordLeagueView.createSelectedView(guild_id)
+      const discordLeague = await discordLeagueView.createSelectedView(guild_id, command.league_id)
       const leagueId = discordLeague?.leagueId
       if (!leagueId) {
         throw new NoConnectedLeagueError(guild_id)
@@ -1785,7 +1785,7 @@ export default {
         throw new Error("missing player configure options!")
       }
       const hiddenDevs = (subCommandOptions[0] as APIApplicationCommandInteractionDataBooleanOption).value
-      await LeagueSettingsDB.configurePlayer(guild_id, { useHiddenDevs: hiddenDevs })
+      await LeagueSettingsDB.configurePlayer(guild_id, { useHiddenDevs: hiddenDevs }, command.league_id)
       return createMessageResponse(`Player Configuration:\n  - Hidden Devs: ${hiddenDevs ? "on" : "off"}`)
     }
 
@@ -1842,7 +1842,7 @@ export default {
     const playerCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
     const subCommand = playerCommand.name
     if (subCommand === "get") {
-      const view = await discordLeagueView.createSelectedView(guild_id)
+      const view = await discordLeagueView.createSelectedView(guild_id, command.league_id)
       const leagueId = view?.leagueId
       const playerOption = playerCommand.options?.find(option => option.name === "player") as APIApplicationCommandInteractionDataStringOption | undefined
       if (leagueId && playerOption?.focused && playerOption.value) {
@@ -1851,7 +1851,7 @@ export default {
         return results.map(r => ({ name: `${r.teamAbbr} ${r.position.toUpperCase()} ${r.firstName} ${r.lastName}`, value: `${r.rosterId}` }))
       }
     } else if (subCommand === "list") {
-      const view = await discordLeagueView.createSelectedView(guild_id)
+      const view = await discordLeagueView.createSelectedView(guild_id, command.league_id)
       const leagueId = view?.leagueId
       const playersOption = playerCommand.options?.find(option => option.name === "players") as APIApplicationCommandInteractionDataStringOption | undefined
       if (leagueId && playersOption?.focused && playersOption.value) {
@@ -1876,13 +1876,13 @@ export default {
       const { r: rosterId, s: selected, q: pagination } = JSON.parse(data.values[0]) as Selection
       try {
         if (selected === PlayerSelection.PLAYER_OVERVIEW) {
-          showPlayerCard(`${rosterId}`, client, interaction.token, interaction.guild_id, pagination)
+          showPlayerCard(`${rosterId}`, client, interaction.token, interaction.guild_id, pagination, interaction.league_id)
         } else if (selected === PlayerSelection.PLAYER_FULL_RATINGS) {
-          showPlayerFullRatings(rosterId, client, interaction.token, interaction.guild_id, pagination)
+          showPlayerFullRatings(rosterId, client, interaction.token, interaction.guild_id, pagination, interaction.league_id)
         } else if (selected === PlayerSelection.PLAYER_WEEKLY_STATS) {
-          showPlayerWeeklyStats(rosterId, client, interaction.token, interaction.guild_id, pagination)
+          showPlayerWeeklyStats(rosterId, client, interaction.token, interaction.guild_id, pagination, interaction.league_id)
         } else if (selected === PlayerSelection.PLAYER_SEASON_STATS) {
-          showPlayerYearlyStats(rosterId, client, interaction.token, interaction.guild_id, pagination)
+          showPlayerYearlyStats(rosterId, client, interaction.token, interaction.guild_id, pagination, interaction.league_id)
         } else {
           throw new Error(`Invalid Player Selection ${selected}`)
         }
@@ -1916,7 +1916,7 @@ export default {
     } else {
       try {
         const { q: query, s: next, b: prev } = JSON.parse(customId) as PlayerPagination
-        showPlayerList(JSON.stringify(fromShortQuery(query)), client, interaction.token, interaction.guild_id, next, prev)
+        showPlayerList(JSON.stringify(fromShortQuery(query)), client, interaction.token, interaction.guild_id, next, prev, interaction.league_id)
       } catch (e) {
         await client.editOriginalInteraction(interaction.token, {
           flags: 32768,

@@ -1,6 +1,5 @@
 import db from "../db/firebase"
 import { FieldValue } from "firebase-admin/firestore"
-import { selectedLeagueForGuild } from "./league_context"
 
 export enum DiscordIdType {
   ROLE = "ROLE",
@@ -66,32 +65,32 @@ export type LeagueSettings = {
 
 interface LeagueSettingsDB {
   getAllLeagueSettings(): Promise<LeagueSettings[]>,
-  getLeagueSettings(guildId: string): Promise<LeagueSettings>,
-  configureLogger(guildId: string, loggerSettings: LoggerConfiguration): Promise<void>,
-  removeLogger(guildId: string): Promise<void>,
-  configureBroadcast(guildId: string, broadcastSettings: BroadcastConfiguration): Promise<void>,
-  configureGameChannel(guildId: string, gameChannelSettings: GameChannelConfiguration): Promise<void>,
-  deleteGameChannels(guildId: string, entries: [WeekState, GameChannel][]): Promise<void>,
-  updateGameWeekState(guildId: string, week: number, season: number, weekState: WeekState): Promise<void>,
-  deleteGameChannel(guildId: string, week: number, season: number, channel: ChannelId): Promise<void>,
-  updateGameChannelPingTime(guildId: string, week: number, season: number, channel: ChannelId): Promise<void>,
-  updateGameChannelState(guildId: string, week: number, season: number, channel: ChannelId, state: GameChannelState): Promise<void>
+  getLeagueSettings(guildId: string, selectedLeague?: string): Promise<LeagueSettings>,
+  configureLogger(guildId: string, loggerSettings: LoggerConfiguration, leagueId?: string): Promise<void>,
+  removeLogger(guildId: string, leagueId?: string): Promise<void>,
+  configureBroadcast(guildId: string, broadcastSettings: BroadcastConfiguration, leagueId?: string): Promise<void>,
+  configureGameChannel(guildId: string, gameChannelSettings: GameChannelConfiguration, leagueId?: string): Promise<void>,
+  deleteGameChannels(guildId: string, entries: [WeekState, GameChannel][], leagueId?: string): Promise<void>,
+  updateGameWeekState(guildId: string, week: number, season: number, weekState: WeekState, leagueId?: string): Promise<void>,
+  deleteGameChannel(guildId: string, week: number, season: number, channel: ChannelId, leagueId?: string): Promise<void>,
+  updateGameChannelPingTime(guildId: string, week: number, season: number, channel: ChannelId, leagueId?: string): Promise<void>,
+  updateGameChannelState(guildId: string, week: number, season: number, channel: ChannelId, state: GameChannelState, leagueId?: string): Promise<void>
   connectMaddenLeagueId(guildId: string, leagueId: string, leagueName?: string): Promise<void>,
   setActiveMaddenLeagueId(guildId: string, leagueId: string): Promise<void>,
   getMaddenLeagueId(guildId: string): Promise<string | undefined>,
   getMaddenLeagueIds(guildId: string): Promise<string[]>,
   getMaddenLeagueNames(guildId: string): Promise<Record<string, string>>,
   disconnectMaddenLeagueId(guildId: string, leagueId?: string): Promise<void>,
-  configureWaitlist(guildId: string, waitlistSettings: WaitlistConfiguration): Promise<void>,
-  updateStreamCountConfiguration(guildId: string, streamCountSettings: StreamCountConfiguration): Promise<void>,
-  updateTeamConfiguration(guildId: string, teamSettings: TeamConfiguration): Promise<void>,
-  updateAssignmentUser(guildId: string, teamId: string | number, user: UserId): Promise<void>,
-  updateAssignment(guildId: string, assignments: TeamAssignments): Promise<void>,
-  removeAssignment(guildId: string, teamId: number | string): Promise<void>,
-  removeAllAssignments(guildId: string): Promise<void>,
+  configureWaitlist(guildId: string, waitlistSettings: WaitlistConfiguration, leagueId?: string): Promise<void>,
+  updateStreamCountConfiguration(guildId: string, streamCountSettings: StreamCountConfiguration, leagueId?: string): Promise<void>,
+  updateTeamConfiguration(guildId: string, teamSettings: TeamConfiguration, leagueId?: string): Promise<void>,
+  updateAssignmentUser(guildId: string, teamId: string | number, user: UserId, leagueId?: string): Promise<void>,
+  updateAssignment(guildId: string, assignments: TeamAssignments, leagueId?: string): Promise<void>,
+  removeAssignment(guildId: string, teamId: number | string, leagueId?: string): Promise<void>,
+  removeAllAssignments(guildId: string, leagueId?: string): Promise<void>,
   getLeagueSettingsForLeagueId(leagueId: string): Promise<LeagueSettings[]>,
   deleteLeagueSetting(guildId: string): Promise<void>,
-  configurePlayer(guildId: string, playerConfiguration: PlayerConfiguration): Promise<void>
+  configurePlayer(guildId: string, playerConfiguration: PlayerConfiguration, leagueId?: string): Promise<void>
 }
 
 export function createWeekKey(season: number, week: number) {
@@ -103,7 +102,7 @@ const LeagueSettingsDB: LeagueSettingsDB = {
     const snapshot = await db.collection('league_settings').get()
     return snapshot.docs.map(doc => ({ guildId: doc.id, ...doc.data() } as LeagueSettings))
   },
-  async getLeagueSettings(guildId: string): Promise<LeagueSettings> {
+  async getLeagueSettings(guildId: string, selectedLeague?: string): Promise<LeagueSettings> {
     const doc = await db.collection('league_settings').doc(guildId).get()
     if (!doc.exists) {
       // Return default settings if none exist
@@ -113,7 +112,6 @@ const LeagueSettingsDB: LeagueSettingsDB = {
       }
     }
     const settings = { guildId: doc.id, ...doc.data() } as LeagueSettings
-    const selectedLeague = selectedLeagueForGuild(guildId)
     if (selectedLeague && settings.commands.madden_league) {
       const defaultLeague = settings.commands.madden_league.league_id
       const selectedCommands = settings.commands.league_commands?.[selectedLeague] || {}
@@ -138,35 +136,30 @@ const LeagueSettingsDB: LeagueSettingsDB = {
     return settings
   },
 
-  async configureLogger(guildId: string, loggerSettings: LoggerConfiguration): Promise<void> {
-    const leagueId = selectedLeagueForGuild(guildId)
+  async configureLogger(guildId: string, loggerSettings: LoggerConfiguration, leagueId?: string): Promise<void> {
     const path = leagueId ? `commands.league_commands.${leagueId}.logger` : 'commands.logger'
     await db.collection('league_settings').doc(guildId).update({ [path]: loggerSettings })
   },
 
-  async removeLogger(guildId: string): Promise<void> {
-    const leagueId = selectedLeagueForGuild(guildId)
+  async removeLogger(guildId: string, leagueId?: string): Promise<void> {
     const path = leagueId ? `commands.league_commands.${leagueId}.logger` : 'commands.logger'
     await db.collection('league_settings').doc(guildId).update({
       [path]: FieldValue.delete()
     })
   },
 
-  async configureBroadcast(guildId: string, broadcastSettings: BroadcastConfiguration): Promise<void> {
-    const leagueId = selectedLeagueForGuild(guildId)
+  async configureBroadcast(guildId: string, broadcastSettings: BroadcastConfiguration, leagueId?: string): Promise<void> {
     const path = leagueId ? `commands.league_commands.${leagueId}.broadcast` : 'commands.broadcast'
     await db.collection('league_settings').doc(guildId).update({ [path]: broadcastSettings })
   },
 
-  async configureGameChannel(guildId: string, gameChannelSettings: GameChannelConfiguration): Promise<void> {
-    const leagueId = selectedLeagueForGuild(guildId)
+  async configureGameChannel(guildId: string, gameChannelSettings: GameChannelConfiguration, leagueId?: string): Promise<void> {
     const path = leagueId ? `commands.league_commands.${leagueId}.game_channel` : 'commands.game_channel'
     await db.collection('league_settings').doc(guildId).update({ [path]: gameChannelSettings })
   },
 
-  async deleteGameChannels(guildId: string, entries: [WeekState, GameChannel][]): Promise<void> {
+  async deleteGameChannels(guildId: string, entries: [WeekState, GameChannel][], leagueId?: string): Promise<void> {
     if (entries.length > 0) {
-      const leagueId = selectedLeagueForGuild(guildId)
       const basePath = leagueId ? `commands.league_commands.${leagueId}.game_channel` : 'commands.game_channel'
       await db.collection('league_settings').doc(guildId).update(
         Object.fromEntries(entries.map(e => {
@@ -177,37 +170,33 @@ const LeagueSettingsDB: LeagueSettingsDB = {
     }
   },
 
-  async updateGameWeekState(guildId: string, week: number, season: number, weekState: WeekState): Promise<void> {
+  async updateGameWeekState(guildId: string, week: number, season: number, weekState: WeekState, leagueId?: string): Promise<void> {
     const seasonWeekKey = createWeekKey(season, week)
-    const leagueId = selectedLeagueForGuild(guildId)
     const basePath = leagueId ? `commands.league_commands.${leagueId}.game_channel` : 'commands.game_channel'
     await db.collection('league_settings').doc(guildId).update({ [`${basePath}.weekly_states.${seasonWeekKey}`]: weekState })
   },
 
-  async deleteGameChannel(guildId: string, week: number, season: number, channel: ChannelId): Promise<void> {
+  async deleteGameChannel(guildId: string, week: number, season: number, channel: ChannelId, leagueId?: string): Promise<void> {
     const seasonWeekKey = createWeekKey(season, week)
     const channelKey = channel.id
-    const leagueId = selectedLeagueForGuild(guildId)
     const basePath = leagueId ? `commands.league_commands.${leagueId}.game_channel` : 'commands.game_channel'
     await db.collection('league_settings').doc(guildId).update({
       [`${basePath}.weekly_states.${seasonWeekKey}.channel_states.${channelKey}`]: FieldValue.delete()
     })
   },
 
-  async updateGameChannelPingTime(guildId: string, week: number, season: number, channel: ChannelId): Promise<void> {
+  async updateGameChannelPingTime(guildId: string, week: number, season: number, channel: ChannelId, leagueId?: string): Promise<void> {
     const seasonWeekKey = createWeekKey(season, week)
     const channelKey = channel.id
-    const leagueId = selectedLeagueForGuild(guildId)
     const basePath = leagueId ? `commands.league_commands.${leagueId}.game_channel` : 'commands.game_channel'
     await db.collection('league_settings').doc(guildId).update({
       [`${basePath}.weekly_states.${seasonWeekKey}.channel_states.${channelKey}.notifiedTime`]: new Date().getTime()
     })
   },
 
-  async updateGameChannelState(guildId: string, week: number, season: number, channel: ChannelId, state: GameChannelState): Promise<void> {
+  async updateGameChannelState(guildId: string, week: number, season: number, channel: ChannelId, state: GameChannelState, leagueId?: string): Promise<void> {
     const seasonWeekKey = createWeekKey(season, week)
     const channelKey = channel.id
-    const leagueId = selectedLeagueForGuild(guildId)
     const basePath = leagueId ? `commands.league_commands.${leagueId}.game_channel` : 'commands.game_channel'
     await db.collection('league_settings').doc(guildId).update({
       [`${basePath}.weekly_states.${seasonWeekKey}.channel_states.${channelKey}.state`]: state
@@ -274,20 +263,17 @@ const LeagueSettingsDB: LeagueSettingsDB = {
     })
   },
 
-  async configureWaitlist(guildId: string, waitlistSettings: WaitlistConfiguration): Promise<void> {
-    const leagueId = selectedLeagueForGuild(guildId)
+  async configureWaitlist(guildId: string, waitlistSettings: WaitlistConfiguration, leagueId?: string): Promise<void> {
     const path = leagueId ? `commands.league_commands.${leagueId}.waitlist` : 'commands.waitlist'
     await db.collection('league_settings').doc(guildId).update({ [path]: waitlistSettings, guildId })
   },
 
-  async updateStreamCountConfiguration(guildId: string, streamCountSettings: StreamCountConfiguration): Promise<void> {
-    const leagueId = selectedLeagueForGuild(guildId)
+  async updateStreamCountConfiguration(guildId: string, streamCountSettings: StreamCountConfiguration, leagueId?: string): Promise<void> {
     const path = leagueId ? `commands.league_commands.${leagueId}.stream_count` : 'commands.stream_count'
     await db.collection('league_settings').doc(guildId).update({ [path]: streamCountSettings, guildId })
   },
 
-  async updateTeamConfiguration(guildId: string, teamSettings: TeamConfiguration): Promise<void> {
-    const leagueId = selectedLeagueForGuild(guildId)
+  async updateTeamConfiguration(guildId: string, teamSettings: TeamConfiguration, leagueId?: string): Promise<void> {
     if (leagueId) {
       await db.collection('league_settings').doc(guildId).set({
         commands: { team_leagues: { [leagueId]: teamSettings } },
@@ -302,31 +288,27 @@ const LeagueSettingsDB: LeagueSettingsDB = {
       guildId
     }, { merge: true })
   },
-  async updateAssignmentUser(guildId: string, teamId: string | number, user: UserId): Promise<void> {
-    const leagueId = selectedLeagueForGuild(guildId)
+  async updateAssignmentUser(guildId: string, teamId: string | number, user: UserId, leagueId?: string): Promise<void> {
     const basePath = leagueId ? `commands.team_leagues.${leagueId}` : 'commands.teams'
     await db.collection('league_settings').doc(guildId).update({
       [`${basePath}.assignments.${teamId}.discord_user`]: user
     })
   },
-  async updateAssignment(guildId: string, assignments: TeamAssignments): Promise<void> {
-    const leagueId = selectedLeagueForGuild(guildId)
+  async updateAssignment(guildId: string, assignments: TeamAssignments, leagueId?: string): Promise<void> {
     const basePath = leagueId ? `commands.team_leagues.${leagueId}` : 'commands.teams'
     await db.collection('league_settings').doc(guildId).update({
       [`${basePath}.assignments`]: assignments
     })
   },
 
-  async removeAssignment(guildId: string, teamId: number | string): Promise<void> {
-    const leagueId = selectedLeagueForGuild(guildId)
+  async removeAssignment(guildId: string, teamId: number | string, leagueId?: string): Promise<void> {
     const basePath = leagueId ? `commands.team_leagues.${leagueId}` : 'commands.teams'
     await db.collection('league_settings').doc(guildId).update({
       [`${basePath}.assignments.${teamId}`]: FieldValue.delete()
     })
   },
 
-  async removeAllAssignments(guildId: string): Promise<void> {
-    const leagueId = selectedLeagueForGuild(guildId)
+  async removeAllAssignments(guildId: string, leagueId?: string): Promise<void> {
     const basePath = leagueId ? `commands.team_leagues.${leagueId}` : 'commands.teams'
     await db.collection('league_settings').doc(guildId).update({
       [`${basePath}.assignments`]: {}
@@ -366,8 +348,7 @@ const LeagueSettingsDB: LeagueSettingsDB = {
   async deleteLeagueSetting(guildId: string): Promise<void> {
     await db.collection('league_settings').doc(guildId).delete()
   },
-  async configurePlayer(guildId: string, configuration: PlayerConfiguration) {
-    const leagueId = selectedLeagueForGuild(guildId)
+  async configurePlayer(guildId: string, configuration: PlayerConfiguration, leagueId?: string) {
     const path = leagueId ? `commands.league_commands.${leagueId}.player` : 'commands.player'
     await db.collection('league_settings').doc(guildId).update({ [path]: configuration })
   }

@@ -6,7 +6,6 @@ import FileHandler, { defaultSerializer } from "../file_handlers"
 import { viewCacheHits, viewCacheTotalRequests } from "../debug/metrics"
 import fastq from 'fastq'
 import type { queueAsPromised } from 'fastq'
-import { selectedLeagueForGuild } from "../discord/league_context"
 
 const TTL = 36000 // 10 hours in seconds
 
@@ -178,11 +177,10 @@ class CacheableDiscordLeagueConnection extends CachedUpdatingView<DiscordLeagueC
   constructor() {
     super(new DiscordLeagueConnection())
   }
-  async createSelectedView(key: string): Promise<SelectedDiscordLeagueConnection | undefined> {
+  async createSelectedView(key: string, selectedLeague?: string): Promise<SelectedDiscordLeagueConnection | undefined> {
     const connection = await this.createView(key)
     if (!connection) return undefined
 
-    const selectedLeague = selectedLeagueForGuild(key)
     const defaultLeague = selectedLeague || await LeagueSettingsDB.getMaddenLeagueId(key)
     const leagueIds = connection.leagues.map(league => league.leagueId)
     const leagueId = defaultLeague && leagueIds.includes(defaultLeague)

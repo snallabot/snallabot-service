@@ -23,12 +23,11 @@ import playerConfigurationHandler from "./commands/player_configuration"
 import statsHandler from "./commands/stats"
 import { APIMessageComponentInteractionData } from "discord-api-types/v9"
 import { discordCommandsCounter } from "../debug/metrics"
-import { runWithLeague } from "./league_context"
 import { discordLeagueView } from "../db/view"
 
-export type Command = { command_name: string, token: string, guild_id: string, data: APIChatInputApplicationCommandInteractionData, member: APIInteractionGuildMember }
-export type Autocomplete = { command_name: string, guild_id: string, data: APIAutocompleteApplicationCommandInteractionData }
-export type MessageComponentInteraction = { custom_id: string, token: string, data: APIMessageComponentInteractionData, guild_id: string }
+export type Command = { command_name: string, token: string, guild_id: string, league_id?: string, data: APIChatInputApplicationCommandInteractionData, member: APIInteractionGuildMember }
+export type Autocomplete = { command_name: string, guild_id: string, league_id?: string, data: APIAutocompleteApplicationCommandInteractionData }
+export type MessageComponentInteraction = { custom_id: string, token: string, data: APIMessageComponentInteractionData, guild_id: string, league_id?: string }
 
 // Commands which read or mutate league-specific settings/data. Dashboard, test,
 // and league_export stay exempt because they are used before a league exists.
@@ -151,10 +150,10 @@ export async function handleCommand(command: Command, ctx: ParameterizedContext,
           throw new Error(`League ${requestedLeague} is not connected to this Discord server`)
         }
       }
-      // Keep legacy handlers stable: the injected selector establishes context,
-      // but is removed before handlers that use positional option indexes run.
-      const handlerCommand = { ...command, data: { ...command.data, options: withoutLeagueSelector(command.data.options) } }
-      const res = await runWithLeague(command.guild_id, requestedLeague, () => handler.handleCommand(handlerCommand, discordClient))
+      // Keep positional option indexes stable while passing the selected league
+      // explicitly to the command handler.
+      const handlerCommand = { ...command, league_id: requestedLeague, data: { ...command.data, options: withoutLeagueSelector(command.data.options) } }
+      const res = await handler.handleCommand(handlerCommand, discordClient)
       respond(ctx, res)
     } catch (e) {
       const error = e as Error
@@ -191,8 +190,8 @@ export async function handleAutocomplete(command: Autocomplete, ctx: Parameteriz
     try {
       discordCommandsCounter.inc({ command_name: command.command_name, command_type: "AUTOCOMPLETE" })
       const requestedLeague = findOption(command.data.options, "league")?.value as string | undefined
-      const handlerCommand = { ...command, data: { ...command.data, options: withoutLeagueSelector(command.data.options) } }
-      const choices = await runWithLeague(command.guild_id, requestedLeague, () => handler.choices(handlerCommand))
+      const handlerCommand = { ...command, league_id: requestedLeague, data: { ...command.data, options: withoutLeagueSelector(command.data.options) } }
+      const choices = await handler.choices(handlerCommand)
       ctx.status = 200
       ctx.set("Content-Type", "application/json")
       ctx.body = {
@@ -239,7 +238,7 @@ export async function handleMessageComponent(interaction: MessageComponentIntera
       const leagueIds = (await connectedLeagues(interaction.guild_id)).map(league => league.leagueId)
       if (!leagueIds.includes(requestedLeague)) throw new Error(`League ${requestedLeague} is not connected to this Discord server`)
     }
-    return runWithLeague(interaction.guild_id, requestedLeague, () => componentHandler.handleInteraction(interaction, client))
+    return componentHandler.handleInteraction({ ...interaction, league_id: requestedLeague }, client)
   }
   const handler = MessageComponents[custom_id]
   if (handler) {

@@ -203,7 +203,7 @@ async function createGameChannels(client: DiscordClient, token: string, guild_id
 - ${SnallabotCommandReactions.FINISHED} Logging
 `
     })
-    await LeagueSettingsDB.updateGameWeekState(guild_id, week, season, weeklyState)
+    await LeagueSettingsDB.updateGameWeekState(guild_id, week, season, weeklyState, settings.commands.madden_league?.league_id)
   } catch (e) {
     try {
       await Promise.all(channelsToCleanup.map(async channel => {
@@ -253,7 +253,7 @@ async function clearGameChannels(client: DiscordClient, token: string, guild_id:
         }
       }))
     }
-    await LeagueSettingsDB.deleteGameChannels(guild_id, channelsToClear)
+    await LeagueSettingsDB.deleteGameChannels(guild_id, channelsToClear, settings.commands.madden_league?.league_id)
     await client.editOriginalInteraction(token, { content: `Game Channels Cleared` })
   } catch (e) {
     await client.editOriginalInteraction(token, { content: `Game Channels could not be cleared properly: ${e}` })
@@ -289,7 +289,7 @@ export default {
     const options = command.data.options
     const gameChannelsCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
     const subCommand = gameChannelsCommand.name
-    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
+    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id, command.league_id)
     if (subCommand === "configure") {
       if (!gameChannelsCommand.options || !gameChannelsCommand.options[0] || !gameChannelsCommand.options[1] || !gameChannelsCommand.options[2] || !gameChannelsCommand.options[3]) {
         throw new Error("game_channels configure command misconfigured")
@@ -307,7 +307,7 @@ export default {
         weekly_states: leagueSettings?.commands?.game_channel?.weekly_states || {},
         private_channels: !!usePrivateChannels
       }
-      await LeagueSettingsDB.configureGameChannel(guild_id, conf)
+      await LeagueSettingsDB.configureGameChannel(guild_id, conf, command.league_id)
       return createMessageResponse(`game channels commands are configured! Configuration:
 
 - Admin Role: <@&${adminRole}>

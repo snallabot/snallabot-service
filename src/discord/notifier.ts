@@ -95,7 +95,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
   }
   async function deleteTracking(currentState: GameChannel, season: number, week: number) {
     const channelId = currentState.channel
-    await LeagueSettingsDB.deleteGameChannel(guildId, week, season, channelId)
+    await LeagueSettingsDB.deleteGameChannel(guildId, week, season, channelId, leagueId)
   }
   return {
     deleteGameChannel: async function(currentState: GameChannel, season: number, week: number, originators: UserId[]) {
@@ -112,7 +112,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
       const assignments = teams.getLatestTeamAssignments(settings.commands.teams?.assignments || {})
       const awayTag = formatTeamMessageName(assignments[`${awayTeam.teamId}`]?.discord_user?.id, awayTeam.userName)
       const homeTag = formatTeamMessageName(assignments[`${homeTeam.teamId}`]?.discord_user?.id, homeTeam.userName)
-      await LeagueSettingsDB.updateGameChannelPingTime(guildId, week, season, gameChannel.channel)
+      await LeagueSettingsDB.updateGameChannelPingTime(guildId, week, season, gameChannel.channel, leagueId)
 
       // Skip pinging if both teams are CPU-controlled
       if (awayTag === "CPU" && homeTag === "CPU") {
@@ -191,7 +191,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
           }
           const adminRole = settings.commands.game_channel?.admin.id || ""
           const message = `${simMessage} requested <@&${adminRole}> by ${joinUsers(fwUsers)}`
-          await LeagueSettingsDB.updateGameChannelState(guildId, week, season, channelId, GameChannelState.FORCE_WIN_REQUESTED)
+          await LeagueSettingsDB.updateGameChannelState(guildId, week, season, channelId, GameChannelState.FORCE_WIN_REQUESTED, leagueId)
           try {
             await client.createMessage(channelId, message, ["roles"])
           } catch (e) {

@@ -149,7 +149,7 @@ export default {
     const playerCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
     const subCommand = playerCommand.name
     if (subCommand === "retire") {
-      const discordLeague = await discordLeagueView.createSelectedView(guild_id)
+      const discordLeague = await discordLeagueView.createSelectedView(guild_id, command.league_id)
       const leagueId = discordLeague?.leagueId
       if (!leagueId) {
         throw new NoConnectedLeagueError(guild_id)
@@ -163,7 +163,7 @@ export default {
       }
       const hiddenDevs = (subCommandOptions[0] as APIApplicationCommandInteractionDataBooleanOption
       ).value
-      await LeagueSettingsDB.configurePlayer(guild_id, { useHiddenDevs: hiddenDevs })
+      await LeagueSettingsDB.configurePlayer(guild_id, { useHiddenDevs: hiddenDevs }, command.league_id)
       return createMessageResponse(`Player Configuration:\n  - Hidden Devs: ${hiddenDevs ? "on" : "off"}`)
     }
 

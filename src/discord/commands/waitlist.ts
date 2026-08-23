@@ -23,7 +23,7 @@ function respondWithWaitlist(waitlist: UserId[]): any {
 export default {
   async handleCommand(command: Command, client: DiscordClient) {
     const { guild_id } = command
-    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
+    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id, command.league_id)
     if (!command.data.options) {
       throw new Error("misconfigured waitlist")
     }
@@ -47,7 +47,7 @@ export default {
           current_waitlist: waitlist
 
         }
-        await LeagueSettingsDB.configureWaitlist(guild_id, conf)
+        await LeagueSettingsDB.configureWaitlist(guild_id, conf, command.league_id)
         return respondWithWaitlist(waitlist)
       }
     } else if (subCommandName === "remove") {
@@ -61,7 +61,7 @@ export default {
         current_waitlist: newWaitlist
 
       }
-      await LeagueSettingsDB.configureWaitlist(guild_id, conf)
+      await LeagueSettingsDB.configureWaitlist(guild_id, conf, command.league_id)
       return respondWithWaitlist(newWaitlist)
     } else if (subCommandName === "pop") {
       if (!subCommand.options) {
@@ -74,7 +74,7 @@ export default {
         current_waitlist: newWaitlist
 
       }
-      await LeagueSettingsDB.configureWaitlist(guild_id, conf)
+      await LeagueSettingsDB.configureWaitlist(guild_id, conf, command.league_id)
       return respondWithWaitlist(newWaitlist)
     } else {
       return createMessageResponse(`waitlist ${subCommandName} not found`)

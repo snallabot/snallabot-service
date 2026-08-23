@@ -76,7 +76,7 @@ const itemsPerPage = 8;
 export type StandingsPaginated = { f: string, p: number, l?: string }
 async function handleCommand(client: DiscordClient, token: string, league: string, guild: string, filter: string = "nfl", page: number = 0) {
   try {
-    const [standings, teams, settings] = await Promise.all([MaddenDB.getLatestStandings(league), MaddenDB.getLatestTeams(league), LeagueSettingsDB.getLeagueSettings(guild)])
+    const [standings, teams, settings] = await Promise.all([MaddenDB.getLatestStandings(league), MaddenDB.getLatestTeams(league), LeagueSettingsDB.getLeagueSettings(guild, league)])
     const assignments = teams.getLatestTeamAssignments(settings.commands.teams?.assignments || {})
     const filteredStandings = getStandingsForFilter(standings, filter);
 
@@ -180,7 +180,7 @@ function getStandingsFilter(interaction: MessageComponentInteraction) {
 export default {
   async handleCommand(command: Command, client: DiscordClient) {
     const { guild_id, token } = command
-    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
+    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id, command.league_id)
     if (!leagueSettings?.commands?.madden_league?.league_id) {
       throw new NoConnectedLeagueError(guild_id)
     }
@@ -208,7 +208,7 @@ export default {
   async handleInteraction(interaction: MessageComponentInteraction, client: DiscordClient) {
     try {
       const standingsFilter = getStandingsFilter(interaction)
-      const discordLeague = await discordLeagueView.createSelectedView(interaction.guild_id)
+      const discordLeague = await discordLeagueView.createSelectedView(interaction.guild_id, interaction.league_id)
       const leagueId = discordLeague?.leagueId
       if (leagueId) {
         handleCommand(client, interaction.token, leagueId, interaction.guild_id, standingsFilter.f, standingsFilter.p)

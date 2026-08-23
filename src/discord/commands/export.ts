@@ -6,13 +6,13 @@ import { discordLeagueView } from "../../db/view"
 import { getMessageForWeek } from "../../export/madden_league_types"
 
 
-async function handleExport(guildId: string, week: number, token: string, client: DiscordClient) {
+async function handleExport(guildId: string, week: number, token: string, client: DiscordClient, selectedLeague?: string) {
   await client.editOriginalInteraction(token, {
     content: "Starting export...",
     flags: 64
   })
 
-  const league = await discordLeagueView.createSelectedView(guildId)
+  const league = await discordLeagueView.createSelectedView(guildId, selectedLeague)
   if (!league) {
     await client.editOriginalInteraction(token, {
       content: "Discord server not connected to any Madden league. Try setting up the dashboard again",
@@ -165,7 +165,7 @@ export default {
     if (!week) {
       throw new Error("export week mising")
     }
-    handleExport(guild_id, week, token, client)
+    handleExport(guild_id, week, token, client, command.league_id)
     return deferMessageInvisible()
   },
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {

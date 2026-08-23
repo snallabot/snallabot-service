@@ -265,7 +265,7 @@ export default {
   async handleCommand(command: Command, client: DiscordClient) {
     const { guild_id } = command
 
-    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
+    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id, command.league_id)
     if (!leagueSettings.commands.madden_league?.league_id) {
       throw new NoConnectedLeagueError(guild_id)
     }
@@ -286,7 +286,7 @@ export default {
   async handleInteraction(interaction: MessageComponentInteraction, client: DiscordClient) {
     try {
       const guildId = interaction.guild_id
-      const discordLeague = await discordLeagueView.createSelectedView(guildId)
+      const discordLeague = await discordLeagueView.createSelectedView(guildId, interaction.league_id)
       const leagueId = discordLeague?.leagueId
 
       if (!leagueId) {
