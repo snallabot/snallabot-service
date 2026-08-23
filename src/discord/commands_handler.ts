@@ -23,8 +23,8 @@ import playerConfigurationHandler from "./commands/player_configuration"
 import statsHandler from "./commands/stats"
 import { APIMessageComponentInteractionData } from "discord-api-types/v9"
 import { discordCommandsCounter } from "../debug/metrics"
-import LeagueSettingsDB from "./settings_db"
 import { runWithLeague } from "./league_context"
+import { discordLeagueView } from "../db/view"
 
 export type Command = { command_name: string, token: string, guild_id: string, data: APIChatInputApplicationCommandInteractionData, member: APIInteractionGuildMember }
 export type Autocomplete = { command_name: string, guild_id: string, data: APIAutocompleteApplicationCommandInteractionData }
@@ -44,6 +44,10 @@ function findOption(options: readonly any[] | undefined, name: string): any | un
     const nested = findOption(option.options, name)
     if (nested) return nested
   }
+}
+
+async function connectedLeagues(guildId: string) {
+  return (await discordLeagueView.createView(guildId))?.leagues || []
 }
 
 function withoutLeagueSelector(options: readonly any[] | undefined): any[] | undefined {
@@ -142,8 +146,8 @@ export async function handleCommand(command: Command, ctx: ParameterizedContext,
       discordCommandsCounter.inc({ command_name: command.command_name, command_type: "SLASH" })
       const requestedLeague = findOption(command.data.options, "league")?.value as string | undefined
       if (requestedLeague) {
-        const connectedLeagues = await LeagueSettingsDB.getMaddenLeagueIds(command.guild_id)
-        if (!connectedLeagues.includes(requestedLeague)) {
+        const leagueIds = (await connectedLeagues(command.guild_id)).map(league => league.leagueId)
+        if (!leagueIds.includes(requestedLeague)) {
           throw new Error(`League ${requestedLeague} is not connected to this Discord server`)
         }
       }
@@ -169,19 +173,16 @@ export async function handleAutocomplete(command: Autocomplete, ctx: Parameteriz
   const focused = findOption(command.data.options, "league")
   if (focused?.focused && LEAGUE_SELECTABLE_COMMANDS.has(commandName)) {
     const query = `${focused.value || ""}`.toLowerCase()
-    const [leagueIds, leagueNames] = await Promise.all([
-      LeagueSettingsDB.getMaddenLeagueIds(command.guild_id),
-      LeagueSettingsDB.getMaddenLeagueNames(command.guild_id)
-    ])
+    const leagues = await connectedLeagues(command.guild_id)
     ctx.status = 200
     ctx.set("Content-Type", "application/json")
     ctx.body = {
       type: InteractionResponseType.ApplicationCommandAutocompleteResult,
       data: {
-        choices: leagueIds
-          .filter(id => id.toLowerCase().includes(query) || (leagueNames[id] || "").toLowerCase().includes(query))
+        choices: leagues
+          .filter(league => league.leagueId.toLowerCase().includes(query) || league.leagueName.toLowerCase().includes(query))
           .slice(0, 25)
-          .map(id => ({ name: leagueNames[id] || id, value: id }))
+          .map(league => ({ name: league.leagueName, value: league.leagueId }))
       }
     }
     return
@@ -235,8 +236,8 @@ export async function handleMessageComponent(interaction: MessageComponentIntera
   }
   const invoke = async (componentHandler: MessageComponentHandler) => {
     if (requestedLeague) {
-      const connectedLeagues = await LeagueSettingsDB.getMaddenLeagueIds(interaction.guild_id)
-      if (!connectedLeagues.includes(requestedLeague)) throw new Error(`League ${requestedLeague} is not connected to this Discord server`)
+      const leagueIds = (await connectedLeagues(interaction.guild_id)).map(league => league.leagueId)
+      if (!leagueIds.includes(requestedLeague)) throw new Error(`League ${requestedLeague} is not connected to this Discord server`)
     }
     return runWithLeague(interaction.guild_id, requestedLeague, () => componentHandler.handleInteraction(interaction, client))
   }
