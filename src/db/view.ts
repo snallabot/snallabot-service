@@ -160,28 +160,29 @@ class DiscordLeagueConnection extends View<DiscordLeagueConnectionEvent> {
   }
   async createView(key: string) {
     if (key) {
-      const leagueSettings = await LeagueSettingsDB.getLeagueSettings(key)
-      const leagueId = leagueSettings?.commands?.madden_league?.league_id
-      if (leagueId) {
-        return { guildId: key, leagueId: leagueId }
-      }
+      const leagueIds = await LeagueSettingsDB.getMaddenLeagueIds(key)
+      return { guildId: key, leagueIds }
     }
   }
 }
+
+export type DiscordLeagueConnectionView = DiscordLeagueConnectionEvent & { leagueId: string }
 
 class CacheableDiscordLeagueConnection extends CachedUpdatingView<DiscordLeagueConnectionEvent> {
   constructor() {
     super(new DiscordLeagueConnection())
   }
-  async createView(key: string) {
-    // A slash command may explicitly select one of several leagues connected to
-    // the same guild. That request-scoped selection must take precedence over
-    // the cached default connection for the guild.
+  async createView(key: string): Promise<DiscordLeagueConnectionView | undefined> {
+    const connection = await super.createView(key)
+    if (!connection) return undefined
+
     const selectedLeague = selectedLeagueForGuild(key)
-    if (selectedLeague) {
-      return { guildId: key, leagueId: selectedLeague }
-    }
-    return super.createView(key)
+    const defaultLeague = selectedLeague || await LeagueSettingsDB.getMaddenLeagueId(key)
+    const leagueId = defaultLeague && connection.leagueIds.includes(defaultLeague)
+      ? defaultLeague
+      : connection.leagueIds[0]
+    if (!leagueId) return undefined
+    return { ...connection, leagueId }
   }
   update(event: { [key: string]: any[] }, currentView: DiscordLeagueConnectionEvent) {
     if (event["DISCORD_LEAGUE_CONNECTION"]) {
