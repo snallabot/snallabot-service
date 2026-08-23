@@ -160,29 +160,36 @@ class DiscordLeagueConnection extends View<DiscordLeagueConnectionEvent> {
   }
   async createView(key: string) {
     if (key) {
-      const leagueIds = await LeagueSettingsDB.getMaddenLeagueIds(key)
-      return { guildId: key, leagueIds }
+      const [leagueIds, leagueNames] = await Promise.all([
+        LeagueSettingsDB.getMaddenLeagueIds(key),
+        LeagueSettingsDB.getMaddenLeagueNames(key)
+      ])
+      return {
+        guildId: key,
+        leagues: leagueIds.map(leagueId => ({ leagueId, leagueName: leagueNames[leagueId] || leagueId }))
+      }
     }
   }
 }
 
-export type DiscordLeagueConnectionView = DiscordLeagueConnectionEvent & { leagueId: string }
+export type SelectedDiscordLeagueConnection = { guildId: string, leagueId: string }
 
 class CacheableDiscordLeagueConnection extends CachedUpdatingView<DiscordLeagueConnectionEvent> {
   constructor() {
     super(new DiscordLeagueConnection())
   }
-  async createView(key: string): Promise<DiscordLeagueConnectionView | undefined> {
-    const connection = await super.createView(key)
+  async createSelectedView(key: string): Promise<SelectedDiscordLeagueConnection | undefined> {
+    const connection = await this.createView(key)
     if (!connection) return undefined
 
     const selectedLeague = selectedLeagueForGuild(key)
     const defaultLeague = selectedLeague || await LeagueSettingsDB.getMaddenLeagueId(key)
-    const leagueId = defaultLeague && connection.leagueIds.includes(defaultLeague)
+    const leagueIds = connection.leagues.map(league => league.leagueId)
+    const leagueId = defaultLeague && leagueIds.includes(defaultLeague)
       ? defaultLeague
-      : connection.leagueIds[0]
+      : leagueIds[0]
     if (!leagueId) return undefined
-    return { ...connection, leagueId }
+    return { guildId: connection.guildId, leagueId }
   }
   update(event: { [key: string]: any[] }, currentView: DiscordLeagueConnectionEvent) {
     if (event["DISCORD_LEAGUE_CONNECTION"]) {

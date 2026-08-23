@@ -458,7 +458,7 @@ export default {
       if (weekSelection) {
         const { wi: weekIndex, si: seasonIndex } = weekSelection
         const guildId = interaction.guild_id
-        const discordLeague = await discordLeagueView.createView(guildId)
+        const discordLeague = await discordLeagueView.createSelectedView(guildId)
         const leagueId = discordLeague?.leagueId
         if (leagueId) {
           showSchedule(interaction.token, client, leagueId, weekIndex + 1, seasonIndex)
@@ -466,7 +466,7 @@ export default {
       } else if (teamSelection) {
         const { ti: team, si: seasonIndex } = teamSelection
         const guildId = interaction.guild_id
-        const discordLeague = await discordLeagueView.createView(guildId)
+        const discordLeague = await discordLeagueView.createSelectedView(guildId)
         const leagueId = discordLeague?.leagueId
         if (leagueId) {
           showTeamSchedule(interaction.token, client, leagueId, team, seasonIndex)
@@ -495,7 +495,7 @@ export default {
     }
     const options = command.data.options
     const scheduleCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
-    const view = await discordLeagueView.createView(guild_id)
+    const view = await discordLeagueView.createSelectedView(guild_id)
     const leagueId = view?.leagueId
     const teamOption = scheduleCommand.options?.find(option => option.name === "team") as APIApplicationCommandInteractionDataStringOption | undefined
     if (leagueId && teamOption?.focused && teamOption.value) {

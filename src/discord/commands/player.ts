@@ -64,7 +64,7 @@ function generatePlayerZoomOptions(players: Player[], currentPagination: PlayerP
 
 async function showPlayerCard(playerSearch: string, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
   try {
-    const [discordLeague, settings] = await Promise.all([discordLeagueView.createView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
+    const [discordLeague, settings] = await Promise.all([discordLeagueView.createSelectedView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
     const playerConfiguration = settings?.commands?.player || { useHiddenDevs: true }
     const leagueId = discordLeague?.leagueId
     if (!leagueId) {
@@ -140,7 +140,7 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, token
 }
 
 async function showPlayerFullRatings(rosterId: number, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
-  const [discordLeague, settings] = await Promise.all([discordLeagueView.createView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
+  const [discordLeague, settings] = await Promise.all([discordLeagueView.createSelectedView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
   const playerConfiguration = settings?.commands?.player || { useHiddenDevs: true }
   const leagueId = discordLeague?.leagueId
   if (!leagueId) {
@@ -197,7 +197,7 @@ async function showPlayerFullRatings(rosterId: number, client: DiscordClient, to
 }
 
 async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
-  const [discordLeague, settings] = await Promise.all([discordLeagueView.createView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
+  const [discordLeague, settings] = await Promise.all([discordLeagueView.createSelectedView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
   const playerConfiguration = settings?.commands?.player || { useHiddenDevs: true }
   const leagueId = discordLeague?.leagueId
   if (!leagueId) {
@@ -257,7 +257,7 @@ async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, to
 }
 
 async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
-  const [discordLeague, settings] = await Promise.all([discordLeagueView.createView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
+  const [discordLeague, settings] = await Promise.all([discordLeagueView.createSelectedView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
   const playerConfiguration = settings?.commands?.player || { useHiddenDevs: true }
   const leagueId = discordLeague?.leagueId
   if (!leagueId) {
@@ -357,7 +357,7 @@ async function getPlayers(leagueId: string, query: PlayerListQuery, startAfterPl
 
 async function showPlayerList(playerSearch: string, client: DiscordClient, token: string, guild_id: string, startAfterPlayer?: number, endBeforePlayer?: number) {
   try {
-    const [discordLeague, settings] = await Promise.all([discordLeagueView.createView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
+    const [discordLeague, settings] = await Promise.all([discordLeagueView.createSelectedView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
     const playerConfiguration = settings?.commands?.player || { useHiddenDevs: true }
     const leagueId = discordLeague?.leagueId
     if (!leagueId) {
@@ -1772,7 +1772,7 @@ export default {
       showPlayerList(playerSearch, client, token, guild_id)
       return deferMessage()
     } else if (subCommand === "retire") {
-      const discordLeague = await discordLeagueView.createView(guild_id)
+      const discordLeague = await discordLeagueView.createSelectedView(guild_id)
       const leagueId = discordLeague?.leagueId
       if (!leagueId) {
         throw new NoConnectedLeagueError(guild_id)
@@ -1842,7 +1842,7 @@ export default {
     const playerCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
     const subCommand = playerCommand.name
     if (subCommand === "get") {
-      const view = await discordLeagueView.createView(guild_id)
+      const view = await discordLeagueView.createSelectedView(guild_id)
       const leagueId = view?.leagueId
       const playerOption = playerCommand.options?.find(option => option.name === "player") as APIApplicationCommandInteractionDataStringOption | undefined
       if (leagueId && playerOption?.focused && playerOption.value) {
@@ -1851,7 +1851,7 @@ export default {
         return results.map(r => ({ name: `${r.teamAbbr} ${r.position.toUpperCase()} ${r.firstName} ${r.lastName}`, value: `${r.rosterId}` }))
       }
     } else if (subCommand === "list") {
-      const view = await discordLeagueView.createView(guild_id)
+      const view = await discordLeagueView.createSelectedView(guild_id)
       const leagueId = view?.leagueId
       const playersOption = playerCommand.options?.find(option => option.name === "players") as APIApplicationCommandInteractionDataStringOption | undefined
       if (leagueId && playersOption?.focused && playersOption.value) {

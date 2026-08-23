@@ -149,7 +149,7 @@ export default {
     const playerCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
     const subCommand = playerCommand.name
     if (subCommand === "retire") {
-      const discordLeague = await discordLeagueView.createView(guild_id)
+      const discordLeague = await discordLeagueView.createSelectedView(guild_id)
       const leagueId = discordLeague?.leagueId
       if (!leagueId) {
         throw new NoConnectedLeagueError(guild_id)

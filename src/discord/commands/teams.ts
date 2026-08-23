@@ -483,7 +483,7 @@ export default {
     }
     const options = command.data.options
     const teamsCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
-    const view = await discordLeagueView.createView(guild_id)
+    const view = await discordLeagueView.createSelectedView(guild_id)
     const leagueId = view?.leagueId
     if (leagueId && (teamsCommand?.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.focused && teamsCommand?.options?.[0]?.value) {
       const teamSearchPhrase = teamsCommand.options[0].value as string

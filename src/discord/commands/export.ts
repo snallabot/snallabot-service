@@ -12,7 +12,7 @@ async function handleExport(guildId: string, week: number, token: string, client
     flags: 64
   })
 
-  const league = await discordLeagueView.createView(guildId)
+  const league = await discordLeagueView.createSelectedView(guildId)
   if (!league) {
     await client.editOriginalInteraction(token, {
       content: "Discord server not connected to any Madden league. Try setting up the dashboard again",

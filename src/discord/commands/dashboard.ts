@@ -18,7 +18,7 @@ async function getDashboardInfo(client: DiscordClient, token: string, guild_id: 
         }
       ]
     })
-  const v = await discordLeagueView.createView(guild_id)
+  const v = await discordLeagueView.createSelectedView(guild_id)
   const connectedLeagueIds = await LeagueSettingsDB.getMaddenLeagueIds(guild_id)
   if (connectedLeagueIds.length > 1) {
     message += `Connected Leagues: ${connectedLeagueIds.map(id => id === v?.leagueId ? `${id} (default)` : id).join(", ")}\n`

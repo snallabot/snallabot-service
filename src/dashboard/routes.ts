@@ -68,7 +68,7 @@ async function renderConnectedLeagueErrorsMiddleware(ctx: ParameterizedContext, 
 router.get("/", async (ctx) => {
   const { discord_connection: discordConnection } = ctx.query
   if (discordConnection) {
-    const view = await discordLeagueView.createView(discordConnection as string)
+    const view = await discordLeagueView.createSelectedView(discordConnection as string)
     if (view?.leagueId) {
       ctx.redirect(`/dashboard/league/${view.leagueId}`)
     }

@@ -208,7 +208,7 @@ export default {
   async handleInteraction(interaction: MessageComponentInteraction, client: DiscordClient) {
     try {
       const standingsFilter = getStandingsFilter(interaction)
-      const discordLeague = await discordLeagueView.createView(interaction.guild_id)
+      const discordLeague = await discordLeagueView.createSelectedView(interaction.guild_id)
       const leagueId = discordLeague?.leagueId
       if (leagueId) {
         handleCommand(client, interaction.token, leagueId, interaction.guild_id, standingsFilter.f, standingsFilter.p)

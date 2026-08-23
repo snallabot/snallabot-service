@@ -286,7 +286,7 @@ export default {
   async handleInteraction(interaction: MessageComponentInteraction, client: DiscordClient) {
     try {
       const guildId = interaction.guild_id
-      const discordLeague = await discordLeagueView.createView(guildId)
+      const discordLeague = await discordLeagueView.createSelectedView(guildId)
       const leagueId = discordLeague?.leagueId
 
       if (!leagueId) {
