@@ -21,8 +21,8 @@ async function getDashboardInfo(client: DiscordClient, token: string, guild_id: 
   const v = await discordLeagueView.createView(guild_id)
   const connectedLeagueIds = await LeagueSettingsDB.getMaddenLeagueIds(guild_id)
   if (connectedLeagueIds.length > 1) {
-    message += `Connected Leagues: ${connectedLeagueIds.map(id => id === v?.leagueId ? `${id} (active)` : id).join(", ")}\n`
-    message += `Open a league dashboard to make it active for Discord commands.\n`
+    message += `Connected Leagues: ${connectedLeagueIds.map(id => id === v?.leagueId ? `${id} (default)` : id).join(", ")}\n`
+    message += `Open a league dashboard to choose the default for Discord commands.\n`
   }
   if (v && v.leagueId) {
     message += `Connected League: ${v.leagueId}\n`
