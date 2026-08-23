@@ -4,7 +4,6 @@ import { ApplicationCommandType, ComponentType, RESTPostAPIApplicationCommandsJS
 import { DEPLOYMENT_URL } from "../../config"
 import { discordLeagueView } from "../../db/view"
 import { storedTokenClient } from "../../dashboard/ea_client"
-import LeagueSettingsDB from "../settings_db"
 
 async function getDashboardInfo(client: DiscordClient, token: string, guild_id: string) {
   let message = `${createDashboard(guild_id)}\n`
@@ -18,14 +17,20 @@ async function getDashboardInfo(client: DiscordClient, token: string, guild_id: 
         }
       ]
     })
-  const v = await discordLeagueView.createSelectedView(guild_id)
-  const connectedLeagueIds = await LeagueSettingsDB.getMaddenLeagueIds(guild_id)
-  if (connectedLeagueIds.length > 1) {
-    message += `Connected Leagues: ${connectedLeagueIds.map(id => id === v?.leagueId ? `${id} (default)` : id).join(", ")}\n`
+  const connection = await discordLeagueView.createView(guild_id)
+  const connectedLeagues = connection?.leagues || []
+  const defaultLeagueId = connection?.activeLeague?.league_id
+  if (connectedLeagues.length > 1) {
+    message += `Connected Leagues: ${connectedLeagues.map(league => {
+      const display = league.leagueName === league.leagueId
+        ? league.leagueId
+        : `${league.leagueName} (${league.leagueId})`
+      return league.leagueId === defaultLeagueId ? `${display} (default)` : display
+    }).join(", ")}\n`
     message += `Open a league dashboard to choose the default for Discord commands.\n`
   }
-  if (v && v.leagueId) {
-    message += `Connected League: ${v.leagueId}\n`
+  if (defaultLeagueId) {
+    message += `Connected League: ${defaultLeagueId}\n`
     await client.editOriginalInteraction(token,
       {
         flags: 32768,
@@ -37,7 +42,7 @@ async function getDashboardInfo(client: DiscordClient, token: string, guild_id: 
         ]
       })
     try {
-      const leagueId = Number(v.leagueId)
+      const leagueId = Number(defaultLeagueId)
       const eaClient = await storedTokenClient(leagueId)
       const [leagueInfo, leagues] = await Promise.all([eaClient.getLeagueInfo(leagueId), eaClient.getLeagues()])
       const name = leagues.find(l => l.leagueId === leagueId)?.leagueName || "League not found"

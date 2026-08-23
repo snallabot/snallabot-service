@@ -43,33 +43,27 @@ async function updateEachLeagueNotifier() {
 
   const jobs: Job[] = []
 
-  for (const rawSettings of allLeagueSettings) {
-    const leagueIds = await LeagueSettingsDB.getMaddenLeagueIds(rawSettings.guildId)
-    for (const leagueId of leagueIds) {
-      {
-        const leagueSettings = await LeagueSettingsDB.getLeagueSettings(rawSettings.guildId, leagueId)
-        let notifier
-        try {
-          notifier = createNotifier(prodClient, leagueSettings.guildId, leagueSettings)
-        } catch (e) {
-          return
-        }
+  for (const leagueSettings of allLeagueSettings) {
+    let notifier
+    try {
+      notifier = createNotifier(prodClient, leagueSettings.guildId, leagueSettings)
+    } catch (e) {
+      continue
+    }
 
-        const weeklyStates = leagueSettings.commands?.game_channel?.weekly_states || {}
-        for (const weeklyState of Object.values(weeklyStates)) {
-          for (const [channelId, channelState] of Object.entries(weeklyState.channel_states || {})) {
-            channelState.channel = { id: channelId, id_type: DiscordIdType.CHANNEL }
-            jobs.push(async () => {
-              try {
-                const jitter = getRandomInt(3)
-                await new Promise((r) => setTimeout(r, 100 + jitter * 50))
-                await notifier.checkPing(channelState, weeklyState.seasonIndex, weeklyState.week)
-              } catch (e) {
-                // Swallow individual notifier failures so other leagues continue.
-              }
-            })
+    const weeklyStates = leagueSettings.commands?.game_channel?.weekly_states || {}
+    for (const weeklyState of Object.values(weeklyStates)) {
+      for (const [channelId, channelState] of Object.entries(weeklyState.channel_states || {})) {
+        channelState.channel = { id: channelId, id_type: DiscordIdType.CHANNEL }
+        jobs.push(async () => {
+          try {
+            const jitter = getRandomInt(3)
+            await new Promise((r) => setTimeout(r, 100 + jitter * 50))
+            await notifier.checkPing(channelState, weeklyState.seasonIndex, weeklyState.week)
+          } catch (e) {
+            // Swallow individual notifier failures so other leagues continue.
           }
-        }
+        })
       }
     }
   }

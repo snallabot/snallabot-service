@@ -6,13 +6,13 @@ import LeagueSettingsDB from "../discord/settings_db"
 const router = new Router({ prefix: "/connect" })
 
 async function publishLeagueConnections(guild: string) {
-  const [leagueIds, leagueNames] = await Promise.all([
-    LeagueSettingsDB.getMaddenLeagueIds(guild),
-    LeagueSettingsDB.getMaddenLeagueNames(guild)
-  ])
-  const leagues = leagueIds.map(leagueId => ({ leagueId, leagueName: leagueNames[leagueId] || leagueId }))
+  const connection = await LeagueSettingsDB.getDiscordLeagueConnection(guild)
   await EventDB.appendEvents<DiscordLeagueConnectionEvent>(
-    [{ key: guild, event_type: "DISCORD_LEAGUE_CONNECTION", guildId: guild, leagues }],
+    [{
+      key: guild,
+      event_type: "DISCORD_LEAGUE_CONNECTION",
+      ...connection
+    }],
     EventDelivery.EVENT_TRIGGER
   )
 }

@@ -284,8 +284,11 @@ router.get("/", async (ctx) => {
     weeklyStatus: weeklyStatus
   } : exportStatus
   const settledSettings = await Promise.allSettled(discordLeagues.map(async l => {
-    const g = await client.getGuildInformation(l.guildId)
-    return { name: g.name, icon: g.icon, settings: l }
+    const [g, connection] = await Promise.all([
+      client.getGuildInformation(l.guildId),
+      discordLeagueView.createView(l.guildId)
+    ])
+    return { name: g.name, icon: g.icon, settings: l, connection }
   }))
   const userGuilds = discord_token ? await client.getUserGuilds(discord_token) : []
   const discordsToConnect = userGuilds.map(d => ({ name: d.name, guildId: d.id }))

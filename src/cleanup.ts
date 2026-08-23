@@ -23,7 +23,8 @@ async function calculateLeagueStats() {
   const guildsBotIsIn = await prodClient.getAllGuilds()
   const guildSet = new Set(guildsBotIsIn)
   const settingsToDelete = allLeagues.filter(l => !guildSet.has(l.guildId))
-  await Promise.all(settingsToDelete.map(async g => await LeagueSettingsDB.deleteLeagueSetting(g.guildId)))
+  const guildsToDelete = [...new Set(settingsToDelete.map(settings => settings.guildId))]
+  await Promise.all(guildsToDelete.map(async guildId => await LeagueSettingsDB.deleteLeagueSetting(guildId)))
   const stats = {
     totalLeagues: allLeagues.length,
     configurationUsage: {

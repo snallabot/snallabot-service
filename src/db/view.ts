@@ -159,14 +159,7 @@ class DiscordLeagueConnection extends View<DiscordLeagueConnectionEvent> {
   }
   async createView(key: string) {
     if (key) {
-      const [leagueIds, leagueNames] = await Promise.all([
-        LeagueSettingsDB.getMaddenLeagueIds(key),
-        LeagueSettingsDB.getMaddenLeagueNames(key)
-      ])
-      return {
-        guildId: key,
-        leagues: leagueIds.map(leagueId => ({ leagueId, leagueName: leagueNames[leagueId] || leagueId }))
-      }
+      return LeagueSettingsDB.getDiscordLeagueConnection(key)
     }
   }
 }
@@ -181,11 +174,9 @@ class CacheableDiscordLeagueConnection extends CachedUpdatingView<DiscordLeagueC
     const connection = await this.createView(key)
     if (!connection) return undefined
 
-    const defaultLeague = selectedLeague || await LeagueSettingsDB.getMaddenLeagueId(key)
+    const defaultLeague = selectedLeague || connection.activeLeague?.league_id
     const leagueIds = connection.leagues.map(league => league.leagueId)
-    const leagueId = defaultLeague && leagueIds.includes(defaultLeague)
-      ? defaultLeague
-      : leagueIds[0]
+    const leagueId = defaultLeague && leagueIds.includes(defaultLeague) ? defaultLeague : undefined
     if (!leagueId) return undefined
     return { guildId: connection.guildId, leagueId }
   }

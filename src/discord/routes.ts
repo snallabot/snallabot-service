@@ -13,7 +13,7 @@ import createNotifier from "./notifier"
 import MaddenClient from "../db/madden_db"
 import MaddenDB from "../db/madden_db"
 import { GameResult, MaddenGame } from "../export/madden_league_types"
-import { leagueLogosView } from "../db/view"
+import { discordLeagueView, leagueLogosView } from "../db/view"
 
 const router = new Router({ prefix: "/discord/webhook" })
 
@@ -240,22 +240,26 @@ discordClient.on("messageReactionAdd", async (msg, reactor, reaction) => {
   }
   const reactionChannel = msg.channelID
   const reactionMessage = msg.id
-  const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild)
-  const weeklyStates = leagueSettings.commands?.game_channel?.weekly_states || {}
-  await Promise.all(Object.values(weeklyStates).map(async weeklyState => {
-    const channelStates = weeklyState.channel_states || {}
-    await Promise.all(Object.entries(channelStates).map(async channelEntry => {
-      const [channelId, channelState] = channelEntry
-      if (channelId === reactionChannel && channelState?.message?.id === reactionMessage) {
-        try {
-          const notifier = createNotifier(prodClient, guild, leagueSettings)
-          // wait for users to confirm/unconfirm
-          const jitter = getRandomInt(10)
-          await new Promise((r) => setTimeout(r, 5000 + jitter * 1000));
-          await notifier.update(channelState, weeklyState.seasonIndex, weeklyState.week)
-        } catch (e) {
+  const connection = await discordLeagueView.createView(guild)
+  const leagueSettings = await Promise.all((connection?.leagues || [])
+    .map(league => LeagueSettingsDB.getLeagueSettings(guild, league.leagueId)))
+  await Promise.all(leagueSettings.map(async settings => {
+    const weeklyStates = settings.commands?.game_channel?.weekly_states || {}
+    await Promise.all(Object.values(weeklyStates).map(async weeklyState => {
+      const channelStates = weeklyState.channel_states || {}
+      await Promise.all(Object.entries(channelStates).map(async channelEntry => {
+        const [channelId, channelState] = channelEntry
+        if (channelId === reactionChannel && channelState?.message?.id === reactionMessage) {
+          try {
+            const notifier = createNotifier(prodClient, guild, settings)
+            // wait for users to confirm/unconfirm
+            const jitter = getRandomInt(10)
+            await new Promise((r) => setTimeout(r, 5000 + jitter * 1000));
+            await notifier.update(channelState, weeklyState.seasonIndex, weeklyState.week)
+          } catch (e) {
+          }
         }
-      }
+      }))
     }))
   }))
 })
