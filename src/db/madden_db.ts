@@ -349,7 +349,7 @@ export function deduplicatePlayers(players: StoredEvent<Player>[]): StoredEvent<
   return Array.from(playerMap.values());
 }
 
-export async function deduplicatePlayerStats<T extends PlayerStatTypes>(leagueId: string, stats: StoredEvent<T>[]) {
+export async function deduplicatePlayerStats<T extends PlayerStatTypes>(leagueId: string, stats: StoredEvent<T>[], getPlayer: (leagueId: string, rosterId: string) => Promise<Player>) {
   const playerIndex = await playerListIndex.createView(leagueId)
   const currentPlayers = Object.values(playerIndex || {})
   const statsGrouped: [string, StoredEvent<T>][] = await Promise.all(stats.map(async s => {
@@ -357,7 +357,7 @@ export async function deduplicatePlayerStats<T extends PlayerStatTypes>(leagueId
     if (foundPlayer) {
       return [`${createPlayerKey(foundPlayer)}-${s.weekIndex}-${s.seasonIndex}`, s]
     } else {
-      const p = await MaddenDB.getPlayer(leagueId, `${s.rosterId}`)
+      const p = await getPlayer(leagueId, `${s.rosterId}`)
       return [`${createPlayerKey(p)}-${s.weekIndex}-${s.seasonIndex}`, s]
     }
   }))
@@ -415,7 +415,7 @@ class PlayerListView extends View<PlayerListIndex> {
     const playerSnapshot = await db.collection("madden_data26").doc(key).collection(MaddenEvents.MADDEN_PLAYER).select("rosterId", "firstName", "lastName", "teamId", "position", "birthYear", "birthMonth", "birthDay", "presentationId", "timestamp", "yearsPro", "playerBestOvr").get()
     const players = deduplicatePlayers(playerSnapshot.docs.map(doc => {
       return convertDate(doc.data()) as StoredEvent<Player>
-    }))
+    }), MaddenDB.getPlayer)
     return Object.fromEntries(players.map(player => {
       return [`${player.presentationId}-${player.birthYear}-${player.birthMonth}-${player.birthDay}`, {
         rosterId: `${player.rosterId}`,
@@ -1097,7 +1097,7 @@ const MaddenDB: MaddenDB = {
       .where("stageIndex", "==", 1)
       .get()
     const stats = statDocs.docs.map(d => convertDate(d.data()) as StoredEvent<T>)
-    const finalStats = await deduplicatePlayerStats(leagueId, stats)
+    const finalStats = await deduplicatePlayerStats(leagueId, stats, this.getPlayer)
     return { seasonIndex: seasonToQuery, weekIndex: weekToQuery, stats: finalStats }
   },
   getStatsForSeason: async function <T extends PlayerStatTypes>(leagueId: string, statType: PlayerStatEvents, season?: number): Promise<T[]> {
@@ -1108,7 +1108,7 @@ const MaddenDB: MaddenDB = {
       .where("stageIndex", "==", 1)
       .get()
     const stats = statDocs.docs.map(d => convertDate(d.data()) as StoredEvent<T>)
-    return await deduplicatePlayerStats(leagueId, stats)
+    return await deduplicatePlayerStats(leagueId, stats, this.getPlayer)
   }
 }
 
