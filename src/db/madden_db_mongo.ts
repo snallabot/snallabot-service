@@ -109,8 +109,6 @@ class CacheablePlayerListView extends StorageBackedCachedView<PlayerListIndex> {
   }
 }
 
-
-
 export const playerListIndex = new CacheablePlayerListView()
 playerListIndex.listen(MaddenEvents.MADDEN_PLAYER)
 
