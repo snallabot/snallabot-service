@@ -415,7 +415,7 @@ class PlayerListView extends View<PlayerListIndex> {
     const playerSnapshot = await db.collection("madden_data26").doc(key).collection(MaddenEvents.MADDEN_PLAYER).select("rosterId", "firstName", "lastName", "teamId", "position", "birthYear", "birthMonth", "birthDay", "presentationId", "timestamp", "yearsPro", "playerBestOvr").get()
     const players = deduplicatePlayers(playerSnapshot.docs.map(doc => {
       return convertDate(doc.data()) as StoredEvent<Player>
-    }), MaddenDB.getPlayer)
+    }))
     return Object.fromEntries(players.map(player => {
       return [`${player.presentationId}-${player.birthYear}-${player.birthMonth}-${player.birthDay}`, {
         rosterId: `${player.rosterId}`,
