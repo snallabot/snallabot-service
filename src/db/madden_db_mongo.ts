@@ -668,7 +668,7 @@ const MaddenDB: MaddenDB = {
       weekToQuery = playedGames.length === 0 ? 0 : Math.max(...playedGames.map(game => game.weekIndex));
     }
     const statDocs = await db.collection(statType).find({ leagueId, seasonIndex: seasonToQuery, weekIndex: weekToQuery, stageIndex: 1 }).toArray()
-    const finalStats = await deduplicatePlayerStats(leagueId, statDocs as unknown as StoredEvent<T>[])
+    const finalStats = await deduplicatePlayerStats(leagueId, statDocs as unknown as StoredEvent<T>[], this.getPlayer)
     return { seasonIndex: seasonToQuery, weekIndex: weekToQuery, stats: finalStats }
   },
 
@@ -676,7 +676,7 @@ const MaddenDB: MaddenDB = {
     const seasonIndex = await seasonView.createView(leagueId)
     const seasonToQuery = season ? season : seasonIndex ? seasonIndex.currentSeasonIndex : 0
     const statDocs = await db.collection(statType).find({ leagueId, seasonIndex: seasonToQuery, stageIndex: 1 }).toArray()
-    return await deduplicatePlayerStats(leagueId, statDocs as unknown as StoredEvent<T>[])
+    return await deduplicatePlayerStats(leagueId, statDocs as unknown as StoredEvent<T>[], this.getPlayer)
   }
 }
 
