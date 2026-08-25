@@ -77,7 +77,7 @@ async function updateEachLeagueNotifier() {
   notifierLeaguesCheckedCount.set(leaguesChecked)
   channelsCheckedCount.set(jobs.length)
   notifierCheckLastRun.set(Math.floor(Date.now() / 1000))
-  await pushMetrics('snallabot-service')
+  await pushMetrics('pinger')
 }
 
 // manually close as some connections can keep this alive
