@@ -1,12 +1,12 @@
 export const AUTH_SOURCE = 317239
-export const CLIENT_SECRET = "teJpJ9cSXFqZAuKNW8IuHpy8D4dwWPoVrPoek38iCnrGbrUSfjqnHMBAv8iCVjeSm_20250910175618"
+export const CLIENT_SECRET = "AmVfGJMTkej18iUCKagWGjm06MMPLDAmNklPPgReXy9ENWxEpb4OnOyYORTYRyJcq_20260727062224"
 export const REDIRECT_URL = "http://127.0.0.1/success"
-export const CLIENT_ID = "MCA_26_COMP_APP"
+export const CLIENT_ID = "MCA_27_COMP_APP"
 export const MACHINE_KEY = "444d362e8e067fe2"
 export const EA_LOGIN_URL = `https://accounts.ea.com/connect/auth?hide_create=true&release_type=prod&response_type=code&redirect_uri=${REDIRECT_URL}&client_id=${CLIENT_ID}&machineProfileKey=${MACHINE_KEY}&authentication_source=${AUTH_SOURCE}`
 
 
-export const TWO_DIGIT_YEAR = "26"
+export const TWO_DIGIT_YEAR = "27"
 export const YEAR = "2027"
 
 export const VALID_ENTITLEMENTS = ((a: string) => ({
