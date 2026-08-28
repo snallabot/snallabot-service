@@ -25,6 +25,7 @@ import { APIMessageComponentInteractionData } from "discord-api-types/v9"
 import { discordCommandsCounter } from "../debug/metrics"
 import LeagueSettingsDB from "./settings_db"
 import { runWithLeague } from "./league_context"
+import { discordLeagueView } from "../db/view"
 
 export type Command = { command_name: string, token: string, guild_id: string, data: APIChatInputApplicationCommandInteractionData, member: APIInteractionGuildMember }
 export type Autocomplete = { command_name: string, guild_id: string, data: APIAutocompleteApplicationCommandInteractionData }
@@ -169,19 +170,17 @@ export async function handleAutocomplete(command: Autocomplete, ctx: Parameteriz
   const focused = findOption(command.data.options, "league")
   if (focused?.focused && LEAGUE_SELECTABLE_COMMANDS.has(commandName)) {
     const query = `${focused.value || ""}`.toLowerCase()
-    const [leagueIds, leagueNames] = await Promise.all([
-      LeagueSettingsDB.getMaddenLeagueIds(command.guild_id),
-      LeagueSettingsDB.getMaddenLeagueNames(command.guild_id)
-    ])
+    const connection = await discordLeagueView.createView(command.guild_id)
+    const leagues = connection?.leagues || []
     ctx.status = 200
     ctx.set("Content-Type", "application/json")
     ctx.body = {
       type: InteractionResponseType.ApplicationCommandAutocompleteResult,
       data: {
-        choices: leagueIds
-          .filter(id => id.toLowerCase().includes(query) || (leagueNames[id] || "").toLowerCase().includes(query))
+        choices: leagues
+          .filter(league => league.leagueId.toLowerCase().includes(query) || league.leagueName.toLowerCase().includes(query))
           .slice(0, 25)
-          .map(id => ({ name: leagueNames[id] || id, value: id }))
+          .map(league => ({ name: league.leagueName, value: league.leagueId }))
       }
     }
     return

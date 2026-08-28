@@ -205,7 +205,7 @@ body
                   strong Connected leagues:
                   | #{connectedLeagueIds.map(id => (league.settings.commands.madden_league.league_names || {})[id] || id).join(', ')}
                   if league.settings.commands.madden_league.league_id === leagueId
-                    span(class="badge bg-success ms-2") Active
+          span(class="badge bg-success ms-2") Default
                   else
                     form(action=`/dashboard/guild/${league.settings.guildId}/activeLeague` method="POST" class="d-inline ms-2")
                       input(type="hidden" name="leagueId" value=leagueId)

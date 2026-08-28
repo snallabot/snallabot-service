@@ -7,16 +7,30 @@ const router = new Router({ prefix: "/connect" })
 
 export async function setLeague(guild: string, league: string, leagueName?: string) {
   await LeagueSettingsDB.connectMaddenLeagueId(guild, league, leagueName)
-  await EventDB.appendEvents<DiscordLeagueConnectionEvent>([{ key: guild, event_type: "DISCORD_LEAGUE_CONNECTION", guildId: guild, leagueId: league }], EventDelivery.EVENT_TRIGGER)
+  await publishLeagueConnections(guild)
 }
 export async function removeLeague(guild: string, league?: string) {
   await LeagueSettingsDB.disconnectMaddenLeagueId(guild, league)
-  const activeLeague = await LeagueSettingsDB.getMaddenLeagueId(guild) || ""
-  await EventDB.appendEvents<DiscordLeagueConnectionEvent>([{ key: guild, event_type: "DISCORD_LEAGUE_CONNECTION", guildId: guild, leagueId: activeLeague }], EventDelivery.EVENT_TRIGGER)
+  await publishLeagueConnections(guild)
 }
 export async function setActiveLeague(guild: string, league: string) {
   await LeagueSettingsDB.setActiveMaddenLeagueId(guild, league)
-  await EventDB.appendEvents<DiscordLeagueConnectionEvent>([{ key: guild, event_type: "DISCORD_LEAGUE_CONNECTION", guildId: guild, leagueId: league }], EventDelivery.EVENT_TRIGGER)
+  await publishLeagueConnections(guild)
+}
+
+async function publishLeagueConnections(guild: string) {
+  const [leagueId, leagueIds, leagueNames] = await Promise.all([
+    LeagueSettingsDB.getMaddenLeagueId(guild),
+    LeagueSettingsDB.getMaddenLeagueIds(guild),
+    LeagueSettingsDB.getMaddenLeagueNames(guild)
+  ])
+  await EventDB.appendEvents<DiscordLeagueConnectionEvent>([{
+    key: guild,
+    event_type: "DISCORD_LEAGUE_CONNECTION",
+    guildId: guild,
+    leagueId: leagueId || "",
+    leagues: leagueIds.map(id => ({ leagueId: id, leagueName: leagueNames[id] || id }))
+  }], EventDelivery.EVENT_TRIGGER)
 }
 
 router.post("/discord/:guild/madden/:league", async (ctx) => {
