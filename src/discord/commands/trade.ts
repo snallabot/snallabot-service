@@ -21,8 +21,21 @@ import {
   RESTPostAPIApplicationCommandsJSONBody
 } from "discord-api-types/v10"
 
-const PLAYER_OPTIONS = ["team_a_player_1", "team_a_player_2", "team_a_player_3", "team_b_player_1", "team_b_player_2", "team_b_player_3"]
-const PICK_OPTIONS = ["team_a_pick_1", "team_a_pick_2", "team_a_pick_3", "team_b_pick_1", "team_b_pick_2", "team_b_pick_3"]
+// Discord option names must stay lowercase and cannot contain spaces.
+const TEAM_A_PLAYER_OPTIONS = ["team_a_player_1", "team_a_player_2", "team_a_player_3"]
+const TEAM_B_PLAYER_OPTIONS = ["team_b_player_1", "team_b_player_2", "team_b_player_3"]
+const TEAM_A_PICK_OPTIONS = ["team_a_pick_1", "team_a_pick_2", "team_a_pick_3"]
+const TEAM_B_PICK_OPTIONS = ["team_b_pick_1", "team_b_pick_2", "team_b_pick_3"]
+const PLAYER_OPTIONS = [...TEAM_A_PLAYER_OPTIONS, ...TEAM_B_PLAYER_OPTIONS]
+const PICK_OPTIONS = [...TEAM_A_PICK_OPTIONS, ...TEAM_B_PICK_OPTIONS]
+
+enum SnallabotDevEmojis {
+  NORMAL = "<:snallabot_normal_dev:1363761484131209226>",
+  STAR = "<:snallabot_star_dev:1363761179805220884>",
+  SUPERSTAR = "<:snallabot_superstar_dev:1363761181525020703>",
+  XFACTOR = "<:snallabot_xfactor_dev:1363761178622562484>",
+  HIDDEN = "<:snallabot_hidden_dev:1363761182682517565>"
+}
 
 function optionMap(subcommand: APIApplicationCommandInteractionDataSubcommandOption) {
   return new Map((subcommand.options || []).map(option => [option.name, option]))
@@ -32,11 +45,21 @@ function stringOption(options: Map<string, any>, name: string): string | undefin
   return (options.get(name) as APIApplicationCommandInteractionDataStringOption | undefined)?.value
 }
 
-function devName(dev: DevTrait) {
-  return DevTrait[dev]?.replace("XFACTOR", "X-Factor").replace("SUPERSTAR", "Superstar").replace("STAR", "Star").replace("NORMAL", "Normal") || "Unknown"
+function devEmoji(dev: DevTrait, yearsPro: number, useHiddenDevs: boolean) {
+  if (yearsPro === 0 && dev !== DevTrait.NORMAL && useHiddenDevs) {
+    return SnallabotDevEmojis.HIDDEN
+  }
+
+  switch (dev) {
+    case DevTrait.NORMAL: return SnallabotDevEmojis.NORMAL
+    case DevTrait.STAR: return SnallabotDevEmojis.STAR
+    case DevTrait.SUPERSTAR: return SnallabotDevEmojis.SUPERSTAR
+    case DevTrait.XFACTOR: return SnallabotDevEmojis.XFACTOR
+    default: return "❔"
+  }
 }
 
-function playerAsset(player: Player): TradeAsset {
+function playerAsset(player: Player, useHiddenDevs: boolean): TradeAsset {
   return {
     type: "PLAYER",
     rosterId: player.rosterId,
@@ -44,13 +67,13 @@ function playerAsset(player: Player): TradeAsset {
     position: player.position,
     age: player.age,
     overall: player.playerBestOvr,
-    dev: devName(player.devTrait)
+    dev: devEmoji(player.devTrait, player.yearsPro, useHiddenDevs)
   }
 }
 
 function assetLine(asset: TradeAsset) {
-  if (asset.type === "PICK") return `• 🏈 ${asset.label}`
-  return `• **${asset.position} ${asset.name}** — Age ${asset.age} | ${asset.overall} OVR | ${asset.dev}`
+  if (asset.type === "PICK") return `> 🏈 **${asset.label}**`
+  return `> ${asset.dev} **${asset.position} ${asset.name}** — ${asset.overall} OVR | Age ${asset.age}`
 }
 
 function tradeMessage(trade: TradeSubmission) {
@@ -58,13 +81,14 @@ function tradeMessage(trade: TradeSubmission) {
   const rejections = Object.values(trade.votes).filter(v => v === "REJECT").length
   const statusEmoji = trade.status === "APPROVED" ? "✅" : trade.status === "REJECTED" ? "❌" : "⏳"
   return [
-    "# 🏈 Trade Approval",
-    `## ${trade.teamA.name} receive`,
+    "# 🔄 Trade Approval",
+    `## ${trade.teamA.name} Receives`,
     trade.teamA.assets.map(assetLine).join("\n"),
-    `## ${trade.teamB.name} receive`,
+    `## ${trade.teamB.name} Receives`,
     trade.teamB.assets.map(assetLine).join("\n"),
     `**Submitted by:** <@${trade.submittedBy}>`,
-    `**Votes:** ✅ ${approvals} | ❌ ${rejections} | ${trade.requiredApprovals} required`,
+    `**Commissioner votes:** ✅ ${approvals} Approve | ❌ ${rejections} Reject`,
+    `**Required approvals:** ${trade.requiredApprovals}`,
     `**Status:** ${statusEmoji} ${trade.status}`
   ].join("\n\n")
 }
@@ -86,7 +110,7 @@ async function playerChoices(query: string, leagueId: string, teamId?: number) {
     .filter(player => teamId == null || Number(player.teamId) === teams.getTeamForId(teamId).teamId)
     .map(player => ({ ...player, teamAbbr: player.teamId === "0" ? "FA" : teams.getTeamForId(Number(player.teamId)).abbrName }))
   return fuzzysort.go(query, searchable, { keys: ["firstName", "lastName", "position", "teamAbbr"], threshold: 0.4, limit: 25 })
-    .map(result => ({ name: `${result.obj.teamAbbr} ${result.obj.position} ${result.obj.firstName} ${result.obj.lastName}`, value: result.obj.rosterId }))
+    .map(result => ({ name: `${result.obj.teamAbbr} • ${result.obj.position} ${result.obj.firstName} ${result.obj.lastName}`, value: result.obj.rosterId }))
 }
 
 function submitOption(name: string, description: string, required = false) {
@@ -121,15 +145,18 @@ export default {
     const teamB = retrieveTeam(stringOption(options, "team_b")!, teams)
     if (teamA.teamId === teamB.teamId) throw new Error("A team cannot trade with itself")
 
-    async function assetsFor(side: "team_a" | "team_b", expectedTeamId: number) {
-      const playerIds = PLAYER_OPTIONS.filter(name => name.startsWith(side)).map(name => stringOption(options, name)).filter((id): id is string => !!id)
+    async function assetsFor(playerOptionNames: string[], pickOptionNames: string[], expectedTeamId: number, teamName: string) {
+      const playerIds = playerOptionNames.map(name => stringOption(options, name)).filter((id): id is string => !!id)
       const players = await Promise.all(playerIds.map(id => MaddenDB.getPlayer(leagueId!, id)))
-      if (players.some(player => player.teamId !== expectedTeamId)) throw new Error(`One or more ${side.replace("_", " ")} players are not on that team`)
-      const picks: TradeAsset[] = PICK_OPTIONS.filter(name => name.startsWith(side)).map(name => stringOption(options, name)).filter((pick): pick is string => !!pick).map(label => ({ type: "PICK", label }))
-      return [...players.map(playerAsset), ...picks]
+      if (players.some(player => player.teamId !== expectedTeamId)) throw new Error(`One or more selected players are not on the ${teamName}`)
+      const picks: TradeAsset[] = pickOptionNames.map(name => stringOption(options, name)).filter((pick): pick is string => !!pick).map(label => ({ type: "PICK", label }))
+      return [...players.map(player => playerAsset(player, settings.commands.player?.useHiddenDevs ?? true)), ...picks]
     }
 
-    const [teamAAssets, teamBAssets] = await Promise.all([assetsFor("team_a", teamA.teamId), assetsFor("team_b", teamB.teamId)])
+    const [teamAAssets, teamBAssets] = await Promise.all([
+      assetsFor(TEAM_A_PLAYER_OPTIONS, TEAM_A_PICK_OPTIONS, teamA.teamId, teamA.displayName),
+      assetsFor(TEAM_B_PLAYER_OPTIONS, TEAM_B_PICK_OPTIONS, teamB.teamId, teamB.displayName)
+    ])
     if (teamAAssets.length === 0 || teamBAssets.length === 0) throw new Error("Each team must send at least one player or pick")
 
     const trade = await TradeDB.create({
@@ -150,8 +177,8 @@ export default {
 
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
     const team = (name: string, description: string) => submitOption(name, description, true)
-    const player = (name: string) => submitOption(name, "Player being sent by this team")
-    const pick = (name: string) => submitOption(name, "Draft pick being sent by this team")
+    const player = (name: string, teamLabel: string, number: number) => submitOption(name, `${teamLabel} player ${number} (optional)`)
+    const pick = (name: string, teamLabel: string, number: number) => submitOption(name, `${teamLabel} draft pick ${number} (optional)`)
     return {
       name: "trade",
       description: "Configure and submit trades for commissioner approval",
@@ -171,11 +198,12 @@ export default {
           name: "submit",
           description: "Submit a trade for commissioner approval",
           options: [
-            team("team_a", "First team"), team("team_b", "Second team"),
-            player("team_a_player_1"), player("team_a_player_2"), player("team_a_player_3"),
-            pick("team_a_pick_1"), pick("team_a_pick_2"), pick("team_a_pick_3"),
-            player("team_b_player_1"), player("team_b_player_2"), player("team_b_player_3"),
-            pick("team_b_pick_1"), pick("team_b_pick_2"), pick("team_b_pick_3")
+            team("team_a", "Team sending the first group of assets"),
+            team("team_b", "Team sending the second group of assets"),
+            player("team_a_player_1", "Team A", 1), player("team_a_player_2", "Team A", 2), player("team_a_player_3", "Team A", 3),
+            pick("team_a_pick_1", "Team A", 1), pick("team_a_pick_2", "Team A", 2), pick("team_a_pick_3", "Team A", 3),
+            player("team_b_player_1", "Team B", 1), player("team_b_player_2", "Team B", 2), player("team_b_player_3", "Team B", 3),
+            pick("team_b_pick_1", "Team B", 1), pick("team_b_pick_2", "Team B", 2), pick("team_b_pick_3", "Team B", 3)
           ]
         }
       ]
@@ -203,7 +231,8 @@ export default {
     }
     if (PICK_OPTIONS.includes(focused.name)) {
       const query = String(focused.value).toLowerCase()
-      return [MADDEN_SEASON, MADDEN_SEASON + 1, MADDEN_SEASON + 2].flatMap(year => Array.from({ length: 7 }, (_, round) => `${year} Round ${round + 1}`))
+      const ordinal = (round: number) => round === 1 ? "1st" : round === 2 ? "2nd" : round === 3 ? "3rd" : `${round}th`
+      return [MADDEN_SEASON, MADDEN_SEASON + 1, MADDEN_SEASON + 2].flatMap(year => Array.from({ length: 7 }, (_, index) => `${year} ${ordinal(index + 1)}-Round Pick`))
         .filter(label => label.toLowerCase().includes(query)).slice(0, 25).map(label => ({ name: label, value: label }))
     }
     return []
