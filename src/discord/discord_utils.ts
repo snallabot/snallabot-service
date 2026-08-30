@@ -67,6 +67,7 @@ export interface DiscordClient {
   editOriginalInteraction(token: string, body: { [key: string]: any }): Promise<void>,
   editOriginalInteractionWithForm(token: string, body: FormData): Promise<void>,
   createMessage(channel: ChannelId, content: string, allowedMentions: string[]): Promise<MessageId>,
+  createComponentMessage(channel: ChannelId, body: { [key: string]: any }): Promise<MessageId>,
   editMessage(channel: ChannelId, messageId: MessageId, content: string, allowedMentions: string[]): Promise<void>,
   deleteMessage(channel: ChannelId, messageId: MessageId): Promise<void>,
   createChannel(guild_id: string, channelName: string, category: CategoryId, privateUsers?: UserId[], privateRoles?: RoleId[]): Promise<ChannelId>,
@@ -252,6 +253,11 @@ export function createClient(settings: DiscordSettings): DiscordClient {
         }
         throw e
       }
+    },
+    createComponentMessage: async (channel: ChannelId, body: { [key: string]: any }): Promise<MessageId> => {
+      const res = await sendDiscordRequest(`channels/${channel.id}/messages`, { method: "POST", body })
+      const message = await res.json() as APIMessage
+      return { id: message.id, id_type: DiscordIdType.MESSAGE }
     },
     editMessage: async (channel: ChannelId, messageId: MessageId, content: string, allowedMentions = []): Promise<void> => {
       try {
