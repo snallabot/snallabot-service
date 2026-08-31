@@ -21,12 +21,13 @@ import bracketHandler from "./commands/bracket"
 import simsHandler from "./commands/sims"
 import playerConfigurationHandler from "./commands/player_configuration"
 import statsHandler from "./commands/stats"
+import tradeHandler from "./commands/trade"
 import { APIMessageComponentInteractionData } from "discord-api-types/v9"
 import { discordCommandsCounter } from "../debug/metrics"
 
 export type Command = { command_name: string, token: string, guild_id: string, data: APIChatInputApplicationCommandInteractionData, member: APIInteractionGuildMember }
 export type Autocomplete = { command_name: string, guild_id: string, data: APIAutocompleteApplicationCommandInteractionData }
-export type MessageComponentInteraction = { custom_id: string, token: string, data: APIMessageComponentInteractionData, guild_id: string }
+export type MessageComponentInteraction = { custom_id: string, token: string, data: APIMessageComponentInteractionData, guild_id: string, member: APIInteractionGuildMember }
 export interface CommandHandler {
   handleCommand(command: Command, client: DiscordClient): Promise<any>
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody
@@ -59,13 +60,15 @@ const SlashCommands: CommandsHandler = {
   "player_configuration": playerConfigurationHandler,
   "playoffs": bracketHandler,
   "sims": simsHandler,
-  "stats": statsHandler
+  "stats": statsHandler,
+  "trade": tradeHandler
 }
 
 const AutocompleteCommands: AutocompleteHandlers = {
   "teams": teamsHandler,
   "player": playerHandler,
-  "schedule": schedulesHandler
+  "schedule": schedulesHandler,
+  "trade": tradeHandler
 }
 
 const MessageComponents: MessageComponentHandlers = {
@@ -141,7 +144,7 @@ export async function handleAutocomplete(command: Autocomplete, ctx: Parameteriz
 
 export async function handleMessageComponent(interaction: MessageComponentInteraction, ctx: ParameterizedContext, client: DiscordClient) {
   const custom_id = interaction.custom_id
-  const handler = MessageComponents[custom_id]
+  const handler = custom_id.startsWith("trade_vote:") ? tradeHandler : MessageComponents[custom_id]
   if (handler) {
     try {
       discordCommandsCounter.inc({ command_name: custom_id, command_type: "MESSAGE_COMPONENT" })
