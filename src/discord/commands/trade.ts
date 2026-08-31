@@ -21,7 +21,6 @@ import {
   RESTPostAPIApplicationCommandsJSONBody
 } from "discord-api-types/v10"
 
-// Discord option names must stay lowercase and cannot contain spaces.
 const TEAM_A_PLAYER_OPTIONS = ["team_a_player_1", "team_a_player_2", "team_a_player_3"]
 const TEAM_B_PLAYER_OPTIONS = ["team_b_player_1", "team_b_player_2", "team_b_player_3"]
 const TEAM_A_PICK_OPTIONS = ["team_a_pick_1", "team_a_pick_2", "team_a_pick_3"]
@@ -221,8 +220,25 @@ export default {
 
     if (focused.name === "team_a" || focused.name === "team_b") {
       const teams = await MaddenDB.getLatestTeams(view.leagueId)
-      return fuzzysort.go(String(focused.value), teams.getLatestTeams(), { keys: ["cityName", "abbrName", "nickName", "displayName"], threshold: 0.4, limit: 25 })
-        .map(result => ({ name: result.obj.displayName, value: String(result.obj.teamId) }))
+      const allTeams = teams.getLatestTeams()
+        .sort((first, second) => first.displayName.localeCompare(second.displayName))
+      const query = String(focused.value ?? "").trim()
+
+      // Discord opens autocomplete with an empty value. Show the teams immediately
+      // instead of passing an empty query to fuzzysort, which returns no results.
+      if (!query) {
+        return allTeams.slice(0, 25)
+          .map(team => ({ name: team.displayName, value: String(team.teamId) }))
+      }
+
+      return fuzzysort.go(query, allTeams, {
+        keys: ["cityName", "abbrName", "nickName", "displayName"],
+        threshold: 0.2,
+        limit: 25
+      }).map(result => ({
+        name: result.obj.displayName,
+        value: String(result.obj.teamId)
+      }))
     }
     if (PLAYER_OPTIONS.includes(focused.name)) {
       const side = focused.name.startsWith("team_a") ? "team_a" : "team_b"
