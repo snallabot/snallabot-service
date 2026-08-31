@@ -750,17 +750,13 @@ export function getTeamEmoji(teamAbbr: string, leagueCustomLogos: LeagueLogos): 
   if (customLogo) {
     return `<:${customLogo.emoji_name}:${customLogo.emoji_id}>`
   }
-  // The bundled custom emoji IDs belong to the original Snallabot application
-  // and do not render for independently deployed Discord applications. Keep
-  // team identity visible until this league uploads its own custom logo.
-  const abbreviation = teamAbbr?.trim().toUpperCase()
-  return abbreviation ? `\u{1F3C8} **${abbreviation}**` : "\u{1F3C8}"
+  return SnallabotTeamEmojis[teamAbbr.toUpperCase() as keyof typeof SnallabotTeamEmojis] || SnallabotTeamEmojis.NFL
 }
 export function formatTeamEmoji(leagueCustomLogos: LeagueLogos, teamAbbr?: string) {
   if (teamAbbr) {
     return getTeamEmoji(teamAbbr, leagueCustomLogos)
   }
-  return "\u{1F3C8}"
+  return SnallabotTeamEmojis.NFL
 }
 
 export function formatGame(game: MaddenGame, teams: TeamList, leagueCustomLogos: LeagueLogos, teamRecords?: Map<number, string>) {
