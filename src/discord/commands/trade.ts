@@ -7,13 +7,14 @@ import {
   createMessageResponse,
   DiscordClient,
   NoConnectedLeagueError,
+  devEmoji,
 } from "../discord_utils";
 import LeagueSettingsDB, {
   ChannelId,
   DiscordIdType,
   RoleId,
 } from "../settings_db";
-import TradeDB, { TradeAsset, TradeSubmission, TradeVote } from "../trade_db";
+import TradeDB, { TradeAsset, TradeStatus, TradeSubmission, TradeVote } from "../trade_db";
 import MaddenDB from "../../db/madden_db";
 import {
   DevTrait,
@@ -36,6 +37,7 @@ import {
   InteractionResponseType,
   RESTPostAPIApplicationCommandsJSONBody,
 } from "discord-api-types/v10";
+import { error } from "console";
 
 const TEAM_A_PLAYER_OPTIONS = [
   "team_a_player_1",
@@ -49,16 +51,6 @@ const TEAM_B_PLAYER_OPTIONS = [
 ];
 const TEAM_A_PICK_OPTIONS = ["team_a_pick_1", "team_a_pick_2", "team_a_pick_3"];
 const TEAM_B_PICK_OPTIONS = ["team_b_pick_1", "team_b_pick_2", "team_b_pick_3"];
-const PLAYER_OPTIONS = [...TEAM_A_PLAYER_OPTIONS, ...TEAM_B_PLAYER_OPTIONS];
-const PICK_OPTIONS = [...TEAM_A_PICK_OPTIONS, ...TEAM_B_PICK_OPTIONS];
-
-enum SnallabotDevEmojis {
-  NORMAL = "<:snallabot_normal_dev:1363761484131209226>",
-  STAR = "<:snallabot_star_dev:1363761179805220884>",
-  SUPERSTAR = "<:snallabot_superstar_dev:1363761181525020703>",
-  XFACTOR = "<:snallabot_xfactor_dev:1363761178622562484>",
-  HIDDEN = "<:snallabot_hidden_dev:1363761182682517565>",
-}
 
 function optionMap(
   subcommand: APIApplicationCommandInteractionDataSubcommandOption,
@@ -77,25 +69,6 @@ function stringOption(
       | APIApplicationCommandInteractionDataStringOption
       | undefined
   )?.value;
-}
-
-function devEmoji(dev: DevTrait, yearsPro: number, useHiddenDevs: boolean) {
-  if (yearsPro === 0 && dev !== DevTrait.NORMAL && useHiddenDevs) {
-    return SnallabotDevEmojis.HIDDEN;
-  }
-
-  switch (dev) {
-    case DevTrait.NORMAL:
-      return SnallabotDevEmojis.NORMAL;
-    case DevTrait.STAR:
-      return SnallabotDevEmojis.STAR;
-    case DevTrait.SUPERSTAR:
-      return SnallabotDevEmojis.SUPERSTAR;
-    case DevTrait.XFACTOR:
-      return SnallabotDevEmojis.XFACTOR;
-    default:
-      return "❔";
-  }
 }
 
 function playerAsset(player: Player, useHiddenDevs: boolean): TradeAsset {
@@ -117,15 +90,15 @@ function assetLine(asset: TradeAsset) {
 
 function tradeMessage(trade: TradeSubmission) {
   const approvals = Object.values(trade.votes).filter(
-    (v) => v === "APPROVE",
+    (vote) => vote === TradeVote.APPROVE,
   ).length;
   const rejections = Object.values(trade.votes).filter(
-    (v) => v === "REJECT",
+    (vote) => vote === TradeVote.REJECT,
   ).length;
   const statusEmoji =
-    trade.status === "APPROVED"
+    trade.status === TradeStatus.APPROVED
       ? "✅"
-      : trade.status === "REJECTED"
+      : trade.status === TradeStatus.REJECTED
         ? "❌"
         : "⏳";
   return [
@@ -142,7 +115,7 @@ function tradeMessage(trade: TradeSubmission) {
 }
 
 function voteComponents(trade: TradeSubmission) {
-  const disabled = trade.status !== "PENDING";
+  const disabled = trade.status !== TradeStatus.PENDING;
   return [
     {
       type: ComponentType.ActionRow,
@@ -151,14 +124,14 @@ function voteComponents(trade: TradeSubmission) {
           type: ComponentType.Button,
           style: ButtonStyle.Success,
           label: "Approve",
-          custom_id: `trade_vote:${trade.id}:APPROVE`,
+          custom_id: `trade_vote:${trade.id}:${TradeVote.APPROVE}`,
           disabled,
         },
         {
           type: ComponentType.Button,
           style: ButtonStyle.Danger,
           label: "Reject",
-          custom_id: `trade_vote:${trade.id}:REJECT`,
+          custom_id: `trade_vote:${trade.id}:${TradeVote.REJECT}`,
           disabled,
         },
       ],
@@ -181,7 +154,7 @@ async function playerChoices(query: string, leagueId: string, teamId?: number) {
       ...player,
       teamAbbr:
         player.teamId === "0"
-          ? "FA"
+          ? "" 
           : teams.getTeamForId(Number(player.teamId)).abbrName,
     }));
   return fuzzysort
@@ -320,7 +293,7 @@ export default {
       teamB: { id: teamB.teamId, name: teamB.displayName, assets: teamAAssets },
       votes: {},
       requiredApprovals: tradeConfig.requiredApprovals,
-      status: "PENDING",
+      status: TradeStatus.PENDING,
       createdAt: Date.now(),
     });
     const messageId = await client.createComponentMessage(tradeConfig.channel, {
@@ -422,12 +395,10 @@ export default {
       const query = String(focused.value ?? "").trim();
 
       if (!query) {
-        return allTeams
-          .slice(0, 25)
-          .map((team) => ({
-            name: team.displayName,
-            value: String(team.teamId),
-          }));
+        return allTeams.slice(0, 25).map((team) => ({
+          name: team.displayName,
+          value: String(team.teamId),
+        }));
       }
 
       return fuzzysort
@@ -441,7 +412,7 @@ export default {
           value: String(result.obj.teamId),
         }));
     }
-    if (PLAYER_OPTIONS.includes(focused.name)) {
+    if (TEAM_A_PLAYER_OPTIONS.includes(focused.name) || TEAM_B_PLAYER_OPTIONS.includes(focused.name)) {
       const side = focused.name.startsWith("team_a") ? "team_a" : "team_b";
       const teamId = Number(stringOption(options, side));
       return playerChoices(
@@ -450,7 +421,7 @@ export default {
         Number.isNaN(teamId) ? undefined : teamId,
       );
     }
-    if (PICK_OPTIONS.includes(focused.name)) {
+    if (TEAM_A_PICK_OPTIONS.includes(focused.name)|| TEAM_B_PICK_OPTIONS.includes(focused.name)) {
       const query = String(focused.value).toLowerCase();
       const ordinal = (round: number) =>
         round === 1
@@ -476,8 +447,14 @@ export default {
 
   async handleInteraction(interaction: MessageComponentInteraction) {
     const [, tradeId, voteValue] = interaction.custom_id.split(":");
-    if (!tradeId || (voteValue !== "APPROVE" && voteValue !== "REJECT"))
-      throw new Error("Invalid trade vote");
+    const vote =
+      voteValue === TradeVote.APPROVE
+        ? TradeVote.APPROVE
+        : voteValue === TradeVote.REJECT
+          ? TradeVote.REJECT
+          : undefined;
+
+    if (!tradeId || !vote) throw new Error("Invalid trade vote");
     const settings = await LeagueSettingsDB.getLeagueSettings(
       interaction.guild_id,
     );
@@ -492,7 +469,7 @@ export default {
     const trade = await TradeDB.vote(
       tradeId,
       interaction.member.user.id,
-      voteValue as TradeVote,
+      vote,
     );
     return {
       type: InteractionResponseType.UpdateMessage,
