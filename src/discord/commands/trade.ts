@@ -89,15 +89,15 @@ function assetLine(asset: TradeAsset) {
 
 function tradeMessage(trade: TradeSubmission) {
   const approvals = Object.values(trade.votes).filter(
-    (v) => v === "APPROVE",
+    (vote) => vote === TradeVote.APPROVE,
   ).length;
   const rejections = Object.values(trade.votes).filter(
-    (v) => v === "REJECT",
+    (vote) => vote === TradeVote.REJECT,
   ).length;
   const statusEmoji =
-    trade.status == TradeStatus.APPROVED
+    trade.status === TradeStatus.APPROVED
       ? "✅"
-      : trade.status == TradeStatus.REJECTED
+      : trade.status === TradeStatus.REJECTED
         ? "❌"
         : "⏳";
   return [
@@ -114,7 +114,7 @@ function tradeMessage(trade: TradeSubmission) {
 }
 
 function voteComponents(trade: TradeSubmission) {
-  const disabled = trade.status !== "PENDING";
+  const disabled = trade.status !== TradeStatus.PENDING;
   return [
     {
       type: ComponentType.ActionRow,
@@ -123,14 +123,14 @@ function voteComponents(trade: TradeSubmission) {
           type: ComponentType.Button,
           style: ButtonStyle.Success,
           label: "Approve",
-          custom_id: `trade_vote:${trade.id}:APPROVE`,
+          custom_id: `trade_vote:${trade.id}:${TradeVote.APPROVE}`,
           disabled,
         },
         {
           type: ComponentType.Button,
           style: ButtonStyle.Danger,
           label: "Reject",
-          custom_id: `trade_vote:${trade.id}:REJECT`,
+          custom_id: `trade_vote:${trade.id}:${TradeVote.REJECT}`,
           disabled,
         },
       ],
@@ -153,7 +153,7 @@ async function playerChoices(query: string, leagueId: string, teamId?: number) {
       ...player,
       teamAbbr:
         player.teamId === "0"
-          ? null 
+          ? "FA"
           : teams.getTeamForId(Number(player.teamId)).abbrName,
     }));
   return fuzzysort
@@ -446,8 +446,14 @@ export default {
 
   async handleInteraction(interaction: MessageComponentInteraction) {
     const [, tradeId, voteValue] = interaction.custom_id.split(":");
-    if (!tradeId || (voteValue !== "APPROVE" && voteValue !== "REJECT"))
-      throw new Error("Invalid trade vote");
+    const vote =
+      voteValue === TradeVote.APPROVE
+        ? TradeVote.APPROVE
+        : voteValue === TradeVote.REJECT
+          ? TradeVote.REJECT
+          : undefined;
+
+    if (!tradeId || !vote) throw new Error("Invalid trade vote");
     const settings = await LeagueSettingsDB.getLeagueSettings(
       interaction.guild_id,
     );
@@ -462,7 +468,7 @@ export default {
     const trade = await TradeDB.vote(
       tradeId,
       interaction.member.user.id,
-      voteValue as TradeVote,
+      vote,
     );
     return {
       type: InteractionResponseType.UpdateMessage,
