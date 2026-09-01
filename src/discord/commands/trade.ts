@@ -14,7 +14,12 @@ import LeagueSettingsDB, {
   DiscordIdType,
   RoleId,
 } from "../settings_db";
-import TradeDB, { TradeAsset, TradeStatus, TradeSubmission, TradeVote } from "../trade_db";
+import TradeDB, {
+  TradeAsset,
+  TradeStatus,
+  TradeSubmission,
+  TradeVote,
+} from "../trade_db";
 import MaddenDB from "../../db/madden_db";
 import {
   DevTrait,
@@ -154,7 +159,7 @@ async function playerChoices(query: string, leagueId: string, teamId?: number) {
       ...player,
       teamAbbr:
         player.teamId === "0"
-          ? "" 
+          ? ""
           : teams.getTeamForId(Number(player.teamId)).abbrName,
     }));
   return fuzzysort
@@ -296,12 +301,20 @@ export default {
       status: TradeStatus.PENDING,
       createdAt: Date.now(),
     });
-    const messageId = await client.createComponentMessage(tradeConfig.channel, {
-      content: tradeMessage(trade),
-      components: voteComponents(trade),
-      allowed_mentions: { parse: [] },
-    });
-    await TradeDB.attachMessage(trade.id, messageId);
+    try {
+      const messageId = await client.createComponentMessage(
+        tradeConfig.channel,
+        {
+          content: tradeMessage(trade),
+          components: voteComponents(trade),
+          allowed_mentions: { parse: [] },
+        },
+      );
+      await TradeDB.attachMessage(trade.id, messageId);
+    } catch (error) {
+      await TradeDB.delete(trade.id);
+      return createMessageResponse(`Trade could not be created ${error}`);
+    }
     return createMessageResponse(
       `Trade submitted for commissioner approval in <#${tradeConfig.channel.id}>.`,
     );
@@ -412,7 +425,10 @@ export default {
           value: String(result.obj.teamId),
         }));
     }
-    if (TEAM_A_PLAYER_OPTIONS.includes(focused.name) || TEAM_B_PLAYER_OPTIONS.includes(focused.name)) {
+    if (
+      TEAM_A_PLAYER_OPTIONS.includes(focused.name) ||
+      TEAM_B_PLAYER_OPTIONS.includes(focused.name)
+    ) {
       const side = focused.name.startsWith("team_a") ? "team_a" : "team_b";
       const teamId = Number(stringOption(options, side));
       return playerChoices(
@@ -421,7 +437,10 @@ export default {
         Number.isNaN(teamId) ? undefined : teamId,
       );
     }
-    if (TEAM_A_PICK_OPTIONS.includes(focused.name)|| TEAM_B_PICK_OPTIONS.includes(focused.name)) {
+    if (
+      TEAM_A_PICK_OPTIONS.includes(focused.name) ||
+      TEAM_B_PICK_OPTIONS.includes(focused.name)
+    ) {
       const query = String(focused.value).toLowerCase();
       const ordinal = (round: number) =>
         round === 1
@@ -466,11 +485,7 @@ export default {
         data: { content: "Only commissioners can vote on trades.", flags: 64 },
       };
     }
-    const trade = await TradeDB.vote(
-      tradeId,
-      interaction.member.user.id,
-      vote,
-    );
+    const trade = await TradeDB.vote(tradeId, interaction.member.user.id, vote);
     return {
       type: InteractionResponseType.UpdateMessage,
       data: {
