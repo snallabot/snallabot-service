@@ -235,7 +235,7 @@ Payload:
 ```json
 {
     "bootedUserId": <userId>,
-    "newAdminUserId": <userId|null>,
+    "newAdminUserId": null,
     "leagueId": <leagueId>
 }
 ```
@@ -263,7 +263,7 @@ Grants commissioner/admin rights to a user.
 Payload:
 ```json
 {
-    "bootedUserId": <userId|null>,
+    "bootedUserId": null,
     "newAdminUserId": <userId>,
     "leagueId": <leagueId>
 }
@@ -292,7 +292,7 @@ Revokes commissioner/admin rights from a user.
 Payload:
 ```json
 {
-    "bootedUserId": <userId|null>,
+    "bootedUserId": null,
     "newAdminUserId": <userId>,
     "leagueId": <leagueId>
 }
@@ -321,7 +321,7 @@ Transfers commissioner/admin rights to another user.
 Payload:
 ```json
 {
-    "bootedUserId": <userId|null>,
+    "bootedUserId": null,
     "newAdminUserId": <userId>,
     "leagueId": <leagueId>
 }
