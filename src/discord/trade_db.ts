@@ -49,14 +49,18 @@ const TradeDB = {
       const snapshot = await transaction.get(ref)
       if (!snapshot.exists) throw new Error("Trade submission no longer exists")
       const trade = snapshot.data() as TradeSubmission
-      if (trade.status !== "PENDING") throw new Error(`Trade is already ${trade.status.toLowerCase()}`)
+      if (trade.status !== TradeStatus.PENDING) {
+        throw new Error(`Trade is already ${trade.status.toLowerCase()}`)
+      }
 
       const votes = { ...trade.votes, [userId]: vote }
-      const approvals = Object.values(votes).filter(v => v === "APPROVE").length
-      const rejections = Object.values(votes).filter(v => v === "REJECT").length
+      const approvals = Object.values(votes).filter(v => v === TradeVote.APPROVE).length
+      const rejections = Object.values(votes).filter(v => v === TradeVote.REJECT).length
       const status: TradeStatus = approvals >= trade.requiredApprovals
-        ? "APPROVED"
-        : rejections >= trade.requiredApprovals ? "REJECTED" : "PENDING"
+        ? TradeStatus.APPROVED
+        : rejections >= trade.requiredApprovals
+          ? TradeStatus.REJECTED
+          : TradeStatus.PENDING
       const updated = { ...trade, votes, status }
       transaction.set(ref, updated)
       return updated
