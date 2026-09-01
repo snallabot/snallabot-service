@@ -5,8 +5,15 @@ export type TradeAsset =
   | { type: "PLAYER", rosterId: number, name: string, position: string, age: number, overall: number, dev: string }
   | { type: "PICK", label: string }
 
-export type TradeVote = "APPROVE" | "REJECT"
-export type TradeStatus = "PENDING" | "APPROVED" | "REJECTED"
+export enum TradeVote {
+  APPROVE = "APPROVE",
+  REJECT = "REJECT",
+}
+export enum TradeStatus {
+  PENDING = "PENDING",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+}
 
 export type TradeSubmission = {
   id: string
