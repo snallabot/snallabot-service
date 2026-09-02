@@ -6,6 +6,7 @@ import { EventTypes, RetiredPlayersEvent } from "./events"
 import { maddenDBRequestsCounter, maddenEventsDistribution } from "../debug/metrics"
 import { ExportStatus, GameStats, MaddenDB, MaddenEvents, PlayerListIndex, PlayerListQuery, PlayerStatEvents, PlayerStatType, PlayerStatTypes, PlayerStats, TeamList, createPlayerKey, createTeamList, deduplicatePlayerStats, deduplicatePlayers, deduplicateSchedule, deduplicateStats, findLatestScheduleId } from "./madden_db"
 import { CachedUpdatingView, StorageBackedCachedView, View } from "./view"
+import { DB, DBs } from "../config"
 
 type HistoryUpdate<ValueType> = { oldValue?: ValueType, newValue?: ValueType }
 type History = { [key: string]: HistoryUpdate<any> }
@@ -110,7 +111,7 @@ class CacheablePlayerListView extends StorageBackedCachedView<PlayerListIndex> {
 }
 
 export const playerListIndex = new CacheablePlayerListView()
-playerListIndex.listen(MaddenEvents.MADDEN_PLAYER)
+
 
 export type TeamIndex = {
   [key: string]: StoredEvent<Team>
@@ -143,7 +144,6 @@ class CacheableTeamView extends CachedUpdatingView<TeamIndex> {
 }
 
 export const teamView = new CacheableTeamView
-teamView.listen(MaddenEvents.MADDEN_TEAM)
 
 type SeasonIndex = {
   currentSeasonIndex: number
@@ -179,7 +179,11 @@ class CacheableSeasonView extends CachedUpdatingView<SeasonIndex> {
 }
 
 export const seasonView = new CacheableSeasonView
-seasonView.listen(MaddenEvents.MADDEN_SCHEDULE)
+if (DB === DBs.MONGO) {
+  seasonView.listen(MaddenEvents.MADDEN_SCHEDULE)
+  teamView.listen(MaddenEvents.MADDEN_TEAM)
+  playerListIndex.listen(MaddenEvents.MADDEN_PLAYER)
+}
 
 const MaddenDB: MaddenDB = {
   async appendEvents<Event>(events: SnallabotEvent<Event>[], idFn: (event: Event) => string) {
