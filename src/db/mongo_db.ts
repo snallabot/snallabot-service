@@ -1,4 +1,5 @@
-import { MongoClient, ServerApiVersion } from 'mongodb';
+import { MongoClient, ServerApiVersion, Db } from 'mongodb';
+import { DB, DBs } from "../config"
 
 function setupMongoClient() {
   if (process.env.MONGO_CONNECTION_URI) {
@@ -11,10 +12,15 @@ function setupMongoClient() {
         }
       }
     )
+    console.log("Using MongoDB")
     return client
+  } else {
+    throw new Error("Missing Mongo connection uri")
   }
-  throw new Error("No connection uri to MongoDB provided")
 }
-const client = setupMongoClient()
-const db = client.db("snallabot_data")
+let db = {} as Db
+if (DB == DBs.MONGO) {
+  const client = setupMongoClient()
+  db = client.db("snallabot_data")
+}
 export default db

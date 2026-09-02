@@ -7,6 +7,7 @@ import { TeamAssignments } from "../discord/settings_db"
 import { CachedUpdatingView, StorageBackedCachedView, View } from "./view"
 import { EventTypes, RetiredPlayersEvent } from "./events"
 import { maddenDBRequestsCounter, maddenEventsDistribution } from "../debug/metrics"
+import { DB, DBs } from "../config"
 
 export type HistoryUpdate<ValueType> = { oldValue: ValueType, newValue: ValueType }
 export type History = { [key: string]: HistoryUpdate<any>, }
@@ -463,7 +464,7 @@ class CacheablePlayerListView extends StorageBackedCachedView<PlayerListIndex> {
 }
 
 const playerListIndex = new CacheablePlayerListView()
-playerListIndex.listen(MaddenEvents.MADDEN_PLAYER)
+
 
 export type TeamIndex = {
   [key: string]: StoredEvent<Team>
@@ -496,7 +497,7 @@ class CacheableTeamView extends CachedUpdatingView<TeamIndex> {
 }
 
 const teamView = new CacheableTeamView
-teamView.listen(MaddenEvents.MADDEN_TEAM)
+
 
 type SeasonIndex = {
   currentSeasonIndex: number
@@ -543,7 +544,11 @@ class CacheableSeasonView extends CachedUpdatingView<SeasonIndex> {
 }
 
 const seasonView = new CacheableSeasonView
-seasonView.listen(MaddenEvents.MADDEN_SCHEDULE)
+if (DB === DBs.FIREBASE) {
+  seasonView.listen(MaddenEvents.MADDEN_SCHEDULE)
+  teamView.listen(MaddenEvents.MADDEN_TEAM)
+  playerListIndex.listen(MaddenEvents.MADDEN_PLAYER)
+}
 
 const MaddenDB: MaddenDB = {
   async appendEvents<Event>(events: SnallabotEvent<Event>[], idFn: (event: Event) => string) {
