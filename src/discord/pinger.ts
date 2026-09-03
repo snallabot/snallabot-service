@@ -1,3 +1,4 @@
+import { channelsCheckedCount, notifierCheckLastRun, notifierLeaguesCheckedCount, pushMetrics } from "../debug/metrics_push"
 import { createProdClient } from "./discord_utils"
 import createNotifier from "./notifier"
 import LeagueSettingsDB, { DiscordIdType } from "./settings_db"
@@ -40,8 +41,8 @@ async function runWithConcurrency(jobs: Job[], concurrency: number) {
 
 async function updateEachLeagueNotifier() {
   const allLeagueSettings = await LeagueSettingsDB.getAllLeagueSettings()
-
   const jobs: Job[] = []
+  let leaguesChecked = 0
 
   for (const leagueSettings of allLeagueSettings) {
     let notifier
@@ -50,7 +51,7 @@ async function updateEachLeagueNotifier() {
     } catch (e) {
       continue
     }
-
+    leaguesChecked++
     const weeklyStates = leagueSettings.commands?.game_channel?.weekly_states || {}
     for (const weeklyState of Object.values(weeklyStates)) {
       for (const [channelId, channelState] of Object.entries(weeklyState.channel_states || {})) {
@@ -71,6 +72,20 @@ async function updateEachLeagueNotifier() {
   console.log(`[updateEachLeagueNotifier] starting ${jobs.length} jobs with concurrency ${CONCURRENCY}`)
   await runWithConcurrency(jobs, CONCURRENCY)
   console.log(`[updateEachLeagueNotifier] done`)
+
+  notifierLeaguesCheckedCount.set(leaguesChecked)
+  channelsCheckedCount.set(jobs.length)
+  notifierCheckLastRun.set(Math.floor(Date.now() / 1000))
+  await pushMetrics('pinger')
 }
 
+// manually close as some connections can keep this alive
 updateEachLeagueNotifier()
+  .then(() => {
+    console.log("updateEachLeagueNotifier done")
+    process.exit(0)
+  })
+  .catch(e => {
+    console.error("updateEachLeagueNotifier failed:", e)
+    process.exit(1)
+  })

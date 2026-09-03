@@ -6,6 +6,7 @@ import { EventTypes, RetiredPlayersEvent } from "./events"
 import { maddenDBRequestsCounter, maddenEventsDistribution } from "../debug/metrics"
 import { ExportStatus, GameStats, MaddenDB, MaddenEvents, PlayerListIndex, PlayerListQuery, PlayerStatEvents, PlayerStatType, PlayerStatTypes, PlayerStats, TeamList, createPlayerKey, createTeamList, deduplicatePlayerStats, deduplicatePlayers, deduplicateSchedule, deduplicateStats, findLatestScheduleId } from "./madden_db"
 import { CachedUpdatingView, StorageBackedCachedView, View } from "./view"
+import { DB, DBs } from "../config"
 
 type HistoryUpdate<ValueType> = { oldValue?: ValueType, newValue?: ValueType }
 type History = { [key: string]: HistoryUpdate<any> }
@@ -110,7 +111,7 @@ class CacheablePlayerListView extends StorageBackedCachedView<PlayerListIndex> {
 }
 
 export const playerListIndex = new CacheablePlayerListView()
-playerListIndex.listen(MaddenEvents.MADDEN_PLAYER)
+
 
 export type TeamIndex = {
   [key: string]: StoredEvent<Team>
@@ -143,7 +144,6 @@ class CacheableTeamView extends CachedUpdatingView<TeamIndex> {
 }
 
 export const teamView = new CacheableTeamView
-teamView.listen(MaddenEvents.MADDEN_TEAM)
 
 type SeasonIndex = {
   currentSeasonIndex: number
@@ -179,7 +179,11 @@ class CacheableSeasonView extends CachedUpdatingView<SeasonIndex> {
 }
 
 export const seasonView = new CacheableSeasonView
-seasonView.listen(MaddenEvents.MADDEN_SCHEDULE)
+if (DB === DBs.MONGO) {
+  seasonView.listen(MaddenEvents.MADDEN_SCHEDULE)
+  teamView.listen(MaddenEvents.MADDEN_TEAM)
+  playerListIndex.listen(MaddenEvents.MADDEN_PLAYER)
+}
 
 const MaddenDB: MaddenDB = {
   async appendEvents<Event>(events: SnallabotEvent<Event>[], idFn: (event: Event) => string) {
@@ -668,7 +672,7 @@ const MaddenDB: MaddenDB = {
       weekToQuery = playedGames.length === 0 ? 0 : Math.max(...playedGames.map(game => game.weekIndex));
     }
     const statDocs = await db.collection(statType).find({ leagueId, seasonIndex: seasonToQuery, weekIndex: weekToQuery, stageIndex: 1 }).toArray()
-    const finalStats = await deduplicatePlayerStats(leagueId, statDocs as unknown as StoredEvent<T>[])
+    const finalStats = await deduplicatePlayerStats(leagueId, statDocs as unknown as StoredEvent<T>[], this.getPlayer)
     return { seasonIndex: seasonToQuery, weekIndex: weekToQuery, stats: finalStats }
   },
 
@@ -676,7 +680,7 @@ const MaddenDB: MaddenDB = {
     const seasonIndex = await seasonView.createView(leagueId)
     const seasonToQuery = season ? season : seasonIndex ? seasonIndex.currentSeasonIndex : 0
     const statDocs = await db.collection(statType).find({ leagueId, seasonIndex: seasonToQuery, stageIndex: 1 }).toArray()
-    return await deduplicatePlayerStats(leagueId, statDocs as unknown as StoredEvent<T>[])
+    return await deduplicatePlayerStats(leagueId, statDocs as unknown as StoredEvent<T>[], this.getPlayer)
   }
 }
 
