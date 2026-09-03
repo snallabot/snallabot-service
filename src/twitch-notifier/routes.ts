@@ -146,8 +146,8 @@ async function handleStreamEvent(twitchEvent: StreamUpEvent) {
   const subscription = subscriptionDoc.data() as SubscriptionDoc
   const subscribedServers = Object.entries(subscription.servers).filter(entry => entry[1].subscribed).map(entry => entry[0])
   await Promise.all(subscribedServers.map(async (server) => {
-    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(server)
-    const configuration = leagueSettings.commands?.broadcast
+    const guildSettings = await LeagueSettingsDB.getGuildSettings(server)
+    const configuration = guildSettings.commands.broadcast
     if (!configuration) {
       await twitchNotifierHandler.removeTwitchChannel(server, broadcasterName)
     } else {

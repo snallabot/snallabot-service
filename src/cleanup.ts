@@ -19,11 +19,19 @@ const prodClient = createClient(prodSettings)
 const STATS_CHANNEL: ChannelId = { id: "1207476843373010984", id_type: DiscordIdType.CHANNEL }
 
 async function calculateLeagueStats() {
-  const allLeagues = await LeagueSettingsDB.getAllLeagueSettings()
-  const guildsBotIsIn = await prodClient.getAllGuilds()
+  const [allLeagues, allGuildSettings, guildsBotIsIn] = await Promise.all([
+    LeagueSettingsDB.getAllLeagueSettings(),
+    LeagueSettingsDB.getAllGuildSettings(),
+    prodClient.getAllGuilds()
+  ])
   const guildSet = new Set(guildsBotIsIn)
-  const settingsToDelete = allLeagues.filter(l => !guildSet.has(l.guildId))
-  const guildsToDelete = [...new Set(settingsToDelete.map(settings => settings.guildId))]
+  const configuredGuildIds = new Set([
+    ...allLeagues.map(settings => settings.guildId),
+    ...allGuildSettings.map(settings => settings.guildId)
+  ])
+  // A guild can have server-wide settings without a connected Madden league.
+  // Only remove settings after Discord confirms the bot is no longer in it.
+  const guildsToDelete = [...configuredGuildIds].filter(guildId => !guildSet.has(guildId))
   await Promise.all(guildsToDelete.map(async guildId => await LeagueSettingsDB.deleteLeagueSetting(guildId)))
   const stats = {
     totalLeagues: allLeagues.length,
@@ -41,17 +49,19 @@ async function calculateLeagueStats() {
   allLeagues.forEach(league => {
     if (league.commands.logger) stats.configurationUsage.logger++
     if (league.commands.game_channel) stats.configurationUsage.game_channel++
-    if (league.commands.stream_count) stats.configurationUsage.stream_count++
-    if (league.commands.broadcast) stats.configurationUsage.broadcast++
     if (league.commands.teams) stats.configurationUsage.teams++
-    if (league.commands.waitlist) stats.configurationUsage.waitlist++
     if (league.commands.madden_league) stats.configurationUsage.madden_league++
+  })
+  allGuildSettings.forEach(guild => {
+    if (guild.commands.stream_count) stats.configurationUsage.stream_count++
+    if (guild.commands.broadcast) stats.configurationUsage.broadcast++
+    if (guild.commands.waitlist) stats.configurationUsage.waitlist++
   })
   const individualConfigurationStats = Object.entries(stats.configurationUsage).map(e => {
     const [conf, stat] = e
-    return `Total ${conf} leagues: ${stat}`
+    return `Total ${conf} configurations: ${stat}`
   }).join("\n")
-  const message = `# Snallabot Daily League Settings Stats\nTotal Leagues: ${stats.totalLeagues}\nExpired Leagues: ${settingsToDelete.length}\n${individualConfigurationStats}`
+  const message = `# Snallabot Daily League Settings Stats\nTotal Leagues: ${stats.totalLeagues}\nExpired Servers: ${guildsToDelete.length}\n${individualConfigurationStats}`
   await prodClient.createMessage(STATS_CHANNEL, message, [])
 }
 

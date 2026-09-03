@@ -17,7 +17,7 @@ enum PlayerSelection {
   PLAYER_SEASON_STATS = "ps"
 }
 
-type Selection = { r: number, s: PlayerSelection, q?: PlayerPagination }
+type Selection = { r: number, s: PlayerSelection, q?: PlayerPagination, l?: string }
 
 function formatPlaceholder(selection: PlayerSelection): string {
   switch (selection) {
@@ -32,7 +32,7 @@ function formatPlaceholder(selection: PlayerSelection): string {
   }
 }
 
-function generatePlayerOptions(rosterId: number, pagination?: PlayerPagination) {
+function generatePlayerOptions(rosterId: number, pagination?: PlayerPagination, leagueId?: string) {
   return [
     {
       label: "Overview",
@@ -51,7 +51,9 @@ function generatePlayerOptions(rosterId: number, pagination?: PlayerPagination) 
       value: { r: rosterId, s: PlayerSelection.PLAYER_SEASON_STATS }
     }
   ].map(option => {
-    if (pagination) (option.value as Selection).q = pagination
+    const selection = option.value as Selection
+    if (pagination) selection.q = leagueId ? { ...pagination, l: leagueId } : pagination
+    else if (leagueId) selection.l = leagueId
     return option
   })
     .map(option => ({ ...option, value: JSON.stringify(option.value) }))
@@ -119,7 +121,7 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, token
               type: ComponentType.StringSelect,
               custom_id: "player_card",
               placeholder: formatPlaceholder(PlayerSelection.PLAYER_OVERVIEW),
-              options: generatePlayerOptions(searchRosterId, pagination)
+              options: generatePlayerOptions(searchRosterId, pagination, leagueId)
             }
           ]
         },
@@ -187,7 +189,7 @@ async function showPlayerFullRatings(rosterId: number, client: DiscordClient, to
             type: ComponentType.StringSelect,
             custom_id: "player_card",
             placeholder: formatPlaceholder(PlayerSelection.PLAYER_FULL_RATINGS),
-            options: generatePlayerOptions(rosterId, pagination)
+            options: generatePlayerOptions(rosterId, pagination, leagueId)
           }
         ]
       },
@@ -247,7 +249,7 @@ async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, to
             type: ComponentType.StringSelect,
             custom_id: "player_card",
             placeholder: formatPlaceholder(PlayerSelection.PLAYER_WEEKLY_STATS),
-            options: generatePlayerOptions(rosterId, pagination)
+            options: generatePlayerOptions(rosterId, pagination, leagueId)
           }
         ]
       },
@@ -304,7 +306,7 @@ async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, to
             type: ComponentType.StringSelect,
             custom_id: "player_card",
             placeholder: formatPlaceholder(PlayerSelection.PLAYER_SEASON_STATS),
-            options: generatePlayerOptions(rosterId, pagination)
+            options: generatePlayerOptions(rosterId, pagination, leagueId)
           }
         ]
       },
@@ -1906,7 +1908,7 @@ export default {
                   type: ComponentType.StringSelect,
                   custom_id: "player_card",
                   placeholder: formatPlaceholder(PlayerSelection.PLAYER_OVERVIEW),
-                  options: generatePlayerOptions(rosterId)
+                  options: generatePlayerOptions(rosterId, undefined, interaction.league_id)
                 }
               ]
             }

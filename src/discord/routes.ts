@@ -69,8 +69,8 @@ router.post("/slashCommand", async (ctx) => {
 EventDB.on<MaddenBroadcastEvent>("MADDEN_BROADCAST", async (events) => {
   events.map(async broadcastEvent => {
     const discordServer = broadcastEvent.key
-    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(discordServer)
-    const configuration = leagueSettings.commands?.broadcast
+    const guildSettings = await LeagueSettingsDB.getGuildSettings(discordServer)
+    const configuration = guildSettings.commands.broadcast
     if (!configuration) {
 
     } else {

@@ -1,6 +1,6 @@
 import EventDB, { EventDelivery } from "../db/events_db"
 import { MaddenBroadcastEvent } from "../db/events"
-import LeagueSettingsDB, { LeagueSettings } from "../discord/settings_db"
+import LeagueSettingsDB from "../discord/settings_db"
 import db from "../db/firebase"
 import { createClient } from "../discord/discord_utils"
 import NodeCache from "node-cache"
@@ -71,8 +71,8 @@ const prodClient = createClient(prodSettings)
 EventDB.on<MaddenBroadcastEvent>("MADDEN_BROADCAST", async (events) => {
   events.map(async broadcastEvent => {
     const discordServer = broadcastEvent.key
-    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(discordServer)
-    const configuration = leagueSettings.commands?.broadcast
+    const guildSettings = await LeagueSettingsDB.getGuildSettings(discordServer)
+    const configuration = guildSettings.commands.broadcast
     if (!configuration) {
     } else {
       const channel = configuration.channel
@@ -107,8 +107,8 @@ async function notifyYoutubeBroadcasts() {
             .then(t => isStreaming(t) ? [{ channel_id, title: extractTitle(t), video: extractVideo(t) }] : [])
         ))
       const serverTitleKeywords = await Promise.all(currentServers.map(async server => {
-        const leagueSettings = await LeagueSettingsDB.getLeagueSettings(server)
-        const configuration = leagueSettings.commands?.broadcast
+        const guildSettings = await LeagueSettingsDB.getGuildSettings(server)
+        const configuration = guildSettings.commands.broadcast
         if (!configuration) {
           console.error(`${server} is not configured for Broadcasts`)
           return []
