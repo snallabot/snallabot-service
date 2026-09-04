@@ -3,14 +3,14 @@ import { MessageId } from "./settings_db";
 
 export type TradeAsset =
   | {
-      type: "PLAYER";
-      rosterId: number;
-      name: string;
-      position: string;
-      age: number;
-      overall: number;
-      dev: string;
-    }
+    type: "PLAYER";
+    rosterId: number;
+    name: string;
+    position: string;
+    age: number;
+    overall: number;
+    dev: string;
+  }
   | { type: "PICK"; label: string };
 
 export enum TradeVote {

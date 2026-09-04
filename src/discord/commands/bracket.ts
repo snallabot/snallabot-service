@@ -364,7 +364,7 @@ async function formatPlayoffBracket(client: DiscordClient, token: string, standi
 export default {
   async handleCommand(command: Command, client: DiscordClient) {
     const { guild_id } = command
-    const view = await discordLeagueView.createView(guild_id)
+    const view = await discordLeagueView.createSelectedView(guild_id, command.league_id)
     if (view) {
       const [standings, games, teams, logos] = await Promise.all([MaddenDB.getLatestStandings(view.leagueId), MaddenDB.getPlayoffSchedule(view.leagueId), MaddenDB.getLatestTeams(view.leagueId), leagueLogosView.createView(view.leagueId)])
       formatPlayoffBracket(client, command.token, standings, games, teams, logos)

@@ -205,7 +205,7 @@ export default {
     const options = command.data.options
     const teamsCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
     const subCommand = teamsCommand.name
-    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
+    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id, command.league_id)
     if (subCommand === "configure") {
       if (!teamsCommand.options || !teamsCommand.options[0]) {
         throw new Error("teams configure misconfigured")
@@ -225,7 +225,7 @@ export default {
           messageId: newMessageId,
           useRoleUpdates: useRoleUpdates,
           assignments: leagueSettings?.commands?.teams?.assignments || {},
-        })
+        }, command.league_id)
 
         return createMessageResponse("Teams Configured")
       } else {
@@ -238,7 +238,7 @@ export default {
                 ...leagueSettings.commands.teams,
                 useRoleUpdates: useRoleUpdates,
                 assignments: leagueSettings?.commands.teams?.assignments || {},
-              })
+              }, command.league_id)
               const message = await fetchTeamsMessage(leagueSettings)
               await client.editMessage(channel, oldMessageId, message, [])
               return createMessageResponse("Teams Configured")
@@ -253,7 +253,7 @@ export default {
           messageId: messageId,
           useRoleUpdates: useRoleUpdates,
           assignments: leagueSettings?.commands?.teams?.assignments || {},
-        })
+        }, command.league_id)
         return createMessageResponse("Teams Configured")
       }
     } else if (subCommand === "assign") {
@@ -276,7 +276,7 @@ export default {
       const oldAssignments = teams.getLatestTeamAssignments(leagueSettings.commands.teams?.assignments || {})
       const assignments = { ...oldAssignments, [teams.getTeamForId(assignedTeam.teamId).teamId]: { discord_user: { id: user, id_type: DiscordIdType.USER }, ...roleAssignment } }
       leagueSettings.commands.teams.assignments = assignments
-      await LeagueSettingsDB.updateAssignment(guild_id, assignments)
+      await LeagueSettingsDB.updateAssignment(guild_id, assignments, command.league_id)
       const message = createTeamsMessage(leagueSettings, teams)
       try {
         await client.editMessage(leagueSettings.commands.teams.channel, leagueSettings.commands.teams.messageId, message, [])
@@ -312,7 +312,7 @@ export default {
       const currentAssignments = { ...teams.getLatestTeamAssignments(leagueSettings.commands.teams.assignments) }
       delete currentAssignments[`${teamIdToDelete}`]
       leagueSettings.commands.teams.assignments = currentAssignments
-      await LeagueSettingsDB.updateAssignment(guild_id, currentAssignments)
+      await LeagueSettingsDB.updateAssignment(guild_id, currentAssignments, command.league_id)
       const message = createTeamsMessage(leagueSettings, teams)
       try {
         await client.editMessage(leagueSettings.commands.teams.channel, leagueSettings.commands.teams.messageId, message, [])
@@ -334,7 +334,7 @@ export default {
       if (!leagueSettings.commands.teams?.channel.id) {
         throw new Error("Teams not configured, run /teams configure first")
       }
-      await LeagueSettingsDB.removeAllAssignments(guild_id)
+      await LeagueSettingsDB.removeAllAssignments(guild_id, command.league_id)
       if (leagueSettings.commands.teams?.assignments) {
         leagueSettings.commands.teams.assignments = {}
       }
@@ -483,7 +483,7 @@ export default {
     }
     const options = command.data.options
     const teamsCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
-    const view = await discordLeagueView.createView(guild_id)
+    const view = await discordLeagueView.createSelectedView(guild_id, command.league_id)
     const leagueId = view?.leagueId
     if (leagueId && (teamsCommand?.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.focused && teamsCommand?.options?.[0]?.value) {
       const teamSearchPhrase = teamsCommand.options[0].value as string

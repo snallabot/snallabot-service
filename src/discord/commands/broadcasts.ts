@@ -166,7 +166,7 @@ export default {
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
     return {
       name: "broadcasts",
-      description: "sets up your league to start receiving twitch and youtube broadcasts",
+      description: "sets up this server to receive Twitch and YouTube broadcasts",
       type: ApplicationCommandType.ChatInput,
       options: [
         {

@@ -17,7 +17,7 @@ enum PlayerSelection {
   PLAYER_SEASON_STATS = "ps"
 }
 
-type Selection = { r: number, s: PlayerSelection, q?: PlayerPagination }
+type Selection = { r: number, s: PlayerSelection, q?: PlayerPagination, l?: string }
 
 function formatPlaceholder(selection: PlayerSelection): string {
   switch (selection) {
@@ -32,7 +32,7 @@ function formatPlaceholder(selection: PlayerSelection): string {
   }
 }
 
-function generatePlayerOptions(rosterId: number, pagination?: PlayerPagination) {
+function generatePlayerOptions(rosterId: number, pagination?: PlayerPagination, leagueId?: string) {
   return [
     {
       label: "Overview",
@@ -51,7 +51,9 @@ function generatePlayerOptions(rosterId: number, pagination?: PlayerPagination) 
       value: { r: rosterId, s: PlayerSelection.PLAYER_SEASON_STATS }
     }
   ].map(option => {
-    if (pagination) (option.value as Selection).q = pagination
+    const selection = option.value as Selection
+    if (pagination) selection.q = leagueId ? { ...pagination, l: leagueId } : pagination
+    else if (leagueId) selection.l = leagueId
     return option
   })
     .map(option => ({ ...option, value: JSON.stringify(option.value) }))
@@ -62,9 +64,9 @@ function generatePlayerZoomOptions(players: Player[], currentPagination: PlayerP
     .map(option => ({ ...option, value: JSON.stringify(option.value) }))
 }
 
-async function showPlayerCard(playerSearch: string, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
+async function showPlayerCard(playerSearch: string, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination, selectedLeague?: string) {
   try {
-    const [discordLeague, settings] = await Promise.all([discordLeagueView.createView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
+    const [discordLeague, settings] = await Promise.all([discordLeagueView.createSelectedView(guild_id, selectedLeague), LeagueSettingsDB.getLeagueSettings(guild_id, selectedLeague)])
     const playerConfiguration = settings?.commands?.player || { useHiddenDevs: true }
     const leagueId = discordLeague?.leagueId
     if (!leagueId) {
@@ -119,7 +121,7 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, token
               type: ComponentType.StringSelect,
               custom_id: "player_card",
               placeholder: formatPlaceholder(PlayerSelection.PLAYER_OVERVIEW),
-              options: generatePlayerOptions(searchRosterId, pagination)
+              options: generatePlayerOptions(searchRosterId, pagination, leagueId)
             }
           ]
         },
@@ -139,8 +141,8 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, token
   }
 }
 
-async function showPlayerFullRatings(rosterId: number, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
-  const [discordLeague, settings] = await Promise.all([discordLeagueView.createView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
+async function showPlayerFullRatings(rosterId: number, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination, selectedLeague?: string) {
+  const [discordLeague, settings] = await Promise.all([discordLeagueView.createSelectedView(guild_id, selectedLeague), LeagueSettingsDB.getLeagueSettings(guild_id, selectedLeague)])
   const playerConfiguration = settings?.commands?.player || { useHiddenDevs: true }
   const leagueId = discordLeague?.leagueId
   if (!leagueId) {
@@ -187,7 +189,7 @@ async function showPlayerFullRatings(rosterId: number, client: DiscordClient, to
             type: ComponentType.StringSelect,
             custom_id: "player_card",
             placeholder: formatPlaceholder(PlayerSelection.PLAYER_FULL_RATINGS),
-            options: generatePlayerOptions(rosterId, pagination)
+            options: generatePlayerOptions(rosterId, pagination, leagueId)
           }
         ]
       },
@@ -196,8 +198,8 @@ async function showPlayerFullRatings(rosterId: number, client: DiscordClient, to
   })
 }
 
-async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
-  const [discordLeague, settings] = await Promise.all([discordLeagueView.createView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
+async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination, selectedLeague?: string) {
+  const [discordLeague, settings] = await Promise.all([discordLeagueView.createSelectedView(guild_id, selectedLeague), LeagueSettingsDB.getLeagueSettings(guild_id, selectedLeague)])
   const playerConfiguration = settings?.commands?.player || { useHiddenDevs: true }
   const leagueId = discordLeague?.leagueId
   if (!leagueId) {
@@ -247,7 +249,7 @@ async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, to
             type: ComponentType.StringSelect,
             custom_id: "player_card",
             placeholder: formatPlaceholder(PlayerSelection.PLAYER_WEEKLY_STATS),
-            options: generatePlayerOptions(rosterId, pagination)
+            options: generatePlayerOptions(rosterId, pagination, leagueId)
           }
         ]
       },
@@ -256,8 +258,8 @@ async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, to
   })
 }
 
-async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
-  const [discordLeague, settings] = await Promise.all([discordLeagueView.createView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
+async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination, selectedLeague?: string) {
+  const [discordLeague, settings] = await Promise.all([discordLeagueView.createSelectedView(guild_id, selectedLeague), LeagueSettingsDB.getLeagueSettings(guild_id, selectedLeague)])
   const playerConfiguration = settings?.commands?.player || { useHiddenDevs: true }
   const leagueId = discordLeague?.leagueId
   if (!leagueId) {
@@ -304,7 +306,7 @@ async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, to
             type: ComponentType.StringSelect,
             custom_id: "player_card",
             placeholder: formatPlaceholder(PlayerSelection.PLAYER_SEASON_STATS),
-            options: generatePlayerOptions(rosterId, pagination)
+            options: generatePlayerOptions(rosterId, pagination, leagueId)
           }
         ]
       },
@@ -330,7 +332,7 @@ function fromShortQuery(q: ShortPlayerListQuery) {
   if (q.e) query.retired = q.e
   return query
 }
-type PlayerPagination = { q: ShortPlayerListQuery, s?: number, b?: number }
+type PlayerPagination = { q: ShortPlayerListQuery, s?: number, b?: number, l?: string }
 const PAGINATION_LIMIT = 5
 
 async function getPlayers(leagueId: string, query: PlayerListQuery, startAfterPlayer?: number, endBeforePlayer?: number) {
@@ -355,9 +357,9 @@ async function getPlayers(leagueId: string, query: PlayerListQuery, startAfterPl
   }
 }
 
-async function showPlayerList(playerSearch: string, client: DiscordClient, token: string, guild_id: string, startAfterPlayer?: number, endBeforePlayer?: number) {
+async function showPlayerList(playerSearch: string, client: DiscordClient, token: string, guild_id: string, startAfterPlayer?: number, endBeforePlayer?: number, selectedLeague?: string) {
   try {
-    const [discordLeague, settings] = await Promise.all([discordLeagueView.createView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
+    const [discordLeague, settings] = await Promise.all([discordLeagueView.createSelectedView(guild_id, selectedLeague), LeagueSettingsDB.getLeagueSettings(guild_id, selectedLeague)])
     const playerConfiguration = settings?.commands?.player || { useHiddenDevs: true }
     const leagueId = discordLeague?.leagueId
     if (!leagueId) {
@@ -380,6 +382,7 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
     const nextDisabled = players.length < PAGINATION_LIMIT ? true : false
     const nextPagination = players.length === 0 ? startAfterPlayer : players[players.length - 1].rosterId
     const previousPagination = players.length === 0 ? endBeforePlayer : players[0].rosterId
+    const leaguePagination = { q: toShortQuery(query), l: leagueId }
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
@@ -395,13 +398,13 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
               style: ButtonStyle.Secondary,
               label: "Back",
               disabled: backDisabled,
-              custom_id: `${JSON.stringify({ q: toShortQuery(query), b: previousPagination ? previousPagination : -1 })}`
+              custom_id: `${JSON.stringify({ ...leaguePagination, b: previousPagination ? previousPagination : -1 })}`
             },
             {
               type: ComponentType.Button,
               style: ButtonStyle.Secondary,
               label: "Next",
-              custom_id: `${JSON.stringify({ q: toShortQuery(query), s: nextPagination ? nextPagination : -1 })}`,
+              custom_id: `${JSON.stringify({ ...leaguePagination, s: nextPagination ? nextPagination : -1 })}`,
               disabled: nextDisabled
             }
           ]
@@ -418,7 +421,7 @@ async function showPlayerList(playerSearch: string, client: DiscordClient, token
               type: ComponentType.StringSelect,
               custom_id: "player_card",
               placeholder: `Show Player Card`,
-              options: generatePlayerZoomOptions(players, { q: toShortQuery(query), s: startAfterPlayer, b: endBeforePlayer })
+              options: generatePlayerZoomOptions(players, { ...leaguePagination, s: startAfterPlayer, b: endBeforePlayer })
             }
           ]
         }])
@@ -1747,22 +1750,24 @@ export default {
     const playerCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
     const subCommand = playerCommand.name
     if (subCommand === "get") {
-      if (!playerCommand.options || !playerCommand.options[0]) {
+      const playerOption = playerCommand.options?.find(option => option.name === "player") as APIApplicationCommandInteractionDataStringOption | undefined
+      if (!playerOption) {
         throw new Error("player get misconfigured")
       }
-      const playerSearch = (playerCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value
-      showPlayerCard(playerSearch, client, token, guild_id)
+      const playerSearch = playerOption.value
+      showPlayerCard(playerSearch, client, token, guild_id, undefined, command.league_id)
       return deferMessage()
 
     } else if (subCommand === "list") {
-      if (!playerCommand.options || !playerCommand.options[0]) {
+      const playersOption = playerCommand.options?.find(option => option.name === "players") as APIApplicationCommandInteractionDataStringOption | undefined
+      if (!playersOption) {
         throw new Error("player get misconfigured")
       }
-      const playerSearch = (playerCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value
-      showPlayerList(playerSearch, client, token, guild_id)
+      const playerSearch = playersOption.value
+      showPlayerList(playerSearch, client, token, guild_id, undefined, undefined, command.league_id)
       return deferMessage()
     } else if (subCommand === "retire") {
-      const discordLeague = await discordLeagueView.createView(guild_id)
+      const discordLeague = await discordLeagueView.createSelectedView(guild_id, command.league_id)
       const leagueId = discordLeague?.leagueId
       if (!leagueId) {
         throw new NoConnectedLeagueError(guild_id)
@@ -1775,7 +1780,7 @@ export default {
         throw new Error("missing player configure options!")
       }
       const hiddenDevs = (subCommandOptions[0] as APIApplicationCommandInteractionDataBooleanOption).value
-      await LeagueSettingsDB.configurePlayer(guild_id, { useHiddenDevs: hiddenDevs })
+      await LeagueSettingsDB.configurePlayer(guild_id, { useHiddenDevs: hiddenDevs }, command.league_id)
       return createMessageResponse(`Player Configuration:\n  - Hidden Devs: ${hiddenDevs ? "on" : "off"}`)
     }
 
@@ -1832,18 +1837,20 @@ export default {
     const playerCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
     const subCommand = playerCommand.name
     if (subCommand === "get") {
-      const view = await discordLeagueView.createView(guild_id)
+      const view = await discordLeagueView.createSelectedView(guild_id, command.league_id)
       const leagueId = view?.leagueId
-      if (leagueId && (playerCommand?.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.focused && playerCommand?.options?.[0]?.value) {
-        const playerSearchPhrase = playerCommand.options[0].value as string
+      const playerOption = playerCommand.options?.find(option => option.name === "player") as APIApplicationCommandInteractionDataStringOption | undefined
+      if (leagueId && playerOption?.focused && playerOption.value) {
+        const playerSearchPhrase = playerOption.value as string
         const results = await searchPlayerForRosterId(playerSearchPhrase, leagueId)
         return results.map(r => ({ name: `${r.teamAbbr} ${r.position.toUpperCase()} ${r.firstName} ${r.lastName}`, value: `${r.rosterId}` }))
       }
     } else if (subCommand === "list") {
-      const view = await discordLeagueView.createView(guild_id)
+      const view = await discordLeagueView.createSelectedView(guild_id, command.league_id)
       const leagueId = view?.leagueId
-      if (leagueId && (playerCommand?.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.focused && playerCommand?.options?.[0]?.value) {
-        const playerListSearchPhrase = playerCommand.options[0].value as string
+      const playersOption = playerCommand.options?.find(option => option.name === "players") as APIApplicationCommandInteractionDataStringOption | undefined
+      if (leagueId && playersOption?.focused && playersOption.value) {
+        const playerListSearchPhrase = playersOption.value as string
         const results = await searchPlayerListForQuery(playerListSearchPhrase, leagueId)
         return results.map(r => {
           const { teamId, rookie, position, retired } = r
@@ -1864,13 +1871,13 @@ export default {
       const { r: rosterId, s: selected, q: pagination } = JSON.parse(data.values[0]) as Selection
       try {
         if (selected === PlayerSelection.PLAYER_OVERVIEW) {
-          showPlayerCard(`${rosterId}`, client, interaction.token, interaction.guild_id, pagination)
+          showPlayerCard(`${rosterId}`, client, interaction.token, interaction.guild_id, pagination, interaction.league_id)
         } else if (selected === PlayerSelection.PLAYER_FULL_RATINGS) {
-          showPlayerFullRatings(rosterId, client, interaction.token, interaction.guild_id, pagination)
+          showPlayerFullRatings(rosterId, client, interaction.token, interaction.guild_id, pagination, interaction.league_id)
         } else if (selected === PlayerSelection.PLAYER_WEEKLY_STATS) {
-          showPlayerWeeklyStats(rosterId, client, interaction.token, interaction.guild_id, pagination)
+          showPlayerWeeklyStats(rosterId, client, interaction.token, interaction.guild_id, pagination, interaction.league_id)
         } else if (selected === PlayerSelection.PLAYER_SEASON_STATS) {
-          showPlayerYearlyStats(rosterId, client, interaction.token, interaction.guild_id, pagination)
+          showPlayerYearlyStats(rosterId, client, interaction.token, interaction.guild_id, pagination, interaction.league_id)
         } else {
           throw new Error(`Invalid Player Selection ${selected}`)
         }
@@ -1894,7 +1901,7 @@ export default {
                   type: ComponentType.StringSelect,
                   custom_id: "player_card",
                   placeholder: formatPlaceholder(PlayerSelection.PLAYER_OVERVIEW),
-                  options: generatePlayerOptions(rosterId)
+                  options: generatePlayerOptions(rosterId, undefined, interaction.league_id)
                 }
               ]
             }
@@ -1904,7 +1911,7 @@ export default {
     } else {
       try {
         const { q: query, s: next, b: prev } = JSON.parse(customId) as PlayerPagination
-        showPlayerList(JSON.stringify(fromShortQuery(query)), client, interaction.token, interaction.guild_id, next, prev)
+        showPlayerList(JSON.stringify(fromShortQuery(query)), client, interaction.token, interaction.guild_id, next, prev, interaction.league_id)
       } catch (e) {
         await client.editOriginalInteraction(interaction.token, {
           flags: 32768,

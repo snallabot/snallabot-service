@@ -73,10 +73,10 @@ const filterOptions = [
   { label: "NFC West", value: "nfc_west" }
 ]
 const itemsPerPage = 8;
-export type StandingsPaginated = { f: string, p: number }
+export type StandingsPaginated = { f: string, p: number, l?: string }
 async function handleCommand(client: DiscordClient, token: string, league: string, guild: string, filter: string = "nfl", page: number = 0) {
   try {
-    const [standings, teams, settings] = await Promise.all([MaddenDB.getLatestStandings(league), MaddenDB.getLatestTeams(league), LeagueSettingsDB.getLeagueSettings(guild)])
+    const [standings, teams, settings] = await Promise.all([MaddenDB.getLatestStandings(league), MaddenDB.getLatestTeams(league), LeagueSettingsDB.getLeagueSettings(guild, league)])
     const assignments = teams.getLatestTeamAssignments(settings.commands.teams?.assignments || {})
     const filteredStandings = getStandingsForFilter(standings, filter);
 
@@ -96,14 +96,14 @@ async function handleCommand(client: DiscordClient, token: string, league: strin
         components: [
           {
             type: ComponentType.Button,
-            custom_id: JSON.stringify({ f: filter, p: Math.max(0, currentPage - 1) }),
+            custom_id: JSON.stringify({ f: filter, p: Math.max(0, currentPage - 1), l: league }),
             label: "Previous",
             style: ButtonStyle.Secondary,
             disabled: currentPage === 0
           },
           {
             type: ComponentType.Button,
-            custom_id: JSON.stringify({ f: filter, p: Math.min(totalPages - 1, currentPage + 1) }),
+            custom_id: JSON.stringify({ f: filter, p: Math.min(totalPages - 1, currentPage + 1), l: league }),
             label: "Next",
             style: ButtonStyle.Secondary,
             disabled: currentPage === totalPages - 1
@@ -132,7 +132,7 @@ async function handleCommand(client: DiscordClient, token: string, league: strin
             placeholder: filterOptions.find(opt => opt.value === filter)?.label || "NFL",
             options: filterOptions.map(option => ({
               ...option,
-              value: JSON.stringify({ f: option.value, p: 0 })
+              value: JSON.stringify({ f: option.value, p: 0, l: league })
             }))
           }
         ]
@@ -180,12 +180,12 @@ function getStandingsFilter(interaction: MessageComponentInteraction) {
 export default {
   async handleCommand(command: Command, client: DiscordClient) {
     const { guild_id, token } = command
-    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
+    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id, command.league_id)
     if (!leagueSettings?.commands?.madden_league?.league_id) {
       throw new NoConnectedLeagueError(guild_id)
     }
     const league = leagueSettings.commands.madden_league.league_id
-    const scope = (command?.data?.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.value
+    const scope = (command?.data?.options?.find(option => option.name === "scope") as APIApplicationCommandInteractionDataStringOption)?.value
     handleCommand(client, token, league, guild_id, scope)
     return deferMessage()
   },
@@ -208,7 +208,7 @@ export default {
   async handleInteraction(interaction: MessageComponentInteraction, client: DiscordClient) {
     try {
       const standingsFilter = getStandingsFilter(interaction)
-      const discordLeague = await discordLeagueView.createView(interaction.guild_id)
+      const discordLeague = await discordLeagueView.createSelectedView(interaction.guild_id, interaction.league_id)
       const leagueId = discordLeague?.leagueId
       if (leagueId) {
         handleCommand(client, interaction.token, leagueId, interaction.guild_id, standingsFilter.f, standingsFilter.p)

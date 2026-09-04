@@ -49,21 +49,20 @@ async function updateEachLeagueNotifier() {
     try {
       notifier = createNotifier(prodClient, leagueSettings.guildId, leagueSettings)
     } catch (e) {
-      continue // skip this league, matches original behavior
+      continue
     }
     leaguesChecked++
     const weeklyStates = leagueSettings.commands?.game_channel?.weekly_states || {}
     for (const weeklyState of Object.values(weeklyStates)) {
       for (const [channelId, channelState] of Object.entries(weeklyState.channel_states || {})) {
-        // todo hack, this doesnt seem necessary
         channelState.channel = { id: channelId, id_type: DiscordIdType.CHANNEL }
         jobs.push(async () => {
           try {
             const jitter = getRandomInt(3)
-            await new Promise((r) => setTimeout(r, 100 + jitter * 50)); // reduced wait
+            await new Promise((r) => setTimeout(r, 100 + jitter * 50))
             await notifier.checkPing(channelState, weeklyState.seasonIndex, weeklyState.week)
           } catch (e) {
-            // swallow, matches original behavior
+            // Swallow individual notifier failures so other leagues continue.
           }
         })
       }

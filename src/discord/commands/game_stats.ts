@@ -10,7 +10,7 @@ export enum GameStatsOptions {
   HOME_PLAYER_STATS = "h",
   AWAY_PLAYER_STATS = "a"
 }
-export type GameSelection = { w: number, s: number, c: number, o: GameStatsOptions, b?: WeekSelection | TeamSelection }
+export type GameSelection = { w: number, s: number, c: number, o: GameStatsOptions, b?: WeekSelection | TeamSelection, l?: string }
 
 export async function showGameStats(token: string, client: DiscordClient, leagueId: string, weekIndex: number, seasonIndex: number, scheduleId: number, selection: GameStatsOptions, showBack?: WeekSelection | TeamSelection) {
   const [gameResult, stats, latestTeams, logos] = await Promise.all([MaddenDB.getGameForSchedule(leagueId, scheduleId, weekIndex + 1, seasonIndex), MaddenDB.getStatsForGame(leagueId, seasonIndex, weekIndex + 1, scheduleId), MaddenDB.getLatestTeams(leagueId), leagueLogosView.createView(leagueId)])
@@ -274,17 +274,17 @@ export async function showGameStats(token: string, client: DiscordClient, league
   const gameStatsOptions = [
     {
       label: "Game Overview",
-      value: JSON.stringify({ w: weekIndex, s: seasonIndex, c: scheduleId, o: GameStatsOptions.OVERVIEW, b: showBack }),
+      value: JSON.stringify({ w: weekIndex, s: seasonIndex, c: scheduleId, o: GameStatsOptions.OVERVIEW, b: showBack, l: leagueId }),
       default: selection === GameStatsOptions.OVERVIEW
     },
     {
       label: `${awayTeam?.abbrName} Player Stats`,
-      value: JSON.stringify({ w: weekIndex, s: seasonIndex, c: scheduleId, o: GameStatsOptions.AWAY_PLAYER_STATS, b: showBack }),
+      value: JSON.stringify({ w: weekIndex, s: seasonIndex, c: scheduleId, o: GameStatsOptions.AWAY_PLAYER_STATS, b: showBack, l: leagueId }),
       default: selection === GameStatsOptions.AWAY_PLAYER_STATS
     },
     {
       label: `${homeTeam?.abbrName} Player Stats`,
-      value: JSON.stringify({ w: weekIndex, s: seasonIndex, c: scheduleId, o: GameStatsOptions.HOME_PLAYER_STATS, b: showBack }),
+      value: JSON.stringify({ w: weekIndex, s: seasonIndex, c: scheduleId, o: GameStatsOptions.HOME_PLAYER_STATS, b: showBack, l: leagueId }),
       default: selection === GameStatsOptions.HOME_PLAYER_STATS
     }
   ];
@@ -294,7 +294,7 @@ export async function showGameStats(token: string, client: DiscordClient, league
       {
         type: ComponentType.Button,
         style: ButtonStyle.Secondary,
-        custom_id: JSON.stringify(showBack),
+        custom_id: JSON.stringify({ ...showBack, l: leagueId }),
         label: "Back to Schedule"
       }
     ]
@@ -339,7 +339,7 @@ export default {
       const { w: weekIndex, s: seasonIndex, c: scheduleId, o: selectedOption, b: showBack } = JSON.parse(data.values[0]) as GameSelection
       try {
         const guildId = interaction.guild_id
-        const discordLeague = await discordLeagueView.createView(guildId)
+        const discordLeague = await discordLeagueView.createSelectedView(guildId, interaction.league_id)
         const leagueId = discordLeague?.leagueId
         if (leagueId) {
           showGameStats(interaction.token, client, leagueId, weekIndex, seasonIndex, scheduleId, selectedOption, showBack)
