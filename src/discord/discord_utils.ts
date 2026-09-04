@@ -263,9 +263,24 @@ export function createClient(settings: DiscordSettings): DiscordClient {
       }
     },
     createComponentMessage: async (channel: ChannelId, body: { [key: string]: any }): Promise<MessageId> => {
-      const res = await sendDiscordRequest(`channels/${channel.id}/messages`, { method: "POST", body })
-      const message = await res.json() as APIMessage
-      return { id: message.id, id_type: DiscordIdType.MESSAGE }
+      try {
+        const res = await sendDiscordRequest(`channels/${channel.id}/messages`, { method: "POST", body })
+        const message = await res.json() as APIMessage
+        return { id: message.id, id_type: DiscordIdType.MESSAGE }
+      }
+      catch (e) {
+        if (e instanceof DiscordRequestError) {
+          if (e.isPermissionError()) {
+            throw new SnallabotDiscordError(e, `Snallabot does not have permission to create a message in <#${channel.id}>`)
+          }
+          else if (e.code === UNKNOWN_MESSAGE) {
+            throw new SnallabotDiscordError(e, `Snallabot cannot create message, it may have been deleted? Try to re-configure the featuer you just used`)
+          } else if (e.code === UNKNOWN_CHANNEL) {
+            throw new SnallabotDiscordError(e, `Snallabot cannot create message in channel because the channel (<#${channel.id}>) may have been deleted? Try to re-configure the feature you just used.`)
+          }
+        }
+        throw e
+      }
     },
     editMessage: async (channel: ChannelId, messageId: MessageId, content: string, allowedMentions = []): Promise<void> => {
       try {

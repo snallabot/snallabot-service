@@ -147,7 +147,8 @@ export async function handleMessageComponent(interaction: MessageComponentIntera
   const handler = custom_id.startsWith("trade_vote:") ? tradeHandler : MessageComponents[custom_id]
   if (handler) {
     try {
-      discordCommandsCounter.inc({ command_name: custom_id, command_type: "MESSAGE_COMPONENT" })
+      const metricCustomId = custom_id.startsWith("trade_vote") ? "trade_vote" : custom_id
+      discordCommandsCounter.inc({ command_name: metricCustomId, command_type: "MESSAGE_COMPONENT" })
       const body = await handler.handleInteraction(interaction, client)
       ctx.status = 200
       ctx.set("Content-Type", "application/json")
