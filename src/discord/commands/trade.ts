@@ -71,8 +71,8 @@ function stringOption(
 ): string | undefined {
   return (
     options.get(name) as
-      | APIApplicationCommandInteractionDataStringOption
-      | undefined
+    | APIApplicationCommandInteractionDataStringOption
+    | undefined
   )?.value;
 }
 
@@ -394,7 +394,7 @@ export default {
       (option) => "focused" in option && option.focused,
     ) as APIApplicationCommandInteractionDataStringOption | undefined;
     if (!focused) return [];
-    const view = await discordLeagueView.createView(command.guild_id);
+    const view = await discordLeagueView.createSelectedView(command.guild_id, command.league_id)
     if (!view?.leagueId) return [];
     const options = optionMap(subcommand);
 

@@ -26,10 +26,9 @@ import { APIMessageComponentInteractionData } from "discord-api-types/v9"
 import { discordCommandsCounter } from "../debug/metrics"
 import { discordLeagueView } from "../db/view"
 
-<<<<<<< HEAD
 export type Command = { command_name: string, token: string, guild_id: string, league_id?: string, data: APIChatInputApplicationCommandInteractionData, member: APIInteractionGuildMember }
 export type Autocomplete = { command_name: string, guild_id: string, league_id?: string, data: APIAutocompleteApplicationCommandInteractionData }
-export type MessageComponentInteraction = { custom_id: string, token: string, data: APIMessageComponentInteractionData, guild_id: string, league_id?: string }
+export type MessageComponentInteraction = { custom_id: string, token: string, data: APIMessageComponentInteractionData, guild_id: string, member: APIInteractionGuildMember, league_id?: string }
 
 // Commands which read or mutate league-specific settings/data. Dashboard, test,
 // and league_export stay exempt because they are used before a league exists.
@@ -127,11 +126,7 @@ function addLeagueSelector(definition: RESTPostAPIApplicationCommandsJSONBody): 
     })
   }
 }
-=======
-export type Command = { command_name: string, token: string, guild_id: string, data: APIChatInputApplicationCommandInteractionData, member: APIInteractionGuildMember }
-export type Autocomplete = { command_name: string, guild_id: string, data: APIAutocompleteApplicationCommandInteractionData }
-export type MessageComponentInteraction = { custom_id: string, token: string, data: APIMessageComponentInteractionData, guild_id: string, member: APIInteractionGuildMember }
->>>>>>> main
+
 export interface CommandHandler {
   handleCommand(command: Command, client: DiscordClient): Promise<any>
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody
@@ -289,7 +284,6 @@ export async function handleAutocomplete(command: Autocomplete, ctx: Parameteriz
 
 export async function handleMessageComponent(interaction: MessageComponentInteraction, ctx: ParameterizedContext, client: DiscordClient) {
   const custom_id = interaction.custom_id
-<<<<<<< HEAD
   let requestedLeague: string | undefined
   try {
     const componentData = custom_id.startsWith("{")
@@ -306,10 +300,7 @@ export async function handleMessageComponent(interaction: MessageComponentIntera
     }
     return componentHandler.handleInteraction({ ...interaction, league_id: requestedLeague }, client)
   }
-  const handler = MessageComponents[custom_id]
-=======
   const handler = custom_id.startsWith("trade_vote:") ? tradeHandler : MessageComponents[custom_id]
->>>>>>> main
   if (handler) {
     try {
       discordCommandsCounter.inc({ command_name: custom_id, command_type: "MESSAGE_COMPONENT" })
