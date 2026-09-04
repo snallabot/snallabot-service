@@ -36,7 +36,7 @@ export type TeamAssignment = { discord_user?: UserId, discord_role?: RoleId }
 export type TeamAssignments = { [key: string]: TeamAssignment }
 export type TeamConfiguration = { channel: ChannelId, messageId: MessageId, useRoleUpdates: boolean, assignments: TeamAssignments }
 export type PlayerConfiguration = { useHiddenDevs: boolean }
-export type TradeConfiguration = { channel: ChannelId, commissionerRole: RoleId, requiredApprovals: number }
+export type TradeConfiguration = { channel: ChannelId, tradeCommitteeRole: RoleId, requiredApprovals: number }
 
 export type LeagueSettings = {
   commands: {

@@ -113,7 +113,7 @@ function tradeMessage(trade: TradeSubmission) {
     `## ${trade.teamB.name} Receives`,
     trade.teamB.assets.map(assetLine).join("\n"),
     `**Submitted by:** <@${trade.submittedBy}>`,
-    `**Commissioner votes:** ✅ ${approvals} Approve | ❌ ${rejections} Reject`,
+    `**Trade Committee votes:** ✅ ${approvals} Approve | ❌ ${rejections} Reject`,
     `**Required approvals:** ${trade.requiredApprovals}`,
     `**Status:** ${statusEmoji} ${trade.status}`,
   ].join("\n\n");
@@ -200,7 +200,7 @@ export default {
       ).value;
       const roleValue = (
         options.get(
-          "commissioner_role",
+          "trade_committee_role",
         ) as APIApplicationCommandInteractionDataRoleOption
       ).value;
       const requiredApprovals = Number(
@@ -214,17 +214,17 @@ export default {
         id: channelValue,
         id_type: DiscordIdType.CHANNEL,
       };
-      const commissionerRole: RoleId = {
+      const tradeCommitteeRole: RoleId = {
         id: roleValue,
         id_type: DiscordIdType.ROLE,
       };
       await LeagueSettingsDB.configureTrade(command.guild_id, {
         channel,
-        commissionerRole,
+        tradeCommitteeRole: tradeCommitteeRole,
         requiredApprovals,
       });
       return createMessageResponse(
-        `Trade approval configured in <#${channel.id}>. <@&${commissionerRole.id}> needs ${requiredApprovals} approval vote(s).`,
+        `Trade approval configured in <#${channel.id}>. <@&${tradeCommitteeRole.id}> needs ${requiredApprovals} approval vote(s).`,
       );
     }
 
@@ -316,7 +316,7 @@ export default {
       return createMessageResponse(`Trade could not be created ${error}`);
     }
     return createMessageResponse(
-      `Trade submitted for commissioner approval in <#${tradeConfig.channel.id}>.`,
+      `Trade submitted for Trade Committee approval in <#${tradeConfig.channel.id}>.`,
     );
   },
 
@@ -329,13 +329,13 @@ export default {
       submitOption(name, `${teamLabel} draft pick ${number} (optional)`);
     return {
       name: "trade",
-      description: "Configure and submit trades for commissioner approval",
+      description: "Configure and submit trades for Trade Committee approval",
       options: [
         {
           type: ApplicationCommandOptionType.Subcommand,
           name: "configure",
           description:
-            "Configure the trade channel, commissioner role, and approval count",
+            "Configure the trade channel, Trade Committee role, and approval count",
           options: [
             {
               type: ApplicationCommandOptionType.Channel,
@@ -346,7 +346,7 @@ export default {
             },
             {
               type: ApplicationCommandOptionType.Role,
-              name: "commissioner_role",
+              name: "trade_committee_role",
               description: "Role allowed to vote",
               required: true,
             },
@@ -363,7 +363,7 @@ export default {
         {
           type: ApplicationCommandOptionType.Subcommand,
           name: "submit",
-          description: "Submit a trade for commissioner approval",
+          description: "Submit a trade for Trade Committee approval",
           options: [
             team("team_a", "Team sending the first group of assets"),
             team("team_b", "Team sending the second group of assets"),
@@ -479,10 +479,10 @@ export default {
     );
     const config = settings.commands.trade;
     if (!config) throw new Error("Trade approvals are not configured");
-    if (!interaction.member.roles.includes(config.commissionerRole.id)) {
+    if (!interaction.member.roles.includes(config.tradeCommitteeRole.id)) {
       return {
         type: InteractionResponseType.ChannelMessageWithSource,
-        data: { content: "Only commissioners can vote on trades.", flags: 64 },
+        data: { content: "Only Trade Committee can vote on trades.", flags: 64 },
       };
     }
     const trade = await TradeDB.vote(tradeId, interaction.member.user.id, vote);
