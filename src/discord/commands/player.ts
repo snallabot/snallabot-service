@@ -736,6 +736,10 @@ function formatMoney(m: number) {
   }
 }
 
+function correctedCapValue(v: number) {
+  return v < 10000 ? v * 1000 : v
+}
+
 function getTeamAbbr(teamId: number, teams: TeamList) {
   if (teamId === 0) {
     return "FA"
@@ -772,7 +776,7 @@ function formatPlayerCard(player: Player, teams: TeamList, logos: LeagueLogos, c
   let age = player.age
 
   const contractStatus = player.isFreeAgent ? "Free Agent" :
-    `> **Length**: ${player.contractYearsLeft}/${player.contractLength} yrs | **Salary**: $${formatMoney(player.contractSalary)}\n> **Cap Hit**: $${formatMoney(player.capHit)} | **Bonus**: $${formatMoney(player.contractBonus)}\n> **Savings**: $${formatMoney(player.capReleaseNetSavings)} | **Penalty**: $${formatMoney(player.capReleasePenalty)}`
+    `> **Length**: ${player.contractYearsLeft}/${player.contractLength} yrs | **Salary**: $${formatMoney(player.contractSalary)}\n> **Cap Hit**: $${formatMoney(correctedCapValue(player.capHit))} | **Bonus**: $${formatMoney(player.contractBonus)}\n> **Savings**: $${formatMoney(player.capReleaseNetSavings)} | **Penalty**: $${formatMoney(correctedCapValue(player.capReleasePenalty))}`
 
   const topAttributes = getTopAttributesByPosition(player)
 
