@@ -251,21 +251,36 @@ export function createClient(settings: DiscordSettings): DiscordClient {
       catch (e) {
         if (e instanceof DiscordRequestError) {
           if (e.isPermissionError()) {
-            throw new SnallabotDiscordError(e, `Snallabot does not have permission to create a message in <#${channel.id}>`)
+            throw new SnallabotDiscordError(e, `Snallabot does not have permission to create a message in <#${channel.id}>. Grant more permissions in your discord settings. `)
           }
           else if (e.code === UNKNOWN_MESSAGE) {
-            throw new SnallabotDiscordError(e, `Snallabot cannot create message, it may have been deleted? Try to re-configure the featuer you just used`)
+            throw new SnallabotDiscordError(e, `Snallabot cannot create message, it may have been deleted? Try to re-configure the feature you just used. /game_channels configure, /teams configure, etc...`)
           } else if (e.code === UNKNOWN_CHANNEL) {
-            throw new SnallabotDiscordError(e, `Snallabot cannot create message in channel because the channel (<#${channel.id}>) may have been deleted? Try to re-configure the feature you just used.`)
+            throw new SnallabotDiscordError(e, `Snallabot cannot create message in channel because the channel (<#${channel.id}>) may have been deleted? Try to re-configure the feature you just used. /game_channels configure, /teams configure, etc...`)
           }
         }
         throw e
       }
     },
     createComponentMessage: async (channel: ChannelId, body: { [key: string]: any }): Promise<MessageId> => {
-      const res = await sendDiscordRequest(`channels/${channel.id}/messages`, { method: "POST", body })
-      const message = await res.json() as APIMessage
-      return { id: message.id, id_type: DiscordIdType.MESSAGE }
+      try {
+        const res = await sendDiscordRequest(`channels/${channel.id}/messages`, { method: "POST", body })
+        const message = await res.json() as APIMessage
+        return { id: message.id, id_type: DiscordIdType.MESSAGE }
+      }
+      catch (e) {
+        if (e instanceof DiscordRequestError) {
+          if (e.isPermissionError()) {
+            throw new SnallabotDiscordError(e, `Snallabot does not have permission to create a message in <#${channel.id}>. Grant more permissions in your discord settings. `)
+          }
+          else if (e.code === UNKNOWN_MESSAGE) {
+            throw new SnallabotDiscordError(e, `Snallabot cannot create message, it may have been deleted? Try to re-configure the feature you just used. /game_channels configure, /teams configure, etc...`)
+          } else if (e.code === UNKNOWN_CHANNEL) {
+            throw new SnallabotDiscordError(e, `Snallabot cannot create message in channel because the channel (<#${channel.id}>) may have been deleted? Try to re-configure the feature you just used. /game_channels configure, /teams configure, etc...`)
+          }
+        }
+        throw e
+      }
     },
     editMessage: async (channel: ChannelId, messageId: MessageId, content: string, allowedMentions = []): Promise<void> => {
       try {
@@ -281,7 +296,7 @@ export function createClient(settings: DiscordSettings): DiscordClient {
       } catch (e) {
         if (e instanceof DiscordRequestError) {
           if (e.isPermissionError()) {
-            throw new SnallabotDiscordError(e, `Snallabot does not have permissions to edit message in channel <#${channel.id}>.`)
+            throw new SnallabotDiscordError(e, `Snallabot does not have permissions to edit message in channel <#${channel.id}>. Grant more permissions in your discord server settings. `)
           } else if (e.code === UNKNOWN_MESSAGE) {
             throw new SnallabotDiscordError(e, `Snallabot cannot edit message, it may have been deleted?`)
           } else if (e.code === UNKNOWN_CHANNEL) {
@@ -365,11 +380,11 @@ export function createClient(settings: DiscordSettings): DiscordClient {
       } catch (e) {
         if (e instanceof DiscordRequestError) {
           if (e.isPermissionError()) {
-            throw new SnallabotDiscordError(e, `Snallabot does not have permissions to create channel under category <#${category.id}>.`)
+            throw new SnallabotDiscordError(e, `Snallabot does not have permissions to create channel under category <#${category.id}>. Grant more permissions in your discord server settings.`)
           } else if (e.code === UNKNOWN_CHANNEL) {
-            throw new SnallabotDiscordError(e, `Snallabot could not create channel under category (<#${category.id}>) may have been deleted?`)
+            throw new SnallabotDiscordError(e, `Snallabot could not create channel under category (<#${category.id}>) may have been deleted? Try to reconfigure the feature you just used, /game_channels configure for example.`)
           } else if (e.code === 50035 && e.originalError?.errors?.parent_id?._errors?.[0]?.code === "CHANNEL_PARENT_INVALID") {
-            throw new SnallabotDiscordError(e, `Snallabot could not create channel under category (<#${category.id}>) may have been deleted?`)
+            throw new SnallabotDiscordError(e, `Snallabot could not create channel under category (<#${category.id}>) may have been deleted? Try to reconfigure the feature you just used, /game_channels configure for example.`)
           }
         }
         throw e
@@ -381,7 +396,7 @@ export function createClient(settings: DiscordSettings): DiscordClient {
       } catch (e) {
         if (e instanceof DiscordRequestError) {
           if (e.isPermissionError()) {
-            throw new SnallabotDiscordError(e, `Snallabot does not have permissions to delete channel <#${channel.id}>.`)
+            throw new SnallabotDiscordError(e, `Snallabot does not have permissions to delete channel <#${channel.id}>. Grant more permissions in your discord server settings.`)
           } else if (e.code === UNKNOWN_CHANNEL) {
             throw new SnallabotDiscordError(e, `Snallabot could not delete channel <#${channel.id}> may have been deleted?`)
           }
