@@ -43,6 +43,7 @@ export type TeamAssignment = { discord_user?: UserId, discord_role?: RoleId }
 export type TeamAssignments = { [key: string]: TeamAssignment }
 export type TeamConfiguration = { channel: ChannelId, messageId: MessageId, useRoleUpdates: boolean, assignments: TeamAssignments }
 export type PlayerConfiguration = { useHiddenDevs: boolean }
+export type TradeConfiguration = { channel: ChannelId, tradeCommitteeRole: RoleId, requiredApprovals: number }
 
 export type GuildSettings = {
   schemaVersion: 1,
@@ -63,7 +64,8 @@ export type LeagueSettings = {
     teams?: TeamConfiguration,
     waitlist?: WaitlistConfiguration,
     madden_league?: MaddenLeagueConfiguration,
-    player?: PlayerConfiguration
+    player?: PlayerConfiguration,
+    trade?: TradeConfiguration
   },
   guildId: string
 }
@@ -98,7 +100,8 @@ interface LeagueSettingsDB {
   removeAllAssignments(guildId: string, leagueId?: string): Promise<void>,
   getLeagueSettingsForLeagueId(leagueId: string): Promise<LeagueSettings[]>,
   deleteLeagueSetting(guildId: string): Promise<void>,
-  configurePlayer(guildId: string, playerConfiguration: PlayerConfiguration, leagueId?: string): Promise<void>
+  configurePlayer(guildId: string, playerConfiguration: PlayerConfiguration, leagueId?: string): Promise<void>,
+  configureTrade(guildId: string, tradeConfiguration: TradeConfiguration, leagueId?: string): Promise<void>
 }
 
 export function createWeekKey(season: number, week: number) {
@@ -354,10 +357,12 @@ const LeagueSettingsDB: LeagueSettingsDB = {
         const priority = dedicatedDocument ? 3 : maddenLeague?.league_ids ? 2 : 1
         const key = `${guildId}|${leagueId}`
         if ((settingsByLeague.get(key)?.priority || 0) > priority) return
-        settingsByLeague.set(key, { priority, settings: {
-          guildId,
-          commands: dedicatedDocument ? settings.commands : commandsForLegacyLeague(settings, leagueId)
-        } })
+        settingsByLeague.set(key, {
+          priority, settings: {
+            guildId,
+            commands: dedicatedDocument ? settings.commands : commandsForLegacyLeague(settings, leagueId)
+          }
+        })
       })
     })
     return [...settingsByLeague.values()].map(value => value.settings)
@@ -676,10 +681,12 @@ const LeagueSettingsDB: LeagueSettingsDB = {
       const dedicatedDocument = document.id === leagueSettingsDocumentId(guildId, leagueId)
       const priority = dedicatedDocument ? 3 : maddenLeague.league_ids ? 2 : 1
       if ((settingsByGuild.get(guildId)?.priority || 0) > priority) return
-      settingsByGuild.set(guildId, { priority, settings: {
-        guildId,
-        commands: dedicatedDocument ? settings.commands : commandsForLegacyLeague(settings, leagueId)
-      } })
+      settingsByGuild.set(guildId, {
+        priority, settings: {
+          guildId,
+          commands: dedicatedDocument ? settings.commands : commandsForLegacyLeague(settings, leagueId)
+        }
+      })
     })
     const connectedSettings = await Promise.all([...settingsByGuild.values()].map(async value => {
       const connectionDocument = await discordLeagueConnectionsCollection.doc(value.settings.guildId).get()
@@ -705,9 +712,11 @@ const LeagueSettingsDB: LeagueSettingsDB = {
     batch.delete(discordGuildSettingsCollection.doc(guildId))
     await batch.commit()
   },
-
   async configurePlayer(guildId: string, configuration: PlayerConfiguration, leagueId?: string) {
     await setCommandConfiguration(guildId, leagueId, 'player', configuration)
+  },
+  async configureTrade(guildId: string, configuration: TradeConfiguration, leagueId?: string) {
+    await setCommandConfiguration(guildId, leagueId, 'trade', configuration)
   }
 }
 

@@ -48,8 +48,8 @@ async function handleInteraction(ctx: ParameterizedContext, client: DiscordClien
     return
   } else if (interactionType === InteractionType.MessageComponent) {
     const messageComponentInteraction = interaction as APIMessageComponentInteraction
-    if (messageComponentInteraction.guild_id) {
-      await handleMessageComponent({ token: messageComponentInteraction.token, custom_id: messageComponentInteraction.data.custom_id, data: messageComponentInteraction.data, guild_id: messageComponentInteraction.guild_id }, ctx, client)
+    if (messageComponentInteraction.guild_id && messageComponentInteraction.member) {
+      await handleMessageComponent({ token: messageComponentInteraction.token, custom_id: messageComponentInteraction.data.custom_id, data: messageComponentInteraction.data, guild_id: messageComponentInteraction.guild_id, member: messageComponentInteraction.member }, ctx, client)
     }
     return
   }

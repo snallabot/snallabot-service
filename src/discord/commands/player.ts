@@ -1,5 +1,5 @@
 import { Command, Autocomplete, MessageComponentInteraction } from "../commands_handler"
-import { DiscordClient, deferMessage, getTeamEmoji, SnallabotTeamEmojis, NoConnectedLeagueError, SnallabotCommandReactions, createMessageResponse } from "../discord_utils"
+import { DiscordClient, deferMessage, getTeamEmoji, SnallabotTeamEmojis, NoConnectedLeagueError, SnallabotCommandReactions, createMessageResponse, SnallabotDevEmojis } from "../discord_utils"
 import { APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ButtonStyle, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { discordLeagueView, LeagueLogos, leagueLogosView } from "../../db/view"
 import fuzzysort from "fuzzysort"
@@ -714,13 +714,6 @@ function getDevTraitName(devTrait: DevTrait, yearsPro: number, useHiddenDevs: bo
   }
 }
 
-enum SnallabotDevEmojis {
-  NORMAL = "<:snallabot_normal_dev:1363761484131209226>",
-  STAR = "<:snallabot_star_dev:1363761179805220884>",
-  SUPERSTAR = "<:snallabot_superstar_dev:1363761181525020703>",
-  XFACTOR = "<:snallabot_xfactor_dev:1363761178622562484>",
-  HIDDEN = "<:snallabot_hidden_dev:1363761182682517565>"
-}
 const rules = new Intl.PluralRules("en-US", { type: "ordinal" })
 const suffixes = new Map([
   ["one", "st"],
