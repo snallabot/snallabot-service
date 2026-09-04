@@ -615,11 +615,6 @@ export function createClient(settings: DiscordSettings): DiscordClient {
 
         allGuilds.push(...guilds)
 
-        // If we got less than 200, we've reached the end
-        if (guilds.length < 200) {
-          break
-        }
-
         // Use the last guild's ID for the next page
         after = guilds[guilds.length - 1].id
       }

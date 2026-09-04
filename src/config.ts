@@ -16,3 +16,12 @@ if (process.env.QUEUE_CONCURRENCY) {
   queueConcurrency = Number(process.env.QUEUE_CONCURRENCY)
 }
 export const QUEUE_CONCURRENCY = queueConcurrency
+export enum DBs {
+  FIREBASE,
+  MONGO
+}
+let db = DBs.FIREBASE
+if (process.env.MONGO_CONNECTION_URI) {
+  db = DBs.MONGO
+}
+export const DB = db

@@ -1,6 +1,6 @@
-# Guidemarkdown to Reverse Engineering the Companion App
+# Guide to Reverse Engineering the Companion App
 
-Confirmed to be working as of August 27 2026, with Android emulator API 37. This was done on the Madden 26 Companion App
+Confirmed to be working as of August 27 2026, with Android emulator API 37. This was done on the Madden 27 Companion App
 
 ## Tools
 
