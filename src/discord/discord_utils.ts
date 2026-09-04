@@ -3,7 +3,7 @@ import { verifyKey } from "discord-interactions"
 import { APIApplicationCommand, APIChannel, APIEmoji, APIGuild, APIGuildMember, APIMessage, APIThreadChannel, APIUser, ChannelType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { CategoryId, ChannelId, DiscordIdType, MessageId, RoleId, UserId } from "./settings_db"
 import { createDashboard } from "./commands/dashboard"
-import { GameResult, MADDEN_SEASON, MaddenGame, Team, getMessageForWeek, Standing, formatRecord } from "../export/madden_league_types"
+import { GameResult, MADDEN_SEASON, MaddenGame, Team, getMessageForWeek, Standing, formatRecord, DevTrait } from "../export/madden_league_types"
 import MaddenDB, { TeamList } from "../db/madden_db"
 import { LeagueLogos } from "../db/view"
 import EventDB from "../db/events_db"
@@ -13,7 +13,15 @@ import { discordOutgoingRequestsCounter } from "../debug/metrics"
 
 export enum CommandMode {
   INSTALL = "INSTALL",
-  DELETE = "DELETE"
+  DELETE = "DELETE",
+}
+
+export enum SnallabotDevEmojis {
+  NORMAL = "<:snallabot_normal_dev:1363761484131209226>",
+  STAR = "<:snallabot_star_dev:1363761179805220884>",
+  SUPERSTAR = "<:snallabot_superstar_dev:1363761181525020703>",
+  XFACTOR = "<:snallabot_xfactor_dev:1363761178622562484>",
+  HIDDEN = "<:snallabot_hidden_dev:1363761182682517565>",
 }
 
 export type DiscordError = { message: string, code: number, retry_after?: number, errors?: { [key: string]: { _errors: { code: string, message: string }[] } } }
@@ -67,6 +75,7 @@ export interface DiscordClient {
   editOriginalInteraction(token: string, body: { [key: string]: any }): Promise<void>,
   editOriginalInteractionWithForm(token: string, body: FormData): Promise<void>,
   createMessage(channel: ChannelId, content: string, allowedMentions: string[]): Promise<MessageId>,
+  createComponentMessage(channel: ChannelId, body: { [key: string]: any }): Promise<MessageId>,
   editMessage(channel: ChannelId, messageId: MessageId, content: string, allowedMentions: string[]): Promise<void>,
   deleteMessage(channel: ChannelId, messageId: MessageId): Promise<void>,
   createChannel(guild_id: string, channelName: string, category: CategoryId, privateUsers?: UserId[], privateRoles?: RoleId[]): Promise<ChannelId>,
@@ -252,6 +261,11 @@ export function createClient(settings: DiscordSettings): DiscordClient {
         }
         throw e
       }
+    },
+    createComponentMessage: async (channel: ChannelId, body: { [key: string]: any }): Promise<MessageId> => {
+      const res = await sendDiscordRequest(`channels/${channel.id}/messages`, { method: "POST", body })
+      const message = await res.json() as APIMessage
+      return { id: message.id, id_type: DiscordIdType.MESSAGE }
     },
     editMessage: async (channel: ChannelId, messageId: MessageId, content: string, allowedMentions = []): Promise<void> => {
       try {
@@ -837,4 +851,23 @@ export function formatSchedule(week: number, seasonIndex: number, games: MaddenG
     return `${gameMessage} ${simMessage}`
   }).join("\n")
   return `# ${seasonIndex + MADDEN_SEASON} Season ${getMessageForWeek(week)} Games\n${scoreboardGames}`
+}
+
+export function devEmoji(dev: DevTrait, yearsPro: number, useHiddenDevs: boolean) {
+  if (yearsPro === 0 && dev !== DevTrait.NORMAL && useHiddenDevs) {
+    return SnallabotDevEmojis.HIDDEN;
+  }
+
+  switch (dev) {
+    case DevTrait.NORMAL:
+      return SnallabotDevEmojis.NORMAL;
+    case DevTrait.STAR:
+      return SnallabotDevEmojis.STAR;
+    case DevTrait.SUPERSTAR:
+      return SnallabotDevEmojis.SUPERSTAR;
+    case DevTrait.XFACTOR:
+      return SnallabotDevEmojis.XFACTOR;
+    default:
+      return "❔";
+  }
 }
