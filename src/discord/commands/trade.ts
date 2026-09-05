@@ -42,8 +42,6 @@ import {
   InteractionResponseType,
   RESTPostAPIApplicationCommandsJSONBody,
 } from "discord-api-types/v10";
-import { error } from "console";
-
 const TEAM_A_PLAYER_OPTIONS = [
   "team_a_player_1",
   "team_a_player_2",
@@ -93,7 +91,7 @@ function assetLine(asset: TradeAsset) {
   return `> ${asset.dev} **${asset.position} ${asset.name}** — ${asset.overall} OVR | Age ${asset.age}`;
 }
 
-function tradeMessage(trade: TradeSubmission) {
+function tradeMessage(trade: TradeSubmission, tradeCommitteeRole: RoleId ) {
   const approvals = Object.values(trade.votes).filter(
     (vote) => vote === TradeVote.APPROVE,
   ).length;
@@ -113,7 +111,7 @@ function tradeMessage(trade: TradeSubmission) {
     `## ${trade.teamB.name} Receives`,
     trade.teamB.assets.map(assetLine).join("\n"),
     `**Submitted by:** <@${trade.submittedBy}>`,
-    `**Trade Committee votes:** ✅ ${approvals} Approve | ❌ ${rejections} Reject`,
+    `**<@${tradeCommitteeRole}> votes:** ✅ ${approvals} Approve | ❌ ${rejections} Reject`,
     `**Required approvals:** ${trade.requiredApprovals}`,
     `**Status:** ${statusEmoji} ${trade.status}`,
   ].join("\n\n");
@@ -305,7 +303,7 @@ export default {
       const messageId = await client.createComponentMessage(
         tradeConfig.channel,
         {
-          content: tradeMessage(trade),
+          content: tradeMessage(trade, tradeConfig.tradeCommitteeRole),
           components: voteComponents(trade),
           allowed_mentions: { parse: [] },
         },
@@ -489,7 +487,7 @@ export default {
     return {
       type: InteractionResponseType.UpdateMessage,
       data: {
-        content: tradeMessage(trade),
+        content: tradeMessage(trade, config.tradeCommitteeRole),
         components: voteComponents(trade),
         allowed_mentions: { parse: [] },
       },
