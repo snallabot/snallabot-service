@@ -32,6 +32,26 @@ npm run dev
 
 This will setup a firebase emulator, use local file storage, and make a local version of snallabot availaible at `localhost:3000`
 
+To then let Discord connect to your local version, you can create a temporary tunnel. There is [Cloudflare Tunnel](https://developers.cloudflare.com/tunnel/) and [Ngrok](https://ngrok.com/). Choose whichever is appopriate for you. Once you have a tunnel, head to your discord application portal. Update the `Interactions Endpoint URL` to be the following:
+
+```
+https://TUNNEL_URL/discord/webhook/slashCommand
+```
+
+Hit save, and that will verify that Discord can reach your bot. Now finally, you have to install the commands of the bot. Run a curl against snallabot:
+
+```
+curl -X POST http://localhost:3000/discord/webhook/commandsHandler  -H "Content-Type: application/json" --data '{"mode": "INSTALL", "commandNames":[]}'
+```
+
+This will install the commands **globally** for your bot (meaning they will be availaible in all Discord servers). You can also install at the Guild level:
+
+```
+curl -X POST localhost:3000/discord/webhook/commandsHandler  -H "Content-Type: application/json" --data '{"mode": "INSTALL", "guildId":"1198780271814770829", "commandNames":[]}'
+```
+
+The guild id is a Discord server id. This is faster than global. The commandNames can scope which commands you want to install. Anytime you change the options of a command you have to install to update them again. Global commands can take up to 20 minutes to show up in Discord. 
+
 ### Other Components
 
 There are 3 other runnable components in Snallabot: EA token refresher, youtube notifier, twitch notifier
