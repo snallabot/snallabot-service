@@ -21,10 +21,7 @@ import TradeDB, {
   TradeVote,
 } from "../trade_db";
 import MaddenDB from "../../db/madden_db";
-import {
-  MADDEN_SEASON,
-  Player,
-} from "../../export/madden_league_types";
+import { MADDEN_SEASON, Player } from "../../export/madden_league_types";
 import { discordLeagueView } from "../../db/view";
 import { retrieveTeam } from "./teams";
 import fuzzysort from "fuzzysort";
@@ -528,9 +525,9 @@ export default {
     ) {
       if (trade.messageId != undefined) {
         // it wont be it gets attached after creation of the message
-        client.deleteMessage(config.channel, trade.messageId);
+        await client.deleteMessage(config.channel, trade.messageId);
       }
-      client.createMessage(
+      await client.createMessage(
         config.acceptedChannel,
         tradeMessage(trade, config.tradeCommitteeRole),
         ["users"],
@@ -541,9 +538,9 @@ export default {
       config.declinedChannel != config.channel
     ) {
       if (trade.messageId != undefined) {
-        client.deleteMessage(config.channel, trade.messageId);
+        await client.deleteMessage(config.channel, trade.messageId);
       }
-      client.createMessage(
+      await client.createMessage(
         config.declinedChannel,
         tradeMessage(trade, config.tradeCommitteeRole),
         ["users"],
