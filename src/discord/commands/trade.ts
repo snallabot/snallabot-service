@@ -13,6 +13,7 @@ import LeagueSettingsDB, {
   ChannelId,
   DiscordIdType,
   RoleId,
+  MessageId,
 } from "../settings_db";
 import TradeDB, {
   TradeAsset,
@@ -42,6 +43,7 @@ import {
   InteractionResponseType,
   RESTPostAPIApplicationCommandsJSONBody,
 } from "discord-api-types/v10";
+import { Message } from "oceanic.js";
 const TEAM_A_PLAYER_OPTIONS = [
   "team_a_player_1",
   "team_a_player_2",
@@ -507,7 +509,6 @@ export default {
         : voteValue === TradeVote.REJECT
           ? TradeVote.REJECT
           : undefined;
-
     if (!tradeId || !vote) throw new Error("Invalid trade vote");
     const settings = await LeagueSettingsDB.getLeagueSettings(
       interaction.guild_id,
@@ -525,6 +526,9 @@ export default {
     }
     const trade = await TradeDB.vote(tradeId, interaction.member.user.id, vote);
     if (trade.status === TradeStatus.APPROVED && config.acceptedChannel != config.channel) {
+      if(trade.messageId != undefined){ // it wont be it gets attached after creation of the message
+      client.deleteMessage(config.channel, trade.messageId)
+      }
       client.createMessage(
         config.acceptedChannel,
         tradeMessage(trade, config.tradeCommitteeRole),
@@ -532,6 +536,9 @@ export default {
       );
     }
     if (trade.status === TradeStatus.REJECTED && config.declinedChannel != config.channel) {
+       if(trade.messageId != undefined){
+      client.deleteMessage(config.channel, trade.messageId)
+      }
       client.createMessage(
         config.declinedChannel,
         tradeMessage(trade, config.tradeCommitteeRole),
