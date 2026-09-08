@@ -65,8 +65,8 @@ function stringOption(
 ): string | undefined {
   return (
     options.get(name) as
-      | APIApplicationCommandInteractionDataStringOption
-      | undefined
+    | APIApplicationCommandInteractionDataStringOption
+    | undefined
   )?.value;
 }
 
@@ -206,14 +206,14 @@ export default {
       );
       const acceptedChannelValue = (
         options.get("accepted_trades_channel") as
-          | APIApplicationCommandInteractionDataChannelOption
-          | undefined
+        | APIApplicationCommandInteractionDataChannelOption
+        | undefined
       )?.value;
 
       const declinedChannelValue = (
         options.get("declined_trades_channel") as
-          | APIApplicationCommandInteractionDataChannelOption
-          | undefined
+        | APIApplicationCommandInteractionDataChannelOption
+        | undefined
       )?.value;
 
       const channel: ChannelId = {
@@ -239,9 +239,14 @@ export default {
         acceptedChannel,
         declinedChannel,
       });
-      return createMessageResponse(
-        `Trade approval configured in <#${channel.id}>. <@&${tradeCommitteeRole.id}> needs ${requiredApprovals} approval vote(s).`,
-      );
+      const acceptedMessage = acceptedChannelValue ? `<#${acceptedChannelValue}>` : `Submission Updates`
+      const declinedMessage = declinedChannelValue ? `<#${declinedChannelValue}>` : `Submission Updates`
+      return createMessageResponse(`Trade command is configured! Configuration:
+- Trade Submissions: <#${channel.id}>
+- Trade Committee Role: <@&${tradeCommitteeRole.id}>
+- Required Approvals: ${requiredApprovals}
+- Accepted Trades: ${acceptedMessage}
+- Declined Trades: ${declinedMessage}`)
     }
 
     if (subcommand.name !== "submit")
