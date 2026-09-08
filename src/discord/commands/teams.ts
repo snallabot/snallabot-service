@@ -3,13 +3,13 @@ import { createMessageResponse, DiscordClient, SnallabotDiscordError, NoConnecte
 import { APIApplicationCommandInteractionDataAttachmentOption, APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIApplicationCommandInteractionDataUserOption, ApplicationCommandOptionType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import LeagueSettingsDB, { ChannelId, DiscordIdType, LeagueSettings, MessageId, TeamAssignments } from "../settings_db"
 import { Team } from "../../export/madden_league_types"
-import { discordLeagueView } from "../../db/view"
+import { discordLeagueView, leagueLogosView } from "../../db/view"
 import fuzzysort from "fuzzysort"
 import MaddenDB, { TeamList } from "../../db/madden_db"
 import { createCanvas, loadImage } from "canvas"
 import FileHandler, { imageSerializer } from "../../file_handlers"
 import EventDB, { EventDelivery } from "../../db/events_db"
-import { TeamLogoCustomizedEvent } from "../../db/events"
+import { ResetLogoEvent, TeamLogoCustomizedEvent } from "../../db/events"
 
 function formatTeamMessage(teams: Team[], teamAssignments: TeamAssignments): string {
   const header = "# Teams"
@@ -177,6 +177,30 @@ async function handleCustomLogo(guild_id: string, league_id: string, client: Dis
     console.error('Error processing custom logo:', error);
     client.editOriginalInteraction(token, {
       content: `Error processing custom logo:, ${error}`
+    })
+  }
+}
+
+async function resetCustomLogo(guild_id: string, league_id: string, client: DiscordClient, token: string, teamToReset: Team) {
+  try {
+    const customTeamLogos = await leagueLogosView.createView(league_id)
+    const customLogo = customTeamLogos[teamToReset.abbrName]
+    if (!customLogo) {
+      client.editOriginalInteraction(token, {
+        content: `No custom logos found for team ${teamToReset.displayName}`
+      })
+      return
+    }
+    await client.deleteEmoji(customLogo.emoji_id, guild_id)
+    await EventDB.appendEvents<ResetLogoEvent>(
+      [{ key: league_id, event_type: "RESET_LOGO", teamAbbr: teamToReset.abbrName }], EventDelivery.EVENT_SOURCE
+    )
+    client.editOriginalInteraction(token, {
+      content: `Reset custom logo ${teamToReset.abbrName}`
+    })
+  } catch (error) {
+    client.editOriginalInteraction(token, {
+      content: `Error resetting custom logo:, ${error}`
     })
   }
 }
@@ -373,6 +397,21 @@ export default {
       const { url } = command.data.resolved.attachments[image.value]
       handleCustomLogo(guild_id, leagueId, client, command.token, url, teamToCustomize)
       return deferMessage()
+    } else if (subCommand === "reset_logo") {
+      if (!teamsCommand.options || !teamsCommand.options[0]) {
+        throw new Error("teams customize_logo misconfigured")
+      }
+
+      const teamSearchPhrase = (teamsCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value.toLowerCase()
+      if (!leagueSettings?.commands?.madden_league?.league_id) {
+        throw new NoConnectedLeagueError(guild_id)
+      }
+      const leagueId = leagueSettings.commands.madden_league.league_id
+      const teams = await MaddenDB.getLatestTeams(leagueId)
+      const assignedTeam = retrieveTeam(teamSearchPhrase, teams)
+      const teamToReset = teams.getTeamForId(assignedTeam.teamId)
+      resetCustomLogo(guild_id, leagueId, client, command.token, teamToReset)
+      return deferMessage()
     }
     else {
       throw new Error(`teams ${subCommand} misconfigured`)
@@ -464,6 +503,21 @@ export default {
               description: "image file to use as the team logo",
               required: true,
             },
+          ],
+        },
+        {
+          type: ApplicationCommandOptionType.Subcommand,
+          name: "reset_logo",
+          description: "reset the team logo to original NFL logo",
+          options: [
+            {
+              type: ApplicationCommandOptionType.String,
+              name: "team",
+              description:
+                "the team city, name, or abbreviation. Ex: Buccaneers, TB, Tampa Bay",
+              required: true,
+              autocomplete: true
+            }
           ],
         },
         {

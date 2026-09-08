@@ -50,6 +50,7 @@ export class NoConnectedLeagueError extends Error {
 
 const UNKNOWN_MESSAGE = 10008
 const UNKNOWN_CHANNEL = 10003
+const MAX_EMOJIS = 30008
 
 export class SnallabotDiscordError extends SnallabotError {
   guidance: string
@@ -89,6 +90,7 @@ export interface DiscordClient {
   getUsers(guild_id: string): Promise<APIGuildMember[]>,
   getGuildInformation(guild_id: string): Promise<APIGuild>,
   uploadEmoji(imageData: string, name: string, guildId: string): Promise<APIEmoji>,
+  deleteEmoji(emojiId: string, guildId: string): Promise<void>,
   getBotUser(): UserId,
   retrieveAccessToken(code: string, redirect: string): Promise<string>,
   getUserGuilds(accessToken: string): Promise<APIGuild[]>,
@@ -223,12 +225,14 @@ export function createClient(settings: DiscordSettings): DiscordClient {
       try {
         await sendDiscordRequest(`webhooks/${settings.appId}/${token}/messages/@original`, { method: "PATCH", body })
       } catch (e) {
+        console.error(e)
       }
     },
     editOriginalInteractionWithForm: async (token: string, body: FormData) => {
       try {
         await sendDiscordRequestForm(`webhooks/${settings.appId}/${token}/messages/@original`, body, { method: "PATCH" })
       } catch (e) {
+        console.error(e)
       }
     }
     ,
@@ -554,7 +558,6 @@ export function createClient(settings: DiscordSettings): DiscordClient {
         const duplicateEmoji = existingEmojis.find((emoji) => emoji.name === name);
 
         if (duplicateEmoji) {
-          console.log("duplicate emoji " + duplicateEmoji.id)
           await sendDiscordRequest(`guilds/${guildId}/emojis/${duplicateEmoji.id}`, {
             method: "DELETE",
             body: {}
@@ -570,7 +573,29 @@ export function createClient(settings: DiscordSettings): DiscordClient {
         return (await res.json()) as APIEmoji;
       }
       catch (e) {
-        throw new Error(`Discord API Error: ${e}`);
+        if (e instanceof DiscordRequestError) {
+          if (e.isPermissionError()) {
+            throw new SnallabotDiscordError(e, `Snallabot does not have permissions to upload emojis in your server`)
+          } else if (e.code === MAX_EMOJIS) {
+            throw new SnallabotDiscordError(e, `Snallabot tried to upload an emoji to your server, but there are no emojis left. Delete an emoji in your server so Snallabot can upload one`)
+          }
+        }
+        throw e
+      }
+    },
+    deleteEmoji: async function(emojiId: string, guildId: string) {
+      try {
+        await sendDiscordRequest(`guilds/${guildId}/emojis/${emojiId}`, {
+          method: "DELETE",
+          body: {}
+        })
+      } catch (e) {
+        if (e instanceof DiscordRequestError) {
+          if (e.isPermissionError()) {
+            throw new SnallabotDiscordError(e, `Snallabot does not have permissions to delete emojis in your server`)
+          }
+        }
+        throw e
       }
     },
     getBotUser: function() {
