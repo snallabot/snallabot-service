@@ -48,7 +48,7 @@ const TradeDB = {
   },
 
   async delete(tradeId: string): Promise<void> {
-    trades.doc(tradeId).delete;
+    await trades.doc(tradeId).delete();
   },
 
   async attachMessage(tradeId: string, messageId: MessageId): Promise<void> {
