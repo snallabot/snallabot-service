@@ -19,7 +19,7 @@ function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-const SLEEP_MIN = 60
+const SLEEP_MIN = 30
 
 async function runLeagueChecks() {
   while (true) {
@@ -29,7 +29,7 @@ async function runLeagueChecks() {
 
     for (const leagueId of leagues) {
       // avoid any overloading of EA
-      await sleep(12000)
+      await sleep(6000)
       try {
         await checkLeague(leagueId)
       } catch (e) {
