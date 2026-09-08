@@ -13,7 +13,6 @@ import LeagueSettingsDB, {
   ChannelId,
   DiscordIdType,
   RoleId,
-  MessageId,
 } from "../settings_db";
 import TradeDB, {
   TradeAsset,
@@ -23,7 +22,6 @@ import TradeDB, {
 } from "../trade_db";
 import MaddenDB from "../../db/madden_db";
 import {
-  DevTrait,
   MADDEN_SEASON,
   Player,
 } from "../../export/madden_league_types";
@@ -43,7 +41,6 @@ import {
   InteractionResponseType,
   RESTPostAPIApplicationCommandsJSONBody,
 } from "discord-api-types/v10";
-import { Message } from "oceanic.js";
 const TEAM_A_PLAYER_OPTIONS = [
   "team_a_player_1",
   "team_a_player_2",
@@ -525,9 +522,13 @@ export default {
       };
     }
     const trade = await TradeDB.vote(tradeId, interaction.member.user.id, vote);
-    if (trade.status === TradeStatus.APPROVED && config.acceptedChannel != config.channel) {
-      if(trade.messageId != undefined){ // it wont be it gets attached after creation of the message
-      client.deleteMessage(config.channel, trade.messageId)
+    if (
+      trade.status === TradeStatus.APPROVED &&
+      config.acceptedChannel != config.channel
+    ) {
+      if (trade.messageId != undefined) {
+        // it wont be it gets attached after creation of the message
+        client.deleteMessage(config.channel, trade.messageId);
       }
       client.createMessage(
         config.acceptedChannel,
@@ -535,9 +536,12 @@ export default {
         ["users"],
       );
     }
-    if (trade.status === TradeStatus.REJECTED && config.declinedChannel != config.channel) {
-       if(trade.messageId != undefined){
-      client.deleteMessage(config.channel, trade.messageId)
+    if (
+      trade.status === TradeStatus.REJECTED &&
+      config.declinedChannel != config.channel
+    ) {
+      if (trade.messageId != undefined) {
+        client.deleteMessage(config.channel, trade.messageId);
       }
       client.createMessage(
         config.declinedChannel,
