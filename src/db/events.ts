@@ -16,5 +16,6 @@ export type RemoveChannelEvent = { channel_id: string, discord_server: string }
 export type ConfirmedSimV2 = { confirmedUsers: UserId[], requestedUsers: UserId[], result: SimResult, scheduleId: number, seasonIndex: number, week: number, homeUser?: UserId, awayUser?: UserId }
 export type DiscordLeagueConnectionEvent = { guildId: string, leagueId: string }
 export type TeamLogoCustomizedEvent = { emoji_id: string, emoji_name: string, teamAbbr: string, teamLogoPath: string }
+export type ResetLogoEvent = { teamAbbr: string }
 // TODO: will I regret this? only time will tell. Making this a list of players instead of just one
 export type RetiredPlayersEvent = { retiredPlayers: { presentationId: number, birthYear: number, birthMonth: number, birthDay: number, rosterId: string }[] }

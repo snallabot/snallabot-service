@@ -1,7 +1,7 @@
 import NodeCache from "node-cache"
 import EventDB, { SnallabotEvent, StoredEvent } from "./events_db"
 import LeagueSettingsDB from "../discord/settings_db"
-import { DiscordLeagueConnectionEvent, TeamLogoCustomizedEvent } from "./events"
+import { DiscordLeagueConnectionEvent, ResetLogoEvent, TeamLogoCustomizedEvent } from "./events"
 import FileHandler, { defaultSerializer } from "../file_handlers"
 import { viewCacheHits, viewCacheTotalRequests } from "../debug/metrics"
 import fastq from 'fastq'
@@ -186,21 +186,31 @@ discordLeagueView.listen("DISCORD_LEAGUE_CONNECTION")
 export type LeagueLogos = {
   [key: string]: TeamLogoCustomizedEvent
 }
+
 class CustomTeamLogosView extends View<LeagueLogos> {
   constructor() {
     super("custom_team_logos")
   }
+
   async createView(key: string) {
-    const events = await EventDB.queryEvents<TeamLogoCustomizedEvent>(key, "CUSTOM_LOGO", new Date(0), {}, 100)
+    const [customEvents, resetEvents] = await Promise.all([
+      EventDB.queryEvents<TeamLogoCustomizedEvent>(key, "CUSTOM_LOGO", new Date(0), {}, 100),
+      EventDB.queryEvents<ResetLogoEvent>(key, "RESET_LOGO", new Date(0), {}, 100),
+    ])
+
+    const latestByTeam = [...customEvents, ...resetEvents].reduce((acc, e) => {
+      if (!acc[e.teamAbbr] || e.timestamp > acc[e.teamAbbr].timestamp) {
+        acc[e.teamAbbr] = e
+      }
+      return acc
+    }, {} as Record<string, StoredEvent<TeamLogoCustomizedEvent> | StoredEvent<ResetLogoEvent>>)
+
     return Object.fromEntries(
-      Object.values(
-        events.reduce((acc, e) => {
-          if (!acc[e.teamAbbr] || e.timestamp > acc[e.teamAbbr].timestamp) {
-            acc[e.teamAbbr] = e
-          }
-          return acc
-        }, {} as Record<string, StoredEvent<TeamLogoCustomizedEvent>>)
-      ).map(e => [e.teamAbbr, e]))
+      Object.entries(latestByTeam)
+        .filter((entry): entry is [string, StoredEvent<TeamLogoCustomizedEvent>] =>
+          entry[1].event_type === "CUSTOM_LOGO"
+        )
+    )
   }
 }
 export const leagueLogosView = new CustomTeamLogosView()
