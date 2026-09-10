@@ -328,7 +328,7 @@ export default {
         {
           content: tradeMessage(trade, tradeConfig.tradeCommitteeRole),
           components: voteComponents(trade),
-          allowed_mentions: { parse: ["users"] },
+          allowed_mentions: { parse: ["roles"] },
         },
       );
       await TradeDB.attachMessage(trade.id, messageId);
@@ -524,32 +524,42 @@ export default {
       };
     }
     const trade = await TradeDB.vote(tradeId, interaction.member.user.id, vote);
-    if (
-      trade.status === TradeStatus.APPROVED &&
-      config.acceptedChannel != config.channel
-    ) {
-      if (trade.messageId != undefined) {
-        // it wont be it gets attached after creation of the message
-        await client.deleteMessage(config.channel, trade.messageId);
+    try {
+      if (
+        trade.status === TradeStatus.APPROVED &&
+        config.acceptedChannel?.id
+      ) {
+        if (trade.messageId) {
+          // it wont be it gets attached after creation of the message
+          await client.deleteMessage(config.channel, trade.messageId);
+        }
+        await client.createMessage(
+          config.acceptedChannel,
+          tradeMessage(trade, config.tradeCommitteeRole),
+          ["users"],
+        );
       }
-      await client.createMessage(
-        config.acceptedChannel,
-        tradeMessage(trade, config.tradeCommitteeRole),
-        ["users"],
-      );
-    }
-    if (
-      trade.status === TradeStatus.REJECTED &&
-      config.declinedChannel != config.channel
-    ) {
-      if (trade.messageId != undefined) {
-        await client.deleteMessage(config.channel, trade.messageId);
+      if (
+        trade.status === TradeStatus.REJECTED &&
+        config.declinedChannel?.id
+      ) {
+        if (trade.messageId) {
+          await client.deleteMessage(config.channel, trade.messageId);
+        }
+        await client.createMessage(
+          config.declinedChannel,
+          tradeMessage(trade, config.tradeCommitteeRole),
+          ["users"],
+        );
       }
-      await client.createMessage(
-        config.declinedChannel,
-        tradeMessage(trade, config.tradeCommitteeRole),
-        ["users"],
-      );
+    } catch (e) {
+      console.error(e)
+      return {
+        type: InteractionResponseType.UpdateMessage,
+        data: {
+          content: `Error in processing trade ${e}`
+        },
+      }
     }
     return {
       type: InteractionResponseType.UpdateMessage,
