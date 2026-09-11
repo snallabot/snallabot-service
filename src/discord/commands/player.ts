@@ -737,7 +737,7 @@ function formatMoney(m: number) {
 }
 
 function correctedCapValue(v: number) {
-  return v < 10000 ? v * 1000 : v
+  return v * 10000
 }
 
 function getTeamAbbr(teamId: number, teams: TeamList) {
