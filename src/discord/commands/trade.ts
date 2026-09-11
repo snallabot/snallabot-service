@@ -87,6 +87,18 @@ function assetLine(asset: TradeAsset) {
   return `> ${asset.dev} **${asset.position} ${asset.name}** — ${asset.overall} OVR | Age ${asset.age}`;
 }
 
+const statusEmojis: Record<TradeStatus, string> = {
+  [TradeStatus.APPROVED]: "✅",
+  [TradeStatus.PENDING]: "⏳",
+  [TradeStatus.REJECTED]: "❌"
+}
+
+const headerMessage: Record<TradeStatus, string> = {
+  [TradeStatus.APPROVED]: "Trade Approved",
+  [TradeStatus.PENDING]: "Trade Submission",
+  [TradeStatus.REJECTED]: "Trade Rejected"
+}
+
 function tradeMessage(trade: TradeSubmission, tradeCommitteeRole: RoleId) {
   const approvals = Object.values(trade.votes).filter(
     (vote) => vote === TradeVote.APPROVE,
@@ -94,14 +106,8 @@ function tradeMessage(trade: TradeSubmission, tradeCommitteeRole: RoleId) {
   const rejections = Object.values(trade.votes).filter(
     (vote) => vote === TradeVote.REJECT,
   ).length;
-  const statusEmoji =
-    trade.status === TradeStatus.APPROVED
-      ? "✅"
-      : trade.status === TradeStatus.REJECTED
-        ? "❌"
-        : "⏳";
   return [
-    "# 🔄 Trade Approval",
+    `# ${headerMessage[trade.status]}`,
     `## ${trade.teamA.name} Receives`,
     trade.teamA.assets.map(assetLine).join("\n"),
     `## ${trade.teamB.name} Receives`,
@@ -109,7 +115,7 @@ function tradeMessage(trade: TradeSubmission, tradeCommitteeRole: RoleId) {
     `**Submitted by:** <@${trade.submittedBy}>`,
     `**<@&${tradeCommitteeRole.id}> votes:** ✅ ${approvals} Approve | ❌ ${rejections} Reject`,
     `**Required approvals:** ${trade.requiredApprovals}`,
-    `**Status:** ${statusEmoji} ${trade.status}`,
+    `**Status:** ${statusEmojis[trade.status]} ${trade.status}`,
   ].join("\n\n");
 }
 
@@ -247,98 +253,98 @@ export default {
 - Required Approvals: ${requiredApprovals}
 - Accepted Trades: ${acceptedMessage}
 - Declined Trades: ${declinedMessage}`)
-    }
-
-    if (subcommand.name !== "submit")
-      throw new Error(`Unknown trade subcommand ${subcommand.name}`);
-    const settings = await LeagueSettingsDB.getLeagueSettings(command.guild_id);
-    const tradeConfig = settings.commands.trade;
-    if (!tradeConfig)
-      throw new Error(
-        "Trade approvals are not configured. Run /trade configure first",
-      );
-    const leagueId = settings.commands.madden_league?.league_id;
-    if (!leagueId) throw new NoConnectedLeagueError(command.guild_id);
-
-    const teams = await MaddenDB.getLatestTeams(leagueId);
-    const teamA = retrieveTeam(stringOption(options, "team_a")!, teams);
-    const teamB = retrieveTeam(stringOption(options, "team_b")!, teams);
-    if (teamA.teamId === teamB.teamId)
-      throw new Error("A team cannot trade with itself");
-
-    async function assetsFor(
-      playerOptionNames: string[],
-      pickOptionNames: string[],
-      expectedTeamId: number,
-      teamName: string,
-    ) {
-      const playerIds = playerOptionNames
-        .map((name) => stringOption(options, name))
-        .filter((id): id is string => !!id);
-      const players = await Promise.all(
-        playerIds.map((id) => MaddenDB.getPlayer(leagueId!, id)),
-      );
-      if (players.some((player) => player.teamId !== expectedTeamId))
+    } else if (subcommand.name === "submit") {
+      const settings = await LeagueSettingsDB.getLeagueSettings(command.guild_id);
+      const tradeConfig = settings.commands.trade;
+      if (!tradeConfig)
         throw new Error(
-          `One or more selected players are not on the ${teamName}`,
+          "Trade approvals are not configured. Run /trade configure first",
         );
-      const picks: TradeAsset[] = pickOptionNames
-        .map((name) => stringOption(options, name))
-        .filter((pick): pick is string => !!pick)
-        .map((label) => ({ type: "PICK", label }));
-      return [
-        ...players.map((player) =>
-          playerAsset(player, settings.commands.player?.useHiddenDevs ?? true),
+      const leagueId = settings.commands.madden_league?.league_id;
+      if (!leagueId) throw new NoConnectedLeagueError(command.guild_id);
+
+      const teams = await MaddenDB.getLatestTeams(leagueId);
+      const teamA = retrieveTeam(stringOption(options, "team_a")!, teams);
+      const teamB = retrieveTeam(stringOption(options, "team_b")!, teams);
+      if (teamA.teamId === teamB.teamId)
+        throw new Error("A team cannot trade with itself");
+
+      async function assetsFor(
+        playerOptionNames: string[],
+        pickOptionNames: string[],
+        expectedTeamId: number,
+        teamName: string,
+      ) {
+        const playerIds = playerOptionNames
+          .map((name) => stringOption(options, name))
+          .filter((id): id is string => !!id);
+        const players = await Promise.all(
+          playerIds.map((id) => MaddenDB.getPlayer(leagueId!, id)),
+        );
+        if (players.some((player) => player.teamId !== expectedTeamId))
+          throw new Error(
+            `One or more selected players are not on the ${teamName}`,
+          );
+        const picks: TradeAsset[] = pickOptionNames
+          .map((name) => stringOption(options, name))
+          .filter((pick): pick is string => !!pick)
+          .map((label) => ({ type: "PICK", label }));
+        return [
+          ...players.map((player) =>
+            playerAsset(player, settings.commands.player?.useHiddenDevs ?? true),
+          ),
+          ...picks,
+        ];
+      }
+
+      const [teamAAssets, teamBAssets] = await Promise.all([
+        assetsFor(
+          TEAM_A_PLAYER_OPTIONS,
+          TEAM_A_PICK_OPTIONS,
+          teamA.teamId,
+          teamA.displayName,
         ),
-        ...picks,
-      ];
-    }
+        assetsFor(
+          TEAM_B_PLAYER_OPTIONS,
+          TEAM_B_PICK_OPTIONS,
+          teamB.teamId,
+          teamB.displayName,
+        ),
+      ]);
+      if (teamAAssets.length === 0 || teamBAssets.length === 0)
+        throw new Error("Each team must send at least one player or pick");
 
-    const [teamAAssets, teamBAssets] = await Promise.all([
-      assetsFor(
-        TEAM_A_PLAYER_OPTIONS,
-        TEAM_A_PICK_OPTIONS,
-        teamA.teamId,
-        teamA.displayName,
-      ),
-      assetsFor(
-        TEAM_B_PLAYER_OPTIONS,
-        TEAM_B_PICK_OPTIONS,
-        teamB.teamId,
-        teamB.displayName,
-      ),
-    ]);
-    if (teamAAssets.length === 0 || teamBAssets.length === 0)
-      throw new Error("Each team must send at least one player or pick");
-
-    const trade = await TradeDB.create({
-      guildId: command.guild_id,
-      leagueId,
-      submittedBy: command.member.user.id,
-      teamA: { id: teamA.teamId, name: teamA.displayName, assets: teamBAssets },
-      teamB: { id: teamB.teamId, name: teamB.displayName, assets: teamAAssets },
-      votes: {},
-      requiredApprovals: tradeConfig.requiredApprovals,
-      status: TradeStatus.PENDING,
-      createdAt: Date.now(),
-    });
-    try {
-      const messageId = await client.createComponentMessage(
-        tradeConfig.channel,
-        {
-          content: tradeMessage(trade, tradeConfig.tradeCommitteeRole),
-          components: voteComponents(trade),
-          allowed_mentions: { parse: ["roles"] },
-        },
+      const trade = await TradeDB.create({
+        guildId: command.guild_id,
+        leagueId,
+        submittedBy: command.member.user.id,
+        teamA: { id: teamA.teamId, name: teamA.displayName, assets: teamBAssets },
+        teamB: { id: teamB.teamId, name: teamB.displayName, assets: teamAAssets },
+        votes: {},
+        requiredApprovals: tradeConfig.requiredApprovals,
+        status: TradeStatus.PENDING,
+        createdAt: Date.now(),
+      });
+      try {
+        const messageId = await client.createComponentMessage(
+          tradeConfig.channel,
+          {
+            content: tradeMessage(trade, tradeConfig.tradeCommitteeRole),
+            components: voteComponents(trade),
+            allowed_mentions: { parse: ["roles"] },
+          },
+        );
+        await TradeDB.attachMessage(trade.id, messageId);
+      } catch (error) {
+        await TradeDB.delete(trade.id);
+        return createMessageResponse(`Trade could not be created ${error}`);
+      }
+      return createMessageResponse(
+        `Trade submitted for Trade Committee approval in <#${tradeConfig.channel.id}>.`,
       );
-      await TradeDB.attachMessage(trade.id, messageId);
-    } catch (error) {
-      await TradeDB.delete(trade.id);
-      return createMessageResponse(`Trade could not be created ${error}`);
+    } else {
+      throw new Error(`Unknown trade subcommand ${subcommand.name}`);
     }
-    return createMessageResponse(
-      `Trade submitted for Trade Committee approval in <#${tradeConfig.channel.id}>.`,
-    );
   },
 
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
@@ -526,8 +532,7 @@ export default {
     const trade = await TradeDB.vote(tradeId, interaction.member.user.id, vote);
     try {
       if (
-        trade.status === TradeStatus.APPROVED &&
-        config.acceptedChannel?.id
+        trade.status === TradeStatus.APPROVED && config.acceptedChannel?.id && config.acceptedChannel.id !== config.channel.id
       ) {
         if (trade.messageId) {
           // it wont be it gets attached after creation of the message
@@ -541,7 +546,7 @@ export default {
       }
       if (
         trade.status === TradeStatus.REJECTED &&
-        config.declinedChannel?.id
+        config.declinedChannel?.id && config.declinedChannel.id !== config.channel.id
       ) {
         if (trade.messageId) {
           await client.deleteMessage(config.channel, trade.messageId);
