@@ -1,5 +1,6 @@
 import db from "../db/firebase"
 import { FieldValue } from "firebase-admin/firestore"
+import league_updates from "./commands/league_updates"
 
 export enum DiscordIdType {
   ROLE = "ROLE",
@@ -42,7 +43,20 @@ export type TradeConfiguration = {
   requiredApprovals: number;
   acceptedChannel?: ChannelId;
   declinedChannel?: ChannelId;
-};
+}
+
+export enum LeagueUpdateOptions {
+  DEV_TRAIT_CHANGE = "DEV_TRAIT_CHANGE",
+  PLAYER_RATING_CHANGE = "RATING_CHANGE",
+  PLAYER_TEAM_CHANGE = "TEAM_CHANGE",
+  PLAYER_EDIT = "PLAYER_EDIT",
+  GAME_FINISHED = "GAME_FINISHED",
+
+}
+
+export type LeagueUpdateConfiguration = {
+  [key in LeagueUpdateOptions]: ChannelId
+}
 
 export type LeagueSettings = {
   commands: {
@@ -54,7 +68,8 @@ export type LeagueSettings = {
     waitlist?: WaitlistConfiguration,
     madden_league?: MaddenLeagueConfiguration,
     player?: PlayerConfiguration,
-    trade?: TradeConfiguration
+    trade?: TradeConfiguration,
+    league_updates?: LeagueUpdateConfiguration
   },
   guildId: string
 }
@@ -84,7 +99,9 @@ interface LeagueSettingsDB {
   getLeagueSettingsForLeagueId(leagueId: string): Promise<LeagueSettings[]>,
   deleteLeagueSetting(guildId: string): Promise<void>,
   configurePlayer(guildId: string, playerConfiguration: PlayerConfiguration): Promise<void>,
-  configureTrade(guildId: string, tradeConfiguration: TradeConfiguration): Promise<void>
+  configureTrade(guildId: string, tradeConfiguration: TradeConfiguration): Promise<void>,
+  configureLeagueUpdate(guildId: string, leagueUpdateOption: LeagueUpdateOptions, channel: ChannelId): Promise<LeagueUpdateConfiguration>,
+  removeLeagueUpdate(guildId: string, leagueUpdateOption: LeagueUpdateOptions): Promise<LeagueUpdateConfiguration>,
 }
 
 export function createWeekKey(season: number, week: number) {
@@ -274,6 +291,24 @@ const LeagueSettingsDB: LeagueSettingsDB = {
     await db.collection('league_settings').doc(guildId).set({
       commands: { trade: configuration },
     }, { merge: true })
+  },
+  async configureLeagueUpdate(guildId: string, leagueUpdateOption: LeagueUpdateOptions, channel: ChannelId): Promise<LeagueUpdateConfiguration> {
+    await db.collection('league_settings').doc(guildId).set({
+      commands: {
+        league_updates: {
+          [leagueUpdateOption]: channel
+        }
+      },
+    }, { merge: true })
+    const settings = await this.getLeagueSettings(guildId)
+    return settings.commands.league_updates || {} as LeagueUpdateConfiguration
+  },
+  async removeLeagueUpdate(guildId: string, leagueUpdateOption: LeagueUpdateOptions): Promise<LeagueUpdateConfiguration> {
+    await db.collection('league_settings').doc(guildId).update({
+      [`commands.league_updates.${leagueUpdateOption}`]: FieldValue.delete()
+    })
+    const settings = await this.getLeagueSettings(guildId)
+    return settings.commands.league_updates || {} as LeagueUpdateConfiguration
   }
 }
 

@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto"
 import { Timestamp } from "firebase-admin/firestore"
 import db from "./firebase"
-import EventDB, { EventNotifier, SnallabotEvent, StoredEvent, notifiers } from "./events_db"
+import EventDB, { EventNotifier, History, HistoryUpdate, SnallabotEvent, StoredEvent, notifiers } from "./events_db"
 import { DefensiveStats, GameResult, KickingStats, MADDEN_SEASON, MaddenGame, POSITION_GROUP, PassingStats, Player, PuntingStats, ReceivingStats, RushingStats, Standing, Team, TeamStats, dLinePositions, dbPositions, oLinePositions } from "../export/madden_league_types"
 import { TeamAssignments } from "../discord/settings_db"
 import { CachedUpdatingView, StorageBackedCachedView, View } from "./view"
@@ -9,8 +9,7 @@ import { EventTypes, RetiredPlayersEvent } from "./events"
 import { maddenDBRequestsCounter, maddenEventsDistribution } from "../debug/metrics"
 import { DB, DBs } from "../config"
 
-export type HistoryUpdate<ValueType> = { oldValue: ValueType, newValue: ValueType }
-export type History = { [key: string]: HistoryUpdate<any>, }
+
 export type StoredHistory = { timestamp: Date } & History
 
 export enum PlayerStatType {
@@ -552,7 +551,7 @@ if (DB === DBs.FIREBASE) {
 
 const MaddenDB: MaddenDB = {
   async appendEvents<Event>(events: SnallabotEvent<Event>[], idFn: (event: Event) => string) {
-
+    const changes: History[] = []
     const BATCH_SIZE = 250;
     const timestamp = new Date();
     const totalBatches = Math.ceil(events.length / BATCH_SIZE);
@@ -568,11 +567,14 @@ const MaddenDB: MaddenDB = {
         if (fetchedDoc.exists) {
           const { timestamp: oldTimestamp, id, ...oldEvent } = fetchedDoc.data() as StoredEvent<Event>
           const change = createEventHistoryUpdate(event, oldEvent)
+          changes.push(change)
           if (Object.keys(change).length > 0) {
             const changeId = randomUUID()
             const historyDoc = db.collection("madden_data26").doc(event.key).collection(event.event_type).doc(eventId).collection("history").doc(changeId)
             batch.set(historyDoc, { ...change, timestamp: timestamp })
           }
+        } else {
+          changes.push({})
         }
         batch.set(doc, { ...event, timestamp: timestamp, id: eventId })
       }))
@@ -588,15 +590,23 @@ const MaddenDB: MaddenDB = {
         }
       }
     }
-    await Promise.all(Object.entries(Object.groupBy(events, e => e.event_type)).map(async entry => {
-      const [eventType, specificTypeEvents] = entry
-      if (specificTypeEvents) {
+    const eventsWithChanges = events.map((e, idx) => ({ event: e, change: changes[idx] }))
+    await Promise.all(Object.entries(Object.groupBy(eventsWithChanges, e => e.event.event_type)).map(async entry => {
+      const [eventType, specificTypeEventsWithChanges] = entry
+      if (specificTypeEventsWithChanges) {
+
+        const specificTypeEvents: SnallabotEvent<Event>[] = []
+        const specificTypeChanges: History[] = []
+        specificTypeEventsWithChanges.forEach(e => {
+          specificTypeEvents.push(e.event)
+          specificTypeChanges.push(e.change)
+        })
         maddenEventsDistribution.observe({ event_type: eventType }, specificTypeEvents.length)
         const eventTypeNotifiers = notifiers[eventType]
         if (eventTypeNotifiers) {
           await Promise.all(eventTypeNotifiers.map(async notifier => {
             try {
-              await notifier(specificTypeEvents)
+              await notifier(specificTypeEvents, specificTypeChanges)
             } catch (e) {
               console.log("could not send event to notifier " + e)
             }

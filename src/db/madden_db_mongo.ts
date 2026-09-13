@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto"
 import db from "./mongo_db"
-import EventDB, { EventNotifier, SnallabotEvent, StoredEvent, notifiers } from "./events_db"
+import EventDB, { EventNotifier, History, HistoryUpdate, SnallabotEvent, StoredEvent, notifiers } from "./events_db"
 import { DefensiveStats, GameResult, KickingStats, MADDEN_SEASON, MaddenGame, POSITION_GROUP, PassingStats, Player, PuntingStats, ReceivingStats, RushingStats, Standing, Team, TeamStats, dLinePositions, dbPositions, oLinePositions } from "../export/madden_league_types"
 import { EventTypes, RetiredPlayersEvent } from "./events"
 import { maddenDBRequestsCounter, maddenEventsDistribution } from "../debug/metrics"
@@ -8,8 +8,7 @@ import { ExportStatus, GameStats, MaddenDB, MaddenEvents, PlayerListIndex, Playe
 import { CachedUpdatingView, StorageBackedCachedView, View } from "./view"
 import { DB, DBs } from "../config"
 
-type HistoryUpdate<ValueType> = { oldValue?: ValueType, newValue?: ValueType }
-type History = { [key: string]: HistoryUpdate<any> }
+
 type StoredHistoryDoc = {
   leagueId: string,
   eventType: string,
@@ -187,6 +186,7 @@ if (DB === DBs.MONGO) {
 
 const MaddenDB: MaddenDB = {
   async appendEvents<Event>(events: SnallabotEvent<Event>[], idFn: (event: Event) => string) {
+    const changes: Record<string, History> = {}
     const BATCH_SIZE = 250
     const timestamp = new Date()
     const totalBatches = Math.ceil(events.length / BATCH_SIZE)
@@ -219,6 +219,7 @@ const MaddenDB: MaddenDB = {
           if (existing) {
             const { timestamp: _oldTimestamp, id: _id, _id: _mongoId, leagueId: _leagueId, ...oldEvent } = existing as any
             const change = createEventHistoryUpdate(event, oldEvent)
+            changes[eventId] = change
             if (Object.keys(change).length > 0) {
               historyDocs.push({
                 leagueId: event.key,
@@ -229,6 +230,8 @@ const MaddenDB: MaddenDB = {
                 ...change,
               } as StoredHistoryDoc)
             }
+          } else {
+            changes[eventId] = {}
           }
 
           return {
@@ -251,12 +254,13 @@ const MaddenDB: MaddenDB = {
     await Promise.all(Object.entries(Object.groupBy(events, e => e.event_type)).map(async entry => {
       const [eventType, specificTypeEvents] = entry
       if (specificTypeEvents) {
+        const specificTypeChanges = specificTypeEvents.map(e => changes[idFn(e)])
         maddenEventsDistribution.observe({ event_type: eventType }, specificTypeEvents.length)
         const eventTypeNotifiers = notifiers[eventType]
         if (eventTypeNotifiers) {
           await Promise.all(eventTypeNotifiers.map(async notifier => {
             try {
-              await notifier(specificTypeEvents)
+              await notifier(specificTypeEvents, specificTypeChanges)
             } catch (e) {
               console.log("could not send event to notifier " + e)
             }

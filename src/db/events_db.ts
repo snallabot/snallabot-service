@@ -10,9 +10,11 @@ export enum EventDelivery {
   EVENT_SOURCE = "EVENT_SOURCE",
   EVENT_TRIGGER = "EVENT_TRIGGER"
 }
+export type HistoryUpdate<ValueType> = { oldValue: ValueType, newValue: ValueType }
+export type History = { [key: string]: HistoryUpdate<any>, }
 
 
-export type EventNotifier<Event> = (events: SnallabotEvent<Event>[]) => Promise<void>
+export type EventNotifier<Event> = (events: SnallabotEvent<Event>[], changes?: History[]) => Promise<void>
 interface EventDB {
   appendEvents<Event>(event: SnallabotEvent<Event>[], delivery: EventDelivery): Promise<void>
   queryEvents<Event>(key: string, event_type: string, after: Date, filters: Filters, limit: number): Promise<StoredEvent<Event>[]>,

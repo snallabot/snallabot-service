@@ -22,6 +22,7 @@ import simsHandler from "./commands/sims"
 import playerConfigurationHandler from "./commands/player_configuration"
 import statsHandler from "./commands/stats"
 import tradeHandler from "./commands/trade"
+import leagueUpdatesHandler from "./commands/league_updates"
 import { APIMessageComponentInteractionData } from "discord-api-types/v9"
 import { discordCommandsCounter } from "../debug/metrics"
 
@@ -61,7 +62,8 @@ const SlashCommands: CommandsHandler = {
   "playoffs": bracketHandler,
   "sims": simsHandler,
   "stats": statsHandler,
-  "trade": tradeHandler
+  "trade": tradeHandler,
+  "league_updates": leagueUpdatesHandler
 }
 
 const AutocompleteCommands: AutocompleteHandlers = {

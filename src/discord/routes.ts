@@ -12,8 +12,9 @@ import { fetchTeamsMessage } from "./commands/teams"
 import createNotifier from "./notifier"
 import MaddenClient from "../db/madden_db"
 import MaddenDB from "../db/madden_db"
-import { GameResult, MaddenGame } from "../export/madden_league_types"
+import { GameResult, MaddenGame, Player } from "../export/madden_league_types"
 import { leagueLogosView } from "../db/view"
+import { handlePlayerChanges } from "./commands/league_updates"
 
 const router = new Router({ prefix: "/discord/webhook" })
 
@@ -158,6 +159,20 @@ MaddenDB.on<MaddenGame>("MADDEN_SCHEDULE", async (events) => {
       }
     }))
   })
+})
+
+MaddenDB.on<Player>("MADDEN_PLAYER", async (events, changes) => {
+  if (events.length === 0) {
+    return
+  }
+  const leagueId = events[0].key
+  const allSettingsForLeague = await LeagueSettingsDB.getLeagueSettingsForLeagueId(leagueId)
+  await Promise.all(allSettingsForLeague.map(async l => {
+    try {
+      await handlePlayerChanges(l, events, changes || [])
+    } catch (e) {
+    }
+  }))
 })
 
 const discordClient = new Client({
