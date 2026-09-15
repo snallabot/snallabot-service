@@ -29,6 +29,7 @@ import {
   APIApplicationCommandInteractionDataIntegerOption,
   APIApplicationCommandInteractionDataStringOption,
   APIApplicationCommandInteractionDataSubcommandOption,
+  APIMessageStringSelectInteractionData,
   APIApplicationCommandInteractionDataChannelOption,
   APIApplicationCommandInteractionDataRoleOption,
   ApplicationCommandOptionType,
@@ -38,6 +39,7 @@ import {
   InteractionResponseType,
   RESTPostAPIApplicationCommandsJSONBody,
 } from "discord-api-types/v10";
+import { buildPlayerCard } from "./player";
 const TEAM_A_PLAYER_OPTIONS = [
   "team_a_player_1",
   "team_a_player_2",
@@ -65,8 +67,8 @@ function stringOption(
 ): string | undefined {
   return (
     options.get(name) as
-    | APIApplicationCommandInteractionDataStringOption
-    | undefined
+      | APIApplicationCommandInteractionDataStringOption
+      | undefined
   )?.value;
 }
 
@@ -138,6 +140,58 @@ function voteComponents(trade: TradeSubmission) {
   ];
 }
 
+function playerOverviewComponet(trade: TradeSubmission) {
+  const players = [...trade.teamA.assets, ...trade.teamB.assets].filter(
+    (asset): asset is Extract<TradeAsset, { type: "PLAYER" }> =>
+      asset.type === "PLAYER",
+  );
+
+  if (players.length === 0) {
+    return [];
+  }
+  return [
+    {
+      type: ComponentType.ActionRow,
+      components: [
+        {
+          type: ComponentType.StringSelect,
+          custom_id: `trade_player:${trade.id}`,
+          placeholder: "View a player in this trade",
+          min_values: 1,
+          max_values: 1,
+          options: players.map((player) => ({
+            label: `${player.position} ${player.name}`,
+            description: `${player.overall} OVR • Age ${player.age}`,
+            value: String(player.rosterId),
+          })),
+        },
+      ],
+    },
+  ];
+}
+
+function tradecomponents(trade: TradeSubmission) {
+  return [...voteComponents(trade), ...playerOverviewComponet(trade)];
+}
+
+async function buildAndShowTradePlayerCard(
+  rosterId: number,
+  interaction: MessageComponentInteraction,
+  client: DiscordClient,
+) {
+  try {
+    const payload = await buildPlayerCard(rosterId, interaction.guild_id);
+
+    await client.editOriginalInteraction(interaction.token, payload);
+  } catch (error) {
+    await client.editOriginalInteraction(interaction.token, {
+      content: `Could not show player card: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+      components: [],
+    });
+  }
+}
 async function playerChoices(query: string, leagueId: string, teamId?: number) {
   const [players, teams] = await Promise.all([
     MaddenDB.getLatestPlayers(leagueId),
@@ -177,7 +231,6 @@ function submitOption(name: string, description: string, required = false) {
     autocomplete: true as const,
   };
 }
-
 export default {
   async handleCommand(command: Command, client: DiscordClient) {
     const subcommand = command.data.options?.[0] as
@@ -206,14 +259,14 @@ export default {
       );
       const acceptedChannelValue = (
         options.get("accepted_trades_channel") as
-        | APIApplicationCommandInteractionDataChannelOption
-        | undefined
+          | APIApplicationCommandInteractionDataChannelOption
+          | undefined
       )?.value;
 
       const declinedChannelValue = (
         options.get("declined_trades_channel") as
-        | APIApplicationCommandInteractionDataChannelOption
-        | undefined
+          | APIApplicationCommandInteractionDataChannelOption
+          | undefined
       )?.value;
 
       const channel: ChannelId = {
@@ -239,14 +292,18 @@ export default {
         acceptedChannel,
         declinedChannel,
       });
-      const acceptedMessage = acceptedChannelValue ? `<#${acceptedChannelValue}>` : `Submission Updates`
-      const declinedMessage = declinedChannelValue ? `<#${declinedChannelValue}>` : `Submission Updates`
+      const acceptedMessage = acceptedChannelValue
+        ? `<#${acceptedChannelValue}>`
+        : `Submission Updates`;
+      const declinedMessage = declinedChannelValue
+        ? `<#${declinedChannelValue}>`
+        : `Submission Updates`;
       return createMessageResponse(`Trade command is configured! Configuration:
 - Trade Submissions: <#${channel.id}>
 - Trade Committee Role: <@&${tradeCommitteeRole.id}>
 - Required Approvals: ${requiredApprovals}
 - Accepted Trades: ${acceptedMessage}
-- Declined Trades: ${declinedMessage}`)
+- Declined Trades: ${declinedMessage}`);
     }
 
     if (subcommand.name !== "submit")
@@ -327,7 +384,7 @@ export default {
         tradeConfig.channel,
         {
           content: tradeMessage(trade, tradeConfig.tradeCommitteeRole),
-          components: voteComponents(trade),
+          components: tradecomponents(trade),
           allowed_mentions: { parse: ["users"] },
         },
       );
@@ -501,11 +558,37 @@ export default {
     interaction: MessageComponentInteraction,
     client: DiscordClient,
   ) {
-    const [, tradeId, voteValue] = interaction.custom_id.split(":");
+    const [action, tradeId, value] = interaction.custom_id.split(":");
+    if (action === "trade_player") {
+      const data = interaction.data as APIMessageStringSelectInteractionData;
+
+      if (data.values.length != 1) {
+        throw new Error("Expected exactly one selected trade player");
+      }
+      const rosterId = Number(data.values[0]);
+
+      if (Number.isNaN(rosterId)) {
+        throw new Error(`Invalid roster ID: ${data.values[0]}`);
+      }
+      void buildAndShowTradePlayerCard(rosterId, interaction, client);
+
+      return {
+        type: InteractionResponseType.DeferredChannelMessageWithSource,
+        data: {
+          flags: 64,
+        },
+      };
+    }
+
+    if (action !== "trade_vote") {
+      throw new Error(`Unknown trade interaction: ${action}`);
+    }
+
+    // * regular trade interaction
     const vote =
-      voteValue === TradeVote.APPROVE
+      value === TradeVote.APPROVE
         ? TradeVote.APPROVE
-        : voteValue === TradeVote.REJECT
+        : value === TradeVote.REJECT
           ? TradeVote.REJECT
           : undefined;
     if (!tradeId || !vote) throw new Error("Invalid trade vote");
@@ -555,7 +638,7 @@ export default {
       type: InteractionResponseType.UpdateMessage,
       data: {
         content: tradeMessage(trade, config.tradeCommitteeRole),
-        components: voteComponents(trade),
+        components: tradecomponents(trade),
         allowed_mentions: { parse: ["users"] },
       },
     };
