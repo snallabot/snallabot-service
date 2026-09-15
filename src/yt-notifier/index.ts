@@ -98,7 +98,6 @@ async function notifyYoutubeBroadcasts() {
     try {
       const channelToServers = youtubeState.getCurrentState()
       const currentChannels = [...new Set(channelToServers.map(m => m.channel_id))]
-      console.log(`checking ${currentChannels}`)
       const currentServers = [...new Set(channelToServers.flatMap(c => Object.entries(c.servers).filter(e => { const [_, enabled] = e; return enabled }).map(e => e[0])))]
       const channels = await Promise.all(currentChannels
         .map(channel_id =>
@@ -129,7 +128,7 @@ async function notifyYoutubeBroadcasts() {
         const title = channelTitleMap[c.channel_id]?.title
         return Object.entries(c.servers).flatMap(e => {
           const [discord_server, enabled] = e
-          if (title && enabled && title.toLowerCase().includes(serverTitleMap[discord_server].toLowerCase())) {
+          if (title && enabled && serverTitleMap[discord_server] && title.toLowerCase().includes(serverTitleMap[discord_server].toLowerCase())) {
             return [{ discord_server: discord_server, title: title, video: channelTitleMap[c.channel_id].video }]
           } else {
             return []
