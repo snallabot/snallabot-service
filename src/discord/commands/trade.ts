@@ -100,6 +100,25 @@ const headerMessage: Record<TradeStatus, string> = {
   [TradeStatus.PENDING]: "Trade Submission",
   [TradeStatus.REJECTED]: "Trade Rejected"
 }
+function formatVotes(
+  votes: Record<string, TradeVote>
+)
+{
+  const approvals = Object.entries(votes)
+  .filter(([,vote]) => vote === TradeVote.APPROVE)
+  .map(([userId])=> `<@${userId}>`)
+  .join(",");
+
+  const rejections = Object.entries(votes)
+  .filter(([,vote])=> vote === TradeVote.REJECT)
+  .map(([userId])=> `<@${userId}>`)
+  .join(",");
+
+  return [
+    `✅ **Approved:** ${approvals || "None"}`,
+    `❌ **Rejected:** ${rejections || "None"}`,
+  ].join("\n");
+}
 
 function tradeMessage(trade: TradeSubmission, tradeCommitteeRole: RoleId) {
   const approvals = Object.values(trade.votes).filter(
@@ -117,6 +136,7 @@ function tradeMessage(trade: TradeSubmission, tradeCommitteeRole: RoleId) {
     `**Submitted by:** <@${trade.submittedBy}>`,
     `**<@&${tradeCommitteeRole.id}> votes:** ✅ ${approvals} Approve | ❌ ${rejections} Reject`,
     `**Required approvals:** ${trade.requiredApprovals}`,
+    formatVotes(trade.votes),
     `**Status:** ${statusEmojis[trade.status]} ${trade.status}`,
   ].join("\n\n");
 }
@@ -175,6 +195,7 @@ function playerOverviewComponet(trade: TradeSubmission) {
     },
   ];
 }
+
 
 function tradecomponents(trade: TradeSubmission) {
   return [...voteComponents(trade), ...playerOverviewComponet(trade)];
