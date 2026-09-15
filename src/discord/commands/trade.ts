@@ -92,27 +92,24 @@ function assetLine(asset: TradeAsset) {
 const statusEmojis: Record<TradeStatus, string> = {
   [TradeStatus.APPROVED]: "✅",
   [TradeStatus.PENDING]: "⏳",
-  [TradeStatus.REJECTED]: "❌"
-}
+  [TradeStatus.REJECTED]: "❌",
+};
 
 const headerMessage: Record<TradeStatus, string> = {
   [TradeStatus.APPROVED]: "Trade Approved",
   [TradeStatus.PENDING]: "Trade Submission",
-  [TradeStatus.REJECTED]: "Trade Rejected"
-}
-function formatVotes(
-  votes: Record<string, TradeVote>
-)
-{
+  [TradeStatus.REJECTED]: "Trade Rejected",
+};
+function formatVotes(votes: Record<string, TradeVote>) {
   const approvals = Object.entries(votes)
-  .filter(([,vote]) => vote === TradeVote.APPROVE)
-  .map(([userId])=> `<@${userId}>`)
-  .join(",");
+    .filter(([, vote]) => vote === TradeVote.APPROVE)
+    .map(([userId]) => `<@${userId}>`)
+    .join(",");
 
   const rejections = Object.entries(votes)
-  .filter(([,vote])=> vote === TradeVote.REJECT)
-  .map(([userId])=> `<@${userId}>`)
-  .join(",");
+    .filter(([, vote]) => vote === TradeVote.REJECT)
+    .map(([userId]) => `<@${userId}>`)
+    .join(",");
 
   return [
     `✅ **Approved:** ${approvals || "None"}`,
@@ -196,7 +193,6 @@ function playerOverviewComponet(trade: TradeSubmission) {
   ];
 }
 
-
 function tradecomponents(trade: TradeSubmission) {
   return [...voteComponents(trade), ...playerOverviewComponet(trade)];
 }
@@ -211,12 +207,7 @@ async function buildAndShowTradePlayerCard(
 
     await client.editOriginalInteraction(interaction.token, payload);
   } catch (error) {
-    await client.editOriginalInteraction(interaction.token, {
-      content: `Could not show player card: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
-      components: [],
-    });
+    throw new Error("Was not able to build player card");
   }
 }
 async function playerChoices(query: string, leagueId: string, teamId?: number) {
@@ -330,9 +321,11 @@ export default {
 - Trade Committee Role: <@&${tradeCommitteeRole.id}>
 - Required Approvals: ${requiredApprovals}
 - Accepted Trades: ${acceptedMessage}
-- Declined Trades: ${declinedMessage}`)
+- Declined Trades: ${declinedMessage}`);
     } else if (subcommand.name === "submit") {
-      const settings = await LeagueSettingsDB.getLeagueSettings(command.guild_id);
+      const settings = await LeagueSettingsDB.getLeagueSettings(
+        command.guild_id,
+      );
       const tradeConfig = settings.commands.trade;
       if (!tradeConfig)
         throw new Error(
@@ -369,7 +362,10 @@ export default {
           .map((label) => ({ type: "PICK", label }));
         return [
           ...players.map((player) =>
-            playerAsset(player, settings.commands.player?.useHiddenDevs ?? true),
+            playerAsset(
+              player,
+              settings.commands.player?.useHiddenDevs ?? true,
+            ),
           ),
           ...picks,
         ];
@@ -396,8 +392,16 @@ export default {
         guildId: command.guild_id,
         leagueId,
         submittedBy: command.member.user.id,
-        teamA: { id: teamA.teamId, name: teamA.displayName, assets: teamBAssets },
-        teamB: { id: teamB.teamId, name: teamB.displayName, assets: teamAAssets },
+        teamA: {
+          id: teamA.teamId,
+          name: teamA.displayName,
+          assets: teamBAssets,
+        },
+        teamB: {
+          id: teamB.teamId,
+          name: teamB.displayName,
+          assets: teamAAssets,
+        },
         votes: {},
         requiredApprovals: tradeConfig.requiredApprovals,
         status: TradeStatus.PENDING,
@@ -633,10 +637,13 @@ export default {
         },
       };
     }
+
     const trade = await TradeDB.vote(tradeId, interaction.member.user.id, vote);
     try {
       if (
-        trade.status === TradeStatus.APPROVED && config.acceptedChannel?.id && config.acceptedChannel.id !== config.channel.id
+        trade.status === TradeStatus.APPROVED &&
+        config.acceptedChannel?.id &&
+        config.acceptedChannel.id !== config.channel.id
       ) {
         if (trade.messageId) {
           // it wont be it gets attached after creation of the message
@@ -650,7 +657,8 @@ export default {
       }
       if (
         trade.status === TradeStatus.REJECTED &&
-        config.declinedChannel?.id && config.declinedChannel.id !== config.channel.id
+        config.declinedChannel?.id &&
+        config.declinedChannel.id !== config.channel.id
       ) {
         if (trade.messageId) {
           await client.deleteMessage(config.channel, trade.messageId);
@@ -662,13 +670,13 @@ export default {
         );
       }
     } catch (e) {
-      console.error(e)
+      console.error(e);
       return {
         type: InteractionResponseType.UpdateMessage,
         data: {
-          content: `Error in processing trade ${e}`
+          content: `Error in processing trade ${e}`,
         },
-      }
+      };
     }
     return {
       type: InteractionResponseType.UpdateMessage,
