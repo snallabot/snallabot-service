@@ -5,13 +5,13 @@ type BroadcasterInfo = { broadcaster_id: string, broadcaster_login: string, broa
 type TwitchChannelInformation = { data: Array<BroadcasterInfo> }
 
 type SubscriptionResponse = { data: Array<{ id: string, status: string, type: string, version: string, cost: number, condition: { broadcaster_user_id: string }, transport: { method: string, callback: string }, created_at: string }>, total: number, total_cost: number, max_total_cost: number }
-
-
+type GetSubscriptionResponse = SubscriptionResponse & { pagination: { cursor?: string } }
 interface TwitchClient {
   retrieveBroadcasterInformation(twitchUrl: string): Promise<TwitchUserInformation>,
   retrieveChannelInformation(broadcasterUserId: string): Promise<TwitchChannelInformation>,
   subscribeBroadcasterStreamOnline(broadcasterUserId: string): Promise<SubscriptionResponse>,
-  deleteSubscription(subscriptionId: string): Promise<void>
+  deleteSubscription(subscriptionId: string): Promise<void>,
+  getAllSubscriptions(): Promise<GetSubscriptionResponse>
 }
 
 export function getSecret() {
@@ -27,6 +27,12 @@ function getCallbackURL() {
   }
   return process.env.TWITCH_CALLBACK_URL;
 
+}
+
+export class NoTwitchAccount extends Error {
+  constructor(message: string) {
+    super(message)
+  }
 }
 
 const TwitchClient = (): TwitchClient => {
@@ -54,6 +60,16 @@ const TwitchClient = (): TwitchClient => {
     if (res.status === 401) {
       await refreshToken()
       return await fetcher(token)
+    } else if (res.status === 429) {
+      const limit = res.headers.get("Ratelimit-Limit")
+      const remaining = res.headers.get("Ratelimit-Remaining")
+      const reset = Number.parseInt(res.headers.get("Ratelimit-Reset")!)
+      const resetDate = new Date(0)
+      resetDate.setUTCSeconds(reset)
+      const waitTime = Math.max(0, resetDate.getTime() - Date.now())
+      console.log(`Twitch rate limit hit ${remaining}/${limit} waiting until ${resetDate}`)
+      await new Promise((r) => setTimeout(r, waitTime))
+      return await twitchRequester(fetcher)
     }
     return res
   }
@@ -70,12 +86,14 @@ const TwitchClient = (): TwitchClient => {
         })
       )
       if (!res.ok) {
+
         const t = await res.text()
-        throw new Error(`Could not find ${login} on Twitch! ` + t)
+        throw new Error(`Could not fetch information on ${login} from Twitch! status: ${res.status}: Error: ` + t)
       }
       const twitchResponse = await res.json() as TwitchUserInformation
       if (twitchResponse.data.length === 0) {
-        throw new Error(`Could not find information on ${login} on Twitch!`)
+
+        throw new NoTwitchAccount(`Could not find information on ${login} on Twitch!`)
       }
       return twitchResponse
     },
@@ -143,8 +161,45 @@ const TwitchClient = (): TwitchClient => {
         const t = await res.text()
         throw new Error(`Could not delete subscription ${subscriptionId}, error: ${t}`)
       }
+    },
+    async getAllSubscriptions() {
+      const res = await twitchRequester(async (token) =>
+        await fetch(`https://api.twitch.tv/helix/eventsub/subscriptions`, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Client-Id": `${process.env.TWITCH_CLIENT_ID}`
+          }
+        })
+      )
+      if (!res.ok) {
+        const t = await res.text()
+        throw new Error(`Could not get all subscriptions, error: ${t}`)
+      }
+      const subscriptions = await res.json() as GetSubscriptionResponse
+      let cursor = subscriptions.pagination?.cursor
+      while (cursor) {
+        const res = await twitchRequester(async (token) =>
+          await fetch(`https://api.twitch.tv/helix/eventsub/subscriptions?after=${cursor}`, {
+            method: "GET",
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Client-Id": `${process.env.TWITCH_CLIENT_ID}`
+            }
+          })
+        )
+        if (!res.ok) {
+          const t = await res.text()
+          throw new Error(`Could not get all subscriptions, error: ${t}`)
+        }
+        const newSubscriptions = await res.json() as GetSubscriptionResponse
+        subscriptions.data.push(...newSubscriptions.data)
+        cursor = newSubscriptions.pagination?.cursor
+      }
+      return subscriptions
     }
   }
+
 }
 
 const MockTwitchClient: TwitchClient = {
@@ -211,7 +266,33 @@ const MockTwitchClient: TwitchClient = {
       "max_total_cost": 10000
     }
   },
-  deleteSubscription: async (sub: string) => { console.log(`${sub} is deleted`) }
+  deleteSubscription: async (sub: string) => { console.log(`${sub} is deleted`) },
+  getAllSubscriptions: async () => {
+    return {
+      "data": [
+        {
+          "id": "f1c2a387-161a-49f9-a165-0f21d7a4e1c4",
+          "status": "webhook_callback_verification_pending",
+          "type": "channel.follow",
+          "version": "2",
+          "cost": 1,
+          "condition": {
+            "broadcaster_user_id": "1234",
+            "moderator_user_id": "1234"
+          },
+          "transport": {
+            "method": "webhook",
+            "callback": "https://example.com/webhooks/callback"
+          },
+          "created_at": "2019-11-16T10:11:12.634234626Z"
+        }
+      ],
+      "total": 1,
+      "total_cost": 1,
+      "max_total_cost": 10000,
+      "pagination": {}
+    }
+  }
 }
 
 export function createTwitchClient(): TwitchClient {

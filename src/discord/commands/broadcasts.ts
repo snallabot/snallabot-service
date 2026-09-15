@@ -36,7 +36,7 @@ function listBroadcasts(broadcasts: BroadcastChannel[], broadcastType: Broadcast
           type: ComponentType.TextDisplay,
           content: `Here are your currently configured ${formatBroadcastType(broadcastType)} broadcasts:\n\n${formatted.join("\n")}`
         },
-        {
+        ...broadcasts.length === 0 ? [] : [{
           type: ComponentType.ActionRow,
           components: [
             {
@@ -58,7 +58,7 @@ function listBroadcasts(broadcasts: BroadcastChannel[], broadcastType: Broadcast
               disabled: endIndex === broadcasts.length
             }
           ]
-        }
+        }]
       ]
     }
   }

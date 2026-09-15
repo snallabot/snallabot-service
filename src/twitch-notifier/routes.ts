@@ -59,8 +59,10 @@ type ListTwitchRequest = { discord_server: string }
 interface TwitchNotifier {
   addTwitchChannel(discordServer: string, twitchUrl: string): Promise<void>,
   removeTwitchChannel(discordServer: string, twitchUrl: string): Promise<void>,
+  removeTwitchChannelForId(broadcasterId: string): Promise<void>,
+  cleanupTwitchSubscription(subscriptionId: string): Promise<void>,
   listTwitchChannels(discordServer: string): Promise<{ name: string, url: string }[]>,
-  listAllTwitchChannels(): Promise<{ name: string, url: string }[]>
+  listAllTwitchChannels(): Promise<{ name: string, url: string, subscriptionId: string, broadcasterId: string }[]>
 }
 
 type SubscriptionDoc = { subscriptionId: string, broadcasterLogin: string, servers: { [key: string]: { subscribed: boolean } } }
@@ -117,6 +119,17 @@ export const twitchNotifierHandler: TwitchNotifier = {
       throw new Error(`Twitch notifier does not exist for ${twitchUrl}. It may never have been added`)
     }
   },
+  removeTwitchChannelForId: async (broadcasterId) => {
+    const currentSubscriptionDoc = await db.collection("twitch_notifiers").doc(broadcasterId).get()
+    if (currentSubscriptionDoc.exists) {
+      const currentSubscription = currentSubscriptionDoc.data() as SubscriptionDoc
+      await twitchClient.deleteSubscription(currentSubscription.subscriptionId)
+      await db.collection("twitch_notifiers").doc(broadcasterId).delete()
+    } else {
+      throw new Error(`Twitch notifier does not exist for ${broadcasterId}. It may never have been added`)
+    }
+  }
+  ,
   listTwitchChannels: async (discordServer: string) => {
     const notifiers = await db.collection("twitch_notifiers").where(`servers.${discordServer}.subscribed`, "==", true).get()
     return notifiers.docs.map(d => {
@@ -128,8 +141,16 @@ export const twitchNotifierHandler: TwitchNotifier = {
     const notifiers = await db.collection("twitch_notifiers").get()
     return notifiers.docs.map(d => {
       const twitchSub = d.data() as SubscriptionDoc
-      return { name: twitchSub.broadcasterLogin, url: createTwitchUrl(twitchSub.broadcasterLogin) }
+      return { name: twitchSub.broadcasterLogin, url: createTwitchUrl(twitchSub.broadcasterLogin), subscriptionId: twitchSub.subscriptionId, broadcasterId: d.id }
     })
+  },
+  cleanupTwitchSubscription: async (subscriptionId: string) => {
+    const docsToDelete = await db.collection("twitch_notifiers").where(`subscriptionId`, "==", subscriptionId).get()
+    await Promise.all(docsToDelete.docs.map(async d => {
+      const data = d.data() as SubscriptionDoc
+      console.log(`Deleting broadcaster ${d.id}, ${data.broadcasterLogin} with sub id  ${subscriptionId}`)
+      await db.collection("twitch_notifiers").doc(d.id).delete()
+    }))
   }
 }
 

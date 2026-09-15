@@ -40,8 +40,8 @@ export type TradeConfiguration = {
   channel: ChannelId;
   tradeCommitteeRole: RoleId;
   requiredApprovals: number;
-  acceptedChannel: ChannelId;
-  declinedChannel: ChannelId;
+  acceptedChannel?: ChannelId;
+  declinedChannel?: ChannelId;
 };
 
 export type LeagueSettings = {
