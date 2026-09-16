@@ -275,9 +275,7 @@ async function getExportData<T>(
       }
       throw new EAAccountError(`EA request timed out after ${retries} attempts`, "Be patient, this may resolve on its own");
     }
-    if (!((parsed as any).success &&
-      (parsed as any).success === true)) {
-      console.error(parsed)
+    if ((parsed as any).error) {
       throw new EAAccountError(`Failed to get data from EA, response ${JSON.stringify(parsed)}`, `Be patient, this may resolve on its own`)
     }
     return parsed as T;
