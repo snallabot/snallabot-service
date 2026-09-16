@@ -1,6 +1,6 @@
 import EventDB, { EventDelivery, SnallabotEvent } from "../db/events_db"
 import { DiscordClient, formatTeamMessageName, NoConnectedLeagueError, SnallabotDiscordError, SnallabotReactions } from "./discord_utils"
-import LeagueSettingsDB, { ChannelId, GameChannel, GameChannelState, LeagueSettings, MessageId, TeamAssignments, UserId } from "./settings_db"
+import LeagueSettingsDB, { ChannelId, GameChannel, GameChannelState, StoredLeagueSettings, MessageId, TeamAssignments, UserId } from "./settings_db"
 import createLogger from "./logging"
 import MaddenDB from "../db/madden_db"
 import { ConfirmedSimV2, SimResult } from "../db/events"
@@ -32,7 +32,7 @@ function joinUsers(users: UserId[]) {
   return users.map((uId) => `<@${uId.id}>`).join("")
 }
 
-function createNotifier(client: DiscordClient, guildId: string, settings: LeagueSettings): SnallabotNotifier {
+function createNotifier(client: DiscordClient, guildId: string, settings: StoredLeagueSettings): SnallabotNotifier {
   if (!settings.commands.madden_league?.league_id) {
     throw new NoConnectedLeagueError(guildId)
   }
@@ -95,7 +95,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
   }
   async function deleteTracking(currentState: GameChannel, season: number, week: number) {
     const channelId = currentState.channel
-    await LeagueSettingsDB.deleteGameChannel(guildId, week, season, channelId)
+    await LeagueSettingsDB.getLeagueSettings(guildId).deleteGameChannel(week, season, channelId)
   }
   return {
     deleteGameChannel: async function(currentState: GameChannel, season: number, week: number, originators: UserId[]) {
@@ -112,7 +112,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
       const assignments = teams.getLatestTeamAssignments(settings.commands.teams?.assignments || {})
       const awayTag = formatTeamMessageName(assignments[`${awayTeam.teamId}`]?.discord_user?.id, awayTeam.userName)
       const homeTag = formatTeamMessageName(assignments[`${homeTeam.teamId}`]?.discord_user?.id, homeTeam.userName)
-      await LeagueSettingsDB.updateGameChannelPingTime(guildId, week, season, gameChannel.channel)
+      await LeagueSettingsDB.getLeagueSettings(guildId).updateGameChannelPingTime(week, season, gameChannel.channel)
 
       // Skip pinging if both teams are CPU-controlled
       if (awayTag === "CPU" && homeTag === "CPU") {
@@ -191,7 +191,7 @@ function createNotifier(client: DiscordClient, guildId: string, settings: League
           }
           const adminRole = settings.commands.game_channel?.admin.id || ""
           const message = `${simMessage} requested <@&${adminRole}> by ${joinUsers(fwUsers)}`
-          await LeagueSettingsDB.updateGameChannelState(guildId, week, season, channelId, GameChannelState.FORCE_WIN_REQUESTED)
+          await LeagueSettingsDB.getLeagueSettings(guildId).updateGameChannelState(week, season, channelId, GameChannelState.FORCE_WIN_REQUESTED)
           try {
             await client.createMessage(channelId, message, ["roles"])
           } catch (e) {

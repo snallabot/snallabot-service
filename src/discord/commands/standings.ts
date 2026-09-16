@@ -76,7 +76,7 @@ const itemsPerPage = 8;
 export type StandingsPaginated = { f: string, p: number }
 async function handleCommand(client: DiscordClient, token: string, league: string, guild: string, filter: string = "nfl", page: number = 0) {
   try {
-    const [standings, teams, settings] = await Promise.all([MaddenDB.getLatestStandings(league), MaddenDB.getLatestTeams(league), LeagueSettingsDB.getLeagueSettings(guild)])
+    const [standings, teams, settings] = await Promise.all([MaddenDB.getLatestStandings(league), MaddenDB.getLatestTeams(league), LeagueSettingsDB.getLeagueSettings(guild).get()])
     const assignments = teams.getLatestTeamAssignments(settings.commands.teams?.assignments || {})
     const filteredStandings = getStandingsForFilter(standings, filter);
 
@@ -180,11 +180,10 @@ function getStandingsFilter(interaction: MessageComponentInteraction) {
 export default {
   async handleCommand(command: Command, client: DiscordClient) {
     const { guild_id, token } = command
-    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
-    if (!leagueSettings?.commands?.madden_league?.league_id) {
+    const league = await LeagueSettingsDB.getLeagueSettings(guild_id).getMaddenLeagueId()
+    if (!league) {
       throw new NoConnectedLeagueError(guild_id)
     }
-    const league = leagueSettings.commands.madden_league.league_id
     const scope = (command?.data?.options?.[0] as APIApplicationCommandInteractionDataStringOption)?.value
     handleCommand(client, token, league, guild_id, scope)
     return deferMessage()

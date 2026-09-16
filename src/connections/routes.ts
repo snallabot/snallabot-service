@@ -6,11 +6,11 @@ import LeagueSettingsDB from "../discord/settings_db"
 const router = new Router({ prefix: "/connect" })
 
 export async function setLeague(guild: string, league: string) {
-  await LeagueSettingsDB.connectMaddenLeagueId(guild, league)
+  await LeagueSettingsDB.getLeagueSettings(guild).connectMaddenLeagueId(league)
   await EventDB.appendEvents<DiscordLeagueConnectionEvent>([{ key: guild, event_type: "DISCORD_LEAGUE_CONNECTION", guildId: guild, leagueId: league }], EventDelivery.EVENT_TRIGGER)
 }
 export async function removeLeague(guild: string) {
-  await LeagueSettingsDB.disconnectMaddenLeagueId(guild)
+  await LeagueSettingsDB.getLeagueSettings(guild).disconnectMaddenLeagueId()
   //TODO(snallapa) new event?
   await EventDB.appendEvents<DiscordLeagueConnectionEvent>([{ key: guild, event_type: "DISCORD_LEAGUE_CONNECTION", guildId: guild, leagueId: "" }], EventDelivery.EVENT_TRIGGER)
 }

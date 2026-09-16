@@ -277,7 +277,7 @@ router.get("/", async (ctx) => {
     weeklyStatus: weeklyStatus
   } : exportStatus
   const settledSettings = await Promise.allSettled(discordLeagues.map(async l => {
-    const g = await client.getGuildInformation(l.guildId)
+    const g = await client.getGuildInformation(l.guildId())
     return { name: g.name, icon: g.icon, settings: l }
   }))
   const userGuilds = discord_token ? await client.getUserGuilds(discord_token) : []
@@ -340,7 +340,7 @@ router.get("/", async (ctx) => {
   }
   const leagueSettings = await LeagueSettingsDB.getLeagueSettingsForLeagueId(rawLeagueId)
   await Promise.all(leagueSettings.map(async d => {
-    await removeLeague(d.guildId)
+    await removeLeague(d.guildId())
   }))
   ctx.status = 200
 }).get("/guilds", async (ctx, next) => {

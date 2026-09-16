@@ -22,8 +22,8 @@ async function calculateLeagueStats() {
   const allLeagues = await LeagueSettingsDB.getAllLeagueSettings()
   const guildsBotIsIn = await prodClient.getAllGuilds()
   const guildSet = new Set(guildsBotIsIn)
-  const settingsToDelete = allLeagues.filter(l => !guildSet.has(l.guildId))
-  await Promise.all(settingsToDelete.map(async g => await LeagueSettingsDB.deleteLeagueSetting(g.guildId)))
+  const settingsToDelete = allLeagues.filter(l => !guildSet.has(l.guildId()))
+  await Promise.all(settingsToDelete.map(async g => await LeagueSettingsDB.deleteLeagueSetting(g.guildId())))
   const stats = {
     totalLeagues: allLeagues.length,
     configurationUsage: {
@@ -37,15 +37,16 @@ async function calculateLeagueStats() {
     }
   }
 
-  allLeagues.forEach(league => {
-    if (league.commands.logger) stats.configurationUsage.logger++
-    if (league.commands.game_channel) stats.configurationUsage.game_channel++
-    if (league.commands.stream_count) stats.configurationUsage.stream_count++
-    if (league.commands.broadcast) stats.configurationUsage.broadcast++
-    if (league.commands.teams) stats.configurationUsage.teams++
-    if (league.commands.waitlist) stats.configurationUsage.waitlist++
-    if (league.commands.madden_league) stats.configurationUsage.madden_league++
-  })
+  await Promise.all(allLeagues.map(async league => {
+    const config = await league.get()
+    if (config.commands.logger) stats.configurationUsage.logger++
+    if (config.commands.game_channel) stats.configurationUsage.game_channel++
+    if (config.commands.stream_count) stats.configurationUsage.stream_count++
+    if (config.commands.broadcast) stats.configurationUsage.broadcast++
+    if (config.commands.teams) stats.configurationUsage.teams++
+    if (config.commands.waitlist) stats.configurationUsage.waitlist++
+    if (config.commands.madden_league) stats.configurationUsage.madden_league++
+  }))
   const individualConfigurationStats = Object.entries(stats.configurationUsage).map(e => {
     const [conf, stat] = e
     return `Total ${conf} leagues: ${stat}`

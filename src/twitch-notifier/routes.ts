@@ -7,7 +7,7 @@ import NodeCache from "node-cache"
 import db from "../db/firebase"
 import EventDB, { EventDelivery } from "../db/events_db"
 import { MaddenBroadcastEvent } from "../db/events"
-import LeagueSettingsDB, { LeagueSettings } from "../discord/settings_db"
+import LeagueSettingsDB from "../discord/settings_db"
 const router = new Router({ prefix: "/twitch" })
 
 
@@ -167,7 +167,7 @@ async function handleStreamEvent(twitchEvent: StreamUpEvent) {
   const subscription = subscriptionDoc.data() as SubscriptionDoc
   const subscribedServers = Object.entries(subscription.servers).filter(entry => entry[1].subscribed).map(entry => entry[0])
   await Promise.all(subscribedServers.map(async (server) => {
-    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(server)
+    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(server).get()
     const configuration = leagueSettings.commands?.broadcast
     if (!configuration) {
       await twitchNotifierHandler.removeTwitchChannel(server, broadcasterName)
