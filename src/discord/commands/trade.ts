@@ -412,7 +412,7 @@ export default {
           tradeConfig.channel,
           {
             content: tradeMessage(trade, tradeConfig.tradeCommitteeRole),
-            components: voteComponents(trade),
+            components: tradecomponents(trade),
             allowed_mentions: { parse: ["roles"] },
           },
         );
@@ -639,6 +639,15 @@ export default {
     }
 
     const trade = await TradeDB.vote(tradeId, interaction.member.user.id, vote);
+    if(trade.submittedBy === interaction.member.user.id){
+      return {
+        type: InteractionResponseType.ChannelMessageWithSource,
+        data: {
+          content: "You cant vote on your own trade silly",
+          flags: 64,
+        },
+      };
+    }
     try {
       if (
         trade.status === TradeStatus.APPROVED &&
