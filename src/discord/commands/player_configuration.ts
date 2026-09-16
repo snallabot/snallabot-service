@@ -163,7 +163,7 @@ export default {
       }
       const hiddenDevs = (subCommandOptions[0] as APIApplicationCommandInteractionDataBooleanOption
       ).value
-      await LeagueSettingsDB.configurePlayer(guild_id, { useHiddenDevs: hiddenDevs })
+      await LeagueSettingsDB.getLeagueSettings(guild_id).configurePlayer({ useHiddenDevs: hiddenDevs })
       return createMessageResponse(`Player Configuration:\n  - Hidden Devs: ${hiddenDevs ? "on" : "off"}`)
     }
 

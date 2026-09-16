@@ -45,14 +45,16 @@ async function updateEachLeagueNotifier() {
   let leaguesChecked = 0
 
   for (const leagueSettings of allLeagueSettings) {
+    const config = await leagueSettings.get()
     let notifier
     try {
-      notifier = createNotifier(prodClient, leagueSettings.guildId, leagueSettings)
+
+      notifier = createNotifier(prodClient, leagueSettings.guildId(), config)
     } catch (e) {
       continue // skip this league, matches original behavior
     }
     leaguesChecked++
-    const weeklyStates = leagueSettings.commands?.game_channel?.weekly_states || {}
+    const weeklyStates = config.commands?.game_channel?.weekly_states || {}
     for (const weeklyState of Object.values(weeklyStates)) {
       for (const [channelId, channelState] of Object.entries(weeklyState.channel_states || {})) {
         // todo hack, this doesnt seem necessary

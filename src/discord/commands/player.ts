@@ -64,7 +64,7 @@ function generatePlayerZoomOptions(players: Player[], currentPagination: PlayerP
 
 async function showPlayerCard(playerSearch: string, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
   try {
-    const [discordLeague, settings] = await Promise.all([discordLeagueView.createView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
+    const [discordLeague, settings] = await Promise.all([discordLeagueView.createView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id).get()])
     const playerConfiguration = settings?.commands?.player || { useHiddenDevs: true }
     const leagueId = discordLeague?.leagueId
     if (!leagueId) {
@@ -140,7 +140,7 @@ async function showPlayerCard(playerSearch: string, client: DiscordClient, token
 }
 
 async function showPlayerFullRatings(rosterId: number, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
-  const [discordLeague, settings] = await Promise.all([discordLeagueView.createView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
+  const [discordLeague, settings] = await Promise.all([discordLeagueView.createView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id).get()])
   const playerConfiguration = settings?.commands?.player || { useHiddenDevs: true }
   const leagueId = discordLeague?.leagueId
   if (!leagueId) {
@@ -197,7 +197,7 @@ async function showPlayerFullRatings(rosterId: number, client: DiscordClient, to
 }
 
 async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
-  const [discordLeague, settings] = await Promise.all([discordLeagueView.createView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
+  const [discordLeague, settings] = await Promise.all([discordLeagueView.createView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id).get()])
   const playerConfiguration = settings?.commands?.player || { useHiddenDevs: true }
   const leagueId = discordLeague?.leagueId
   if (!leagueId) {
@@ -257,7 +257,7 @@ async function showPlayerWeeklyStats(rosterId: number, client: DiscordClient, to
 }
 
 async function showPlayerYearlyStats(rosterId: number, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
-  const [discordLeague, settings] = await Promise.all([discordLeagueView.createView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
+  const [discordLeague, settings] = await Promise.all([discordLeagueView.createView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id).get()])
   const playerConfiguration = settings?.commands?.player || { useHiddenDevs: true }
   const leagueId = discordLeague?.leagueId
   if (!leagueId) {
@@ -357,7 +357,7 @@ async function getPlayers(leagueId: string, query: PlayerListQuery, startAfterPl
 
 async function showPlayerList(playerSearch: string, client: DiscordClient, token: string, guild_id: string, startAfterPlayer?: number, endBeforePlayer?: number) {
   try {
-    const [discordLeague, settings] = await Promise.all([discordLeagueView.createView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
+    const [discordLeague, settings] = await Promise.all([discordLeagueView.createView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id).get()])
     const playerConfiguration = settings?.commands?.player || { useHiddenDevs: true }
     const leagueId = discordLeague?.leagueId
     if (!leagueId) {
@@ -1779,7 +1779,7 @@ export default {
         throw new Error("missing player configure options!")
       }
       const hiddenDevs = (subCommandOptions[0] as APIApplicationCommandInteractionDataBooleanOption).value
-      await LeagueSettingsDB.configurePlayer(guild_id, { useHiddenDevs: hiddenDevs })
+      await LeagueSettingsDB.getLeagueSettings(guild_id).configurePlayer({ useHiddenDevs: hiddenDevs })
       return createMessageResponse(`Player Configuration:\n  - Hidden Devs: ${hiddenDevs ? "on" : "off"}`)
     }
 
