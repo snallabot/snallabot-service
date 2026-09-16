@@ -67,8 +67,8 @@ function stringOption(
 ): string | undefined {
   return (
     options.get(name) as
-      | APIApplicationCommandInteractionDataStringOption
-      | undefined
+    | APIApplicationCommandInteractionDataStringOption
+    | undefined
   )?.value;
 }
 
@@ -163,7 +163,7 @@ function voteComponents(trade: TradeSubmission) {
   ];
 }
 
-function playerOverviewComponet(trade: TradeSubmission) {
+function playerOverviewComponent(trade: TradeSubmission) {
   const players = [...trade.teamA.assets, ...trade.teamB.assets].filter(
     (asset): asset is Extract<TradeAsset, { type: "PLAYER" }> =>
       asset.type === "PLAYER",
@@ -193,8 +193,8 @@ function playerOverviewComponet(trade: TradeSubmission) {
   ];
 }
 
-function tradecomponents(trade: TradeSubmission) {
-  return [...voteComponents(trade), ...playerOverviewComponet(trade)];
+function tradeComponents(trade: TradeSubmission) {
+  return [...voteComponents(trade), ...playerOverviewComponent(trade)];
 }
 
 async function buildAndShowTradePlayerCard(
@@ -277,14 +277,14 @@ export default {
       );
       const acceptedChannelValue = (
         options.get("accepted_trades_channel") as
-          | APIApplicationCommandInteractionDataChannelOption
-          | undefined
+        | APIApplicationCommandInteractionDataChannelOption
+        | undefined
       )?.value;
 
       const declinedChannelValue = (
         options.get("declined_trades_channel") as
-          | APIApplicationCommandInteractionDataChannelOption
-          | undefined
+        | APIApplicationCommandInteractionDataChannelOption
+        | undefined
       )?.value;
 
       const channel: ChannelId = {
@@ -412,7 +412,7 @@ export default {
           tradeConfig.channel,
           {
             content: tradeMessage(trade, tradeConfig.tradeCommitteeRole),
-            components: tradecomponents(trade),
+            components: tradeComponents(trade),
             allowed_mentions: { parse: ["roles"] },
           },
         );
@@ -639,7 +639,7 @@ export default {
     }
 
     const trade = await TradeDB.vote(tradeId, interaction.member.user.id, vote);
-    if(trade.submittedBy === interaction.member.user.id){
+    if (trade.submittedBy === interaction.member.user.id) {
       return {
         type: InteractionResponseType.ChannelMessageWithSource,
         data: {
@@ -691,7 +691,7 @@ export default {
       type: InteractionResponseType.UpdateMessage,
       data: {
         content: tradeMessage(trade, config.tradeCommitteeRole),
-        components: tradecomponents(trade),
+        components: tradeComponents(trade),
         allowed_mentions: { parse: ["users"] },
       },
     };
