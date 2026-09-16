@@ -273,9 +273,11 @@ async function getExportData<T>(
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
-      throw new EAAccountError(`EA request timed out after ${retries} attempts`, "No Guidance");
+      throw new EAAccountError(`EA request timed out after ${retries} attempts`, "Be patient, this may resolve on its own");
     }
-
+    if ((parsed as any).error) {
+      throw new EAAccountError(`Failed to get data from EA, response ${JSON.stringify(parsed)}`, `Be patient, this may resolve on its own`)
+    }
     return parsed as T;
   }
 
