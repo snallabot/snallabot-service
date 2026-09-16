@@ -168,17 +168,6 @@ export async function showPlayerCard(
 
     await client.editOriginalInteraction(token, payload);
   } catch (error) {
-    await client.editOriginalInteraction(token, {
-      flags: 32768,
-      components: [
-        {
-          type: ComponentType.TextDisplay,
-          content: `Could not show player card: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
-        },
-      ],
-    });
   }
 }
 async function showPlayerFullRatings(rosterId: number, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
