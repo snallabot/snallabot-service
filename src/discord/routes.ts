@@ -124,7 +124,7 @@ EventDB.on<ConfirmedSimV2>("CONFIRMED_SIM", async (events) => {
     const leagueId = sim.key
     const settings = await LeagueSettingsDB.getLeagueSettingsForLeagueId(leagueId)
     await Promise.all(settings.map(async s => {
-      await updateScoreboard(s, s.guildId, sim.seasonIndex, sim.week)
+      await updateScoreboard(s, s.guildId(), sim.seasonIndex, sim.week)
     }))
 
   }))
@@ -139,14 +139,15 @@ MaddenDB.on<MaddenGame>("MADDEN_SCHEDULE", async (events) => {
     const finishedGame = finishedGames[0]
     const allSettingsForLeague = await LeagueSettingsDB.getLeagueSettingsForLeagueId(leagueId)
     await Promise.all(allSettingsForLeague.map(async settings => {
-      const guild_id = settings.guildId
+      const guild_id = settings.guildId()
       if (finishedGame) {
         const season = finishedGame.seasonIndex
         const week = finishedGame.weekIndex + 1
         await updateScoreboard(settings, guild_id, season, week)
         const notifier = createNotifier(prodClient, guild_id, settings)
         const gameIds = new Set(finishedGames.map(g => g.scheduleId))
-        await Promise.all(Object.values(settings.commands.game_channel?.weekly_states?.[createWeekKey(season, week)]?.channel_states || {}).map(async channelState => {
+        const storedSettings = await settings.get()
+        await Promise.all(Object.values(storedSettings.commands.game_channel?.weekly_states?.[createWeekKey(season, week)]?.channel_states || {}).map(async channelState => {
           if (gameIds.has(channelState.scheduleId)) {
             try {
               await notifier.deleteGameChannel(channelState, season, week, [prodClient.getBotUser()])
