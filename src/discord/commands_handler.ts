@@ -144,67 +144,103 @@ export async function handleAutocomplete(command: Autocomplete, ctx: Parameteriz
 
 export async function handleMessageComponent(interaction: MessageComponentInteraction, ctx: ParameterizedContext, client: DiscordClient) {
   const custom_id = interaction.custom_id
-  const handler = custom_id.startsWith("trade_vote:") ? tradeHandler : MessageComponents[custom_id]
+  const isTradeInteraction =
+    custom_id.startsWith("trade_vote:") ||
+    custom_id.startsWith("trade_player:");
+  const handler = isTradeInteraction
+    ? tradeHandler
+    : MessageComponents[custom_id];
   if (handler) {
     try {
-      const metricCustomId = custom_id.startsWith("trade_vote") ? "trade_vote" : custom_id
-      discordCommandsCounter.inc({ command_name: metricCustomId, command_type: "MESSAGE_COMPONENT" })
-      const body = await handler.handleInteraction(interaction, client)
-      ctx.status = 200
-      ctx.set("Content-Type", "application/json")
-      ctx.body = body
+      const metricCustomId = custom_id.startsWith("trade_vote:")
+        ? "trade_vote"
+        : custom_id.startsWith("trade_player:")
+          ? "trade_player"
+          : custom_id;
+      discordCommandsCounter.inc({
+        command_name: metricCustomId,
+        command_type: "MESSAGE_COMPONENT",
+      });
+      const body = await handler.handleInteraction(interaction, client);
+      ctx.status = 200;
+      ctx.set("Content-Type", "application/json");
+      ctx.body = body;
     } catch (e) {
-      const error = e as Error
-      ctx.status = 500
+      const error = e as Error;
+      ctx.status = 500;
     }
   } else {
     try {
-      // TODO use typeof and fix this, its bad 
-      const parsedCustomId = JSON.parse(custom_id)
+      // TODO use typeof and fix this, its bad
+      const parsedCustomId = JSON.parse(custom_id);
       if (parsedCustomId.q != null) {
-        discordCommandsCounter.inc({ command_name: "PLAYER_LIST", command_type: "MESSAGE_COMPONENT" })
-        const body = await playerHandler.handleInteraction(interaction, client)
-        ctx.status = 200
-        ctx.set("Content-Type", "application/json")
-        ctx.body = body
+        discordCommandsCounter.inc({
+          command_name: "PLAYER_LIST",
+          command_type: "MESSAGE_COMPONENT",
+        });
+        const body = await playerHandler.handleInteraction(interaction, client);
+        ctx.status = 200;
+        ctx.set("Content-Type", "application/json");
+        ctx.body = body;
       } else if (parsedCustomId.t != null) {
-        discordCommandsCounter.inc({ command_name: "BROADCAST", command_type: "MESSAGE_COMPONENT" })
-        const body = await broadcastsHandler.handleInteraction(interaction, client)
-        ctx.status = 200
-        ctx.set("Content-Type", "application/json")
-        ctx.body = body
+        discordCommandsCounter.inc({
+          command_name: "BROADCAST",
+          command_type: "MESSAGE_COMPONENT",
+        });
+        const body = await broadcastsHandler.handleInteraction(
+          interaction,
+          client,
+        );
+        ctx.status = 200;
+        ctx.set("Content-Type", "application/json");
+        ctx.body = body;
       } else if (parsedCustomId.p != null && parsedCustomId.si != null) {
-        discordCommandsCounter.inc({ command_name: "SIMS", command_type: "MESSAGE_COMPONENT" })
-        const body = await simsHandler.handleInteraction(interaction, client)
-        ctx.status = 200
-        ctx.set("Content-Type", "application/json")
-        ctx.body = body
-      }
-      else if (parsedCustomId.si != null) {
-        discordCommandsCounter.inc({ command_name: "SCHEDULE", command_type: "MESSAGE_COMPONENT" })
-        const body = await schedulesHandler.handleInteraction(interaction, client)
-        ctx.status = 200
-        ctx.set("Content-Type", "application/json")
-        ctx.body = body
+        discordCommandsCounter.inc({
+          command_name: "SIMS",
+          command_type: "MESSAGE_COMPONENT",
+        });
+        const body = await simsHandler.handleInteraction(interaction, client);
+        ctx.status = 200;
+        ctx.set("Content-Type", "application/json");
+        ctx.body = body;
+      } else if (parsedCustomId.si != null) {
+        discordCommandsCounter.inc({
+          command_name: "SCHEDULE",
+          command_type: "MESSAGE_COMPONENT",
+        });
+        const body = await schedulesHandler.handleInteraction(
+          interaction,
+          client,
+        );
+        ctx.status = 200;
+        ctx.set("Content-Type", "application/json");
+        ctx.body = body;
       } else if (parsedCustomId.f != null) {
-        discordCommandsCounter.inc({ command_name: "STANDINGS", command_type: "MESSAGE_COMPONENT" })
-        const body = await standingsHandler.handleInteraction(interaction, client)
-        ctx.status = 200
-        ctx.set("Content-Type", "application/json")
-        ctx.body = body
+        discordCommandsCounter.inc({
+          command_name: "STANDINGS",
+          command_type: "MESSAGE_COMPONENT",
+        });
+        const body = await standingsHandler.handleInteraction(
+          interaction,
+          client,
+        );
+        ctx.status = 200;
+        ctx.set("Content-Type", "application/json");
+        ctx.body = body;
       } else if (parsedCustomId.st != null && parsedCustomId.p != null) {
-        discordCommandsCounter.inc({ command_name: "STATS", command_type: "MESSAGE_COMPONENT" })
-        const body = await statsHandler.handleInteraction(interaction, client)
-        ctx.status = 200
-        ctx.set("Content-Type", "application/json")
-        ctx.body = body
-      }
-      else {
-        ctx.status = 500
+        discordCommandsCounter.inc({
+          command_name: "STATS",
+          command_type: "MESSAGE_COMPONENT",
+        });
+        const body = await statsHandler.handleInteraction(interaction, client);
+        ctx.status = 200;
+        ctx.set("Content-Type", "application/json");
+        ctx.body = body;
+      } else {
+        ctx.status = 500;
       }
     } catch (e) {
-      ctx.status = 500
-
+      ctx.status = 500;
     }
   }
 }

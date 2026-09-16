@@ -61,84 +61,115 @@ function generatePlayerZoomOptions(players: Player[], currentPagination: PlayerP
   return players.map(p => ({ label: `${p.position} ${p.firstName} ${p.lastName}`, value: { r: p.rosterId, s: PlayerSelection.PLAYER_OVERVIEW, q: currentPagination } }))
     .map(option => ({ ...option, value: JSON.stringify(option.value) }))
 }
+// * take out some of the logic in show player card 
+export async function buildPlayerCard(
+  rosterId: number,
+  guildId: string,
+  pagination?: PlayerPagination,
+) {
+  const [discordLeague, settings] = await Promise.all([
+    discordLeagueView.createView(guildId),
+    LeagueSettingsDB.getLeagueSettings(guildId),
+  ]);
 
-async function showPlayerCard(playerSearch: string, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
-  try {
-    const [discordLeague, settings] = await Promise.all([discordLeagueView.createView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
-    const playerConfiguration = settings?.commands?.player || { useHiddenDevs: true }
-    const leagueId = discordLeague?.leagueId
-    if (!leagueId) {
-      throw new NoConnectedLeagueError(guild_id)
-    }
-    let searchRosterId = Number(playerSearch)
-    if (isNaN(searchRosterId)) {
-      // get top search result
-      const results = await searchPlayerForRosterId(playerSearch, leagueId)
-      if (results.length === 0) {
-        throw new Error(`No player results for ${playerSearch} in ${leagueId}`)
-      }
-      searchRosterId = Number(results[0].rosterId)
-    }
-    const [player, teamList] = await Promise.all([MaddenDB.getPlayer(leagueId, `${searchRosterId}`), MaddenDB.getLatestTeams(leagueId)])
-    const backToSearch = pagination ? [
-      {
-        type: ComponentType.Separator,
-        divider: true,
-        spacing: SeparatorSpacingSize.Small
-      },
-      {
-        type: ComponentType.ActionRow,
-        components: [
-          {
-            type: ComponentType.Button,
-            style: ButtonStyle.Secondary,
-            label: "Back to List",
-            custom_id: `${JSON.stringify(pagination)}`
-          }
-        ]
-      }
+  const leagueId = discordLeague?.leagueId;
 
-    ] : []
-    const logos = await leagueLogosView.createView(leagueId)
-    await client.editOriginalInteraction(token, {
-      flags: 32768,
-      components: [
+  if (!leagueId) {
+    throw new NoConnectedLeagueError(guildId);
+  }
+
+  const playerConfiguration = settings?.commands?.player ?? {
+    useHiddenDevs: true,
+  };
+
+  const [player, teamList, logos] = await Promise.all([
+    MaddenDB.getPlayer(leagueId, String(rosterId)),
+    MaddenDB.getLatestTeams(leagueId),
+    leagueLogosView.createView(leagueId),
+  ]);
+
+  const backToSearch = pagination
+    ? [
         {
-          type: ComponentType.TextDisplay,
-          content: formatPlayerCard(player, teamList, logos, playerConfiguration)
-        },
-        {
-          type: ComponentType.Separator,
+          type: ComponentType.Separator as const,
           divider: true,
-          spacing: SeparatorSpacingSize.Large
+          spacing: SeparatorSpacingSize.Small,
         },
         {
-          type: ComponentType.ActionRow,
+          type: ComponentType.ActionRow as const,
           components: [
             {
-              type: ComponentType.StringSelect,
-              custom_id: "player_card",
-              placeholder: formatPlaceholder(PlayerSelection.PLAYER_OVERVIEW),
-              options: generatePlayerOptions(searchRosterId, pagination)
-            }
-          ]
+              type: ComponentType.Button as const,
+              style: ButtonStyle.Secondary,
+              label: "Back to List",
+              custom_id: JSON.stringify(pagination),
+            },
+          ],
         },
-        ...backToSearch
       ]
-    })
-  } catch (e) {
-    await client.editOriginalInteraction(token, {
-      flags: 32768,
-      components: [
-        {
-          type: ComponentType.TextDisplay,
-          content: `Could not show player card ${e}`
-        }
-      ]
-    })
-  }
+    : [];
+
+  return {
+    flags: 32768,
+    components: [
+      {
+        type: ComponentType.TextDisplay as const,
+        content: formatPlayerCard(player, teamList, logos, playerConfiguration),
+      },
+      {
+        type: ComponentType.Separator as const,
+        divider: true,
+        spacing: SeparatorSpacingSize.Large,
+      },
+      {
+        type: ComponentType.ActionRow as const,
+        components: [
+          {
+            type: ComponentType.StringSelect as const,
+            custom_id: "player_card",
+            placeholder: formatPlaceholder(PlayerSelection.PLAYER_OVERVIEW),
+            options: generatePlayerOptions(rosterId, pagination),
+          },
+        ],
+      },
+      ...backToSearch,
+    ],
+  };
 }
 
+export async function showPlayerCard(
+  playerSearch: string,
+  client: DiscordClient,
+  token: string,
+  guildId: string,
+  pagination?: PlayerPagination,
+) {
+  try {
+    const discordLeague = await discordLeagueView.createView(guildId);
+    const leagueId = discordLeague?.leagueId;
+
+    if (!leagueId) {
+      throw new NoConnectedLeagueError(guildId);
+    }
+
+    let rosterId = Number(playerSearch);
+
+    if (Number.isNaN(rosterId)) {
+      const results = await searchPlayerForRosterId(playerSearch, leagueId);
+
+      if (results.length === 0) {
+        throw new Error(`No player results for ${playerSearch} in ${leagueId}`);
+      }
+
+      rosterId = Number(results[0].rosterId);
+    }
+
+    const payload = await buildPlayerCard(rosterId, guildId, pagination);
+
+    await client.editOriginalInteraction(token, payload);
+  } catch (error) {
+  }
+}
 async function showPlayerFullRatings(rosterId: number, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
   const [discordLeague, settings] = await Promise.all([discordLeagueView.createView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
   const playerConfiguration = settings?.commands?.player || { useHiddenDevs: true }
