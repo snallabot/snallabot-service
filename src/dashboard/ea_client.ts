@@ -269,7 +269,6 @@ async function getExportData<T>(
       (parsed as any).error?.errorname === "ERR_TIMEOUT"
     ) {
       if (attempt < retries - 1) {
-        console.log("timed out")
         const delay = baseDelayMs * 2 ** attempt;
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
