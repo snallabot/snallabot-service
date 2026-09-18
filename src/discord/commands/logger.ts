@@ -28,9 +28,9 @@ export default {
           id_type: DiscordIdType.CHANNEL
         },
       }
-      await LeagueSettingsDB.configureLogger(guild_id, loggerConfig)
+      await LeagueSettingsDB.getLeagueSettings(guild_id).configureLogger(loggerConfig)
     } else {
-      await LeagueSettingsDB.removeLogger(guild_id)
+      await LeagueSettingsDB.getLeagueSettings(guild_id).removeLogger()
     }
     return createMessageResponse(`logger is ${on ? "on" : "off"}`)
   },

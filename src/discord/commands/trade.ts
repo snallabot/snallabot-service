@@ -303,7 +303,7 @@ export default {
         id: declinedChannelValue ?? channelValue,
         id_type: DiscordIdType.CHANNEL,
       };
-      await LeagueSettingsDB.configureTrade(command.guild_id, {
+      await LeagueSettingsDB.getLeagueSettings(command.guild_id).configureTrade({
         channel,
         tradeCommitteeRole: tradeCommitteeRole,
         requiredApprovals,
@@ -323,9 +323,7 @@ export default {
 - Accepted Trades: ${acceptedMessage}
 - Declined Trades: ${declinedMessage}`);
     } else if (subcommand.name === "submit") {
-      const settings = await LeagueSettingsDB.getLeagueSettings(
-        command.guild_id,
-      );
+      const settings = await LeagueSettingsDB.getLeagueSettings(command.guild_id).get()
       const tradeConfig = settings.commands.trade;
       if (!tradeConfig)
         throw new Error(
@@ -625,7 +623,7 @@ export default {
     if (!tradeId || !vote) throw new Error("Invalid trade vote");
     const settings = await LeagueSettingsDB.getLeagueSettings(
       interaction.guild_id,
-    );
+    ).get();
     const config = settings.commands.trade;
     if (!config) throw new Error("Trade approvals are not configured");
     if (!interaction.member.roles.includes(config.tradeCommitteeRole.id)) {
