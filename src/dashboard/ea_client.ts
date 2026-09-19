@@ -285,7 +285,7 @@ async function getExportData<T>(
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
-      throw new EAAccountError(`EA is under high load, Snallabot tried its best.`, "Be patient, this may resolve on its own");
+      throw new EAAccountError(`Failed to get data from EA, response ${JSON.stringify(parsed)}`, "Be patient, this may resolve on its own. Snallabot tried its best to retrieve your data");
     }
     if ((parsed as any).error) {
       throw new EAAccountError(`Failed to get data from EA, response ${JSON.stringify(parsed)}`, `Be patient, this may resolve on its own`)
