@@ -233,12 +233,14 @@ interface EAErrorResponse {
   };
 }
 
+const HIGH_LOAD_ERROR_CODE = 1073807360
+
 async function getExportData<T>(
   token: TokenInformation,
   session: SessionInformation,
   exportType: LeagueData,
   body: Record<string, any>,
-  retries = 5,
+  retries = 3,
   baseDelayMs = 1000
 ): Promise<T> {
   for (let attempt = 0; attempt < retries; attempt++) {
@@ -275,10 +277,20 @@ async function getExportData<T>(
       }
       throw new EAAccountError(`EA request timed out after ${retries} attempts`, "Be patient, this may resolve on its own");
     }
+    if (
+      (parsed as any).error && (parsed as any).error?.errorcode === HIGH_LOAD_ERROR_CODE
+    ) {
+      if (attempt < retries - 1) {
+        const delay = baseDelayMs * 2 ** attempt;
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      throw new EAAccountError(`EA is under high load, Snallabot tried its best.`, "Be patient, this may resolve on its own");
+    }
     if ((parsed as any).error) {
       throw new EAAccountError(`Failed to get data from EA, response ${JSON.stringify(parsed)}`, `Be patient, this may resolve on its own`)
     }
-    return parsed as T;
+    return parsed as T
   }
 
   throw new EAAccountError(`EA request failed after ${retries} attempts`, "No Guidance");
@@ -727,7 +739,7 @@ async function handleExportTask(task: ExportJobTask): Promise<void> {
     let teamData: TeamData = { roster: {} }
     const teamList = leagueInfo.teamIdInfoList
     teamRequests.push(client.getFreeAgents(leagueId).then(freeAgents => teamData.roster["freeagents"] = freeAgents))
-    const batchSize = 4;
+    const batchSize = 1;
     for (let idx = 0; idx < teamList.length; idx++) {
       const team = teamList[idx];
       teamRequests.push(
