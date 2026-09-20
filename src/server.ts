@@ -8,6 +8,7 @@ import twitchRouter from "./twitch-notifier/routes"
 import connectionsRouter from "./connections/routes"
 import debugRouter from "./debug/routes"
 import dashboard from "./dashboard/routes"
+import { latencyMiddleware } from "./debug/metrics"
 
 const app = new Koa()
 
@@ -24,6 +25,7 @@ app
       };
     }
   })
+  .use(latencyMiddleware)
   .use(exportRouter.routes())
   .use(exportRouter.allowedMethods())
   .use(discordRouter.routes())

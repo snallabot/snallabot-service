@@ -240,7 +240,7 @@ async function getExportData<T>(
   session: SessionInformation,
   exportType: LeagueData,
   body: Record<string, any>,
-  retries = 3,
+  retries = 5,
   baseDelayMs = 1000
 ): Promise<T> {
   for (let attempt = 0; attempt < retries; attempt++) {
