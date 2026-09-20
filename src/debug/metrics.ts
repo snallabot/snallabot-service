@@ -1,3 +1,4 @@
+
 import { RouterContext } from "@koa/router"
 import { APIApplicationCommandAutocompleteInteraction, APIChatInputApplicationCommandGuildInteraction, APIInteraction, APIMessageComponentInteraction, InteractionType } from "discord-api-types/v10"
 import { Next, ParameterizedContext } from "koa"
@@ -182,7 +183,6 @@ export async function latencyMiddleware(ctx: RouterContext, next: Next) {
   const endpoint = ctx.routerPath ?? "unmatched"
   const status = ctx.status
   ctx.res.on('finish', () => {
-    console.log("done")
     end({
       method: method,
       endpoint: endpoint,
@@ -194,7 +194,6 @@ export async function latencyMiddleware(ctx: RouterContext, next: Next) {
 function measure(ctx: ParameterizedContext, commandType: string, commandName: string) {
   const end = discordRequestDuration.startTimer()
   ctx.res.on('finish', () => {
-    console.log("done")
     end({
       command_type: commandType,
       command_name: commandName
