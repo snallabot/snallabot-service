@@ -1,3 +1,4 @@
+import { RouterContext } from "@koa/router"
 import { APIApplicationCommandAutocompleteInteraction, APIChatInputApplicationCommandGuildInteraction, APIInteraction, APIMessageComponentInteraction, InteractionType } from "discord-api-types/v10"
 import { Next, ParameterizedContext } from "koa"
 
@@ -162,31 +163,38 @@ const httpRequestDuration = new client.Histogram({
   name: "http_request_duration_seconds",
   help: "http request latency in seconds",
   labelNames: ['method', 'endpoint', 'status'],
-  buckets: [0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 10.0]
+  buckets: [0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 10.0],
+  registers: [register],
 })
 
 const discordRequestDuration = new client.Histogram({
   name: "discord_request_duration_seconds",
   help: "discord request latency in seconds",
   labelNames: ['command_type', 'command_name'],
-  buckets: [0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 10.0]
+  buckets: [0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 10.0],
+  registers: [register],
 })
 
-export async function latencyMiddleware(ctx: ParameterizedContext, next: Next) {
+export async function latencyMiddleware(ctx: RouterContext, next: Next) {
   const end = httpRequestDuration.startTimer()
+  await next()
+  const method = ctx.method
+  const endpoint = ctx.routerPath ?? "unmatched"
+  const status = ctx.status
   ctx.res.on('finish', () => {
+    console.log("done")
     end({
-      method: ctx.method,
-      endpoint: ctx.path,
-      status: ctx.status
+      method: method,
+      endpoint: endpoint,
+      status: status
     })
   })
-  await next()
 }
 
 function measure(ctx: ParameterizedContext, commandType: string, commandName: string) {
   const end = discordRequestDuration.startTimer()
   ctx.res.on('finish', () => {
+    console.log("done")
     end({
       command_type: commandType,
       command_name: commandName

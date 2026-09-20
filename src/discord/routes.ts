@@ -14,6 +14,7 @@ import MaddenClient from "../db/madden_db"
 import MaddenDB from "../db/madden_db"
 import { GameResult, MaddenGame } from "../export/madden_league_types"
 import { leagueLogosView } from "../db/view"
+import { discordLatencyMiddleware } from "../debug/metrics"
 
 const router = new Router({ prefix: "/discord/webhook" })
 
@@ -59,7 +60,7 @@ async function handleInteraction(ctx: ParameterizedContext, client: DiscordClien
 
 type CommandsHandlerRequest = { commandNames?: string[], mode: CommandMode, guildId?: string }
 
-router.post("/slashCommand", async (ctx) => {
+router.post("/slashCommand", discordLatencyMiddleware, async (ctx) => {
   await handleInteraction(ctx, prodClient)
 }).post("/commandsHandler", async (ctx) => {
   const req = ctx.request.body as CommandsHandlerRequest
