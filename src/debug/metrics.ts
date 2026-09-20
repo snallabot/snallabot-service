@@ -214,17 +214,17 @@ export async function discordLatencyMiddleware(ctx: ParameterizedContext, next: 
     const { data } = slashCommandInteraction
     const { name } = data
     measure(ctx, "AUTOCOMPLETE", name)
-  } else if (interactionType === InteractionType.MessageComponent) {
-    const messageComponentInteraction = interaction as APIMessageComponentInteraction
-    const { data } = messageComponentInteraction
-    const { custom_id } = data
-    // todo ??? dont like it
-    const metricCustomId = custom_id.startsWith("trade_vote:")
-      ? "trade_vote"
-      : custom_id.startsWith("trade_player:")
-        ? "trade_player"
-        : custom_id;
-    measure(ctx, "MESSAGE_COMPONENT", metricCustomId)
-  }
+  } // else if (interactionType === InteractionType.MessageComponent) {
+  //   const messageComponentInteraction = interaction as APIMessageComponentInteraction
+  //   const { data } = messageComponentInteraction
+  //   const { custom_id } = data
+  //   // todo ??? dont like it
+  //   const metricCustomId = custom_id.startsWith("trade_vote:")
+  //     ? "trade_vote"
+  //     : custom_id.startsWith("trade_player:")
+  //       ? "trade_player"
+  //       : custom_id;
+  //   measure(ctx, "MESSAGE_COMPONENT", metricCustomId)
+  // }
   await next()
 }
