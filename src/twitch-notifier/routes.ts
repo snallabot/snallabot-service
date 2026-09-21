@@ -147,8 +147,6 @@ export const twitchNotifierHandler: TwitchNotifier = {
   cleanupTwitchSubscription: async (subscriptionId: string) => {
     const docsToDelete = await db.collection("twitch_notifiers").where(`subscriptionId`, "==", subscriptionId).get()
     await Promise.all(docsToDelete.docs.map(async d => {
-      const data = d.data() as SubscriptionDoc
-      console.log(`Deleting broadcaster ${d.id}, ${data.broadcasterLogin} with sub id  ${subscriptionId}`)
       await db.collection("twitch_notifiers").doc(d.id).delete()
     }))
   }

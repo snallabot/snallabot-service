@@ -90,23 +90,23 @@ export async function buildPlayerCard(
 
   const backToSearch = pagination
     ? [
-        {
-          type: ComponentType.Separator as const,
-          divider: true,
-          spacing: SeparatorSpacingSize.Small,
-        },
-        {
-          type: ComponentType.ActionRow as const,
-          components: [
-            {
-              type: ComponentType.Button as const,
-              style: ButtonStyle.Secondary,
-              label: "Back to List",
-              custom_id: JSON.stringify(pagination),
-            },
-          ],
-        },
-      ]
+      {
+        type: ComponentType.Separator as const,
+        divider: true,
+        spacing: SeparatorSpacingSize.Small,
+      },
+      {
+        type: ComponentType.ActionRow as const,
+        components: [
+          {
+            type: ComponentType.Button as const,
+            style: ButtonStyle.Secondary,
+            label: "Back to List",
+            custom_id: JSON.stringify(pagination),
+          },
+        ],
+      },
+    ]
     : [];
 
   return {
@@ -1768,7 +1768,6 @@ Snallabot did not find anymore retired players...`
           }
         ]
       })
-    console.error(e)
   }
 }
 

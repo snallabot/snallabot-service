@@ -243,7 +243,6 @@ async function showSeasonSims(token: string, client: DiscordClient, league: stri
       ]
     })
   } catch (e) {
-    console.error(e)
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
@@ -297,7 +296,6 @@ export default {
         showSeasonSims(interaction.token, client, leagueId, selection.si, selection.p, selection.so)
       }
     } catch (e) {
-      console.error(e)
       await client.editOriginalInteraction(interaction.token, {
         flags: 32768,
         components: [

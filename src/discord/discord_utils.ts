@@ -122,7 +122,6 @@ export function createClient(settings: DiscordSettings): DiscordClient {
         try {
           data = JSON.parse(stringData) as DiscordError
         } catch (e) {
-          console.error(stringData)
           throw new Error(`Discord not responding snallabot. This is a fatal error. Please wait patiently`)
         }
         if (data.retry_after) {
@@ -162,7 +161,6 @@ export function createClient(settings: DiscordSettings): DiscordClient {
         try {
           data = JSON.parse(stringData) as DiscordError
         } catch (e) {
-          console.error(stringData)
           throw new Error(`Discord not responding snallabot. This is a fatal error. Please wait patiently`)
         }
         if (data.retry_after) {
