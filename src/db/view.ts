@@ -159,7 +159,7 @@ class DiscordLeagueConnection extends View<DiscordLeagueConnectionEvent> {
   }
   async createView(key: string) {
     if (key) {
-      const leagueSettings = await LeagueSettingsDB.getLeagueSettings(key)
+      const leagueSettings = await LeagueSettingsDB.getLeagueSettings(key).get()
       const leagueId = leagueSettings?.commands?.madden_league?.league_id
       if (leagueId) {
         return { guildId: key, leagueId: leagueId }

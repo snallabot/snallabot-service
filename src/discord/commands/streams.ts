@@ -1,7 +1,7 @@
 import { Command } from "../commands_handler"
 import { createMessageResponse, DiscordClient, deferMessage } from "../discord_utils"
 import { APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataSubcommandOption, APIApplicationCommandInteractionDataUserOption, APIMessage, ApplicationCommandOptionType, ApplicationCommandType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
-import LeagueSettingsDB, { ChannelId, DiscordIdType, LeagueSettings, MessageId, StreamCountConfiguration, UserStreamCount } from "../settings_db"
+import LeagueSettingsDB, { ChannelId, DiscordIdType, StoredLeagueSettings, MessageId, StreamCountConfiguration, UserStreamCount } from "../settings_db"
 import db from "../../db/firebase"
 
 async function moveStreamCountMessage(client: DiscordClient, oldChannelId: ChannelId, oldMessageId: MessageId, newChannelId: ChannelId, counts: Array<UserStreamCount>): Promise<MessageId> {
@@ -51,7 +51,7 @@ async function configureInBackground(
   channel: ChannelId,
   oldChannelId: ChannelId | undefined,
   counts: Array<UserStreamCount>,
-  leagueSettings: LeagueSettings
+  leagueSettings: StoredLeagueSettings
 ) {
   if (oldChannelId && oldChannelId.id !== channel.id) {
     const oldMessage = leagueSettings.commands?.stream_count?.message || {} as MessageId
@@ -100,7 +100,7 @@ export default {
     const options = command.data.options
     const streamsCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
     const subCommand = streamsCommand.name
-    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
+    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id).get()
     if (subCommand === "configure") {
       if (!streamsCommand.options || !streamsCommand.options[0]) {
         throw new Error("streams configure misconfigured")

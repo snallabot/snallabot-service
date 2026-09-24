@@ -7,7 +7,7 @@ import EventDB from "../db/events_db"
 import { handleCommand, commandsInstaller, handleAutocomplete, handleMessageComponent } from "./commands_handler"
 import { ConfirmedSimV2, MaddenBroadcastEvent } from "../db/events"
 import { Client } from "oceanic.js"
-import LeagueSettingsDB, { DiscordIdType, LeagueSettings, TeamAssignments, createWeekKey } from "./settings_db"
+import LeagueSettingsDB, { DiscordIdType, StoredLeagueSettings, TeamAssignments, createWeekKey } from "./settings_db"
 import { fetchTeamsMessage } from "./commands/teams"
 import createNotifier from "./notifier"
 import MaddenClient from "../db/madden_db"
@@ -70,7 +70,7 @@ router.post("/slashCommand", discordLatencyMiddleware, async (ctx) => {
 EventDB.on<MaddenBroadcastEvent>("MADDEN_BROADCAST", async (events) => {
   events.map(async broadcastEvent => {
     const discordServer = broadcastEvent.key
-    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(discordServer)
+    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(discordServer).get()
     const configuration = leagueSettings.commands?.broadcast
     if (!configuration) {
 
@@ -94,7 +94,7 @@ EventDB.on<MaddenBroadcastEvent>("MADDEN_BROADCAST", async (events) => {
   })
 })
 
-async function updateScoreboard(leagueSettings: LeagueSettings, guildId: string, seasonIndex: number, week: number) {
+async function updateScoreboard(leagueSettings: StoredLeagueSettings, seasonIndex: number, week: number) {
   const leagueId = leagueSettings.commands.madden_league?.league_id
   if (!leagueId) {
     return
@@ -125,7 +125,8 @@ EventDB.on<ConfirmedSimV2>("CONFIRMED_SIM", async (events) => {
     const leagueId = sim.key
     const settings = await LeagueSettingsDB.getLeagueSettingsForLeagueId(leagueId)
     await Promise.all(settings.map(async s => {
-      await updateScoreboard(s, s.guildId, sim.seasonIndex, sim.week)
+      const config = await s.get()
+      await updateScoreboard(config, sim.seasonIndex, sim.week)
     }))
 
   }))
@@ -140,14 +141,16 @@ MaddenDB.on<MaddenGame>("MADDEN_SCHEDULE", async (events) => {
     const finishedGame = finishedGames[0]
     const allSettingsForLeague = await LeagueSettingsDB.getLeagueSettingsForLeagueId(leagueId)
     await Promise.all(allSettingsForLeague.map(async settings => {
-      const guild_id = settings.guildId
+      const guild_id = settings.guildId()
       if (finishedGame) {
         const season = finishedGame.seasonIndex
         const week = finishedGame.weekIndex + 1
-        await updateScoreboard(settings, guild_id, season, week)
-        const notifier = createNotifier(prodClient, guild_id, settings)
+        const config = await settings.get()
+        await updateScoreboard(config, season, week)
+        const notifier = createNotifier(prodClient, guild_id, config)
         const gameIds = new Set(finishedGames.map(g => g.scheduleId))
-        await Promise.all(Object.values(settings.commands.game_channel?.weekly_states?.[createWeekKey(season, week)]?.channel_states || {}).map(async channelState => {
+        const storedSettings = await settings.get()
+        await Promise.all(Object.values(storedSettings.commands.game_channel?.weekly_states?.[createWeekKey(season, week)]?.channel_states || {}).map(async channelState => {
           if (gameIds.has(channelState.scheduleId)) {
             try {
               await notifier.deleteGameChannel(channelState, season, week, [prodClient.getBotUser()])
@@ -177,19 +180,20 @@ discordClient.on("error", (error) => {
 
 discordClient.on("guildMemberRemove", async (user, guild) => {
   const guildId = guild.id
-  const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guildId)
-  if (leagueSettings.commands.teams) {
-    const assignments = leagueSettings.commands.teams?.assignments || {} as TeamAssignments
+  const leagueSettings = LeagueSettingsDB.getLeagueSettings(guildId)
+  const config = await leagueSettings.get()
+  if (config.commands.teams) {
+    const assignments = config.commands.teams?.assignments || {} as TeamAssignments
     await Promise.all(Object.entries(assignments).map(async entry => {
       const [teamId, assignment] = entry
       if (assignment.discord_user?.id === user.id) {
-        await LeagueSettingsDB.removeAssignment(guildId, teamId)
+        await leagueSettings.removeAssignment(teamId)
         delete assignments[teamId].discord_user
       }
     }))
-    const message = await fetchTeamsMessage(leagueSettings)
+    const message = await fetchTeamsMessage(config)
     try {
-      await prodClient.editMessage(leagueSettings.commands.teams.channel, leagueSettings.commands.teams.messageId, message, [])
+      await prodClient.editMessage(config.commands.teams.channel, config.commands.teams.messageId, message, [])
     } catch (e) {
     }
   }
@@ -197,27 +201,28 @@ discordClient.on("guildMemberRemove", async (user, guild) => {
 
 discordClient.on("guildMemberUpdate", async (member, old) => {
   const guildId = member.guildID
-  const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guildId)
-  if (leagueSettings.commands.teams?.useRoleUpdates) {
+  const leagueSettings = LeagueSettingsDB.getLeagueSettings(guildId)
+  const config = await leagueSettings.get()
+  if (config.commands.teams?.useRoleUpdates) {
     const users = await prodClient.getUsers(guildId)
     const userWithRoles = users.map((u) => ({ id: u.user.id, roles: u.roles }))
-    const assignments = leagueSettings.commands.teams.assignments || {} as TeamAssignments
+    const assignments = config.commands.teams.assignments || {} as TeamAssignments
     await Promise.all(Object.entries(assignments).map(async entry => {
       const [teamId, assignment] = entry
       if (assignment.discord_role?.id) {
         const userInTeam = userWithRoles.filter(u => u.roles.includes(assignment.discord_role?.id || ""))
         if (userInTeam.length === 0) {
-          await LeagueSettingsDB.removeAssignment(guildId, teamId)
+          await leagueSettings.removeAssignment(teamId)
           delete assignments[teamId].discord_user
         } else if (userInTeam.length === 1) {
-          await LeagueSettingsDB.updateAssignmentUser(guildId, teamId, { id: userInTeam[0].id, id_type: DiscordIdType.USER })
+          await leagueSettings.updateAssignmentUser(teamId, { id: userInTeam[0].id, id_type: DiscordIdType.USER })
           assignments[teamId].discord_user = { id: userInTeam[0].id, id_type: DiscordIdType.USER }
         }
       }
     }))
-    const message = await fetchTeamsMessage(leagueSettings)
+    const message = await fetchTeamsMessage(config)
     try {
-      await prodClient.editMessage(leagueSettings.commands.teams.channel, leagueSettings.commands.teams.messageId, message, [])
+      await prodClient.editMessage(config.commands.teams.channel, config.commands.teams.messageId, message, [])
     } catch (e) {
     }
   }
@@ -244,7 +249,7 @@ discordClient.on("messageReactionAdd", async (msg, reactor, reaction) => {
   }
   const reactionChannel = msg.channelID
   const reactionMessage = msg.id
-  const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild)
+  const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild).get()
   const weeklyStates = leagueSettings.commands?.game_channel?.weekly_states || {}
   await Promise.all(Object.values(weeklyStates).map(async weeklyState => {
     const channelStates = weeklyState.channel_states || {}
