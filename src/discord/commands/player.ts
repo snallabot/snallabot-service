@@ -90,23 +90,23 @@ export async function buildPlayerCard(
 
   const backToSearch = pagination
     ? [
-        {
-          type: ComponentType.Separator as const,
-          divider: true,
-          spacing: SeparatorSpacingSize.Small,
-        },
-        {
-          type: ComponentType.ActionRow as const,
-          components: [
-            {
-              type: ComponentType.Button as const,
-              style: ButtonStyle.Secondary,
-              label: "Back to List",
-              custom_id: JSON.stringify(pagination),
-            },
-          ],
-        },
-      ]
+      {
+        type: ComponentType.Separator as const,
+        divider: true,
+        spacing: SeparatorSpacingSize.Small,
+      },
+      {
+        type: ComponentType.ActionRow as const,
+        components: [
+          {
+            type: ComponentType.Button as const,
+            style: ButtonStyle.Secondary,
+            label: "Back to List",
+            custom_id: JSON.stringify(pagination),
+          },
+        ],
+      },
+    ]
     : [];
 
   return {
@@ -1833,7 +1833,7 @@ export default {
               type: ApplicationCommandOptionType.String,
               name: "player",
               description:
-                "search for the player",
+                "name to search for. Ex: Tom Brady",
               required: true,
               autocomplete: true
             },
@@ -1848,7 +1848,7 @@ export default {
               type: ApplicationCommandOptionType.String,
               name: "players",
               description:
-                "players to search for",
+                "groups to search for. Ex: Patriots, HB, Rookies",
               required: true,
               autocomplete: true
             },

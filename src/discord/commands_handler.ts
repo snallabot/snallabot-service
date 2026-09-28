@@ -1,6 +1,6 @@
 import { ParameterizedContext } from "koa"
 import { APIChatInputApplicationCommandInteractionData, APIInteractionGuildMember } from "discord-api-types/payloads"
-import { APIAutocompleteApplicationCommandInteractionData, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
+import { APIApplicationCommandOption, APIAutocompleteApplicationCommandInteractionData, ApplicationCommandOptionType, ApplicationCommandType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, RESTPostAPIChatInputApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { createMessageResponse, respond, DiscordClient, CommandMode } from "./discord_utils"
 import { Firestore } from "firebase-admin/firestore"
 import leagueExportHandler from "./commands/league_export"
@@ -44,7 +44,6 @@ export type CommandsHandler = { [key: string]: CommandHandler | undefined }
 export type AutocompleteHandlers = Record<string, AutocompleteHandler>
 export type MessageComponentHandlers = Record<string, MessageComponentHandler>
 const SlashCommands: CommandsHandler = {
-  "league_export": leagueExportHandler,
   "dashboard": dashboardHandler,
   "game_channels": gameChannelHandler,
   "teams": teamsHandler,
@@ -62,6 +61,78 @@ const SlashCommands: CommandsHandler = {
   "sims": simsHandler,
   "stats": statsHandler,
   "trade": tradeHandler
+}
+
+
+export type CommandRow = {
+  command: string
+  description: string
+  options: { name: string; description: string; required: boolean }[]
+}
+
+export type CommandGroup = {
+  name: string
+  description: string
+  rows: CommandRow[]
+}
+
+function toRows(
+  path: string,
+  description: string,
+  options: APIApplicationCommandOption[] = []
+): CommandRow[] {
+  const subs = options.filter(
+    o =>
+      o.type === ApplicationCommandOptionType.Subcommand ||
+      o.type === ApplicationCommandOptionType.SubcommandGroup
+  )
+
+  if (subs.length > 0) {
+    return subs.flatMap(sub =>
+      toRows(
+        `${path} ${sub.name}`,
+        sub.description,
+        "options" in sub ? sub.options : undefined
+      )
+    )
+  }
+
+  return [
+    {
+      command: `/${path}`,
+      description,
+      options: options.map(o => ({
+        name: o.name,
+        description: o.description,
+        required: o.required ?? false,
+      })),
+    },
+  ]
+}
+
+export function commandGroups(
+): CommandGroup[] {
+  const defs = Object.values(SlashCommands)
+    .flatMap(ch => {
+      if (ch) {
+        return [ch.commandDefinition()]
+      } else {
+        return []
+      }
+    })
+  return defs
+    .filter(d => d.type === undefined || d.type === ApplicationCommandType.ChatInput)
+    .map(d => d as RESTPostAPIChatInputApplicationCommandsJSONBody)
+    .map(def => ({
+      name: def.name,
+      description: def.description ?? "",
+      rows: toRows(
+        def.name,
+        def.description ?? "",
+        "options" in def ? def.options : undefined
+      ),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name))
 }
 
 const AutocompleteCommands: AutocompleteHandlers = {

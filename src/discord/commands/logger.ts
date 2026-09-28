@@ -37,7 +37,7 @@ export default {
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
     return {
       name: "logger",
-      description: "sets up snallabot logger",
+      description: "saves game channels in threads",
       type: ApplicationCommandType.ChatInput,
       options: [
         {

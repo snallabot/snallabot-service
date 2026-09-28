@@ -1,0 +1,220 @@
+doctype html
+html(lang="en")
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport" content="width=device-width, initial-scale=1")
+    title Snallabot
+    meta(name="description" content="Snallabot is a free Discord bot to help manage your Madden league.")
+    link(rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous")
+    link(rel="preconnect" href="https://fonts.googleapis.com")
+    link(rel="preconnect" href="https://fonts.gstatic.com" crossorigin)
+    link(href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet")
+    link(rel="icon" href="snallabot-logo.webp")
+    link(rel="stylesheet" href="styles.css")
+  body(data-bs-spy="scroll" data-bs-target="#sidebar-nav" data-bs-offset="140" tabindex="0")
+    a.source-icon(href="https://github.com/snallabot/snallabot-service" target="_blank" rel="noopener")
+    button.btn.btn-gold.btn-sm.mobile-nav-toggle(type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileNav" aria-controls="mobileNav")
+      | Menu
+
+    //- Mobile offcanvas nav (mirrors sidebar)
+    #mobileNav.offcanvas.offcanvas-start(tabindex="-1" aria-labelledby="mobileNavLabel" style="background: var(--surface); color: var(--text);")
+      .offcanvas-header
+        h5#mobileNavLabel.brand-word Snallabot
+        button.btn-close.btn-close-white(type="button" data-bs-dismiss="offcanvas" aria-label="Close")
+      .offcanvas-body
+        nav.nav.flex-column
+          a.nav-link(href="#top") Overview
+          a.nav-link(href="#features") Features
+          a.nav-link(href="#setup") Connect your league
+          a.nav-link(href="#teams") Teams
+          a.nav-link(href="#game-channels") Game Channels
+          a.nav-link(href="#broadcasts") Broadcasts
+          a.nav-link(href="#streams") Streams
+          a.nav-link(href="#commands") Commands
+          a.nav-link(href="#support") Support
+    .site
+      nav#sidebar-nav.sidebar.d-none.d-lg-block
+        .brand-word.fs-4.mb-3 Snallabot
+        .nav-heading Overview
+        a.nav-link(href="#top") Introduction
+        a.nav-link(href="#features") Features
+        .nav-heading Setup
+        a.nav-link(href="#setup") Getting started
+        a.nav-link(href="#teams") Teams
+        a.nav-link(href="#game-channels") Game channels
+        a.nav-link(href="#broadcasts") Broadcasts
+        a.nav-link(href="#streams") Stream counts
+        .nav-heading Reference
+        a.nav-link(href="#commands") Commands
+        a.nav-link(href="#support") Support & Discord
+
+      main.content
+        //- HERO
+        section#top.hero
+          img(src="snallabot-logo.webp" alt="Snallabot logo")
+          h1 Snallabot
+          p.lead Snallabot is a FREE open source Madden Discord bot to help manage your league. Snallabot handles the menial parts of running your league, so you can focus on what matters most, leading your franchise to greatness! Easy setup, direct EA connection, game channels, team management, and more make your life easy. 
+          .d-flex.justify-content-center.gap-3.flex-wrap
+            a.btn.btn-discord.btn-lg(href="https://discord.com/api/oauth2/authorize?client_id=970091866450198548&permissions=310311726160&scope=bot%20applications.commands" target="_blank" rel="noopener") Add to Discord
+            a.btn.btn-outline-light-custom.btn-lg(href="https://discord.gg/zbx7NB4PX7" target="_blank" rel="noopener") Join our Discord
+
+        //- FEATURES
+        section#features
+          .section-heading
+            h2 Features
+            p Snallabot offers these key features for everyone to use as they wish!
+          .row.g-3
+            .col-md-4
+              .feature.shadow
+                h3 Game channels
+                p Create and track your game channels with ease! Snallabot offers regular reminders for members to schedule their games, sim requests, and a scoreboard showing your week's progress. 
+            .col-md-4
+              .feature.shadow
+                h3 Team management
+                p Manage your league members, assigning and freeing teams with simple commands. 
+            .col-md-4
+              .feature.shadow
+                h3 Player Rosters
+                p Easily track your team's players and the league's rosters. Check out their ratings, weekly stats, and career progression.
+            .col-md-4
+              .feature.shadow
+                h3 Schedules, Standings, and Stats
+                p Keep up with everything around your league, track stat leaders, team standings, and the playoff picture!
+            .col-md-4
+              .feature.shadow
+                h3 Broadcasts
+                p Tune into your leagues live streams, Snallabot posts Youtube and Twitch streams soon as they happen so you can scout your rival live, see heavy weight matchups duke it out, or watch the big game to see who takes home the Lombardi. 
+            .col-md-4
+              .feature.shadow
+                h3 Hassel Free Updates
+                p With a novel EA connection, Snallabot keeps itself up to date. No more Companion App, as Snallabot pulls your league data so nothing can get in the way of your league.
+        //- GETTING STARTED
+        section#setup
+          .section-heading
+            h2 Getting started
+            p Follow these steps to connect Snallabot to your Discord and Madden. 
+          ol.steps
+            li
+              strong Add the bot to your server.
+              |
+              |          #[a.link(href="https://discord.com/api/oauth2/authorize?client_id=970091866450198548&permissions=310311726160&scope=bot%20applications.commands" target="_blank" rel="noopener") Invite Snallabot] to your server. You need Manage Server permissions to do so.
+            li
+              strong Link to your Madden League.
+              |          Use the dashboard slash command, typing #[code /dashboard] in your server will pop it up. Run it, click on the link to head to your dashboard, and follow the prompts to connect your league. Need support? Join our  #[a.link(href="https://discord.gg/Dc9pTGg9Hc" target="_blank" rel="noopener") Discord Server] if there are any issues
+            li
+              strong Export
+              |          From the dashboard, choose #[strong All Weeks] in the drop down and hit export. It takes about a minute while Snallabot gets all your current league information!
+            li
+              strong Set up features!
+              |          The bot is ready to use. For the best setup, keep reading to setup #[a.link(href="#teams") Teams] and #[a.link(href="#game-channels") Game Channels]. 
+          .alert.reminder.shadow
+            | Remember to export your league EVERY SEASON! You can run #[code /export all_weeks] in your server or from the dashboard.
+
+        //- TEAMS
+        section#teams
+          .section-heading
+            h2 Setup teams - Recommended
+            p Assign everyone in your league to their team. This lets Snallabot know who to @ in your discord.
+          ol.steps
+            li
+              strong Configure teams.
+              |          Run #[code /teams configure] with the channel you want your teams displayed in. (Optional) If your server has a Discord role for every team, turn on #[code use_role_updates].
+            li
+              strong (Optional) Create team roles.
+              |          Tired of doing the commands? You can create roles for every team, and assign the role to your user. Snallabot will then automatically know if they are assigned to the team.
+            li
+              strong Assign teams.
+              |          Run #[code /teams assign] for each team, picking the user. (Optional) If you have a team role, set the team role as well. 
+            li
+              strong Free a team when it opens up.
+              |          Run #[code /teams free] with the team's name, city, or abbreviation.
+        //- GAME CHANNELS
+        section#game-channels
+          .section-heading
+            h2 Setup Game Channels - Recommended
+            p. 
+              Snallabot has an extensive system for game channels. When you create game channels, you get one channel per game, one message in every channel that notifies each user, and a scoreboard. Each game channel message has controls that tell Snallabot the following:#[br]
+              - ⏰ The game is scheduled. Snallabot will not remind those users to schedule their game.#[br]
+              - 🏆 The game is finished. Snallabot will check if the game is actually complete. If it is, the channel will be deleted.#[br]
+              - 🛫, 🏠, ⏩ The game is a sim. Users can click these to notify commissioners that they want to sim the game. Commissioners approve and the channel will be deleted. The result will be on the scoreboard.#[br]#[br]
+              The scoreboard updates as games are finished. They also show which games have been marked for sim making it easy to set them in Madden.#[br]
+          ol.steps
+            li
+              strong Configure game channels.
+              |          Run #[code /game_channels configure] with a category to create channels in, an admin role, a reminder schedule in hours, and a scoreboard channel.
+            li
+              strong Create the week's channels.
+              |          Run #[code /game_channels create] with the week. For playoff weeks, you can use the week numbers 19, 20, 21, 23, or the individual commands like #[code /game_channels wildcard]
+            li
+              strong (Optional) Save completed game channels
+              |          Like to know what happened in your game channels? Save them with Snallabot logger! Run #[code /logger configure] with a channel to output logs to. When a game channel is completed, it will be deleted like normal. However, all the messages in the channel will be put in a thread with a timestamp of every message so you will always have a receipt of what occurred. Perfect for settling those sim disputes!
+        section#broadcasts
+          .section-heading
+            h2 Setup Broadcasts
+            p Posts YouTube and Twitch livestreams straight to your server!
+          ol.steps
+            li
+              strong Configure broadcasts.
+              |          Run #[code /broadcasts configure] with a keyword that must appear in stream titles, the channel to post live streams in, and an optional role to mention. The keyword is important, Snallabot recommends setting it specific and short to your league so you only show streams from your league. 
+            li
+              strong Add channels to watch.
+              |          Run #[code /broadcasts youtube add] or #[code /broadcasts twitch add] for each person you would like the bot to post streams for. 
+        section#streams
+          .section-heading
+            h2 Setting up stream counts
+            p Some leagues have incentives for users streaming their games. If you would like help in keeping track of stream counts, Snallabot is here to help!
+          ol.steps
+            li
+              strong Configure the stream channel.
+              |          Run #[code /streams configure] with the channel where counts should be posted.
+            li
+              strong Start counting.
+              |          Run #[code /streams count] for a user each time they stream. Use #[code override] if you need to set a count directly.
+
+        //- COMMANDS
+        section#commands
+          .section-heading
+            h2 Commands
+            p Full reference for every slash command.
+            each group in commandGroups
+              .command-group(id=`cmd-${group.name}`)
+                h3.h5.mt-4.mb-1
+                  code /#{group.name}
+                if group.rows.length > 1
+                  p.text-muted.small.mb-2= group.description
+                .table-responsive
+                  table.commands.table
+                    tbody
+                      each cmd in group.rows
+                        tr
+                          td: code= cmd.command
+                          td
+                            | #{cmd.description}
+                            if cmd.options.length
+                              ul.list-unstyled.small.text-muted.mt-2.mb-0
+                                each opt in cmd.options
+                                  li
+                                    code= opt.name
+                                    if !opt.required
+                                      |  (optional)
+                                    |  — #{opt.description}
+        //- SUPPORT
+        section#support
+          .section-heading
+            h2 Support and Community
+            p.mb-4 Snallabot is free for anyone to use and makes no profit. It is maintained with people's free time and love. It is also an open source tool for anyone to kickstart their own development journey with Madden. 
+          .support-card.shadow
+            h3.mb-2 Need help, or looking to contribute?
+            p.text-muted.mb-4 Join the Discord for setup help, feature requests, or to find out how to support the project.
+            .d-flex.justify-content-center.gap-3.flex-wrap
+              a.btn.btn-outline-light-custom(href="https://discord.gg/zbx7NB4PX7" target="_blank" rel="noopener") Get Support
+              a.btn.btn-outline-light-custom(href="https://github.com/snallabot/snallabot-service" target="_blank" rel="noopener") Contribute on GitHub
+
+        footer
+          p
+            a(href="https://discord.gg/zbx7NB4PX7" target="_blank" rel="noopener") Discord
+            a(href="https://github.com/snallabot/snallabot-service" target="_blank" rel="noopener") GitHub
+            a(href="#top") Back to top
+          p.mb-0 Snallabot is free and open source tool.
+
+    script(src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous")
