@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /dashboard
 
-Sitemap: https://snallabot.me/sitemap.xml
+Sitemap: https://www.snallabot.me/sitemap.xml
