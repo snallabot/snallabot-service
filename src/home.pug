@@ -26,25 +26,24 @@ html(lang="en")
     meta(name="theme-color" content="#30055b")
   body(data-bs-spy="scroll" data-bs-target="#sidebar-nav" data-bs-offset="140" tabindex="0")
     a.source-icon(href="https://github.com/snallabot/snallabot-service" target="_blank" rel="noopener")
-    button.btn.btn-gold.btn-sm.mobile-nav-toggle(type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileNav" aria-controls="mobileNav")
-      | Menu
-
+    //- button.btn.btn-gold.btn-sm.mobile-nav-toggle(type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileNav" aria-controls="mobileNav")
+    //-   | Menu
     //- Mobile offcanvas nav (mirrors sidebar)
-    #mobileNav.offcanvas.offcanvas-start(tabindex="-1" aria-labelledby="mobileNavLabel" style="background: var(--surface); color: var(--text);")
-      .offcanvas-header
-        h5#mobileNavLabel.brand-word Snallabot
-        button.btn-close.btn-close-white(type="button" data-bs-dismiss="offcanvas" aria-label="Close")
-      .offcanvas-body
-        nav.nav.flex-column
-          a.nav-link(href="#top") Overview
-          a.nav-link(href="#features") Features
-          a.nav-link(href="#setup") Connect your league
-          a.nav-link(href="#teams") Teams
-          a.nav-link(href="#game-channels") Game Channels
-          a.nav-link(href="#broadcasts") Broadcasts
-          a.nav-link(href="#streams") Streams
-          a.nav-link(href="#commands") Commands
-          a.nav-link(href="#support") Support
+    //- #mobileNav.offcanvas.offcanvas-start(tabindex="-1" aria-labelledby="mobileNavLabel" style="background: var(--surface); color: var(--text);")
+    //-   .offcanvas-header
+    //-     h5#mobileNavLabel.brand-word Snallabot
+    //-     button.btn-close.btn-close-white(type="button" data-bs-dismiss="offcanvas" aria-label="Close")
+    //-   .offcanvas-body
+    //-     nav.nav.flex-column
+    //-       a.nav-link(href="#top") Overview
+    //-       a.nav-link(href="#features") Features
+    //-       a.nav-link(href="#setup") Connect your league
+    //-       a.nav-link(href="#teams") Teams
+    //-       a.nav-link(href="#game-channels") Game Channels
+    //-       a.nav-link(href="#broadcasts") Broadcasts
+    //-       a.nav-link(href="#streams") Streams
+    //-       a.nav-link(href="#commands") Commands
+    //-       a.nav-link(href="#support") Support
     .site
       nav#sidebar-nav.sidebar.d-none.d-lg-block
         .brand-word.fs-4.mb-3 Snallabot
