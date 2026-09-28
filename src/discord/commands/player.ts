@@ -1832,7 +1832,7 @@ export default {
               type: ApplicationCommandOptionType.String,
               name: "player",
               description:
-                "search for the player",
+                "name to search for. Ex: Tom Brady",
               required: true,
               autocomplete: true
             },
@@ -1847,7 +1847,7 @@ export default {
               type: ApplicationCommandOptionType.String,
               name: "players",
               description:
-                "players to search for",
+                "groups to search for. Ex: Patriots, HB, Rookies",
               required: true,
               autocomplete: true
             },

@@ -1,4 +1,5 @@
 import Koa from "koa"
+import Pug from "pug"
 import bodyParser from "@koa/bodyparser"
 import serve from "koa-static"
 import path from "path"
@@ -9,8 +10,18 @@ import connectionsRouter from "./connections/routes"
 import debugRouter from "./debug/routes"
 import dashboard from "./dashboard/routes"
 import { latencyMiddleware } from "./debug/metrics"
+import Router from "@koa/router"
+import { commandGroups } from "./discord/commands_handler"
+import { DEPLOYMENT_URL } from "./config"
 
 const app = new Koa()
+
+const homeRouter = new Router()
+const homeRender = Pug.compileFile(path.join(__dirname, "/home.pug"))
+homeRouter.get("/", async (ctx) => {
+  const groups = commandGroups()
+  ctx.body = homeRender({ commandGroups: groups, siteUrl: DEPLOYMENT_URL })
+})
 
 app
   .use(serve(path.join(__dirname, 'public')))
@@ -26,6 +37,8 @@ app
     }
   })
   .use(latencyMiddleware)
+  .use(homeRouter.routes())
+  .use(homeRouter.allowedMethods())
   .use(exportRouter.routes())
   .use(exportRouter.allowedMethods())
   .use(discordRouter.routes())
