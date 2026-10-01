@@ -22,6 +22,12 @@ homeRouter.get("/", async (ctx) => {
   const groups = commandGroups()
   ctx.body = homeRender({ commandGroups: groups, siteUrl: DEPLOYMENT_URL })
 })
+  .get("/terms", async (ctx) => {
+    ctx.redirect("/terms.html")
+  })
+  .get("/privacy", async (ctx) => {
+    ctx.redirect("/privacy.html")
+  })
 
 app
   .use(serve(path.join(__dirname, 'public')))
