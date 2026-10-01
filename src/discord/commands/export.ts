@@ -67,14 +67,15 @@ async function handleExport(guildId: string, week: number, token: string, client
     // Show final success state
     const finalTask = getTask(task.id)
     await client.editOriginalInteraction(token, {
-      content: buildCompletionMessage(finalTask.status),
+      content: buildStatusMessage(finalTask.status),
       flags: 64
     })
 
   } catch (e) {
     clearInterval(pollInterval)
+    const finalTask = getTask(task.id)
     await client.editOriginalInteraction(token, {
-      content: `${SnallabotCommandReactions.ERROR} Export failed: ${e}`,
+      content: `${SnallabotCommandReactions.ERROR} Export failed: ${e} \n\n ${buildStatusMessage(finalTask.status)}`,
       flags: 64
     })
   }
@@ -83,37 +84,29 @@ async function handleExport(guildId: string, week: number, token: string, client
 function buildStatusMessage(status: ExportStatus): string {
   const parts: string[] = []
 
-  // League info status
   parts.push(`League Info: ${getStatusEmoji(status.leagueInfo)}`)
 
-  // Weekly data status
   if (status.weeklyData.length > 0) {
-    const weekSummary = status.weeklyData.map(w =>
-      `${getMessageForWeek(w.weekIndex + 1)}: ${getStatusEmoji(w.status)}`
-    ).join("\n")
-    parts.push(weekSummary)
+    parts.push(
+      status.weeklyData
+        .map(w => `${getMessageForWeek(w.weekIndex + 1)}: ${getStatusEmoji(w.status)}`)
+        .join("\n")
+    )
   }
 
-  // Rosters status
   parts.push(`Rosters: ${getStatusEmoji(status.rosters)}`)
 
-  return parts.join("\n")
-}
+  const allStatuses = [
+    status.leagueInfo,
+    status.rosters,
+    ...status.weeklyData.map(w => w.status)
+  ]
+  const hasError = allStatuses.some(s => s === TaskStatus.ERROR)
+  const isDone = allStatuses.every(s => s === TaskStatus.FINISHED || s === TaskStatus.ERROR)
 
-function buildCompletionMessage(status: ExportStatus): string {
-  const parts: string[] = []
-
-  parts.push(`League Info: ${SnallabotCommandReactions.FINISHED}`)
-
-  if (status.weeklyData.length > 0) {
-    const weekSummary = status.weeklyData.map(w =>
-      `${getMessageForWeek(w.weekIndex + 1)}: ${SnallabotCommandReactions.FINISHED}`
-    ).join("\n")
-    parts.push(weekSummary)
+  if (isDone) {
+    parts.push(hasError ? `\nExport finished with errors.` : `\nExport complete!`)
   }
-
-  parts.push(`Rosters: ${SnallabotCommandReactions.FINISHED}`)
-  parts.push(`\nExport complete!`)
 
   return parts.join("\n")
 }

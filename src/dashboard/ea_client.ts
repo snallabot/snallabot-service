@@ -285,7 +285,7 @@ async function getExportData<T>(
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
-      throw new EAAccountError(`Failed to get data from EA, response ${JSON.stringify(parsed)}`, "Be patient, this may resolve on its own. Snallabot tried its best to retrieve your data");
+      throw new EAAccountError(`Failed to get data from EA, response ${JSON.stringify(parsed)}`, "Since the last title update, EA has been having issues with exporting. Snallabot tried to get your league data, but only partially succeeded. If you see anything not up to date, try again in 5-10 minutes. You can keep trying with breaks in between.");
     }
     if ((parsed as any).error) {
       throw new EAAccountError(`Failed to get data from EA, response ${JSON.stringify(parsed)}`, `Be patient, this may resolve on its own`)
