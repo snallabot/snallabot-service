@@ -160,6 +160,18 @@ export const twitchChannelsGauge = new client.Gauge(
   }
 )
 
+export const twitchChannelsStreamingCount = new client.Counter({
+  name: 'twitch_channels_streaming_total',
+  help: 'Number of twitch channels currently live streaming',
+  registers: [register]
+})
+
+export const twitchBroadcastsSentCount = new client.Counter({
+  name: 'twitch_broadcasts_sent_total',
+  help: 'Number of new broadcasts sent',
+  registers: [register]
+})
+
 const httpRequestDuration = new client.Histogram({
   name: "http_request_duration_seconds",
   help: "http request latency in seconds",
