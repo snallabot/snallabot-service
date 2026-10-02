@@ -373,11 +373,10 @@ export default {
   async handleCommand(command: Command, client: DiscordClient) {
     const { guild_id } = command
 
-    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
-    if (!leagueSettings.commands.madden_league?.league_id) {
-      throw new Error("Could not find a linked Madden league, link a league first")
+    const league = await LeagueSettingsDB.getLeagueSettings(guild_id).getMaddenLeagueId()
+    if (!league) {
+      throw new NoConnectedLeagueError(guild_id)
     }
-    const league = leagueSettings.commands.madden_league.league_id
     if (!command.data.options) {
       throw new Error("schedule command not defined properly")
     }
@@ -396,15 +395,11 @@ export default {
         throw new Error("schedule  misconfigured")
       }
       const teamSearchPhrase = (scheduleCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value.toLowerCase()
-      if (!leagueSettings?.commands?.madden_league?.league_id) {
-        throw new NoConnectedLeagueError(guild_id)
-      }
-      const leagueId = leagueSettings.commands.madden_league.league_id
       const season = (scheduleCommand.options?.[1] as APIApplicationCommandInteractionDataIntegerOption)?.value
-      const teams = await MaddenDB.getLatestTeams(leagueId)
+      const teams = await MaddenDB.getLatestTeams(league)
       const foundTeam = retrieveTeam(teamSearchPhrase, teams)
       const teamIdToShowSchedule = teams.getTeamForId(foundTeam.teamId).teamId
-      showTeamSchedule(command.token, client, leagueId, teamIdToShowSchedule, season ? Number(season) : undefined)
+      showTeamSchedule(command.token, client, league, teamIdToShowSchedule, season ? Number(season) : undefined)
       return deferMessage()
     }
   },

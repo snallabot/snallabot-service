@@ -259,11 +259,10 @@ export default {
   async handleCommand(command: Command, client: DiscordClient) {
     const { guild_id } = command
 
-    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
-    if (!leagueSettings.commands.madden_league?.league_id) {
+    const league = await LeagueSettingsDB.getLeagueSettings(guild_id).getMaddenLeagueId()
+    if (!league) {
       throw new NoConnectedLeagueError(guild_id)
     }
-    const league = leagueSettings.commands.madden_league.league_id
 
     showSeasonSims(command.token, client, league)
     return deferMessage()

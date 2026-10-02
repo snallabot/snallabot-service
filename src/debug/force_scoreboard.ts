@@ -20,7 +20,7 @@ const prodSettings = { publicKey: process.env.PUBLIC_KEY, botToken: process.env.
 const prodClient = createClient(prodSettings)
 
 async function updateScoreboard(guildId: string, seasonIndex: number, week: number) {
-  const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guildId)
+  const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guildId).get()
   const leagueId = leagueSettings.commands.madden_league?.league_id
   if (!leagueId) {
     return

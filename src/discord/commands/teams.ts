@@ -1,7 +1,7 @@
 import { Command, Autocomplete } from "../commands_handler"
 import { createMessageResponse, DiscordClient, SnallabotDiscordError, NoConnectedLeagueError, deferMessage } from "../discord_utils"
 import { APIApplicationCommandInteractionDataAttachmentOption, APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIApplicationCommandInteractionDataUserOption, ApplicationCommandOptionType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
-import LeagueSettingsDB, { ChannelId, DiscordIdType, LeagueSettings, MessageId, TeamAssignments } from "../settings_db"
+import LeagueSettingsDB, { ChannelId, DiscordIdType, StoredLeagueSettings, MessageId, TeamAssignments } from "../settings_db"
 import { Team } from "../../export/madden_league_types"
 import { discordLeagueView, leagueLogosView } from "../../db/view"
 import fuzzysort from "fuzzysort"
@@ -38,7 +38,7 @@ function formatTeamMessage(teams: Team[], teamAssignments: TeamAssignments): str
   return `${header}\n${teamsMessage}\n\n${openTeamsMessage}`
 }
 
-export async function fetchTeamsMessage(settings: LeagueSettings): Promise<string> {
+export async function fetchTeamsMessage(settings: StoredLeagueSettings): Promise<string> {
   if (settings?.commands?.madden_league?.league_id) {
     const teams = await MaddenDB.getLatestTeams(settings.commands.madden_league.league_id)
     return createTeamsMessage(settings, teams)
@@ -47,7 +47,7 @@ export async function fetchTeamsMessage(settings: LeagueSettings): Promise<strin
   }
 }
 
-function createTeamsMessage(settings: LeagueSettings, teams: TeamList): string {
+function createTeamsMessage(settings: StoredLeagueSettings, teams: TeamList): string {
   if (settings?.commands?.madden_league?.league_id) {
     return formatTeamMessage(teams.getLatestTeams(), teams.getLatestTeamAssignments(settings.commands.teams?.assignments || {}))
   } else {
@@ -227,54 +227,55 @@ export default {
     const options = command.data.options
     const teamsCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
     const subCommand = teamsCommand.name
-    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
+    const leagueSettings = LeagueSettingsDB.getLeagueSettings(guild_id)
+    const config = await leagueSettings.get()
     if (subCommand === "configure") {
       if (!teamsCommand.options || !teamsCommand.options[0]) {
         throw new Error("teams configure misconfigured")
       }
       const channel: ChannelId = { id: (teamsCommand.options[0] as APIApplicationCommandInteractionDataChannelOption).value, id_type: DiscordIdType.CHANNEL }
       const useRoleUpdates = (teamsCommand.options?.[1] as APIApplicationCommandInteractionDataBooleanOption)?.value || false
-      const oldChannelId = leagueSettings?.commands?.teams?.channel
-      const oldMessageId = leagueSettings?.commands?.teams?.messageId
+      const oldChannelId = config?.commands?.teams?.channel
+      const oldMessageId = config?.commands?.teams?.messageId
       if (oldChannelId && oldChannelId !== channel) {
-        const message = await fetchTeamsMessage(leagueSettings)
+        const message = await fetchTeamsMessage(config)
         try {
           await client.deleteMessage(oldChannelId, oldMessageId || { id: "", id_type: DiscordIdType.MESSAGE })
         } catch (e) { }
         const newMessageId = await client.createMessage(channel, message, [])
-        await LeagueSettingsDB.updateTeamConfiguration(guild_id, {
+        await leagueSettings.updateTeamConfiguration({
           channel: channel,
           messageId: newMessageId,
           useRoleUpdates: useRoleUpdates,
-          assignments: leagueSettings?.commands?.teams?.assignments || {},
+          assignments: config?.commands?.teams?.assignments || {},
         })
 
         return createMessageResponse("Teams Configured")
       } else {
-        const oldMessageId = leagueSettings?.commands?.teams?.messageId
-        if (leagueSettings.commands.teams && oldMessageId) {
+        const oldMessageId = config?.commands?.teams?.messageId
+        if (config.commands.teams && oldMessageId) {
           try {
             const messageExists = await client.checkMessageExists(channel, oldMessageId)
             if (messageExists) {
-              await LeagueSettingsDB.updateTeamConfiguration(guild_id, {
-                ...leagueSettings.commands.teams,
+              await leagueSettings.updateTeamConfiguration({
+                ...config.commands.teams,
                 useRoleUpdates: useRoleUpdates,
-                assignments: leagueSettings?.commands.teams?.assignments || {},
+                assignments: config?.commands.teams?.assignments || {},
               })
-              const message = await fetchTeamsMessage(leagueSettings)
+              const message = await fetchTeamsMessage(config)
               await client.editMessage(channel, oldMessageId, message, [])
               return createMessageResponse("Teams Configured")
             }
           } catch (e) {
           }
         }
-        const message = await fetchTeamsMessage(leagueSettings)
+        const message = await fetchTeamsMessage(config)
         const messageId = await client.createMessage(channel, message, [])
-        await LeagueSettingsDB.updateTeamConfiguration(guild_id, {
+        await leagueSettings.updateTeamConfiguration({
           channel: channel,
           messageId: messageId,
           useRoleUpdates: useRoleUpdates,
-          assignments: leagueSettings?.commands?.teams?.assignments || {},
+          assignments: config?.commands?.teams?.assignments || {},
         })
         return createMessageResponse("Teams Configured")
       }
@@ -284,24 +285,24 @@ export default {
       }
       const teamSearchPhrase = (teamsCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value.toLowerCase()
       const user = (teamsCommand.options[1] as APIApplicationCommandInteractionDataUserOption).value
-      if (!leagueSettings?.commands?.madden_league?.league_id) {
+      if (!config?.commands?.madden_league?.league_id) {
         throw new NoConnectedLeagueError(guild_id)
       }
-      if (!leagueSettings?.commands?.teams?.channel.id) {
+      if (!config?.commands?.teams?.channel.id) {
         throw new Error("Teams not configured, run /teams configure first")
       }
-      const leagueId = leagueSettings.commands.madden_league.league_id
+      const leagueId = config.commands.madden_league.league_id
       const teams = await MaddenDB.getLatestTeams(leagueId)
       const assignedTeam = retrieveTeam(teamSearchPhrase, teams)
       const role = (teamsCommand?.options?.[2] as APIApplicationCommandInteractionDataRoleOption)?.value
       const roleAssignment = role ? { discord_role: { id: role, id_type: DiscordIdType.ROLE } } : {}
-      const oldAssignments = teams.getLatestTeamAssignments(leagueSettings.commands.teams?.assignments || {})
+      const oldAssignments = teams.getLatestTeamAssignments(config.commands.teams?.assignments || {})
       const assignments = { ...oldAssignments, [teams.getTeamForId(assignedTeam.teamId).teamId]: { discord_user: { id: user, id_type: DiscordIdType.USER }, ...roleAssignment } }
-      leagueSettings.commands.teams.assignments = assignments
-      await LeagueSettingsDB.updateAssignment(guild_id, assignments)
-      const message = createTeamsMessage(leagueSettings, teams)
+      config.commands.teams.assignments = assignments
+      await leagueSettings.updateAssignment(assignments)
+      const message = createTeamsMessage(config, teams)
       try {
-        await client.editMessage(leagueSettings.commands.teams.channel, leagueSettings.commands.teams.messageId, message, [])
+        await client.editMessage(config.commands.teams.channel, config.commands.teams.messageId, message, [])
         return createMessageResponse("Team Assigned")
       } catch (e) {
         if (e instanceof SnallabotDiscordError) {
@@ -321,23 +322,23 @@ export default {
         throw new Error("teams free misconfigured")
       }
       const teamSearchPhrase = (teamsCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value.toLowerCase()
-      if (!leagueSettings?.commands?.madden_league?.league_id) {
+      if (!config?.commands?.madden_league?.league_id) {
         throw new NoConnectedLeagueError(guild_id)
       }
-      if (!leagueSettings.commands.teams?.channel.id) {
+      if (!config.commands.teams?.channel.id) {
         throw new Error("Teams not configured, run /teams configure first")
       }
-      const leagueId = leagueSettings.commands.madden_league.league_id
+      const leagueId = config.commands.madden_league.league_id
       const teams = await MaddenDB.getLatestTeams(leagueId)
       const assignedTeam = retrieveTeam(teamSearchPhrase, teams)
       const teamIdToDelete = teams.getTeamForId(assignedTeam.teamId).teamId
-      const currentAssignments = { ...teams.getLatestTeamAssignments(leagueSettings.commands.teams.assignments) }
+      const currentAssignments = { ...teams.getLatestTeamAssignments(config.commands.teams.assignments) }
       delete currentAssignments[`${teamIdToDelete}`]
-      leagueSettings.commands.teams.assignments = currentAssignments
-      await LeagueSettingsDB.updateAssignment(guild_id, currentAssignments)
-      const message = createTeamsMessage(leagueSettings, teams)
+      config.commands.teams.assignments = currentAssignments
+      await leagueSettings.updateAssignment(currentAssignments)
+      const message = createTeamsMessage(config, teams)
       try {
-        await client.editMessage(leagueSettings.commands.teams.channel, leagueSettings.commands.teams.messageId, message, [])
+        await client.editMessage(config.commands.teams.channel, config.commands.teams.messageId, message, [])
         return createMessageResponse("Team Freed")
       } catch (e) {
         if (e instanceof SnallabotDiscordError) {
@@ -353,16 +354,16 @@ export default {
         }
       }
     } else if (subCommand === "reset") {
-      if (!leagueSettings.commands.teams?.channel.id) {
+      if (!config.commands.teams?.channel.id) {
         throw new Error("Teams not configured, run /teams configure first")
       }
-      await LeagueSettingsDB.removeAllAssignments(guild_id)
-      if (leagueSettings.commands.teams?.assignments) {
-        leagueSettings.commands.teams.assignments = {}
+      await leagueSettings.removeAllAssignments()
+      if (config.commands.teams?.assignments) {
+        config.commands.teams.assignments = {}
       }
-      const message = await fetchTeamsMessage(leagueSettings)
+      const message = await fetchTeamsMessage(config)
       try {
-        await client.editMessage(leagueSettings.commands.teams.channel, leagueSettings.commands.teams.messageId, message, [])
+        await client.editMessage(config.commands.teams.channel, config.commands.teams.messageId, message, [])
         return createMessageResponse("Team Assignments Reset")
       } catch (e) {
         if (e instanceof SnallabotDiscordError) {
@@ -385,10 +386,10 @@ export default {
 
       const teamSearchPhrase = (teamsCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value.toLowerCase()
       const image = (teamsCommand.options[1] as APIApplicationCommandInteractionDataAttachmentOption)
-      if (!leagueSettings?.commands?.madden_league?.league_id) {
+      if (!config?.commands?.madden_league?.league_id) {
         throw new NoConnectedLeagueError(guild_id)
       }
-      const leagueId = leagueSettings.commands.madden_league.league_id
+      const leagueId = config.commands.madden_league.league_id
       const teams = await MaddenDB.getLatestTeams(leagueId)
       const assignedTeam = retrieveTeam(teamSearchPhrase, teams)
       const teamToCustomize = teams.getTeamForId(assignedTeam.teamId)
@@ -401,10 +402,10 @@ export default {
       }
 
       const teamSearchPhrase = (teamsCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value.toLowerCase()
-      if (!leagueSettings?.commands?.madden_league?.league_id) {
+      if (!config?.commands?.madden_league?.league_id) {
         throw new NoConnectedLeagueError(guild_id)
       }
-      const leagueId = leagueSettings.commands.madden_league.league_id
+      const leagueId = config.commands.madden_league.league_id
       const teams = await MaddenDB.getLatestTeams(leagueId)
       const assignedTeam = retrieveTeam(teamSearchPhrase, teams)
       const teamToReset = teams.getTeamForId(assignedTeam.teamId)

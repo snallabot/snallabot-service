@@ -3,7 +3,7 @@ import { CommandHandler, Command } from "../commands_handler"
 import { respond, createMessageResponse, DiscordClient } from "../discord_utils"
 import { APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataSubcommandOption, APIApplicationCommandInteractionDataUserOption, ApplicationCommandOptionType, ApplicationCommandType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { Firestore } from "firebase-admin/firestore"
-import LeagueSettingsDB, { DiscordIdType, LeagueSettings, WaitlistConfiguration, UserId } from "../settings_db"
+import LeagueSettingsDB, { DiscordIdType, StoredLeagueSettings, WaitlistConfiguration, UserId } from "../settings_db"
 
 function createWaitlistMessage(waitlist: UserId[]) {
   return (
@@ -23,21 +23,22 @@ function respondWithWaitlist(waitlist: UserId[]): any {
 export default {
   async handleCommand(command: Command, client: DiscordClient) {
     const { guild_id } = command
-    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
+    const settings = LeagueSettingsDB.getLeagueSettings(guild_id)
+    const config = await settings.get()
     if (!command.data.options) {
       throw new Error("misconfigured waitlist")
     }
     const subCommand = command.data.options[0] as APIApplicationCommandInteractionDataSubcommandOption
     const subCommandName = subCommand.name
     if (subCommandName === "list") {
-      const waitlist = leagueSettings.commands.waitlist?.current_waitlist ?? []
+      const waitlist = config.commands.waitlist?.current_waitlist ?? []
       return respondWithWaitlist(waitlist)
     } else if (subCommandName === "add") {
       if (!subCommand.options) {
         throw new Error("misconfigured waitlist add")
       }
       const user = (subCommand.options[0] as APIApplicationCommandInteractionDataUserOption).value
-      const waitlist = leagueSettings.commands.waitlist?.current_waitlist ?? []
+      const waitlist = config.commands.waitlist?.current_waitlist ?? []
       const position = Number(((subCommand.options?.[1] as APIApplicationCommandInteractionDataIntegerOption)?.value || waitlist.length + 1)) - 1
       if (position > waitlist.length) {
         return createMessageResponse("invalid position, beyond waitlist length")
@@ -47,7 +48,7 @@ export default {
           current_waitlist: waitlist
 
         }
-        await LeagueSettingsDB.configureWaitlist(guild_id, conf)
+        await settings.configureWaitlist(conf)
         return respondWithWaitlist(waitlist)
       }
     } else if (subCommandName === "remove") {
@@ -55,26 +56,26 @@ export default {
         throw new Error("misconfigured waitlist remove")
       }
       const user = (subCommand.options[0] as APIApplicationCommandInteractionDataUserOption).value
-      const waitlist = leagueSettings.commands.waitlist?.current_waitlist ?? []
+      const waitlist = config.commands.waitlist?.current_waitlist ?? []
       const newWaitlist = waitlist.filter((w) => w.id !== user)
       const conf: WaitlistConfiguration = {
         current_waitlist: newWaitlist
 
       }
-      await LeagueSettingsDB.configureWaitlist(guild_id, conf)
+      await settings.configureWaitlist(conf)
       return respondWithWaitlist(newWaitlist)
     } else if (subCommandName === "pop") {
       if (!subCommand.options) {
         throw new Error("misconfigured waitlist pop")
       }
       const position = Number((subCommand.options?.[0] as APIApplicationCommandInteractionDataIntegerOption)?.value || 1)
-      const waitlist = leagueSettings.commands.waitlist?.current_waitlist ?? []
+      const waitlist = config.commands.waitlist?.current_waitlist ?? []
       const newWaitlist = waitlist.filter((_, idx) => idx !== position - 1)
       const conf: WaitlistConfiguration = {
         current_waitlist: newWaitlist
 
       }
-      await LeagueSettingsDB.configureWaitlist(guild_id, conf)
+      await settings.configureWaitlist(conf)
       return respondWithWaitlist(newWaitlist)
     } else {
       return createMessageResponse(`waitlist ${subCommandName} not found`)

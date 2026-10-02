@@ -1,7 +1,7 @@
 import { Command } from "../commands_handler"
 import { createMessageResponse, DiscordClient, deferMessage, formatTeamMessageName, SnallabotReactions, SnallabotDiscordError, formatSchedule, NoConnectedLeagueError, SnallabotCommandReactions } from "../discord_utils"
 import { APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataChannelOption, APIApplicationCommandInteractionDataIntegerOption, APIApplicationCommandInteractionDataRoleOption, APIApplicationCommandInteractionDataSubcommandOption, ApplicationCommandOptionType, ApplicationCommandType, ChannelType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
-import LeagueSettingsDB, { CategoryId, ChannelId, DiscordIdType, GameChannel, GameChannelConfiguration, GameChannelState, LeagueSettings, MaddenLeagueConfiguration, MessageId, RoleId, UserId, WeekState } from "../settings_db"
+import LeagueSettingsDB, { CategoryId, ChannelId, DiscordIdType, GameChannel, GameChannelConfiguration, GameChannelState, StoredLeagueSettings, MaddenLeagueConfiguration, MessageId, RoleId, UserId, WeekState } from "../settings_db"
 import MaddenClient from "../../db/madden_db"
 import { formatRecord } from "../../export/madden_league_types"
 import createLogger from "../logging"
@@ -18,7 +18,7 @@ function notifierMessage(users: string, waitPing: number, role: RoleId): string 
 }
 
 
-async function createGameChannels(client: DiscordClient, token: string, guild_id: string, settings: LeagueSettings, week: number, category: CategoryId, author: UserId) {
+async function createGameChannels(client: DiscordClient, token: string, guild_id: string, settings: StoredLeagueSettings, week: number, category: CategoryId, author: UserId) {
   let channelsToCleanup: ChannelId[] = []
   try {
     const leagueId = (settings.commands.madden_league as Required<MaddenLeagueConfiguration>).league_id
@@ -203,7 +203,7 @@ async function createGameChannels(client: DiscordClient, token: string, guild_id
 - ${SnallabotCommandReactions.FINISHED} Logging
 `
     })
-    await LeagueSettingsDB.updateGameWeekState(guild_id, week, season, weeklyState)
+    await LeagueSettingsDB.getLeagueSettings(guild_id).updateGameWeekState(week, season, weeklyState)
   } catch (e) {
     try {
       await Promise.all(channelsToCleanup.map(async channel => {
@@ -215,7 +215,7 @@ async function createGameChannels(client: DiscordClient, token: string, guild_id
   }
 }
 
-async function clearGameChannels(client: DiscordClient, token: string, guild_id: string, settings: LeagueSettings, author: UserId, weekToClear?: number) {
+async function clearGameChannels(client: DiscordClient, token: string, guild_id: string, settings: StoredLeagueSettings, author: UserId, weekToClear?: number) {
   try {
     await client.editOriginalInteraction(token, { content: `Clearing Game Channels...` })
     const weekStates = settings.commands.game_channel?.weekly_states || {}
@@ -253,14 +253,14 @@ async function clearGameChannels(client: DiscordClient, token: string, guild_id:
         }
       }))
     }
-    await LeagueSettingsDB.deleteGameChannels(guild_id, channelsToClear)
+    await LeagueSettingsDB.getLeagueSettings(guild_id).deleteGameChannels(channelsToClear)
     await client.editOriginalInteraction(token, { content: `Game Channels Cleared` })
   } catch (e) {
     await client.editOriginalInteraction(token, { content: `Game Channels could not be cleared properly: ${e}` })
   }
 }
 
-async function notifyGameChannels(client: DiscordClient, token: string, guild_id: string, settings: LeagueSettings) {
+async function notifyGameChannels(client: DiscordClient, token: string, guild_id: string, settings: StoredLeagueSettings) {
   try {
     await client.editOriginalInteraction(token, { content: `Notifying Game Channels...` })
     const weekStates = settings.commands.game_channel?.weekly_states || {}
@@ -289,7 +289,7 @@ export default {
     const options = command.data.options
     const gameChannelsCommand = options[0] as APIApplicationCommandInteractionDataSubcommandOption
     const subCommand = gameChannelsCommand.name
-    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id)
+    const leagueSettings = await LeagueSettingsDB.getLeagueSettings(guild_id).get()
     if (subCommand === "configure") {
       if (!gameChannelsCommand.options || !gameChannelsCommand.options[0] || !gameChannelsCommand.options[1] || !gameChannelsCommand.options[2] || !gameChannelsCommand.options[3]) {
         throw new Error("game_channels configure command misconfigured")
@@ -307,7 +307,7 @@ export default {
         weekly_states: leagueSettings?.commands?.game_channel?.weekly_states || {},
         private_channels: !!usePrivateChannels
       }
-      await LeagueSettingsDB.configureGameChannel(guild_id, conf)
+      await LeagueSettingsDB.getLeagueSettings(guild_id).configureGameChannel(conf)
       return createMessageResponse(`game channels commands are configured! Configuration:
 
 - Admin Role: <@&${adminRole}>
