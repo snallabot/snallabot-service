@@ -1,3 +1,5 @@
+import { DEPLOYMENT_URL } from "../config"
+
 type UserInfo = { id: string, login: string, display_name: string, type: string, broadcaster_type: string, description: string, profile_image_url: string, offline_image_url: string, view_count: number, email: string, created_at: string }
 type TwitchUserInformation = { data: Array<UserInfo> }
 
@@ -6,7 +8,7 @@ type TwitchChannelInformation = { data: Array<BroadcasterInfo> }
 
 type SubscriptionResponse = { data: Array<{ id: string, status: string, type: string, version: string, cost: number, condition: { broadcaster_user_id: string }, transport: { method: string, callback: string }, created_at: string }>, total: number, total_cost: number, max_total_cost: number }
 type GetSubscriptionResponse = SubscriptionResponse & { pagination: { cursor?: string } }
-interface TwitchClient {
+export interface TwitchClient {
   retrieveBroadcasterInformation(twitchUrl: string): Promise<TwitchUserInformation>,
   retrieveChannelInformation(broadcasterUserId: string): Promise<TwitchChannelInformation>,
   subscribeBroadcasterStreamOnline(broadcasterUserId: string): Promise<SubscriptionResponse>,
@@ -21,12 +23,8 @@ export function getSecret() {
   return process.env.TWITCH_SECRET;
 }
 
-function getCallbackURL() {
-  if (!process.env.TWITCH_CALLBACK_URL) {
-    throw new Error("no callback url defined!")
-  }
-  return process.env.TWITCH_CALLBACK_URL;
-
+export function getCallbackURL() {
+  return DEPLOYMENT_URL + "/twitch/webhook"
 }
 
 export class NoTwitchAccount extends Error {

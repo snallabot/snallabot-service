@@ -8,6 +8,7 @@ import db from "../db/firebase"
 import EventDB, { EventDelivery } from "../db/events_db"
 import { MaddenBroadcastEvent } from "../db/events"
 import LeagueSettingsDB, { LeagueSettings } from "../discord/settings_db"
+import { twitchBroadcastsSentCount, twitchChannelsStreamingCount } from "../debug/metrics"
 const router = new Router({ prefix: "/twitch" })
 
 
@@ -172,6 +173,7 @@ async function handleStreamEvent(twitchEvent: StreamUpEvent) {
     } else {
       const titleKeyword = configuration.title_keyword
       if (broadcastTitle.toLowerCase().includes(titleKeyword.toLowerCase())) {
+        twitchBroadcastsSentCount.inc()
         await EventDB.appendEvents<MaddenBroadcastEvent>([{
           key: server, event_type: "MADDEN_BROADCAST", title: broadcastTitle, video: createTwitchUrl(broadcasterName)
         }], EventDelivery.EVENT_SOURCE)
@@ -225,7 +227,8 @@ router.post("/webhook",
     if (messageSeen) {
       return
     }
-    handleStreamEvent(twitchEvent)
+    twitchChannelsStreamingCount.inc()
+    await handleStreamEvent(twitchEvent)
     messageCache.set(messageId, { seen: true })
   })
 
