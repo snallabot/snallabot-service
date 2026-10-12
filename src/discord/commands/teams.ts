@@ -167,10 +167,56 @@ async function handleCustomLogo(guild_id: string, league_id: string, client: Dis
     const teamLogoPath = `custom_logos/${league_id}/${teamToCustomize.abbrName}.png`
     await FileHandler.writeFile<string>(base64Image, teamLogoPath, imageSerializer)
     await EventDB.appendEvents<TeamLogoCustomizedEvent>(
-      [{ key: league_id, event_type: "CUSTOM_LOGO", emoji_name: emoji.name, emoji_id: emoji.id, teamAbbr: teamToCustomize.abbrName, teamLogoPath: teamLogoPath }], EventDelivery.EVENT_SOURCE
+      [{ key: league_id, event_type: "CUSTOM_LOGO", emoji_name: emoji.name, emoji_id: emoji.id, teamAbbr: teamToCustomize.abbrName, teamLogoPath: teamLogoPath, emoji_owned_by_bot: true }], EventDelivery.EVENT_SOURCE
     )
     client.editOriginalInteraction(token, {
       content: `Assigned custom logo ${teamToCustomize.abbrName}: <:${emoji.name}:${emoji.id}>`
+    })
+  } catch (error) {
+    client.editOriginalInteraction(token, {
+      content: `Error processing custom logo:, ${error}`
+    })
+  }
+}
+
+// older events do not have emoji_owned_by_bot, those emojis were all uploaded by the bot
+function isEmojiOwnedByBot(customLogo: TeamLogoCustomizedEvent) {
+  return customLogo.emoji_owned_by_bot ?? true
+}
+
+async function handleExistingEmojiLogo(guild_id: string, league_id: string, client: DiscordClient, token: string, emojiInput: string, teamToCustomize: Team) {
+  try {
+    const trimmedInput = emojiInput.trim()
+    const emojiMarkup = trimmedInput.match(/^<a?:(\w+):(\d+)>$/)
+    const guildEmojis = await client.getGuildEmojis(guild_id)
+    const emojiName = trimmedInput.replace(/^:|:$/g, "")
+    const emoji = emojiMarkup ? guildEmojis.find(e => e.id === emojiMarkup[2]) : guildEmojis.find(e => e.name === emojiName)
+    if (!emoji || !emoji.name || !emoji.id) {
+      throw new Error(`Could not find emoji ${trimmedInput} in this server. Use a custom emoji from this server, e.g. :otters:`)
+    }
+    const response = await fetch(`https://cdn.discordapp.com/emojis/${emoji.id}.png`)
+    if (!response.ok) {
+      throw new Error(`Failed to fetch emoji image: ${response.statusText}`)
+    }
+    const arrayBuffer = await response.arrayBuffer()
+    const buffer = await autoCropImage(Buffer.from(arrayBuffer))
+    const base64Image = `data:image/png;base64,${buffer.toString('base64')}`
+    const previousLogo = (await leagueLogosView.createView(league_id))[teamToCustomize.abbrName]
+    // if the bot uploaded the previous logo emoji, clean it up since it is being replaced
+    // best effort: using an existing emoji should not require emoji permissions
+    const isSameEmoji = previousLogo?.emoji_id === emoji.id
+    if (previousLogo && !isSameEmoji && isEmojiOwnedByBot(previousLogo)) {
+      try {
+        await client.deleteEmoji(previousLogo.emoji_id, guild_id)
+      } catch (e) { }
+    }
+    const teamLogoPath = `custom_logos/${league_id}/${teamToCustomize.abbrName}.png`
+    await FileHandler.writeFile<string>(base64Image, teamLogoPath, imageSerializer)
+    await EventDB.appendEvents<TeamLogoCustomizedEvent>(
+      [{ key: league_id, event_type: "CUSTOM_LOGO", emoji_name: emoji.name, emoji_id: emoji.id, teamAbbr: teamToCustomize.abbrName, teamLogoPath: teamLogoPath, emoji_owned_by_bot: isSameEmoji && isEmojiOwnedByBot(previousLogo) }], EventDelivery.EVENT_SOURCE
+    )
+    client.editOriginalInteraction(token, {
+      content: `Assigned custom logo ${teamToCustomize.abbrName}: <${emoji.animated ? "a" : ""}:${emoji.name}:${emoji.id}>`
     })
   } catch (error) {
     client.editOriginalInteraction(token, {
@@ -189,7 +235,9 @@ async function resetCustomLogo(guild_id: string, league_id: string, client: Disc
       })
       return
     }
-    await client.deleteEmoji(customLogo.emoji_id, guild_id)
+    if (isEmojiOwnedByBot(customLogo)) {
+      await client.deleteEmoji(customLogo.emoji_id, guild_id)
+    }
     await EventDB.appendEvents<ResetLogoEvent>(
       [{ key: league_id, event_type: "RESET_LOGO", teamAbbr: teamToReset.abbrName }], EventDelivery.EVENT_SOURCE
     )
@@ -379,12 +427,16 @@ export default {
 
       }
     } else if (subCommand === "customize_logo") {
-      if (!teamsCommand.options || !teamsCommand.options[0] || !command.data.resolved?.attachments) {
+      if (!teamsCommand.options || !teamsCommand.options[0]) {
         throw new Error("teams customize_logo misconfigured")
       }
 
       const teamSearchPhrase = (teamsCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value.toLowerCase()
-      const image = (teamsCommand.options[1] as APIApplicationCommandInteractionDataAttachmentOption)
+      const image = (teamsCommand.options.find(o => o.name === "image_file") as APIApplicationCommandInteractionDataAttachmentOption | undefined)
+      const emoji = (teamsCommand.options.find(o => o.name === "emoji") as APIApplicationCommandInteractionDataStringOption | undefined)
+      if ((image && emoji) || (!image && !emoji)) {
+        return createMessageResponse("Provide exactly one of `image_file` or `emoji` to customize the logo")
+      }
       if (!leagueSettings?.commands?.madden_league?.league_id) {
         throw new NoConnectedLeagueError(guild_id)
       }
@@ -392,6 +444,13 @@ export default {
       const teams = await MaddenDB.getLatestTeams(leagueId)
       const assignedTeam = retrieveTeam(teamSearchPhrase, teams)
       const teamToCustomize = teams.getTeamForId(assignedTeam.teamId)
+      if (emoji) {
+        handleExistingEmojiLogo(guild_id, leagueId, client, command.token, emoji.value, teamToCustomize)
+        return deferMessage()
+      }
+      if (!image || !command.data.resolved?.attachments) {
+        throw new Error("teams customize_logo misconfigured")
+      }
       const { url } = command.data.resolved.attachments[image.value]
       handleCustomLogo(guild_id, leagueId, client, command.token, url, teamToCustomize)
       return deferMessage()
@@ -499,7 +558,13 @@ export default {
               type: ApplicationCommandOptionType.Attachment,
               name: "image_file",
               description: "image file to use as the team logo",
-              required: true,
+              required: false,
+            },
+            {
+              type: ApplicationCommandOptionType.String,
+              name: "emoji",
+              description: "an existing server emoji to use as the logo, e.g. :otters:",
+              required: false,
             },
           ],
         },
