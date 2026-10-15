@@ -132,7 +132,6 @@ async function autoCropImage(inputPath: Buffer, padding = 10) {
     return buffer
 
   } catch (error) {
-    console.error('Error cropping image:', error);
     throw error;
   }
 }
@@ -174,7 +173,6 @@ async function handleCustomLogo(guild_id: string, league_id: string, client: Dis
       content: `Assigned custom logo ${teamToCustomize.abbrName}: <:${emoji.name}:${emoji.id}>`
     })
   } catch (error) {
-    console.error('Error processing custom logo:', error);
     client.editOriginalInteraction(token, {
       content: `Error processing custom logo:, ${error}`
     })

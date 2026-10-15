@@ -172,7 +172,7 @@ export default {
         {
           type: ApplicationCommandOptionType.Subcommand,
           name: "configure",
-          description: "configures snallabot broadcaster",
+          description: "configures your server to post live streams",
           options: [
             {
               type: ApplicationCommandOptionType.String,
@@ -203,7 +203,7 @@ export default {
             {
               type: ApplicationCommandOptionType.Subcommand,
               name: "add",
-              description: "add youtube broadcast",
+              description: "add youtube channel",
               options: [
                 {
                   type: ApplicationCommandOptionType.String,
@@ -217,7 +217,7 @@ export default {
             {
               type: ApplicationCommandOptionType.Subcommand,
               name: "remove",
-              description: "remove youtube broadcast",
+              description: "remove youtube channel",
               options: [
                 {
                   type: ApplicationCommandOptionType.String,
@@ -230,7 +230,7 @@ export default {
             {
               type: ApplicationCommandOptionType.Subcommand,
               name: "list",
-              description: "list all youtube broadcast",
+              description: "list all youtube channels this server can post",
               options: [],
             },
           ],
@@ -243,7 +243,7 @@ export default {
             {
               type: ApplicationCommandOptionType.Subcommand,
               name: "add",
-              description: "add twitch broadcast",
+              description: "add twitch channel",
               options: [
                 {
                   type: ApplicationCommandOptionType.String,
@@ -256,7 +256,7 @@ export default {
             {
               type: ApplicationCommandOptionType.Subcommand,
               name: "remove",
-              description: "remove twitch broadcast",
+              description: "remove twitch channel",
               options: [
                 {
                   type: ApplicationCommandOptionType.String,
@@ -269,7 +269,7 @@ export default {
             {
               type: ApplicationCommandOptionType.Subcommand,
               name: "list",
-              description: "list all twitch broadcast",
+              description: "list all twitch channels this server can post",
               options: [],
             },
           ],

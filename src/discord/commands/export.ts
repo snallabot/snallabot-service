@@ -170,19 +170,19 @@ export default {
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
     return {
       name: "export",
-      description: "export your league through the dashboard",
+      description: "update the bot with your league data",
       type: ApplicationCommandType.ChatInput,
       options: [
         {
           type: ApplicationCommandOptionType.Subcommand,
           name: "current",
-          description: "exports the current week",
+          description: "updates the current week",
           options: [],
         },
         {
           type: ApplicationCommandOptionType.Subcommand,
           name: "week",
-          description: "exports the specified week",
+          description: "updates the specified week",
           options: [
             {
               type: ApplicationCommandOptionType.Integer,
@@ -195,7 +195,7 @@ export default {
         {
           type: ApplicationCommandOptionType.Subcommand,
           name: "all_weeks",
-          description: "exports all weeks",
+          description: "updates all weeks",
           options: [],
         },
       ],
