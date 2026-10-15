@@ -2,9 +2,8 @@ import { randomUUID } from "crypto"
 import db from "./mongo_db"
 import EventDB, { EventNotifier, SnallabotEvent, StoredEvent, notifiers } from "./events_db"
 import { DefensiveStats, GameResult, KickingStats, MADDEN_SEASON, MaddenGame, POSITION_GROUP, PassingStats, Player, PuntingStats, ReceivingStats, RushingStats, Standing, Team, TeamStats, dLinePositions, dbPositions, oLinePositions } from "../export/madden_league_types"
-import { EventTypes, RetiredPlayersEvent } from "./events"
 import { maddenDBRequestsCounter, maddenEventsDistribution } from "../debug/metrics"
-import { ExportStatus, GameStats, MaddenDB, MaddenEvents, PlayerListIndex, PlayerListQuery, PlayerStatEvents, PlayerStatType, PlayerStatTypes, PlayerStats, TeamList, createPlayerKey, createTeamList, deduplicatePlayerStats, deduplicatePlayers, deduplicateSchedule, deduplicateStats, findLatestScheduleId } from "./madden_db"
+import { ExportStatus, GameStats, MaddenDB, MaddenEvents, PlayerListIndex, PlayerListQuery, PlayerStatEvents, PlayerStatType, PlayerStatTypes, PlayerStats, TeamList, createPlayerKey, createTeamList, createRetiredPlayerCheck, deduplicatePlayerStats, deduplicatePlayers, deduplicateSchedule, deduplicateStats, findLatestScheduleId } from "./madden_db"
 import { CachedUpdatingView, StorageBackedCachedView, View } from "./view"
 import { DB, DBs } from "../config"
 
@@ -76,7 +75,8 @@ class PlayerListView extends View<PlayerListIndex> {
         birthYear: player.birthYear,
         birthMonth: player.birthMonth,
         birthDay: player.birthDay,
-        presentationId: player.presentationId
+        presentationId: player.presentationId,
+        lastUpdated: player.timestamp ? new Date(player.timestamp).getTime() : undefined
       }]
     }))
   }
@@ -102,7 +102,8 @@ class CacheablePlayerListView extends StorageBackedCachedView<PlayerListIndex> {
           birthYear: player.birthYear,
           birthMonth: player.birthMonth,
           birthDay: player.birthDay,
-          presentationId: player.presentationId
+          presentationId: player.presentationId,
+          lastUpdated: Date.now()
         }
       })
     }
@@ -481,14 +482,13 @@ const MaddenDB: MaddenDB = {
 
   getPlayers: async function(leagueId: string, query: PlayerListQuery, limit: number, startAfter?: Player, endBefore?: Player) {
     const playerIndex = await playerListIndex.createView(leagueId)
-    const retiredPlayerEvents = await EventDB.queryEvents<RetiredPlayersEvent>(leagueId, EventTypes.RETIRED_PLAYERS, new Date(0), {}, 1000000)
-    const retiredPlayers = new Set(retiredPlayerEvents.flatMap(e => e.retiredPlayers).map(e => createPlayerKey(e)))
+    const isRetired = await createRetiredPlayerCheck(leagueId)
     const teams = await this.getLatestTeams(leagueId)
 
     let players = playerIndex ? Object.values(playerIndex).map(p => {
       const teamId = Number(p.teamId)
       const latestTeam = teamId === 0 ? 0 : teams.getTeamForId(teamId).teamId
-      return { ...p, isRetired: retiredPlayers.has(createPlayerKey(p)), teamId: `${latestTeam}` }
+      return { ...p, isRetired: isRetired(p), teamId: `${latestTeam}` }
     }) : []
 
     if ((query.teamId && query.teamId !== -1) || query.teamId === 0) {

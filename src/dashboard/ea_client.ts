@@ -11,6 +11,7 @@ import { exportCounter } from "../debug/metrics";
 import fastq, { queueAsPromised } from "fastq"
 import NodeCache from "node-cache";
 import { SnallabotError } from "../errors";
+import { RosterSweep } from "../db/retired_players";
 
 
 export enum LeagueData {
@@ -733,20 +734,27 @@ async function handleExportTask(task: ExportJobTask): Promise<void> {
       })
     }
   }
+  
+  let rosterError: unknown = undefined
   if (destinations.some(e => e.rosters)) {
     task.status.rosters = TaskStatus.STARTED
     let teamRequests = [] as Promise<any>[]
     let teamData: TeamData = { roster: {} }
     const teamList = leagueInfo.teamIdInfoList
-    teamRequests.push(client.getFreeAgents(leagueId).then(freeAgents => teamData.roster["freeagents"] = freeAgents))
+    const sweep = new RosterSweep()
+    
+    const fetchRoster = (teamId: number, request: Promise<RosterExport>) => request.then(roster => {
+      teamData.roster[teamId === 0 ? "freeagents" : `${teamId}`] = roster
+      sweep.add(teamId, roster)
+    }).catch(e => {
+      console.warn(`League ${leagueId}: could not get roster for team ${teamId}, ${e}`)
+      rosterError = rosterError ?? e
+    })
+    teamRequests.push(fetchRoster(0, client.getFreeAgents(leagueId)))
     const batchSize = 1;
     for (let idx = 0; idx < teamList.length; idx++) {
       const team = teamList[idx];
-      teamRequests.push(
-        client.getTeamRoster(leagueId, team.teamId, idx).then(roster =>
-          teamData.roster[`${team.teamId}`] = roster
-        )
-      )
+      teamRequests.push(fetchRoster(team.teamId, client.getTeamRoster(leagueId, team.teamId, idx)))
       if ((idx + 1) % batchSize == 0) {
         await Promise.all(teamRequests)
         await exportTeamData(teamData, contextualExports, `${leagueId}`, client.getSystemConsole())
@@ -760,7 +768,11 @@ async function handleExportTask(task: ExportJobTask): Promise<void> {
       teamRequests = []
       teamData = { roster: {} }
     }
-    task.status.rosters = TaskStatus.FINISHED
+    // Players are only retired when the rosters are stored in snallabot
+    if (destinations.some(d => d.rosters && d.url.includes(DEPLOYMENT_URL))) {
+      await sweep.retireMissingPlayers(`${leagueId}`)
+    }
+    task.status.rosters = rosterError ? TaskStatus.ERROR : TaskStatus.FINISHED
   }
   if (destinations.some(e => e.extraData)) {
     const {
@@ -770,6 +782,9 @@ async function handleExportTask(task: ExportJobTask): Promise<void> {
     } = allLeagues.filter(l => l.leagueId === leagueId)[0]
     const extraData = { ...leagueInfo, leagueName, numMembers, calendarYear }
     await exportExtraData(extraData, contextualExports, `${leagueId}`, client.getSystemConsole())
+  }
+  if (rosterError) {
+    throw rosterError
   }
 }
 
