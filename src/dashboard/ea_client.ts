@@ -11,6 +11,7 @@ import { exportCounter } from "../debug/metrics";
 import fastq, { queueAsPromised } from "fastq"
 import NodeCache from "node-cache";
 import { SnallabotError } from "../errors";
+import { sleep } from "../sleep";
 
 
 export enum LeagueData {
@@ -272,7 +273,7 @@ async function getExportData<T>(
     ) {
       if (attempt < retries - 1) {
         const delay = baseDelayMs * 2 ** attempt;
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await sleep(delay)
         continue;
       }
       throw new EAAccountError(`EA request timed out after ${retries} attempts`, "Be patient, this may resolve on its own");
@@ -282,7 +283,7 @@ async function getExportData<T>(
     ) {
       if (attempt < retries - 1) {
         const delay = baseDelayMs * 2 ** attempt;
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await sleep(delay)
         continue;
       }
       throw new EAAccountError(`Failed to get data from EA, response ${JSON.stringify(parsed)}`, "Since the last title update, EA has been having issues with exporting. Snallabot tried to get your league data, but only partially succeeded. If you see anything not up to date, try again in 5-10 minutes. You can keep trying with breaks in between.");
