@@ -7,6 +7,7 @@ import EventDB, { EventDelivery } from "../../db/events_db"
 import { EventTypes, RetiredPlayersEvent } from "../../db/events"
 import MaddenDB, { createPlayerKey } from "../../db/madden_db"
 import { ExportContext, exporterForLeague, storedTokenClient } from "../../dashboard/ea_client"
+import { sleep } from "../../sleep"
 
 async function retirePlayers(leagueId: string, token: string, client: DiscordClient) {
   try {
@@ -28,6 +29,7 @@ async function retirePlayers(leagueId: string, token: string, client: DiscordCli
     const exporter = exporterForLeague(league, ExportContext.MANUAL)
     const { waitUntilDone } = exporter.exportCurrentWeek()
     await waitUntilDone.catch(e => { throw e })
+    await sleep(10000)
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
@@ -45,6 +47,7 @@ async function retirePlayers(leagueId: string, token: string, client: DiscordCli
     const playersInLeague = new Set<string>()
     for (let idx = 0; idx < teams.length; idx++) {
       const team = teams[idx];
+      await sleep(5000)
       await client.editOriginalInteraction(token, {
         flags: 32768,
         components: [
