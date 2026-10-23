@@ -89,6 +89,7 @@ export interface DiscordClient {
   checkMessageExists(channel: ChannelId, messageId: MessageId): Promise<boolean>,
   getUsers(guild_id: string): Promise<APIGuildMember[]>,
   getGuildInformation(guild_id: string): Promise<APIGuild>,
+  getGuildEmojis(guildId: string): Promise<APIEmoji[]>,
   uploadEmoji(imageData: string, name: string, guildId: string): Promise<APIEmoji>,
   deleteEmoji(emojiId: string, guildId: string): Promise<void>,
   getBotUser(): UserId,
@@ -542,6 +543,12 @@ export function createClient(settings: DiscordSettings): DiscordClient {
       })
       const guildInfo = (await guildInfoRes.json()) as APIGuild
       return guildInfo
+    },
+    getGuildEmojis: async function(guildId: string) {
+      const emojisRes = await sendDiscordRequest(`guilds/${guildId}/emojis`, {
+        method: "GET"
+      })
+      return (await emojisRes.json()) as APIEmoji[]
     },
     uploadEmoji: async function(image: string, name: string, guildId: string) {
       try {
