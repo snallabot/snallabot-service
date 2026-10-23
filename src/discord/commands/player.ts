@@ -165,6 +165,15 @@ export async function showPlayerCard(
 
     await client.editOriginalInteraction(token, payload);
   } catch (error) {
+    await client.editOriginalInteraction(token, {
+      flags: 32768,
+      components: [
+        {
+          type: ComponentType.TextDisplay,
+          content: `${error}`
+        }
+      ]
+    })
   }
 }
 async function showPlayerFullRatings(rosterId: number, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
@@ -1583,7 +1592,6 @@ async function searchPlayerForRosterId(query: string, leagueId: string): Promise
     keys: ["firstName", "lastName", "position", "teamAbbr"], threshold: 0.4, limit: 25
   })
   return results.map(r => r.obj)
-  return []
 }
 const positions = POSITIONS.concat(POSITION_GROUP).map(p => ({ teamDisplayName: "", teamId: -1, teamNickName: "", position: p, rookie: "", retired: "" }))
 const rookies = [{
