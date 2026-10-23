@@ -5,11 +5,12 @@ import LeagueSettingsDB, { ChannelId, DiscordIdType, LeagueSettings, MessageId, 
 import { Team } from "../../export/madden_league_types"
 import { discordLeagueView, leagueLogosView } from "../../db/view"
 import fuzzysort from "fuzzysort"
-import MaddenDB, { TeamList } from "../../db/madden_db"
+import MaddenDB from "../../db/madden_db"
 import { createCanvas, loadImage } from "canvas"
 import FileHandler, { imageSerializer } from "../../file_handlers"
 import EventDB, { EventDelivery } from "../../db/events_db"
 import { ResetLogoEvent, TeamLogoCustomizedEvent } from "../../db/events"
+import { TeamList } from "../../db/teams"
 
 function formatTeamMessage(teams: Team[], teamAssignments: TeamAssignments): string {
   const header = "# Teams"

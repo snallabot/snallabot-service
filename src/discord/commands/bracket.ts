@@ -2,10 +2,11 @@ import { Command } from "../commands_handler"
 import { DiscordClient, NoConnectedLeagueError, deferMessage } from "../discord_utils"
 import { ApplicationCommandType, ComponentType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { LeagueLogos, discordLeagueView, leagueLogosView } from "../../db/view"
-import MaddenDB, { TeamList } from "../../db/madden_db"
+import MaddenDB from "../../db/madden_db"
 import { GameResult, MaddenGame, PlayoffStatus, Standing, } from "../../export/madden_league_types"
 import { CanvasRenderingContext2D, Image, createCanvas, loadImage } from "canvas"
 import FileHandler, { imageSerializer } from "../../file_handlers"
+import type { TeamList } from "../../db/teams"
 
 // Load the template image
 type Position = { x: number, y: number }
@@ -337,7 +338,7 @@ async function formatPlayoffBracket(client: DiscordClient, token: string, standi
     // Return base64 encoded image
     const image = canvas.toBuffer('image/png')
     const formData = new FormData()
-    const imageBlob = new Blob([image], { type: 'image/png' })
+    const imageBlob = new Blob([new Uint8Array(image)], { type: 'image/png' })
     const payload = {
       content: "Current Playoff Picture",
       attachments: [

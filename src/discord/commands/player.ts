@@ -3,9 +3,10 @@ import { DiscordClient, deferMessage, getTeamEmoji, SnallabotTeamEmojis, NoConne
 import { APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ButtonStyle, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { discordLeagueView, LeagueLogos, leagueLogosView } from "../../db/view"
 import fuzzysort from "fuzzysort"
-import MaddenDB, { PlayerListQuery, PlayerStatType, PlayerStats, TeamList, createPlayerKey } from "../../db/madden_db"
+import MaddenDB, { PlayerListQuery, PlayerStatType, PlayerStats } from "../../db/madden_db"
 import { DevTrait, LBStyleTrait, MADDEN_SEASON, MaddenGame, POSITIONS, POSITION_GROUP, PlayBallTrait, Player, QBStyleTrait, SensePressureTrait, YesNoTrait } from "../../export/madden_league_types"
 import LeagueSettingsDB, { PlayerConfiguration } from "../settings_db"
+import type { TeamList } from "../../db/teams"
 
 enum PlayerSelection {
   PLAYER_OVERVIEW = "po",

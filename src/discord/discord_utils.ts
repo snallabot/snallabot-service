@@ -4,12 +4,13 @@ import { APIApplicationCommand, APIChannel, APIEmoji, APIGuild, APIGuildMember, 
 import { CategoryId, ChannelId, DiscordIdType, MessageId, RoleId, UserId } from "./settings_db"
 import { createDashboard } from "./commands/dashboard"
 import { GameResult, MADDEN_SEASON, MaddenGame, Team, getMessageForWeek, Standing, formatRecord, DevTrait } from "../export/madden_league_types"
-import MaddenDB, { TeamList } from "../db/madden_db"
+import MaddenDB from "../db/madden_db"
 import { LeagueLogos } from "../db/view"
 import EventDB from "../db/events_db"
 import { ConfirmedSimV2, SimResult } from "../db/events"
 import { SnallabotError } from "../errors"
 import { discordOutgoingRequestsCounter } from "../debug/metrics"
+import type { TeamList } from "../db/teams"
 
 export enum CommandMode {
   INSTALL = "INSTALL",
