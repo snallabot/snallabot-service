@@ -4,9 +4,10 @@ import EventDB, { EventNotifier, SnallabotEvent, StoredEvent, notifiers } from "
 import { DefensiveStats, GameResult, KickingStats, MADDEN_SEASON, MaddenGame, POSITION_GROUP, PassingStats, Player, PuntingStats, ReceivingStats, RushingStats, Standing, Team, TeamStats, dLinePositions, dbPositions, oLinePositions } from "../export/madden_league_types"
 import { EventTypes, RetiredPlayersEvent } from "./events"
 import { maddenDBRequestsCounter, maddenEventsDistribution } from "../debug/metrics"
-import { ExportStatus, GameStats, MaddenDB, MaddenEvents, PlayerListIndex, PlayerListQuery, PlayerStatEvents, PlayerStatType, PlayerStatTypes, PlayerStats, TeamList, createPlayerKey, createTeamList, deduplicatePlayerStats, deduplicatePlayers, deduplicateSchedule, deduplicateStats, findLatestScheduleId } from "./madden_db"
+import { ExportStatus, GameStats, MaddenDB, MaddenEvents, PlayerListIndex, PlayerListQuery, PlayerStatEvents, PlayerStatType, PlayerStatTypes, PlayerStats, createPlayerKey, deduplicatePlayerStats, deduplicatePlayers, deduplicateSchedule, deduplicateStats, findLatestScheduleId } from "./madden_db"
 import { CachedUpdatingView, StorageBackedCachedView, View } from "./view"
 import { DB, DBs } from "../config"
+import { TeamList, createTeamList } from "./teams"
 
 type HistoryUpdate<ValueType> = { oldValue?: ValueType, newValue?: ValueType }
 type History = { [key: string]: HistoryUpdate<any> }

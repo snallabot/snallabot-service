@@ -4,7 +4,7 @@
   "description": "entry point for snallabot",
   "main": "src/index.js",
   "scripts": {
-    "test": "npx jest",
+    "test": "vitest",
     "build": "npx tsc && cp -r src/public dist/ && cp -r emojis dist/ && cp -r src/dashboard/templates dist/dashboard && cp src/home.pug dist/",
     "start": "node dist/index.js",
     "yt-notifier": "node dist/yt-notifier/index.js",
@@ -53,15 +53,13 @@
     "@types/koa__router": "^12.0.4",
     "@types/koa-bodyparser": "^4.3.12",
     "@types/koa-static": "^4.0.4",
-    "@types/node": "^20.11.0",
+    "@types/node": "^22.20.5",
     "@types/pug": "^2.0.10",
     "@types/supertest": "^6.0.2",
     "firebase-tools": "^13.9.0",
-    "jest": "^29.7.0",
     "nodemon": "^3.0.3",
-    "supertest": "^6.3.4",
-    "ts-jest": "^29.1.1",
     "ts-node": "^10.9.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vitest": "^5.0.5"
   }
 }

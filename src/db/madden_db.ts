@@ -3,7 +3,6 @@ import { Timestamp } from "firebase-admin/firestore"
 import db from "./firebase"
 import EventDB, { EventNotifier, SnallabotEvent, StoredEvent, notifiers } from "./events_db"
 import { DefensiveStats, GameResult, KickingStats, MADDEN_SEASON, MaddenGame, POSITION_GROUP, PassingStats, Player, PuntingStats, ReceivingStats, RushingStats, Standing, Team, TeamStats, dLinePositions, dbPositions, oLinePositions } from "../export/madden_league_types"
-import { TeamAssignments } from "../discord/settings_db"
 import { CachedUpdatingView, StorageBackedCachedView, View } from "./view"
 import { EventTypes, RetiredPlayersEvent } from "./events"
 import { maddenDBRequestsCounter, maddenEventsDistribution } from "../debug/metrics"
@@ -177,71 +176,6 @@ export function createEventHistoryUpdate(newEvent: Record<string, any>, oldEvent
     }
   })
   return change
-}
-
-export interface TeamList {
-  getTeamForId(id: number): Team,
-  getLatestTeams(): Team[],
-  getLatestTeamAssignments(assignments: TeamAssignments): TeamAssignments
-}
-
-export function createTeamList(teams: StoredEvent<Team>[]): TeamList {
-  const latestTeamMap = new Map<number, Team>()
-  const latestTeams: Team[] = []
-  Object.entries(Object.groupBy(teams, t => t.divName)).forEach(divisionTeams => {
-    const [_, divTeams] = divisionTeams
-    if (!divTeams) {
-      return
-    }
-    const matchingTeams = Object.values(Object.groupBy(divTeams, t => `${t.cityName}#${t.abbrName}`)).filter((t): t is StoredEvent<Team>[] => !!t)
-    const unMatched = matchingTeams.filter(t => t && t.length === 1).flat()
-    const matched = matchingTeams.filter(t => t && t.length !== 1)
-    matched.forEach(matchedTeams => {
-      const latestTeam = matchedTeams.reduce((latest, team) => (team.timestamp > latest.timestamp ? team : latest))
-      latestTeams.push(latestTeam)
-      matchedTeams.forEach(team => latestTeamMap.set(team.teamId, latestTeam))
-    })
-    // checking if matched teams is 4 gets rid of dupes, but we have no way of knowing what the unmatched team matches with, losing their stats
-    // TODO (snallapa): revist this
-    if (unMatched.length > 0) {
-      // if there are just two teams left unmatched, and only one spot left, then they must be a match
-      if (unMatched.length === 2 && matched.length === 3) {
-        // lets just assume the unmatched are normal teams
-        const [team1, team2] = unMatched
-        const latestTeam = team1.timestamp > team2.timestamp ? team1 : team2
-        latestTeams.push(latestTeam)
-        latestTeamMap.set(team1.teamId, latestTeam)
-        latestTeamMap.set(team2.teamId, latestTeam)
-      } else {
-        // lets just assume the unmatched are normal teams
-        unMatched.forEach(unmatched => {
-          latestTeams.push(unmatched)
-          latestTeamMap.set(unmatched.teamId, unmatched)
-        })
-      }
-    }
-  })
-  return {
-    getTeamForId: function(id: number): Team {
-      const team = latestTeamMap.get(id)
-      if (team) {
-        return team
-      }
-      throw new Error("Team not found for id " + id)
-    },
-    getLatestTeams: function(): Team[] { return latestTeams },
-    getLatestTeamAssignments: function(assignments: TeamAssignments): TeamAssignments {
-      return Object.fromEntries(Object.entries(assignments).map(entry => {
-        const [teamId, assignment] = entry
-        try {
-          const latestTeam = this.getTeamForId(Number(teamId))
-          return [latestTeam.teamId + "", assignment]
-        } catch (e) {
-          return []
-        }
-      }).filter(e => e.length !== 0))
-    }
-  }
 }
 
 export function deduplicateStats<T extends { weekIndex: number, seasonIndex: number, timestamp: Date }>(stats: T[]) {
@@ -1135,5 +1069,6 @@ function withMetrics<T extends object>(db: T): T {
 }
 
 import mongoImpl from "./madden_db_mongo"
+import { TeamList, createTeamList } from "./teams"
 const dbToUse = process.env.MONGO_CONNECTION_URI ? mongoImpl : withMetrics(MaddenDB)
 export default dbToUse
