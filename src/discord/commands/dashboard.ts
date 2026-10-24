@@ -88,7 +88,7 @@ export default {
   commandDefinition(): RESTPostAPIApplicationCommandsJSONBody {
     return {
       name: "dashboard",
-      description: "snallabot dashboard link",
+      description: "connect your madden league through the Snallabot dashboard",
       type: ApplicationCommandType.ChatInput,
     }
   }

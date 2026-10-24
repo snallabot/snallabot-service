@@ -69,7 +69,9 @@ const TradeDB = {
       if (trade.status !== TradeStatus.PENDING) {
         throw new Error(`Trade is already ${trade.status.toLowerCase()}`);
       }
-
+      if (userId === trade.submittedBy) {
+        return trade; // * do nothing I was struggling to think of a better way to handle this they should know better smh
+      }
       const votes = { ...trade.votes, [userId]: vote };
       const approvals = Object.values(votes).filter(
         (v) => v === TradeVote.APPROVE,

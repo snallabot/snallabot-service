@@ -146,7 +146,6 @@ async function handleCommand(client: DiscordClient, token: string, league: strin
     });
 
   } catch (e) {
-    console.error(e);
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
@@ -214,7 +213,6 @@ export default {
         handleCommand(client, interaction.token, leagueId, interaction.guild_id, standingsFilter.f, standingsFilter.p)
       }
     } catch (e) {
-      console.error(e)
       await client.editOriginalInteraction(interaction.token, {
         flags: 32768,
         components: [

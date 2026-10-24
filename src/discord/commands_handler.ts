@@ -1,6 +1,6 @@
 import { ParameterizedContext } from "koa"
 import { APIChatInputApplicationCommandInteractionData, APIInteractionGuildMember } from "discord-api-types/payloads"
-import { APIAutocompleteApplicationCommandInteractionData, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10"
+import { APIApplicationCommandOption, APIAutocompleteApplicationCommandInteractionData, ApplicationCommandOptionType, ApplicationCommandType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, RESTPostAPIChatInputApplicationCommandsJSONBody } from "discord-api-types/v10"
 import { createMessageResponse, respond, DiscordClient, CommandMode } from "./discord_utils"
 import { Firestore } from "firebase-admin/firestore"
 import leagueExportHandler from "./commands/league_export"
@@ -45,7 +45,6 @@ export type CommandsHandler = { [key: string]: CommandHandler | undefined }
 export type AutocompleteHandlers = Record<string, AutocompleteHandler>
 export type MessageComponentHandlers = Record<string, MessageComponentHandler>
 const SlashCommands: CommandsHandler = {
-  "league_export": leagueExportHandler,
   "dashboard": dashboardHandler,
   "game_channels": gameChannelHandler,
   "teams": teamsHandler,
@@ -64,6 +63,78 @@ const SlashCommands: CommandsHandler = {
   "stats": statsHandler,
   "trade": tradeHandler,
   "league_updates": leagueUpdatesHandler
+}
+
+
+export type CommandRow = {
+  command: string
+  description: string
+  options: { name: string; description: string; required: boolean }[]
+}
+
+export type CommandGroup = {
+  name: string
+  description: string
+  rows: CommandRow[]
+}
+
+function toRows(
+  path: string,
+  description: string,
+  options: APIApplicationCommandOption[] = []
+): CommandRow[] {
+  const subs = options.filter(
+    o =>
+      o.type === ApplicationCommandOptionType.Subcommand ||
+      o.type === ApplicationCommandOptionType.SubcommandGroup
+  )
+
+  if (subs.length > 0) {
+    return subs.flatMap(sub =>
+      toRows(
+        `${path} ${sub.name}`,
+        sub.description,
+        "options" in sub ? sub.options : undefined
+      )
+    )
+  }
+
+  return [
+    {
+      command: `/${path}`,
+      description,
+      options: options.map(o => ({
+        name: o.name,
+        description: o.description,
+        required: o.required ?? false,
+      })),
+    },
+  ]
+}
+
+export function commandGroups(
+): CommandGroup[] {
+  const defs = Object.values(SlashCommands)
+    .flatMap(ch => {
+      if (ch) {
+        return [ch.commandDefinition()]
+      } else {
+        return []
+      }
+    })
+  return defs
+    .filter(d => d.type === undefined || d.type === ApplicationCommandType.ChatInput)
+    .map(d => d as RESTPostAPIChatInputApplicationCommandsJSONBody)
+    .map(def => ({
+      name: def.name,
+      description: def.description ?? "",
+      rows: toRows(
+        def.name,
+        def.description ?? "",
+        "options" in def ? def.options : undefined
+      ),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name))
 }
 
 const AutocompleteCommands: AutocompleteHandlers = {
@@ -146,67 +217,103 @@ export async function handleAutocomplete(command: Autocomplete, ctx: Parameteriz
 
 export async function handleMessageComponent(interaction: MessageComponentInteraction, ctx: ParameterizedContext, client: DiscordClient) {
   const custom_id = interaction.custom_id
-  const handler = custom_id.startsWith("trade_vote:") ? tradeHandler : MessageComponents[custom_id]
+  const isTradeInteraction =
+    custom_id.startsWith("trade_vote:") ||
+    custom_id.startsWith("trade_player:");
+  const handler = isTradeInteraction
+    ? tradeHandler
+    : MessageComponents[custom_id];
   if (handler) {
     try {
-      const metricCustomId = custom_id.startsWith("trade_vote") ? "trade_vote" : custom_id
-      discordCommandsCounter.inc({ command_name: metricCustomId, command_type: "MESSAGE_COMPONENT" })
-      const body = await handler.handleInteraction(interaction, client)
-      ctx.status = 200
-      ctx.set("Content-Type", "application/json")
-      ctx.body = body
+      const metricCustomId = custom_id.startsWith("trade_vote:")
+        ? "trade_vote"
+        : custom_id.startsWith("trade_player:")
+          ? "trade_player"
+          : custom_id;
+      discordCommandsCounter.inc({
+        command_name: metricCustomId,
+        command_type: "MESSAGE_COMPONENT",
+      });
+      const body = await handler.handleInteraction(interaction, client);
+      ctx.status = 200;
+      ctx.set("Content-Type", "application/json");
+      ctx.body = body;
     } catch (e) {
-      const error = e as Error
-      ctx.status = 500
+      const error = e as Error;
+      ctx.status = 500;
     }
   } else {
     try {
-      // TODO use typeof and fix this, its bad 
-      const parsedCustomId = JSON.parse(custom_id)
+      // TODO use typeof and fix this, its bad
+      const parsedCustomId = JSON.parse(custom_id);
       if (parsedCustomId.q != null) {
-        discordCommandsCounter.inc({ command_name: "PLAYER_LIST", command_type: "MESSAGE_COMPONENT" })
-        const body = await playerHandler.handleInteraction(interaction, client)
-        ctx.status = 200
-        ctx.set("Content-Type", "application/json")
-        ctx.body = body
+        discordCommandsCounter.inc({
+          command_name: "PLAYER_LIST",
+          command_type: "MESSAGE_COMPONENT",
+        });
+        const body = await playerHandler.handleInteraction(interaction, client);
+        ctx.status = 200;
+        ctx.set("Content-Type", "application/json");
+        ctx.body = body;
       } else if (parsedCustomId.t != null) {
-        discordCommandsCounter.inc({ command_name: "BROADCAST", command_type: "MESSAGE_COMPONENT" })
-        const body = await broadcastsHandler.handleInteraction(interaction, client)
-        ctx.status = 200
-        ctx.set("Content-Type", "application/json")
-        ctx.body = body
+        discordCommandsCounter.inc({
+          command_name: "BROADCAST",
+          command_type: "MESSAGE_COMPONENT",
+        });
+        const body = await broadcastsHandler.handleInteraction(
+          interaction,
+          client,
+        );
+        ctx.status = 200;
+        ctx.set("Content-Type", "application/json");
+        ctx.body = body;
       } else if (parsedCustomId.p != null && parsedCustomId.si != null) {
-        discordCommandsCounter.inc({ command_name: "SIMS", command_type: "MESSAGE_COMPONENT" })
-        const body = await simsHandler.handleInteraction(interaction, client)
-        ctx.status = 200
-        ctx.set("Content-Type", "application/json")
-        ctx.body = body
-      }
-      else if (parsedCustomId.si != null) {
-        discordCommandsCounter.inc({ command_name: "SCHEDULE", command_type: "MESSAGE_COMPONENT" })
-        const body = await schedulesHandler.handleInteraction(interaction, client)
-        ctx.status = 200
-        ctx.set("Content-Type", "application/json")
-        ctx.body = body
+        discordCommandsCounter.inc({
+          command_name: "SIMS",
+          command_type: "MESSAGE_COMPONENT",
+        });
+        const body = await simsHandler.handleInteraction(interaction, client);
+        ctx.status = 200;
+        ctx.set("Content-Type", "application/json");
+        ctx.body = body;
+      } else if (parsedCustomId.si != null) {
+        discordCommandsCounter.inc({
+          command_name: "SCHEDULE",
+          command_type: "MESSAGE_COMPONENT",
+        });
+        const body = await schedulesHandler.handleInteraction(
+          interaction,
+          client,
+        );
+        ctx.status = 200;
+        ctx.set("Content-Type", "application/json");
+        ctx.body = body;
       } else if (parsedCustomId.f != null) {
-        discordCommandsCounter.inc({ command_name: "STANDINGS", command_type: "MESSAGE_COMPONENT" })
-        const body = await standingsHandler.handleInteraction(interaction, client)
-        ctx.status = 200
-        ctx.set("Content-Type", "application/json")
-        ctx.body = body
+        discordCommandsCounter.inc({
+          command_name: "STANDINGS",
+          command_type: "MESSAGE_COMPONENT",
+        });
+        const body = await standingsHandler.handleInteraction(
+          interaction,
+          client,
+        );
+        ctx.status = 200;
+        ctx.set("Content-Type", "application/json");
+        ctx.body = body;
       } else if (parsedCustomId.st != null && parsedCustomId.p != null) {
-        discordCommandsCounter.inc({ command_name: "STATS", command_type: "MESSAGE_COMPONENT" })
-        const body = await statsHandler.handleInteraction(interaction, client)
-        ctx.status = 200
-        ctx.set("Content-Type", "application/json")
-        ctx.body = body
-      }
-      else {
-        ctx.status = 500
+        discordCommandsCounter.inc({
+          command_name: "STATS",
+          command_type: "MESSAGE_COMPONENT",
+        });
+        const body = await statsHandler.handleInteraction(interaction, client);
+        ctx.status = 200;
+        ctx.set("Content-Type", "application/json");
+        ctx.body = body;
+      } else {
+        ctx.status = 500;
       }
     } catch (e) {
-      ctx.status = 500
-
+      ctx.status = 500;
     }
   }
 }

@@ -11,6 +11,7 @@ import { exportCounter } from "../debug/metrics";
 import fastq, { queueAsPromised } from "fastq"
 import NodeCache from "node-cache";
 import { SnallabotError } from "../errors";
+import { sleep } from "../sleep";
 
 
 export enum LeagueData {
@@ -233,6 +234,8 @@ interface EAErrorResponse {
   };
 }
 
+const HIGH_LOAD_ERROR_CODE = 1073807360
+
 async function getExportData<T>(
   token: TokenInformation,
   session: SessionInformation,
@@ -270,13 +273,25 @@ async function getExportData<T>(
     ) {
       if (attempt < retries - 1) {
         const delay = baseDelayMs * 2 ** attempt;
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await sleep(delay)
         continue;
       }
-      throw new EAAccountError(`EA request timed out after ${retries} attempts`, "No Guidance");
+      throw new EAAccountError(`EA request timed out after ${retries} attempts`, "Be patient, this may resolve on its own");
     }
-
-    return parsed as T;
+    if (
+      (parsed as any).error && (parsed as any).error?.errorcode === HIGH_LOAD_ERROR_CODE
+    ) {
+      if (attempt < retries - 1) {
+        const delay = baseDelayMs * 2 ** attempt;
+        await sleep(delay)
+        continue;
+      }
+      throw new EAAccountError(`Failed to get data from EA, response ${JSON.stringify(parsed)}`, "Since the last title update, EA has been having issues with exporting. Snallabot tried to get your league data, but only partially succeeded. If you see anything not up to date, try again in 5-10 minutes. You can keep trying with breaks in between.");
+    }
+    if ((parsed as any).error) {
+      throw new EAAccountError(`Failed to get data from EA, response ${JSON.stringify(parsed)}`, `Be patient, this may resolve on its own`)
+    }
+    return parsed as T
   }
 
   throw new EAAccountError(`EA request failed after ${retries} attempts`, "No Guidance");
@@ -725,7 +740,7 @@ async function handleExportTask(task: ExportJobTask): Promise<void> {
     let teamData: TeamData = { roster: {} }
     const teamList = leagueInfo.teamIdInfoList
     teamRequests.push(client.getFreeAgents(leagueId).then(freeAgents => teamData.roster["freeagents"] = freeAgents))
-    const batchSize = 4;
+    const batchSize = 1;
     for (let idx = 0; idx < teamList.length; idx++) {
       const team = teamList[idx];
       teamRequests.push(

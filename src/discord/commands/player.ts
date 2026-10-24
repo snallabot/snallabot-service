@@ -3,12 +3,10 @@ import { DiscordClient, deferMessage, getTeamEmoji, SnallabotTeamEmojis, NoConne
 import { APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ButtonStyle, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { discordLeagueView, LeagueLogos, leagueLogosView } from "../../db/view"
 import fuzzysort from "fuzzysort"
-import MaddenDB, { PlayerListQuery, PlayerStatType, PlayerStats, TeamList, createPlayerKey } from "../../db/madden_db"
+import MaddenDB, { PlayerListQuery, PlayerStatType, PlayerStats } from "../../db/madden_db"
 import { DevTrait, LBStyleTrait, MADDEN_SEASON, MaddenGame, POSITIONS, POSITION_GROUP, PlayBallTrait, Player, QBStyleTrait, SensePressureTrait, YesNoTrait } from "../../export/madden_league_types"
-import { ExportContext, exporterForLeague, storedTokenClient } from "../../dashboard/ea_client"
-import EventDB, { EventDelivery } from "../../db/events_db"
-import { EventTypes, RetiredPlayersEvent } from "../../db/events"
 import LeagueSettingsDB, { PlayerConfiguration } from "../settings_db"
+import type { TeamList } from "../../db/teams"
 
 enum PlayerSelection {
   PLAYER_OVERVIEW = "po",
@@ -61,84 +59,124 @@ function generatePlayerZoomOptions(players: Player[], currentPagination: PlayerP
   return players.map(p => ({ label: `${p.position} ${p.firstName} ${p.lastName}`, value: { r: p.rosterId, s: PlayerSelection.PLAYER_OVERVIEW, q: currentPagination } }))
     .map(option => ({ ...option, value: JSON.stringify(option.value) }))
 }
+// * take out some of the logic in show player card 
+export async function buildPlayerCard(
+  rosterId: number,
+  guildId: string,
+  pagination?: PlayerPagination,
+) {
+  const [discordLeague, settings] = await Promise.all([
+    discordLeagueView.createView(guildId),
+    LeagueSettingsDB.getLeagueSettings(guildId),
+  ]);
 
-async function showPlayerCard(playerSearch: string, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
-  try {
-    const [discordLeague, settings] = await Promise.all([discordLeagueView.createView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
-    const playerConfiguration = settings?.commands?.player || { useHiddenDevs: true }
-    const leagueId = discordLeague?.leagueId
-    if (!leagueId) {
-      throw new NoConnectedLeagueError(guild_id)
-    }
-    let searchRosterId = Number(playerSearch)
-    if (isNaN(searchRosterId)) {
-      // get top search result
-      const results = await searchPlayerForRosterId(playerSearch, leagueId)
-      if (results.length === 0) {
-        throw new Error(`No player results for ${playerSearch} in ${leagueId}`)
-      }
-      searchRosterId = Number(results[0].rosterId)
-    }
-    const [player, teamList] = await Promise.all([MaddenDB.getPlayer(leagueId, `${searchRosterId}`), MaddenDB.getLatestTeams(leagueId)])
-    const backToSearch = pagination ? [
+  const leagueId = discordLeague?.leagueId;
+
+  if (!leagueId) {
+    throw new NoConnectedLeagueError(guildId);
+  }
+
+  const playerConfiguration = settings?.commands?.player ?? {
+    useHiddenDevs: true,
+  };
+
+  const [player, teamList, logos] = await Promise.all([
+    MaddenDB.getPlayer(leagueId, String(rosterId)),
+    MaddenDB.getLatestTeams(leagueId),
+    leagueLogosView.createView(leagueId),
+  ]);
+
+  const backToSearch = pagination
+    ? [
       {
-        type: ComponentType.Separator,
+        type: ComponentType.Separator as const,
         divider: true,
-        spacing: SeparatorSpacingSize.Small
+        spacing: SeparatorSpacingSize.Small,
       },
       {
-        type: ComponentType.ActionRow,
+        type: ComponentType.ActionRow as const,
         components: [
           {
-            type: ComponentType.Button,
+            type: ComponentType.Button as const,
             style: ButtonStyle.Secondary,
             label: "Back to List",
-            custom_id: `${JSON.stringify(pagination)}`
-          }
-        ]
+            custom_id: JSON.stringify(pagination),
+          },
+        ],
+      },
+    ]
+    : [];
+
+  return {
+    flags: 32768,
+    components: [
+      {
+        type: ComponentType.TextDisplay as const,
+        content: formatPlayerCard(player, teamList, logos, playerConfiguration),
+      },
+      {
+        type: ComponentType.Separator as const,
+        divider: true,
+        spacing: SeparatorSpacingSize.Large,
+      },
+      {
+        type: ComponentType.ActionRow as const,
+        components: [
+          {
+            type: ComponentType.StringSelect as const,
+            custom_id: "player_card",
+            placeholder: formatPlaceholder(PlayerSelection.PLAYER_OVERVIEW),
+            options: generatePlayerOptions(rosterId, pagination),
+          },
+        ],
+      },
+      ...backToSearch,
+    ],
+  };
+}
+
+export async function showPlayerCard(
+  playerSearch: string,
+  client: DiscordClient,
+  token: string,
+  guildId: string,
+  pagination?: PlayerPagination,
+) {
+  try {
+    const discordLeague = await discordLeagueView.createView(guildId);
+    const leagueId = discordLeague?.leagueId;
+
+    if (!leagueId) {
+      throw new NoConnectedLeagueError(guildId);
+    }
+
+    let rosterId = Number(playerSearch);
+
+    if (Number.isNaN(rosterId)) {
+      const results = await searchPlayerForRosterId(playerSearch, leagueId);
+
+      if (results.length === 0) {
+        throw new Error(`No player results for ${playerSearch} in ${leagueId}`);
       }
 
-    ] : []
-    const logos = await leagueLogosView.createView(leagueId)
+      rosterId = Number(results[0].rosterId);
+    }
+
+    const payload = await buildPlayerCard(rosterId, guildId, pagination);
+
+    await client.editOriginalInteraction(token, payload);
+  } catch (error) {
     await client.editOriginalInteraction(token, {
       flags: 32768,
       components: [
         {
           type: ComponentType.TextDisplay,
-          content: formatPlayerCard(player, teamList, logos, playerConfiguration)
-        },
-        {
-          type: ComponentType.Separator,
-          divider: true,
-          spacing: SeparatorSpacingSize.Large
-        },
-        {
-          type: ComponentType.ActionRow,
-          components: [
-            {
-              type: ComponentType.StringSelect,
-              custom_id: "player_card",
-              placeholder: formatPlaceholder(PlayerSelection.PLAYER_OVERVIEW),
-              options: generatePlayerOptions(searchRosterId, pagination)
-            }
-          ]
-        },
-        ...backToSearch
-      ]
-    })
-  } catch (e) {
-    await client.editOriginalInteraction(token, {
-      flags: 32768,
-      components: [
-        {
-          type: ComponentType.TextDisplay,
-          content: `Could not show player card ${e}`
+          content: `${error}`
         }
       ]
     })
   }
 }
-
 async function showPlayerFullRatings(rosterId: number, client: DiscordClient, token: string, guild_id: string, pagination?: PlayerPagination) {
   const [discordLeague, settings] = await Promise.all([discordLeagueView.createView(guild_id), LeagueSettingsDB.getLeagueSettings(guild_id)])
   const playerConfiguration = settings?.commands?.player || { useHiddenDevs: true }
@@ -1555,7 +1593,6 @@ async function searchPlayerForRosterId(query: string, leagueId: string): Promise
     keys: ["firstName", "lastName", "position", "teamAbbr"], threshold: 0.4, limit: 25
   })
   return results.map(r => r.obj)
-  return []
 }
 const positions = POSITIONS.concat(POSITION_GROUP).map(p => ({ teamDisplayName: "", teamId: -1, teamNickName: "", position: p, rookie: "", retired: "" }))
 const rookies = [{
@@ -1610,137 +1647,6 @@ async function searchPlayerListForQuery(textQuery: string, leagueId: string): Pr
   return results.map(r => r.obj)
 }
 
-async function retirePlayers(leagueId: string, token: string, client: DiscordClient) {
-  try {
-
-    await client.editOriginalInteraction(token, {
-      flags: 32768,
-      components: [
-        {
-          type: ComponentType.TextDisplay,
-          content: `Retiring Players:
-- ${SnallabotCommandReactions.LOADING} Updating Current players
-- ${SnallabotCommandReactions.WAITING} Finding Retired Players
-- ${SnallabotCommandReactions.WAITING} Finding New Retired Players`
-        }
-      ]
-    })
-    const league = Number(leagueId)
-    const eaClient = await storedTokenClient(league)
-    const exporter = exporterForLeague(league, ExportContext.MANUAL)
-    const { waitUntilDone } = exporter.exportCurrentWeek()
-    await waitUntilDone.catch(e => { throw e })
-    await client.editOriginalInteraction(token, {
-      flags: 32768,
-      components: [
-        {
-          type: ComponentType.TextDisplay,
-          content: `Retiring Players:
-- ${SnallabotCommandReactions.FINISHED} Updating Current players
-- ${SnallabotCommandReactions.LOADING} Finding Retired Players
-- ${SnallabotCommandReactions.WAITING} Finding New Retired Players`
-        }
-      ]
-    })
-    const leagueInfo = await eaClient.getLeagueInfo(league)
-    const teams = leagueInfo.teamIdInfoList
-    const playersInLeague = new Set<string>()
-    for (let idx = 0; idx < teams.length; idx++) {
-      const team = teams[idx];
-      await client.editOriginalInteraction(token, {
-        flags: 32768,
-        components: [
-          {
-            type: ComponentType.TextDisplay,
-            content: `Retiring Players:
-- ${SnallabotCommandReactions.FINISHED} Updating Current players
-- ${SnallabotCommandReactions.LOADING} Finding Retired Players - Checking ${team.displayName}
-- ${SnallabotCommandReactions.WAITING} Finding New Retired Players`
-          }
-        ]
-      })
-      const roster = await eaClient.getTeamRoster(league, team.teamId, idx);
-      roster.rosterInfoList.forEach(player => playersInLeague.add(createPlayerKey(player)))
-    }
-    await client.editOriginalInteraction(token, {
-      flags: 32768,
-      components: [
-        {
-          type: ComponentType.TextDisplay,
-          content: `Retiring Players:
-- ${SnallabotCommandReactions.FINISHED} Updating Current players
-- ${SnallabotCommandReactions.LOADING} Finding Retired Players - Checking Free Agents
-- ${SnallabotCommandReactions.WAITING} Finding New Retired Players`
-        }
-      ]
-    })
-    const freeAgents = await eaClient.getFreeAgents(league)
-    freeAgents.rosterInfoList.forEach(player => playersInLeague.add(createPlayerKey(player)));
-    await client.editOriginalInteraction(token, {
-      flags: 32768,
-      components: [
-        {
-          type: ComponentType.TextDisplay,
-          content: `Retiring Players:
-- ${SnallabotCommandReactions.FINISHED} Updating Current players
-- ${SnallabotCommandReactions.FINISHED} Finding Retired Players
-- ${SnallabotCommandReactions.LOADING} Finding New Retired Players`
-        }
-      ]
-    })
-    const latestPlayers = await MaddenDB.getLatestPlayers(leagueId)
-    const alreadyRetiredPlayerEvents = await EventDB.queryEvents<RetiredPlayersEvent>(leagueId, EventTypes.RETIRED_PLAYERS, new Date(0), {}, 1000000)
-    const alreadyRetiredPlayers = new Set(alreadyRetiredPlayerEvents.flatMap(e => e.retiredPlayers).map(e => createPlayerKey(e)))
-    const retiredPlayers = latestPlayers.filter(player => {
-      const playerKey = createPlayerKey(player)
-      return !playersInLeague.has(playerKey) && !alreadyRetiredPlayers.has(playerKey)
-    }).sort((a, b) => b.playerBestOvr - a.playerBestOvr)
-    if (retiredPlayers.length > 0) {
-      await client.editOriginalInteraction(token, {
-        flags: 32768,
-        components: [
-          {
-            type: ComponentType.TextDisplay,
-            content: `Retiring Players:
-- ${SnallabotCommandReactions.FINISHED} Updating Current players
-- ${SnallabotCommandReactions.FINISHED} Finding Retired Players
-- ${SnallabotCommandReactions.FINISHED} Finding New Retired Players\n
-Snallabot found ${retiredPlayers.length} newly retired players. :saluting_face: hope they had a great career! use /player list to view them`
-          }
-        ]
-      })
-      const newRetiredPlayers = retiredPlayers.map(p => ({ presentationId: p.presentationId, birthYear: p.birthYear, birthMonth: p.birthMonth, birthDay: p.birthDay, rosterId: p.rosterId }))
-      await EventDB.appendEvents<RetiredPlayersEvent>([{ key: leagueId, event_type: EventTypes.RETIRED_PLAYERS, retiredPlayers: newRetiredPlayers }], EventDelivery.EVENT_SOURCE)
-    } else {
-      await client.editOriginalInteraction(token, {
-        flags: 32768,
-        components: [
-          {
-            type: ComponentType.TextDisplay,
-            content: `Retiring Players:
-- ${SnallabotCommandReactions.FINISHED} Updating Current players
-- ${SnallabotCommandReactions.FINISHED} Finding Retired Players
-- ${SnallabotCommandReactions.FINISHED} Finding New Retired Players\n
-Snallabot did not find anymore retired players...`
-          }
-        ]
-      })
-    }
-  } catch (e) {
-    await
-      client.editOriginalInteraction(token, {
-        flags: 32768,
-        components: [
-          {
-            type: ComponentType.TextDisplay,
-            content: `Could not finish retiring players, ${e}`
-          }
-        ]
-      })
-    console.error(e)
-  }
-}
-
 export default {
   async handleCommand(command: Command, client: DiscordClient) {
     const { guild_id, token } = command
@@ -1764,14 +1670,6 @@ export default {
       }
       const playerSearch = (playerCommand.options[0] as APIApplicationCommandInteractionDataStringOption).value
       showPlayerList(playerSearch, client, token, guild_id)
-      return deferMessage()
-    } else if (subCommand === "retire") {
-      const discordLeague = await discordLeagueView.createView(guild_id)
-      const leagueId = discordLeague?.leagueId
-      if (!leagueId) {
-        throw new NoConnectedLeagueError(guild_id)
-      }
-      retirePlayers(leagueId, token, client)
       return deferMessage()
     } else if (subCommand === "configure") {
       const subCommandOptions = playerCommand.options
@@ -1802,7 +1700,7 @@ export default {
               type: ApplicationCommandOptionType.String,
               name: "player",
               description:
-                "search for the player",
+                "name to search for. Ex: Tom Brady",
               required: true,
               autocomplete: true
             },
@@ -1817,7 +1715,7 @@ export default {
               type: ApplicationCommandOptionType.String,
               name: "players",
               description:
-                "players to search for",
+                "groups to search for. Ex: Patriots, HB, Rookies",
               required: true,
               autocomplete: true
             },

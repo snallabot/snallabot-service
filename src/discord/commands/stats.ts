@@ -13,7 +13,7 @@ import {
   RESTPostAPIApplicationCommandsJSONBody,
   SeparatorSpacingSize
 } from "discord-api-types/v10"
-import MaddenDB, { MaddenEvents, PlayerStatEvents, TeamList } from "../../db/madden_db"
+import MaddenDB, { MaddenEvents, PlayerStatEvents } from "../../db/madden_db"
 import { discordLeagueView, LeagueLogos, leagueLogosView } from "../../db/view"
 import {
   DefensiveStats,
@@ -25,6 +25,8 @@ import {
   RushingStats,
   getMessageForWeek
 } from "../../export/madden_league_types"
+import type { TeamList } from "../../db/teams"
+
 
 const PAGINATION_LIMIT = 5
 type ShortPlayerStatEvents = "pa" | "ru" | "rc" | "d" | "k" | "pu"

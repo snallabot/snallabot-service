@@ -4,12 +4,13 @@ import { APIApplicationCommand, APIChannel, APIEmoji, APIGuild, APIGuildMember, 
 import { CategoryId, ChannelId, DiscordIdType, MessageId, RoleId, UserId } from "./settings_db"
 import { createDashboard } from "./commands/dashboard"
 import { GameResult, MADDEN_SEASON, MaddenGame, Team, getMessageForWeek, Standing, formatRecord, DevTrait } from "../export/madden_league_types"
-import MaddenDB, { TeamList } from "../db/madden_db"
+import MaddenDB from "../db/madden_db"
 import { LeagueLogos } from "../db/view"
 import EventDB from "../db/events_db"
 import { ConfirmedSimV2, SimResult } from "../db/events"
 import { SnallabotError } from "../errors"
 import { discordOutgoingRequestsCounter } from "../debug/metrics"
+import type { TeamList } from "../db/teams"
 
 export enum CommandMode {
   INSTALL = "INSTALL",
@@ -89,6 +90,7 @@ export interface DiscordClient {
   checkMessageExists(channel: ChannelId, messageId: MessageId): Promise<boolean>,
   getUsers(guild_id: string): Promise<APIGuildMember[]>,
   getGuildInformation(guild_id: string): Promise<APIGuild>,
+  getGuildEmojis(guildId: string): Promise<APIEmoji[]>,
   uploadEmoji(imageData: string, name: string, guildId: string): Promise<APIEmoji>,
   deleteEmoji(emojiId: string, guildId: string): Promise<void>,
   getBotUser(): UserId,
@@ -122,7 +124,6 @@ export function createClient(settings: DiscordSettings): DiscordClient {
         try {
           data = JSON.parse(stringData) as DiscordError
         } catch (e) {
-          console.error(stringData)
           throw new Error(`Discord not responding snallabot. This is a fatal error. Please wait patiently`)
         }
         if (data.retry_after) {
@@ -162,7 +163,6 @@ export function createClient(settings: DiscordSettings): DiscordClient {
         try {
           data = JSON.parse(stringData) as DiscordError
         } catch (e) {
-          console.error(stringData)
           throw new Error(`Discord not responding snallabot. This is a fatal error. Please wait patiently`)
         }
         if (data.retry_after) {
@@ -544,6 +544,12 @@ export function createClient(settings: DiscordSettings): DiscordClient {
       })
       const guildInfo = (await guildInfoRes.json()) as APIGuild
       return guildInfo
+    },
+    getGuildEmojis: async function(guildId: string) {
+      const emojisRes = await sendDiscordRequest(`guilds/${guildId}/emojis`, {
+        method: "GET"
+      })
+      return (await emojisRes.json()) as APIEmoji[]
     },
     uploadEmoji: async function(image: string, name: string, guildId: string) {
       try {
