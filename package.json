@@ -14,7 +14,7 @@
     "ea-refresher": "node dist/dashboard/ea_refresher.js"
   },
   "engines": {
-    "node": "21.x"
+    "node": "24.x"
   },
   "repository": {
     "type": "git",

@@ -11,7 +11,7 @@ Live Deployment: https://snallabot.me
 ### Main Service
 
 Snallabot welcomes contributions! To run a local version of the bot, you need the following:
-- Node 21 (greater should be okay)
+- Node 24 (greater should be okay)
 - Discord Application - free to register on [Discord Developer Portal](https://discord.com/developers/applications)
 
 Setup your env file by copying .base.env in a file called `.dev.env`
