@@ -817,10 +817,9 @@ function formatPlayerCard(player: Player, teams: TeamList, logos: LeagueLogos, c
     `> **Length**: ${player.contractYearsLeft}/${player.contractLength} yrs | **Salary**: $${formatMoney(player.contractSalary)}\n> **Cap Hit**: $${formatMoney(correctedCapValue(player.capHit))} | **Bonus**: $${formatMoney(player.contractBonus)}\n> **Savings**: $${formatMoney(player.capReleaseNetSavings)} | **Penalty**: $${formatMoney(correctedCapValue(player.capReleasePenalty))}`
 
   const topAttributes = getTopAttributesByPosition(player)
-
-  const abilities = player.signatureSlotList && player.signatureSlotList.length > 0
+  const playerAbilities = player.signatureSlotList ? player.signatureSlotList.filter(ability => !ability.isEmpty && ability.signatureAbility && ability.signatureAbility.signatureTitle.trim()) : []
+  const abilities = playerAbilities.length > 0
     ? "\n**Abilities:** " + player.signatureSlotList
-      .filter(ability => !ability.isEmpty && ability.signatureAbility)
       .map(ability => {
         return ability.signatureAbility?.signatureTitle || "Unnamed Ability"
       })
