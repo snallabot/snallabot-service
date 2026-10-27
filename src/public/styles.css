@@ -314,7 +314,7 @@ footer a:hover {
   top: 0;
   right: 0;
   margin: 4px 8px;
-  z-index: 10000;
+  z-index: 1020;
   opacity: 15%;
   min-width: 2.6rem;
   min-height: 3rem;
