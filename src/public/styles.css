@@ -1,6 +1,6 @@
 :root {
   --surface: #ffffffab;
-  --surface-2: #1f1f23;
+  --surface-2: #ffffff;
   --line: #30055b;
   --text: black;
   --bright-amber: #FAC810;
@@ -29,6 +29,10 @@ h3,
   font-family: "Baloo 2", sans-serif;
 }
 
+.menu, .menu:hover {
+  color: var(--pink)
+}
+
 .link {
   color: var(--pink);
   text-decoration: none;
@@ -38,6 +42,7 @@ h3,
 .link:hover {
   text-decoration: solid underline var(--pink) 2px;
 }
+
 code {
   color: var(--dark-amethyst);
   background: var(--surface);
@@ -74,7 +79,6 @@ code {
   color: var(--text);
   background: var(--emerald);
   font-weight: 600;
-  opacity: 
 }
 .sidebar .nav-heading {
   text-transform: none;
@@ -83,6 +87,54 @@ code {
   margin: 1.1rem 0 0.3rem;
   padding: 0 0.5rem;
 }
+
+#mobileNav {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.mobile-nav-toggle {
+  display: none;
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 1030;
+}
+#mobileNav .nav-link {
+  color: var(--text);
+  font-size: 0.96rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.4rem;
+}
+#mobileNav .nav-link:hover {
+  color: var(--text);
+  background: var(--celadon)
+}
+
+#mobileNav .nav-link.active {
+  color: var(--text);
+  background: var(--emerald);
+  font-weight: 600;
+}
+
+#mobileNav .nav-heading {
+  text-transform: none;
+  font-size: 0.9rem;
+  color: var(--nav-headings);
+  margin: 1.1rem 0 0.3rem;
+  padding: 0 0.5rem;
+}
+
+#mobileNav .brand-word {
+  margin-bottom: 0px;
+  font-size: 1.65rem;
+}
+@media (max-width: 991.98px) {
+  .mobile-nav-toggle {
+    display: inline-flex;
+  }
+}
+
 .content {
   flex: 1;
   min-width: 0;
@@ -255,29 +307,6 @@ footer a:hover {
   color: var(--gold);
 }
 
-.mobile-nav-toggle {
-  display: none;
-  position: fixed;
-  top: 1rem;
-  left: 1rem;
-  z-index: 1030;
-}
-#mobileNav .nav-link {
-  color: var(--text);
-  font-size: 1.05rem;
-  padding: 0.6rem 0.25rem;
-}
-#mobileNav .nav-link:hover {
-  color: var(--gold);
-}
-#mobileNav .offcanvas-header {
-  padding-left: 4.5rem;
-}
-@media (max-width: 991.98px) {
-  .mobile-nav-toggle {
-    display: inline-flex;
-  }
-}
 
 .source-icon {
   background: url(github.svg) no-repeat right;
