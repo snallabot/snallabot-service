@@ -1,16 +1,19 @@
 import db from "../db/firebase";
+import { DevTrait } from "../export/madden_league_types";
 import { MessageId } from "./settings_db";
 
 export type TradeAsset =
   | {
-      type: "PLAYER";
-      rosterId: number;
-      name: string;
-      position: string;
-      age: number;
-      overall: number;
-      dev: string;
-    }
+    type: "PLAYER";
+    rosterId: number;
+    name: string;
+    position: string;
+    age: number;
+    overall: number;
+    dev?: string; // deprecated 
+    devTrait: DevTrait;
+    yearsPro: number
+  }
   | { type: "PICK"; label: string };
 
 export enum TradeVote {

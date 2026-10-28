@@ -72,7 +72,7 @@ function stringOption(
   )?.value;
 }
 
-function playerAsset(player: Player, useHiddenDevs: boolean): TradeAsset {
+function playerAsset(player: Player): TradeAsset {
   return {
     type: "PLAYER",
     rosterId: player.rosterId,
@@ -80,13 +80,15 @@ function playerAsset(player: Player, useHiddenDevs: boolean): TradeAsset {
     position: player.position,
     age: player.age,
     overall: player.playerBestOvr,
-    dev: devEmoji(player.devTrait, player.yearsPro, useHiddenDevs),
+    devTrait: player.devTrait,
+    yearsPro: player.yearsPro
   };
 }
 
-function assetLine(asset: TradeAsset) {
+function assetLine(asset: TradeAsset, useHiddenTrait: boolean) {
   if (asset.type === "PICK") return `>  **${asset.label}**`;
-  return `> ${asset.dev} **${asset.position} ${asset.name}** — ${asset.overall} OVR | Age ${asset.age}`;
+  const dev = asset.dev ? asset.dev : devEmoji(asset.devTrait, asset.yearsPro, useHiddenTrait)
+  return `> ${dev} **${asset.position} ${asset.name}** — ${asset.overall} OVR | Age ${asset.age}`;
 }
 
 const statusEmojis: Record<TradeStatus, string> = {
@@ -117,7 +119,7 @@ function formatVotes(votes: Record<string, TradeVote>) {
   ].join("\n");
 }
 
-function tradeMessage(trade: TradeSubmission, tradeCommitteeRole: RoleId) {
+function tradeMessage(trade: TradeSubmission, tradeCommitteeRole: RoleId, useHidden: boolean) {
   const approvals = Object.values(trade.votes).filter(
     (vote) => vote === TradeVote.APPROVE,
   ).length;
@@ -127,9 +129,9 @@ function tradeMessage(trade: TradeSubmission, tradeCommitteeRole: RoleId) {
   return [
     `# ${headerMessage[trade.status]}`,
     `## ${trade.teamA.name} Receives`,
-    trade.teamA.assets.map(assetLine).join("\n"),
+    trade.teamA.assets.map(a => assetLine(a, useHidden)).join("\n"),
     `## ${trade.teamB.name} Receives`,
-    trade.teamB.assets.map(assetLine).join("\n"),
+    trade.teamB.assets.map(a => assetLine(a, useHidden)).join("\n"),
     `**Submitted by:** <@${trade.submittedBy}>`,
     `**<@&${tradeCommitteeRole.id}> votes:** ✅ ${approvals} Approve | ❌ ${rejections} Reject`,
     `**Required approvals:** ${trade.requiredApprovals}`,
@@ -363,8 +365,7 @@ export default {
         return [
           ...players.map((player) =>
             playerAsset(
-              player,
-              settings.commands.player?.useHiddenDevs ?? true,
+              player
             ),
           ),
           ...picks,
@@ -408,10 +409,13 @@ export default {
         createdAt: Date.now(),
       });
       try {
+        const playerConfiguration = settings?.commands?.player ?? {
+          useHiddenDevs: true,
+        };
         const messageId = await client.createComponentMessage(
           tradeConfig.channel,
           {
-            content: tradeMessage(trade, tradeConfig.tradeCommitteeRole),
+            content: tradeMessage(trade, tradeConfig.tradeCommitteeRole, playerConfiguration.useHiddenDevs),
             components: tradeComponents(trade),
             allowed_mentions: { parse: ["roles"] },
           },
@@ -589,6 +593,12 @@ export default {
     interaction: MessageComponentInteraction,
     client: DiscordClient,
   ) {
+    const settings = await LeagueSettingsDB.getLeagueSettings(
+      interaction.guild_id,
+    )
+    const playerConfiguration = settings?.commands?.player ?? {
+      useHiddenDevs: true,
+    }
     const [action, tradeId, value] = interaction.custom_id.split(":");
     if (action === "trade_player") {
       const data = interaction.data as APIMessageStringSelectInteractionData;
@@ -622,12 +632,13 @@ export default {
         : value === TradeVote.REJECT
           ? TradeVote.REJECT
           : undefined;
-    if (!tradeId || !vote) throw new Error("Invalid trade vote");
-    const settings = await LeagueSettingsDB.getLeagueSettings(
-      interaction.guild_id,
-    );
+    if (!tradeId || !vote) {
+      throw new Error("Invalid trade vote")
+    }
     const config = settings.commands.trade;
-    if (!config) throw new Error("Trade approvals are not configured");
+    if (!config) {
+      throw new Error("Trade approvals are not configured")
+    }
     if (!interaction.member.roles.includes(config.tradeCommitteeRole.id)) {
       return {
         type: InteractionResponseType.ChannelMessageWithSource,
@@ -660,7 +671,7 @@ export default {
         }
         await client.createMessage(
           config.acceptedChannel,
-          tradeMessage(trade, config.tradeCommitteeRole),
+          tradeMessage(trade, config.tradeCommitteeRole, playerConfiguration.useHiddenDevs),
           ["users"],
         );
       }
@@ -674,12 +685,11 @@ export default {
         }
         await client.createMessage(
           config.declinedChannel,
-          tradeMessage(trade, config.tradeCommitteeRole),
+          tradeMessage(trade, config.tradeCommitteeRole, playerConfiguration.useHiddenDevs),
           ["users"],
         );
       }
     } catch (e) {
-      console.error(e);
       return {
         type: InteractionResponseType.UpdateMessage,
         data: {
@@ -690,7 +700,7 @@ export default {
     return {
       type: InteractionResponseType.UpdateMessage,
       data: {
-        content: tradeMessage(trade, config.tradeCommitteeRole),
+        content: tradeMessage(trade, config.tradeCommitteeRole, playerConfiguration.useHiddenDevs),
         components: tradeComponents(trade),
         allowed_mentions: { parse: ["users"] },
       },
