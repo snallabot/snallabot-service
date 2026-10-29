@@ -1,5 +1,5 @@
 import { Command, Autocomplete, MessageComponentInteraction } from "../commands_handler"
-import { DiscordClient, deferMessage, getTeamEmoji, SnallabotTeamEmojis, NoConnectedLeagueError, SnallabotCommandReactions, createMessageResponse, SnallabotDevEmojis } from "../discord_utils"
+import { DiscordClient, deferMessage, getTeamEmoji, SnallabotTeamEmojis, NoConnectedLeagueError, SnallabotCommandReactions, createMessageResponse, SnallabotDevEmojis, devEmoji } from "../discord_utils"
 import { APIApplicationCommandInteractionDataBooleanOption, APIApplicationCommandInteractionDataStringOption, APIApplicationCommandInteractionDataSubcommandOption, APIMessageStringSelectInteractionData, ApplicationCommandOptionType, ButtonStyle, ComponentType, InteractionResponseType, RESTPostAPIApplicationCommandsJSONBody, SeparatorSpacingSize } from "discord-api-types/v10"
 import { discordLeagueView, LeagueLogos, leagueLogosView } from "../../db/view"
 import fuzzysort from "fuzzysort"
@@ -651,103 +651,6 @@ function getTopAttributesByPosition(player: Player): Array<{ name: string, value
   return attributes
 }
 
-function getPositionalTraits(player: Player) {
-  const attributes: Array<{ name: string, value: string }> = []
-  const yesNoAttributes: { name: string, value: YesNoTrait }[] = []
-
-  switch (player.position) {
-    case "QB":
-      attributes.push(
-        { name: "QB Style", value: formatQbStyle(player.qBStyleTrait) },
-        { name: "Sense Pressure", value: formatSensePressure(player.sensePressureTrait) },
-      )
-      yesNoAttributes.push({ name: "Throw Away", value: player.throwAwayTrait },
-        { name: "Tight Spiral", value: player.tightSpiralTrait })
-      break
-    case "FB":
-    case "HB":
-    case "WR":
-    case "TE":
-      yesNoAttributes.push(
-        { name: "YAC Catch", value: player.yACCatchTrait },
-        { name: "Possesion Catch", value: player.posCatchTrait },
-        { name: "Aggressive Catch", value: player.hPCatchTrait },
-        { name: "Fight for Yards", value: player.fightForYardsTrait },
-        { name: "Feet in Bounds", value: player.feetInBoundsTrait },
-        { name: "Drop Open Passes", value: player.dropOpenPassTrait }
-      )
-      break
-    case "LT":
-    case "LG":
-    case "C":
-    case "RG":
-    case "RT":
-      break
-    case "LE":
-    case "RE":
-    case "DT":
-      yesNoAttributes.push(
-        { name: "DL Swim Move", value: player.dLSwimTrait },
-        { name: "DL Spin Move", value: player.dLSpinTrait },
-        { name: "DL Bull Rush", value: player.dLBullRushTrait },
-        { name: "Strip Ball", value: player.stripBallTrait },
-        { name: "High Motor", value: player.highMotorTrait },
-      )
-      break
-    case "LOLB":
-    case "ROLB":
-    case "MLB":
-      attributes.push(
-        { name: "LB Style", value: formatLbStyle(player.lBStyleTrait) },
-        { name: "Play Ball", value: formatPlayBallTrait(player.playBallTrait) }
-      )
-      yesNoAttributes.push(
-        { name: "DL Swim Move", value: player.dLSwimTrait },
-        { name: "DL Spin Move", value: player.dLSpinTrait },
-        { name: "DL Bull Rush", value: player.dLBullRushTrait },
-        { name: "Strip Ball", value: player.stripBallTrait },
-        { name: "High Motor", value: player.highMotorTrait },
-        { name: "Big Hitter", value: player.bigHitTrait },
-      )
-      break
-    case "CB":
-    case "FS":
-    case "SS":
-      attributes.push(
-        { name: "Play Ball", value: formatPlayBallTrait(player.playBallTrait) }
-      )
-      yesNoAttributes.push(
-        { name: "Strip Ball", value: player.stripBallTrait },
-        { name: "High Motor", value: player.highMotorTrait },
-        { name: "Big Hitter", value: player.bigHitTrait },
-      )
-      break
-    case "K":
-    case "P":
-      break
-  }
-
-  const yesNoTraits = yesNoAttributes.filter(trait => trait.value === YesNoTrait.YES)
-    .map(attr => `> **${attr.name}:** ${formatYesNoTrait(attr.value)}`).join('\n')
-  const customAttributes = attributes.map(attr => `> **${attr.name}:** ${attr.value}`).join('\n')
-  return `${yesNoTraits} \n${customAttributes}`
-
-}
-
-
-function getDevTraitName(devTrait: DevTrait, yearsPro: number, useHiddenDevs: boolean): string {
-  // non normal dev rookies get hidden dev
-  if (yearsPro === 0 && devTrait !== DevTrait.NORMAL && useHiddenDevs) {
-    return SnallabotDevEmojis.HIDDEN
-  }
-  switch (devTrait) {
-    case DevTrait.NORMAL: return SnallabotDevEmojis.NORMAL
-    case DevTrait.STAR: return SnallabotDevEmojis.STAR
-    case DevTrait.SUPERSTAR: return SnallabotDevEmojis.SUPERSTAR
-    case DevTrait.XFACTOR: return SnallabotDevEmojis.XFACTOR
-    default: return "Unknown"
-  }
-}
 
 const rules = new Intl.PluralRules("en-US", { type: "ordinal" })
 const suffixes = new Map([
@@ -817,74 +720,27 @@ function formatPlayerCard(player: Player, teams: TeamList, logos: LeagueLogos, c
     `> **Length**: ${player.contractYearsLeft}/${player.contractLength} yrs | **Salary**: $${formatMoney(player.contractSalary)}\n> **Cap Hit**: $${formatMoney(correctedCapValue(player.capHit))} | **Bonus**: $${formatMoney(player.contractBonus)}\n> **Savings**: $${formatMoney(player.capReleaseNetSavings)} | **Penalty**: $${formatMoney(correctedCapValue(player.capReleasePenalty))}`
 
   const topAttributes = getTopAttributesByPosition(player)
-  const playerAbilities = player.signatureSlotList ? player.signatureSlotList.filter(ability => !ability.isEmpty && ability.signatureAbility && ability.signatureAbility.signatureTitle.trim()) : []
-  const abilities = playerAbilities.length > 0
-    ? "\n**Abilities:** " + player.signatureSlotList
-      .map(ability => {
-        return ability.signatureAbility?.signatureTitle || "Unnamed Ability"
-      })
-      .join(", ")
-    : ""
+  const titles = player.signatureSlotList
+    .map(slot => slot.signatureAbility?.signatureTitle)
+    .filter(Boolean);
+
+  const abilities = titles.length ? `\n**Abilities:** ${titles.join(", ")}` : "";
   return `
   # ${getTeamEmoji(teamAbbr, logos)} ${player.position} ${player.firstName} ${player.lastName}
-  ## ${getDevTraitName(player.devTrait, player.yearsPro, configuration.useHiddenDevs)} **${player.playerBestOvr} OVR**
+  ## ${devEmoji(player.devTrait, player.yearsPro, configuration.useHiddenDevs)} **${player.playerBestOvr} OVR**
 **${age} yrs** | **${getSeasonFormatting(player.yearsPro)}** | **${formattedHeight}, ${player.weight} lbs**
 ### Contract
 ${contractStatus}
 ### Ratings
-${formatAttributes(topAttributes)}${getPositionalTraits(player)}${abilities}`
+${formatAttributes(topAttributes)}${abilities}`
 }
-
-function formatYesNoTrait(trait: YesNoTrait) {
-  switch (trait) {
-    case YesNoTrait.YES: return "<:snallabot_yes:1368090206867030056>"
-    case YesNoTrait.NO: return "<:snallabot_nope:1368090205525115030>"
-    default: return "Unknown"
-  }
-}
-
-function formatSensePressure(sensePressureTrait: SensePressureTrait) {
-  switch (sensePressureTrait) {
-    case SensePressureTrait.AVERAGE: return "Average"
-    case SensePressureTrait.IDEAL: return "Ideal"
-    case SensePressureTrait.OBLIVIOUS: return "Oblivious"
-    case SensePressureTrait.PARANOID: return "Paranoid"
-    case SensePressureTrait.TRIGGER_HAPPY: return "Trigger Happy"
-    default: return "Unknown"
-  }
-}
-
-function formatPlayBallTrait(playBallTrait: PlayBallTrait) {
-  switch (playBallTrait) {
-    case PlayBallTrait.AGGRESSIVE: return "Aggressive"
-    case PlayBallTrait.BALANCED: return "Balanced"
-    case PlayBallTrait.CONSERVATIVE: return "Conservative"
-  }
-}
-
-function formatQbStyle(qbStyle: QBStyleTrait) {
-  switch (qbStyle) {
-    case QBStyleTrait.BALANCED: return "Balanced"
-    case QBStyleTrait.POCKET: return "Pocket"
-    case QBStyleTrait.SCRAMBLING: return "Scrambling"
-  }
-}
-
-function formatLbStyle(lbStyle: LBStyleTrait) {
-  switch (lbStyle) {
-    case LBStyleTrait.BALANCED: return "Balanced"
-    case LBStyleTrait.COVER_LB: return "Cover LB"
-    case LBStyleTrait.PASS_RUSH: return "Pass Rush"
-  }
-}
-
 
 function formatFullRatings(player: Player, teams: TeamList, logos: LeagueLogos, configuration: PlayerConfiguration) {
   const teamAbbr = getTeamAbbr(player.teamId, teams)
 
   return `
   # ${getTeamEmoji(teamAbbr, logos)} ${player.position} ${player.firstName} ${player.lastName}
-  ## ${getDevTraitName(player.devTrait, player.yearsPro, configuration.useHiddenDevs)} **${player.playerBestOvr} OVR**
+  ## ${devEmoji(player.devTrait, player.yearsPro, configuration.useHiddenDevs)} **${player.playerBestOvr} OVR**
 ## Ratings
 __**Physical Attributes:**__
 **Speed:** ${player.speedRating}
@@ -909,7 +765,6 @@ __**Offensive Skills:**__
 
 __**Passing Skills:**__
 **Throw Power:** ${player.throwPowerRating}
-**Throw Accuracy:** ${player.throwAccRating}
 **Throw Accuracy Short:** ${player.throwAccShortRating}
 **Throw Accuracy Mid:** ${player.throwAccMidRating}
 **Throw Accuracy Deep:** ${player.throwAccDeepRating}
@@ -954,30 +809,6 @@ __**Special Teams:**__
 **Kick Power:** ${player.kickPowerRating}
 **Kick Accuracy:** ${player.kickAccRating}
 **Kick Return:** ${player.kickRetRating}
-
-__**Styles:**__
-**QB Style:** ${formatQbStyle(player.qBStyleTrait)}
-**LB Style:** ${formatLbStyle(player.lBStyleTrait)}
-
-__**Traits:**__
-**Predictable:** ${formatYesNoTrait(player.predictTrait)}
-**Clutch:** ${formatYesNoTrait(player.clutchTrait)}
-**Tight Spiral:** ${formatYesNoTrait(player.tightSpiralTrait)}
-**Sense Pressure:** ${formatSensePressure(player.sensePressureTrait)}
-**Throw Away:** ${formatYesNoTrait(player.throwAwayTrait)}
-**DL Swim:** ${formatYesNoTrait(player.dLSwimTrait)}
-**DL Spin:** ${formatYesNoTrait(player.dLSpinTrait)}
-**DL Bull Rush:** ${formatYesNoTrait(player.dLBullRushTrait)}
-**High Motor:** ${formatYesNoTrait(player.highMotorTrait)}
-**Big Hitter:** ${formatYesNoTrait(player.bigHitTrait)}
-**Strip Ball:** ${formatYesNoTrait(player.stripBallTrait)}
-**Play Ball:** ${formatPlayBallTrait(player.playBallTrait)}
-**Fight for Yards:** ${formatYesNoTrait(player.fightForYardsTrait)}
-**YAC Catch:** ${formatYesNoTrait(player.yACCatchTrait)}
-**Possession Catch:** ${formatYesNoTrait(player.posCatchTrait)}
-**Aggressive Catch:** ${formatYesNoTrait(player.hPCatchTrait)}
-**Drop Open Passes:** ${formatYesNoTrait(player.dropOpenPassTrait)}
-**Feet In Bounds:** ${formatYesNoTrait(player.feetInBoundsTrait)}
 `
 }
 
@@ -1173,7 +1004,7 @@ function formatWeeklyStats(player: Player, teams: TeamList, stats: PlayerStats, 
   const joinedWeekStats = weekStats.join("\n")
   return `
   # ${getTeamEmoji(teamAbbr, logos)} ${player.position} ${player.firstName} ${player.lastName}
-  ## ${getDevTraitName(player.devTrait, player.yearsPro, configuration.useHiddenDevs)} **${player.playerBestOvr} OVR**
+  ## ${devEmoji(player.devTrait, player.yearsPro, configuration.useHiddenDevs)} **${player.playerBestOvr} OVR**
 ## Stats
 ${joinedWeekStats}
 `
@@ -1554,7 +1385,7 @@ function formatSeasonStats(player: Player, stats: PlayerStats, teams: TeamList, 
 
   return `
   # ${getTeamEmoji(teamAbbr, logos)} ${player.position} ${player.firstName} ${player.lastName}
-  ## ${getDevTraitName(player.devTrait, player.yearsPro, configuration.useHiddenDevs)} **${player.playerBestOvr} OVR**
+  ## ${devEmoji(player.devTrait, player.yearsPro, configuration.useHiddenDevs)} **${player.playerBestOvr} OVR**
 ## Stats
 ${formattedAgg}
 `
@@ -1571,7 +1402,7 @@ function formatPlayerList(players: Player[], teams: TeamList, logos: LeagueLogos
     const heightFormatted = `${heightFeet}'${heightInches}"`;
     const teamEmoji = getTeamEmoji(teamName, logos) === SnallabotTeamEmojis.NFL ? `**${teamName.toUpperCase()}**` : getTeamEmoji(teamName, logos)
     const experience = getSeasonFormatting(player.yearsPro)
-    const devTraitEmoji = getDevTraitName(player.devTrait, player.yearsPro, configuration.useHiddenDevs)
+    const devTraitEmoji = devEmoji(player.devTrait, player.yearsPro, configuration.useHiddenDevs)
     message += `## ${teamEmoji} ${player.position} ${fullName} - ${player.playerBestOvr} OVR\n`;
     message += `${devTraitEmoji} | ${player.age} yrs | ${experience} | ${heightFormatted} | ${player.weight} lbs\n\n`;
   }
