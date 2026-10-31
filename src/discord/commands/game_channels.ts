@@ -484,7 +484,7 @@ export default {
               name: "scoreboard_channel",
               description: "channel to post scoreboard",
               required: true,
-              channel_types: [0],
+              channel_types: [ChannelType.GuildText],
             },
             {
               type: ApplicationCommandOptionType.Integer,
