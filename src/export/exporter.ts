@@ -214,13 +214,25 @@ export const SnallabotExportDestination: MaddenExportDestination = {
   }
 }
 
+function normalizeHost(url: string): string | null {
+  try {
+    const { host } = new URL(url.trim())
+    return host.toLowerCase().replace(/^www\./, "")
+  } catch {
+    return null
+  }
+}
+
+const DEPLOYMENT_HOST = normalizeHost(DEPLOYMENT_URL)
+
 export function createDestination(url: string) {
-  if (url.includes(DEPLOYMENT_URL)) {
+  if (DEPLOYMENT_HOST !== null && normalizeHost(url) === DEPLOYMENT_HOST) {
     return SnallabotExportDestination
   } else {
     return MaddenUrlDestination(url)
   }
 }
+
 const OPTIMIZE_WRITES = process.env.USE_WRITE_HASHES === "true"
 export async function sendEvents<T>(league: string, request_type: string, events: Array<SnallabotEvent<T>>, identifier: (e: T) => number | string, hasher: (a: T) => Promise<string> = hash): Promise<void> {
   if (events.length == 0) {
