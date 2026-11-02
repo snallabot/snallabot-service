@@ -214,7 +214,7 @@ export const SnallabotExportDestination: MaddenExportDestination = {
   }
 }
 
-function normalizeHost(url: string): string | null {
+export function normalizeHost(url: string): string | null {
   try {
     const { host } = new URL(url.trim())
     return host.toLowerCase().replace(/^www\./, "")

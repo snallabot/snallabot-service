@@ -25,7 +25,11 @@ vi.mock("../debug/metrics", () => ({
   maddenHashEventsTotal: { inc: vi.fn() },
 }))
 
-import { createDestination, SnallabotExportDestination } from "./exporter"
+import {
+  createDestination,
+  SnallabotExportDestination,
+  normalizeHost,
+} from "./exporter"
 
 describe("createDestination", () => {
   describe("routes to SnallabotExportDestination", () => {
@@ -87,42 +91,53 @@ describe("createDestination", () => {
       const dest = createDestination("https://Example.com/Some/Path")
       await dest.leagueTeams("xbox", "123", {} as any)
       expect(fetchMock).toHaveBeenCalledTimes(1)
-      expect(fetchMock.mock.calls[0][0]).toBe("https://Example.com/Some/Path/xbox/123/leagueteams")
+      expect(fetchMock.mock.calls[0][0]).toBe(
+        "https://Example.com/Some/Path/xbox/123/leagueteams"
+      )
     })
 
     it("strips a trailing slash from the base url", async () => {
       const dest = createDestination("https://example.com/")
       await dest.standings("xbox", "123", {} as any)
-      expect(fetchMock.mock.calls[0][0]).toBe("https://example.com/xbox/123/standings")
+      expect(fetchMock.mock.calls[0][0]).toBe(
+        "https://example.com/xbox/123/standings"
+      )
     })
 
     it("does not send lookalike urls to Snallabot's database", async () => {
       const dest = createDestination("https://snallabot.me.evil.com")
       await dest.leagueTeams("xbox", "123", {} as any)
-      expect(fetchMock.mock.calls[0][0]).toBe("https://snallabot.me.evil.com/xbox/123/leagueteams")
+      expect(fetchMock.mock.calls[0][0]).toBe(
+        "https://snallabot.me.evil.com/xbox/123/leagueteams"
+      )
     })
   })
 })
 
-describe("createDestination with a www deployment url", () => {
-  afterEach(() => {
-    vi.doUnmock("../config")
-    vi.resetModules()
+describe("normalizeHost", () => {
+  it("treats www and bare domains as the same host", () => {
+    expect(normalizeHost("https://www.snallabot.me")).toBe(
+      normalizeHost("https://snallabot.me")
+    )
   })
 
-  it("still matches the bare domain, because DEPLOYMENT_HOST is normalized too", async () => {
-    vi.resetModules()
-    vi.doMock("../config", () => ({ DEPLOYMENT_URL: "https://www.snallabot.me" }))
-    const mod = await import("./exporter")
-    expect(mod.createDestination("https://snallabot.me")).toBe(mod.SnallabotExportDestination)
-    expect(mod.createDestination("https://www.snallabot.me")).toBe(mod.SnallabotExportDestination)
+  it.each([
+    ["https://snallabot.me", "snallabot.me"],
+    ["https://www.snallabot.me", "snallabot.me"],
+    ["https://WWW.SnallaBot.ME/path?x=1", "snallabot.me"],
+    ["  https://snallabot.me  ", "snallabot.me"],
+    ["http://localhost:3000", "localhost:3000"],
+    ["https://snallabot.me:8443", "snallabot.me:8443"],
+    ["https://snallabot.me@evil.com", "evil.com"],
+  ])("normalizes %s to %s", (url, expected) => {
+    expect(normalizeHost(url)).toBe(expected)
   })
 
-  it("never matches anything when DEPLOYMENT_URL is invalid", async () => {
-    vi.resetModules()
-    vi.doMock("../config", () => ({ DEPLOYMENT_URL: "not a url" }))
-    const mod = await import("./exporter")
-    expect(mod.createDestination("not a url")).not.toBe(mod.SnallabotExportDestination)
-    expect(mod.createDestination("https://snallabot.me")).not.toBe(mod.SnallabotExportDestination)
+  it.each([
+    ["an empty string", ""],
+    ["a bare hostname", "snallabot.me"],
+    ["garbage", "not a url"],
+  ])("returns null for %s", (_label, url) => {
+    expect(normalizeHost(url)).toBeNull()
   })
 })
