@@ -2,15 +2,22 @@ doctype html
 html
   head
     meta(name="viewport" content="width=device-width, initial-scale=1")
+    meta(charset="UTF-8")
+    meta(name="description" content="Snallabot is a free Discord bot to help manage your Madden league.")
+    link(rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous")
+    link(rel="preconnect" href="https://fonts.googleapis.com")
+    link(rel="preconnect" href="https://fonts.gstatic.com" crossorigin)
+    link(href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet")
+    link(rel="icon" href="/snallabot-logo.webp")
+    link(rel="stylesheet" href="/styles.css")
     meta(name="robots" content="noindex, nofollow")
-    title Snallabot Dashboard Error
-    link(rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossOrigin="anonymous")
+    title Snallabot Dashboard
   body
     .container.py-4
       .row
         .col-md-8.mx-auto
-          .card.shadow-sm
-            .card-header.bg-white
+          .card.connect-dashboard.shadow
+            .card-header
               h4.mb-0 Error!
             .card-body
               if canUnlink
@@ -20,7 +27,7 @@ html
                 br
                 | !{error}
               .d-flex.justify-content-between.mt-4
-                a.btn.btn-outline-secondary(href="/dashboard") Back to login
+                a.btn.btn-outline-light-custom(href="/dashboard") Back to login
     script.
       document.getElementById('unlinkBtn')?.addEventListener('click', async function () {
         try {

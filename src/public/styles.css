@@ -1,16 +1,16 @@
 :root {
-  --surface: #ffffffab;
-  --surface-2: #ffffff;
-  --line: #30055b;
+  --card-bg: #ffffffab;
+  --nav-bg: #ffffff;
+  --dividers: #30055b;
   --text: black;
-  --bright-amber: #FAC810;
-  --pink: #e8447a;
+  --step-bg: #FAC810;
+  --links: #e8447a;
   --button: #92D8F3;
   --button-hover: #63C4FD;
-  --emerald: #34C97A;
-  --celadon: #5DD59380;
+  --selector: #34C97A;
+  --selector-bg: #5DD59380;
   --bg: #EEECB8;
-  --dark-amethyst: #442660;
+  --code-text: #442660;
   --headings: #442660;
   --nav-headings: #DA4D40;
   --discord: #5865F2;
@@ -21,6 +21,7 @@ body {
   color: var(--text);
   font-family: "Inter", sans-serif;
 }
+
 h1,
 h2,
 h3,
@@ -30,22 +31,22 @@ h3,
 }
 
 .menu, .menu:hover {
-  color: var(--pink)
+  color: var(--links)
 }
 
 .link {
-  color: var(--pink);
+  color: var(--links);
   text-decoration: none;
   transition: text-decoration 1s;
 }
 
 .link:hover {
-  text-decoration: solid underline var(--pink) 2px;
+  text-decoration: solid underline var(--links) 2px;
 }
 
 code {
-  color: var(--dark-amethyst);
-  background: var(--surface);
+  color: var(--code-text);
+  background: var(--card-bg);
   padding: 0.1rem 0.4rem;
   border-radius: 0.3rem;
 }
@@ -63,7 +64,7 @@ code {
   height: 100vh;
   overflow-y: auto;
   padding: 1.75rem 1rem;
-  border-right: 1px solid var(--line);
+  border-right: 1px solid var(--dividers);
 }
 .sidebar .nav-link {
   color: var(--text);
@@ -73,11 +74,11 @@ code {
 }
 .sidebar .nav-link:hover {
   color: var(--text);
-  background: var(--celadon)
+  background: var(--selector-bg)
 }
 .sidebar .nav-link.active {
   color: var(--text);
-  background: var(--emerald);
+  background: var(--selector);
   font-weight: 600;
 }
 .sidebar .nav-heading {
@@ -89,7 +90,7 @@ code {
 }
 
 #mobileNav {
-  background: var(--surface-2);
+  background: var(--nav-bg);
   color: var(--text);
 }
 
@@ -108,12 +109,12 @@ code {
 }
 #mobileNav .nav-link:hover {
   color: var(--text);
-  background: var(--celadon)
+  background: var(--selector-bg)
 }
 
 #mobileNav .nav-link.active {
   color: var(--text);
-  background: var(--emerald);
+  background: var(--selector);
   font-weight: 600;
 }
 
@@ -141,7 +142,7 @@ code {
 }
 section {
   padding: 2.5rem 1.8rem;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--dividers);
 }
 section:last-of-type {
   border-bottom: none;
@@ -172,7 +173,7 @@ section:last-of-type {
   object-fit: cover;
   border-radius: 1.25rem;
   margin-bottom: 1.75rem;
-  box-shadow: 0 0 0 1px var(--line);
+  box-shadow: 0 0 0 1px var(--dividers);
 }
 .hero h1 {
   font-size: 2.75rem;
@@ -211,8 +212,8 @@ section:last-of-type {
 
 /* feature grid */
 .feature {
-  background: var(--surface);
-  border: 1px solid var(--line);
+  background: var(--card-bg);
+  border: 1px solid var(--dividers);
   border-radius: 0.6rem;
   padding: 1.5rem;
   height: 100%;
@@ -247,7 +248,7 @@ section:last-of-type {
   width: 2rem;
   height: 2rem;
   border-radius: 50%;
-  background: var(--bright-amber);
+  background: var(--step-bg);
   border: 1px solid black;
   color: black;
   font-family: "Baloo 2", sans-serif;
@@ -264,10 +265,10 @@ table.commands {
 table.commands th {
   color: var(--text);
   font-weight: 600;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--dividers);
 }
 table.commands td {
-  border-color: var(--line);
+  border-color: var(--dividers);
   vertical-align: top;
 }
 table.commands td:first-child {
@@ -286,8 +287,8 @@ table.commands td:first-child {
 }
 
 .support-card {
-  background: var(--surface);
-  border: 1px solid var(--line);
+  background: var(--card-bg);
+  border: 1px solid var(--dividers);
   border-radius: 0.6rem;
   padding: 2rem;
   text-align: center;
@@ -327,7 +328,62 @@ footer a:hover {
 }
 
 .reminder {
-  background: var(--surface);
-  border: 1px solid var(--line);
+  background: var(--card-bg);
+  border: 1px solid var(--dividers);
   color: var(--text-muted);
 }
+
+.connect-dashboard {
+  background: var(--card-bg);
+  border: 1px solid var(--dividers);
+  border-radius: 0.6rem;
+  padding: 1.5rem;
+  height: 100%;
+}
+
+.connect-dashboard .card-header {
+  background-color: unset;
+}
+
+.dashboard-status {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+.league-info {
+  margin: 12px 8px;
+}
+
+.status {
+  display: flex;
+  align-items: center;;
+}
+
+.status p {
+  margin-right: 4px;
+  margin-top: 0px;
+  margin-bottom: 0px;;
+}
+
+.status img {
+  width: 1rem;
+}
+
+.dashboard-controls {
+  flex: 1;
+  display: flex;
+  justify-content: end;
+}
+
+.dashboard-controls button {
+  margin: 0px 8px;
+}
+
+.dashboard-header {
+  display:flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+

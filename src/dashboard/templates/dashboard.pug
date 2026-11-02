@@ -3,256 +3,174 @@ html
   head
     title Snallabot Dashboard
     meta(name="robots" content="noindex, nofollow")
+    meta(name="viewport" content="width=device-width, initial-scale=1")
+    meta(charset="UTF-8")
+    meta(name="description" content="Snallabot is a free Discord bot to help manage your Madden league.")
+    link(rel="preconnect" href="https://fonts.googleapis.com")
+    link(rel="preconnect" href="https://fonts.gstatic.com" crossorigin)
+    link(href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet")
     link(rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossOrigin="anonymous")
     link(rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/5.3.3/sandstone/bootstrap.min.css" crossorigin="anonymous" referrerpolicy="no-referrer")
-    script(src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js" integrity="sha384-0pUGZvbkm6XF6gxjEnlmuGrJXVbNuzT9qBBavbLwCsOGabYfZo0T0to5eqruptLy" crossOrigin="anonymous")
-body
-  .div(class="container-fluid" style="margin-top: 8px;")
-    h4 #{leagueName} Snallabot Dashboard
-    .row.align-items-center
-     .col-auto
-       div
-         div #{seasonWeekType}, Year #{seasonInfo.calendarYear}
-         div Current Week: #{seasonInfo.weekTitle} #{seasonInfo.displayWeek > 0 ? seasonInfo.displayWeek : ''}
-         div Last Advance: #{lastAdvance.toDateString()}
-     .col.text-center
-       .input-group
-         select.form-select#exportSelect
-           each key in Object.keys(exportOptions)
-             option(value=key) #{key}
-         button.btn.btn-primary#exportBtn(type="button") Export
-     .col-auto.text-center
-       button.btn.btn-danger#unlinkBtn(type="button") Unlink League
-    div#exportFeedback
-    .table-responsive
-      table.table.table-hover.table-sm.caption-top
-        caption List of Export Url's
-        thead.table-light
-          tr
-            th Url
-            th(style="text-align: center;") League Info
-            th(style="text-align: center;") Weekly Stats
-            th(style="text-align: center;") Roster
-            th(style="text-align: center;") Extra Data
-            th(style="text-align: center;") Auto Update
-            th(style="text-align: center;")
-              button#addExportBtn.btn.btn-success(type="button") Add Export Url
-        tbody#exportTableBody
-          each exportDestination in exports
-              tr
-                td(class="export-url") #{exportDestination.url}
-                td(style="text-align: center;")
-                  input(type="checkbox", disabled=true, checked=exportDestination.leagueInfo )
-                td(style="text-align: center;")
-                  input(type="checkbox", disabled=true, checked=exportDestination.weeklyStats)
-                td(style="text-align: center;")
-                  input(type="checkbox", disabled=true, checked=exportDestination.rosters)
-                td(style="text-align: center;")
-                  input(type="checkbox", disabled=true, checked=exportDestination.extraData)
-                td(style="text-align: center;")
-                  input(type="checkbox", disabled=true, checked=exportDestination.autoUpdate)
-                td(style="text-align: center;")
-                  if exportDestination.editable
-                    button.btn.btn-outline-danger.btn-sm.remove-export-btn(type="button") Remove
-    div(class="accordion" id="export-status-accordion")
-      div(class="accordion-item")
-        h2(class="accordion-header")
-          button(class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne") Export Status
-        div(id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#export-status-accordion")
-          div(class="accordion-body")
-            if !exportStatus
-              h4 No Export Status Availaible. Hit Export All Weeks for the bot to retrieve your current season!
-            else
-              div(class="mb-4")
-                h5 Season-Level Status
-                div(class="row")
-                  if exportStatus["MADDEN_TEAM"]
-                    div(class="col-md-6")
-                      div(class="card mb-2")
-                        div(class="card-body p-2")
-                          h6(class="card-title mb-1") Teams
-                          span(class="badge bg-success") Exported
-                          small(class="text-muted d-block") Last: #{exportStatus["MADDEN_TEAM"].lastExported.toLocaleString()}
+    script(src="https://cdn.jsdelivr.net/npm/htmx.org@4.0.0" integrity="sha384-BvJpBiO8Kh31EqtJe5DRIeWrHWnCGkwytKs9NKFi86Hhw96dEqdEMzZDeK9iEGTc" crossorigin="anonymous")
+    link(rel="icon" href="/snallabot-logo.webp")
+    link(rel="stylesheet" href="/styles.css")
+  body
+    .site
+      nav#sidebar-nav.sidebar.d-none.d-lg-block
+        .brand-word.fs-2.mb-3 #{leagueName}
+        .nav-heading Explore your League
+        a.nav-link.active(href="") League Center
+        a.nav-link(href="") Rosters
+        a.nav-link(href="") Schedule
+        a.nav-link(href="") Stats
+        .nav-heading Controls
+        a.nav-link(href="#setup") Unlink League
+      main
+        h1 League Center
+//-   .div(class="container-fluid")
+//-     h4 #{leagueName} Snallabot Dashboard
+//-     .row.align-items-center
+//-      .col-auto
+//-        div
+//-          div #{seasonWeekType}, Year #{seasonInfo.calendarYear}
+//-          div Current Week: #{seasonInfo.weekTitle} #{seasonInfo.displayWeek > 0 ? seasonInfo.displayWeek : ''}
+//-          div Last Advance: #{lastAdvance.toDateString()}
+//-      .col.text-center
+//-        .input-group
+//-          select.form-select#exportSelect
+//-            each key in Object.keys(exportOptions)
+//-              option(value=key) #{key}
+//-          button.btn.btn-primary#exportBtn(type="button") Export
+//-      .col-auto.text-center
+//-        button.btn.btn-danger#unlinkBtn(type="button") Unlink League
+//-     div#exportFeedback
+//-     .table-responsive
+//-       table.table.table-hover.table-sm.caption-top
+//-         caption List of Export Url's
+//-         thead.table-light
+//-           tr
+//-             th Url
+//-             th(style="text-align: center;") League Info
+//-             th(style="text-align: center;") Weekly Stats
+//-             th(style="text-align: center;") Roster
+//-             th(style="text-align: center;") Extra Data
+//-             th(style="text-align: center;") Auto Update
+//-             th(style="text-align: center;")
+//-               button#addExportBtn.btn.btn-success(type="button") Add Export Url
+//-         tbody#exportTableBody
+//-           each exportDestination in exports
+//-               tr
+//-                 td(class="export-url") #{exportDestination.url}
+//-                 td(style="text-align: center;")
+//-                   input(type="checkbox", disabled=true, checked=exportDestination.leagueInfo )
+//-                 td(style="text-align: center;")
+//-                   input(type="checkbox", disabled=true, checked=exportDestination.weeklyStats)
+//-                 td(style="text-align: center;")
+//-                   input(type="checkbox", disabled=true, checked=exportDestination.rosters)
+//-                 td(style="text-align: center;")
+//-                   input(type="checkbox", disabled=true, checked=exportDestination.extraData)
+//-                 td(style="text-align: center;")
+//-                   input(type="checkbox", disabled=true, checked=exportDestination.autoUpdate)
+//-                 td(style="text-align: center;")
+//-                   if exportDestination.editable
+//-                     button.btn.btn-outline-danger.btn-sm.remove-export-btn(type="button") Remov    div(class="card mb-3 shadow-sm")
+//-       div(class="card-header bg-primary text-white")
+//-         h5(class="mb-0") Connect Discord Server
+//-       div(class="card-body")
+//-         if discordsToConnect && discordsToConnect.length > 0
+//-           form(action="/dashboard/connectDiscord" method="POST")
+//-             div(class="mb-3")
+//-               label(for="discordServerSelect" class="form-label") Select Discord Server
+//-               select(class="form-select" id="discordServerSelect" name="guildId" required)
+//-                 option(value="" selected disabled) Choose a server...
+//-                 each discord in discordsToConnect
+//-                   option(value=discord.guildId) #{discord.name}
+//-             div(class="mb-3")
+//-               input(type="hidden" name="leagueId" value=leagueId)
+//-             button(type="submit" class="btn btn-primary") Connect Discord
+//-         else
+//-           div(class="text-center")
+//-             p(class="mb-3") Authorize Discord to connect your league
+//-             a(href=oauthUrl class="btn btn-primary")
+//-               | Connect to Discord
+//-     div(class="d-flex flex-column mt-3")
+//-       div(class="flex-grow-1")
+//-         each league in discordSettings
+//-           div(class="flex-grow-1 mb-3")
+//-             div(class="card h-100 shadow-sm w-100")
+//-               div(class="card-header d-flex align-items-center bg-primary text-white")
+//-                 if league.icon
+//-                   img(src=`https://cdn.discordapp.com/icons/${league.settings.guildId}/${league.icon}.png?size=64` class="rounded-circle me-3" style="width: 48px; height: 48px;")
+//-                 else
+//-                   div(class="bg-secondary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px;")
+//-                     i(class="fas fa-server text-white")
+//-                 div
+//-                   h5(class="card-title mb-0") #{league.name}
+//-                   small(class="text-white-50") Guild ID: #{league.settings.guildId}
 
-                  if exportStatus["MADDEN_STANDING"]
-                    div(class="col-md-6")
-                      div(class="card mb-2")
-                        div(class="card-body p-2")
-                          h6(class="card-title mb-1") Standings
-                          span(class="badge bg-success") Exported
-                          small(class="text-muted d-block") Last: #{exportStatus["MADDEN_STANDING"].lastExported.toLocaleString()}
+//-               div(class="card-body")
+//-                 h6(class="text-muted mb-3") Command Configurations
+//-                 div(class="row g-2")
+//-                   div(class="col-6")
+//-                     div(class="d-flex justify-content-between align-items-center p-2 border rounded")
+//-                       span Logger
+//-                       if league.settings.commands.logger
+//-                         span(class="badge bg-success") ✓ Set
+//-                       else
+//-                         span(class="badge bg-secondary") Not Set
 
-              if exportStatus.weeklyStatus && Object.keys(exportStatus.weeklyStatus).length > 0
-                div(class="mb-4")
-                  h5 Weekly Status
-                  - var sortedWeeks = Object.keys(exportStatus.weeklyStatus).sort()
-                  each weekKey in sortedWeeks
-                    - var weekData = exportStatus.weeklyStatus[weekKey]
-                    div(class="card mb-3")
-                      div(class="card-header")
-                        h6(class="mb-0") #{weekData.displayName}
-                      div(class="card-body")
-                        div(class="row")
-                          if weekData["MADDEN_SCHEDULE"]
-                            div(class="col-lg-3 col-md-4 col-sm-6 mb-2")
-                              strong Schedule: 
-                              span(class="badge ms-1 bg-success") OK
-                              small(class="text-muted d-block") #{weekData["MADDEN_SCHEDULE"].lastExported.toLocaleString()}
+//-                   div(class="col-6")
+//-                     div(class="d-flex justify-content-between align-items-center p-2 border rounded")
+//-                       span Game Channel
+//-                       if league.settings.commands.game_channel
+//-                         span(class="badge bg-success") ✓ Set
+//-                       else
+//-                         span(class="badge bg-secondary") Not Set
 
-                          if weekData["MADDEN_TEAM_STAT"]
-                            div(class="col-lg-3 col-md-4 col-sm-6 mb-2")
-                              strong Team Stats: 
-                              span(class="badge ms-1 bg-success") OK
-                              small(class="text-muted d-block") #{weekData["MADDEN_TEAM_STAT"].lastExported.toLocaleString()}
+//-                   div(class="col-6")
+//-                     div(class="d-flex justify-content-between align-items-center p-2 border rounded")
+//-                       span Stream Count
+//-                       if league.settings.commands.stream_count
+//-                         span(class="badge bg-success") ✓ Set
+//-                       else
+//-                         span(class="badge bg-secondary") Not Set
 
-                          if weekData["MADDEN_PASSING_STAT"]
-                            div(class="col-lg-3 col-md-4 col-sm-6 mb-2")
-                              strong Passing: 
-                              span(class="badge ms-1 bg-success") OK
-                              small(class="text-muted d-block") #{weekData["MADDEN_PASSING_STAT"].lastExported.toLocaleString()}
+//-                   div(class="col-6")
+//-                     div(class="d-flex justify-content-between align-items-center p-2 border rounded")
+//-                       span Broadcast
+//-                       if league.settings.commands.broadcast
+//-                         span(class="badge bg-success") ✓ Set
+//-                       else
+//-                         span(class="badge bg-secondary") Not Set
 
-                          if weekData["MADDEN_RUSHING_STAT"]
-                            div(class="col-lg-3 col-md-4 col-sm-6 mb-2")
-                              strong Rushing: 
-                              span(class="badge ms-1 bg-success") OK
-                              small(class="text-muted d-block") #{weekData["MADDEN_RUSHING_STAT"].lastExported.toLocaleString()}
+//-                   div(class="col-6")
+//-                     div(class="d-flex justify-content-between align-items-center p-2 border rounded")
+//-                       span Teams
+//-                       if league.settings.commands.teams
+//-                         span(class="badge bg-success") ✓ Set
+//-                       else
+//-                         span(class="badge bg-secondary") Not Set
 
-                          if weekData["MADDEN_RECEIVING_STAT"]
-                            div(class="col-lg-3 col-md-4 col-sm-6 mb-2")
-                              strong Receiving: 
-                              span(class="badge ms-1 bg-success") OK
-                              small(class="text-muted d-block") #{weekData["MADDEN_RECEIVING_STAT"].lastExported.toLocaleString()}
-
-                          if weekData["MADDEN_DEFENSIVE_STAT"]
-                            div(class="col-lg-3 col-md-4 col-sm-6 mb-2")
-                              strong Defense: 
-                              span(class="badge ms-1 bg-success") OK
-                              small(class="text-muted d-block") #{weekData["MADDEN_DEFENSIVE_STAT"].lastExported.toLocaleString()}
-
-                          if weekData["MADDEN_KICKING_STAT"]
-                            div(class="col-lg-3 col-md-4 col-sm-6 mb-2")
-                              strong Kicking: 
-                              span(class="badge ms-1 bg-success") OK
-                              small(class="text-muted d-block") #{weekData["MADDEN_KICKING_STAT"].lastExported.toLocaleString()}
-
-                          if weekData["MADDEN_PUNTING_STAT"]
-                            div(class="col-lg-3 col-md-4 col-sm-6 mb-2")
-                              strong Punting: 
-                              span(class="badge ms-1 bg-success") OK
-                              small(class="text-muted d-block") #{weekData["MADDEN_PUNTING_STAT"].lastExported.toLocaleString()}
-
-              if exportStatus.rosterStatus && Object.keys(exportStatus.rosterStatus).length > 0
-                div(class="mb-4")
-                  h5 Roster Status
-                  - var sortedRosterKeys = Object.keys(exportStatus.rosterStatus).sort((a, b) => { if (a.toLowerCase().includes('free agent')) return 1; if (b.toLowerCase().includes('free agent')) return -1; return a.localeCompare(b); })
-                  each weekKey in sortedRosterKeys
-                    - var rosterData = exportStatus.rosterStatus[weekKey]
-                    div(class="card mb-2")
-                      div(class="card-header")
-                        h6(class="mb-0") #{weekKey.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} - Roster
-                      div(class="card-body p-2")
-                        if rosterData["MADDEN_PLAYER"]
-                          strong Roster: 
-                          span(class="badge ms-1 bg-success") OK
-                          small(class="text-muted d-block") Last: #{rosterData["MADDEN_PLAYER"].lastExported.toLocaleString()}
-    div(class="card mb-3 shadow-sm")
-      div(class="card-header bg-primary text-white")
-        h5(class="mb-0") Connect Discord Server
-      div(class="card-body")
-        if discordsToConnect && discordsToConnect.length > 0
-          form(action="/dashboard/connectDiscord" method="POST")
-            div(class="mb-3")
-              label(for="discordServerSelect" class="form-label") Select Discord Server
-              select(class="form-select" id="discordServerSelect" name="guildId" required)
-                option(value="" selected disabled) Choose a server...
-                each discord in discordsToConnect
-                  option(value=discord.guildId) #{discord.name}
-            div(class="mb-3")
-              input(type="hidden" name="leagueId" value=leagueId)
-            button(type="submit" class="btn btn-primary") Connect Discord
-        else
-          div(class="text-center")
-            p(class="mb-3") Authorize Discord to connect your league
-            a(href=oauthUrl class="btn btn-primary")
-              | Connect to Discord
-    div(class="d-flex flex-column mt-3")
-      div(class="flex-grow-1")
-        each league in discordSettings
-          div(class="flex-grow-1 mb-3")
-            div(class="card h-100 shadow-sm w-100")
-              div(class="card-header d-flex align-items-center bg-primary text-white")
-                if league.icon
-                  img(src=`https://cdn.discordapp.com/icons/${league.settings.guildId}/${league.icon}.png?size=64` class="rounded-circle me-3" style="width: 48px; height: 48px;")
-                else
-                  div(class="bg-secondary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px;")
-                    i(class="fas fa-server text-white")
-                div
-                  h5(class="card-title mb-0") #{league.name}
-                  small(class="text-white-50") Guild ID: #{league.settings.guildId}
-
-              div(class="card-body")
-                h6(class="text-muted mb-3") Command Configurations
-                div(class="row g-2")
-                  div(class="col-6")
-                    div(class="d-flex justify-content-between align-items-center p-2 border rounded")
-                      span Logger
-                      if league.settings.commands.logger
-                        span(class="badge bg-success") ✓ Set
-                      else
-                        span(class="badge bg-secondary") Not Set
-
-                  div(class="col-6")
-                    div(class="d-flex justify-content-between align-items-center p-2 border rounded")
-                      span Game Channel
-                      if league.settings.commands.game_channel
-                        span(class="badge bg-success") ✓ Set
-                      else
-                        span(class="badge bg-secondary") Not Set
-
-                  div(class="col-6")
-                    div(class="d-flex justify-content-between align-items-center p-2 border rounded")
-                      span Stream Count
-                      if league.settings.commands.stream_count
-                        span(class="badge bg-success") ✓ Set
-                      else
-                        span(class="badge bg-secondary") Not Set
-
-                  div(class="col-6")
-                    div(class="d-flex justify-content-between align-items-center p-2 border rounded")
-                      span Broadcast
-                      if league.settings.commands.broadcast
-                        span(class="badge bg-success") ✓ Set
-                      else
-                        span(class="badge bg-secondary") Not Set
-
-                  div(class="col-6")
-                    div(class="d-flex justify-content-between align-items-center p-2 border rounded")
-                      span Teams
-                      if league.settings.commands.teams
-                        span(class="badge bg-success") ✓ Set
-                      else
-                        span(class="badge bg-secondary") Not Set
-
-                  div(class="col-6")
-                    div(class="d-flex justify-content-between align-items-center p-2 border rounded")
-                      span Waitlist
-                      if league.settings.commands.waitlist
-                        span(class="badge bg-success") ✓ Set
-                      else
-                        span(class="badge bg-secondary") Not Set
-    .table-responsive
-      table(class="table table-hover table-condensed caption-top" style="margin-top: 16px; margin-bottom: 16px;")
-        caption Schedule for #{seasonInfo.weekTitle} #{seasonInfo.displayWeek > 0 ? seasonInfo.displayWeek : ''}
-        thead.table-light
-          tr
-            th Game
-            th Result
-            th Number of Times Played
-        tbody
-          each seasonGame in gameScheduleHubInfo.leagueSchedule
-            - const game = seasonGame.seasonGameInfo
-            tr
-              td #{game.isAwayHuman ? game.awayUserName : 'CPU'} #{game.awayCityName} #{game.awayName} (#{game.awayWin} - #{game.awayLoss}#{game.awayTie > 0 ? ' - ' + game.awayTie : ''}) at #{game.isHomeHuman ? game.homeUserName : 'CPU'} #{game.homeCityName} #{game.homeName} (#{game.homeWin} - #{game.homeLoss}#{game.homeTie > 0 ? ' - ' + game.homeTie : ''})
-              td #{game.result || 'Not Played'}
-              td #{game.numberTimesPlayed || 0}
-script(type='text/javascript', src='/dashboard_script.js')
+//-                   div(class="col-6")
+//-                     div(class="d-flex justify-content-between align-items-center p-2 border rounded")
+//-                       span Waitlist
+//-                       if league.settings.commands.waitlist
+//-                         span(class="badge bg-success") ✓ Set
+//-                       else
+//-                         span(class="badge bg-secondary") Not Set
+//-     .table-responsive
+//-       table(class="table table-hover table-condensed caption-top" style="margin-top: 16px; margin-bottom: 16px;")
+//-         caption Schedule for #{seasonInfo.weekTitle} #{seasonInfo.displayWeek > 0 ? seasonInfo.displayWeek : ''}
+//-         thead.table-light
+//-           tr
+//-             th Game
+//-             th Result
+//-             th Number of Times Played
+//-         tbody
+//-           each seasonGame in gameScheduleHubInfo.leagueSchedule
+//-             - const game = seasonGame.seasonGameInfo
+//-             tr
+//-               td #{game.isAwayHuman ? game.awayUserName : 'CPU'} #{game.awayCityName} #{game.awayName} (#{game.awayWin} - #{game.awayLoss}#{game.awayTie > 0 ? ' - ' + game.awayTie : ''}) at #{game.isHomeHuman ? game.homeUserName : 'CPU'} #{game.homeCityName} #{game.homeName} (#{game.homeWin} - #{game.homeLoss}#{game.homeTie > 0 ? ' - ' + game.homeTie : ''})
+//-               td #{game.result || 'Not Played'}
+//-               td #{game.numberTimesPlayed || 0}
+//- script(type='text/javascript', src='/dashboard_script.js')
