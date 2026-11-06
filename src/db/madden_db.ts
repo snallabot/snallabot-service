@@ -1036,7 +1036,7 @@ const MaddenDB: MaddenDB = {
       .where("stageIndex", "==", 1)
       .get()
     const stats = statDocs.docs.map(d => convertDate(d.data()) as StoredEvent<T>)
-    const finalStats = await deduplicatePlayerStats(leagueId, stats, this.getPlayer, playerListIndex.createView)
+    const finalStats = await deduplicatePlayerStats(leagueId, stats, this.getPlayer, (id) => playerListIndex.createView(id))
     return { seasonIndex: seasonToQuery, weekIndex: weekToQuery, stats: finalStats }
   },
   getStatsForSeason: async function <T extends PlayerStatTypes>(leagueId: string, statType: PlayerStatEvents, season?: number): Promise<T[]> {
@@ -1047,7 +1047,7 @@ const MaddenDB: MaddenDB = {
       .where("stageIndex", "==", 1)
       .get()
     const stats = statDocs.docs.map(d => convertDate(d.data()) as StoredEvent<T>)
-    return await deduplicatePlayerStats(leagueId, stats, this.getPlayer, playerListIndex.createView)
+    return await deduplicatePlayerStats(leagueId, stats, this.getPlayer, (id) => playerListIndex.createView(id))
   }
 }
 
