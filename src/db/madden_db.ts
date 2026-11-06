@@ -284,8 +284,8 @@ export function deduplicatePlayers(players: StoredEvent<Player>[]): StoredEvent<
   return Array.from(playerMap.values());
 }
 
-export async function deduplicatePlayerStats<T extends PlayerStatTypes>(leagueId: string, stats: StoredEvent<T>[], getPlayer: (leagueId: string, rosterId: string) => Promise<Player>) {
-  const playerIndex = await playerListIndex.createView(leagueId)
+export async function deduplicatePlayerStats<T extends PlayerStatTypes>(leagueId: string, stats: StoredEvent<T>[], getPlayer: (leagueId: string, rosterId: string) => Promise<Player>, getPlayerIndex: (leagueId: string) => Promise<PlayerListIndex | undefined>) {
+  const playerIndex = await getPlayerIndex(leagueId)
   const currentPlayers = Object.values(playerIndex || {})
   const statsGrouped: [string, StoredEvent<T>][] = await Promise.all(stats.map(async s => {
     const foundPlayer = currentPlayers.find(p => Number(p.rosterId) === s.rosterId)
@@ -1036,7 +1036,7 @@ const MaddenDB: MaddenDB = {
       .where("stageIndex", "==", 1)
       .get()
     const stats = statDocs.docs.map(d => convertDate(d.data()) as StoredEvent<T>)
-    const finalStats = await deduplicatePlayerStats(leagueId, stats, this.getPlayer)
+    const finalStats = await deduplicatePlayerStats(leagueId, stats, this.getPlayer, playerListIndex.createView)
     return { seasonIndex: seasonToQuery, weekIndex: weekToQuery, stats: finalStats }
   },
   getStatsForSeason: async function <T extends PlayerStatTypes>(leagueId: string, statType: PlayerStatEvents, season?: number): Promise<T[]> {
@@ -1047,7 +1047,7 @@ const MaddenDB: MaddenDB = {
       .where("stageIndex", "==", 1)
       .get()
     const stats = statDocs.docs.map(d => convertDate(d.data()) as StoredEvent<T>)
-    return await deduplicatePlayerStats(leagueId, stats, this.getPlayer)
+    return await deduplicatePlayerStats(leagueId, stats, this.getPlayer, playerListIndex.createView)
   }
 }
 
